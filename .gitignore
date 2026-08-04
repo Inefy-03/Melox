@@ -1,0 +1,52 @@
+# IDEs and editors
+.idea/
+.vscode/
+.fleet/
+*.iml
+*.swp
+*~
+out/
+
+# Gradle and Kotlin caches
+.gradle/
+.kotlin/
+**/build/
+local.properties
+
+# Native build output
+.externalNativeBuild/
+.cxx/
+
+# Generated packages and reports
+artifacts/
+captures/
+*.apk
+*.aab
+*.ap_
+*.class
+*.dex
+*.hprof
+*.log
+hs_err_pid*
+replay_pid*
+
+# Local secrets and signing material
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.cer
+*.crt
+*.der
+*.key
+keystore.properties
+signing.properties
+secrets.properties
+
+# Operating system files
+.DS_Store
+Thumbs.db

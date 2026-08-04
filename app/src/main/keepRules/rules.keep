@@ -1,0 +1,7 @@
+# Preserve line positions while normalizing source names for retraceable crashes.
+# Android components, native method names, enums, Parcelable creators, and
+# runtime annotations are covered by AGP's optimized defaults. TagLib supplies
+# its own consumer rule for the JNI-facing com.kyant.taglib package.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+-repackageclasses 'r'

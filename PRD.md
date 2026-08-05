@@ -504,7 +504,11 @@ store publishing.
 - Mini and full-player artwork are independently requested at their layout
   sizes. A current cover remains visible while the next track cover loads, then
   crossfades to the replacement without exposing a placeholder or playback-bar
-  surface.
+  surface. The full-player HCT background retains its last completed field until
+  the replacement is ready, then independently interpolates its current colors
+  into the replacement over 640 ms. Rapid changes continue from the in-flight
+  interpolated field instead of restarting from a stale endpoint. Missing
+  artwork participates as the fixed `#242424` endpoint.
 - Artwork thumbnails preserve their source aspect ratio instead of being
   center-cropped during cache generation. Playback-bar and full-player covers
   fit the complete artwork inside their square bounds; library cards retain
@@ -518,7 +522,8 @@ store publishing.
   while its complete color grid rotates through pixel mappings every 18 seconds
   during active playback. The bitmap geometry does not rotate. It uses
   a fixed `#242424` fallback when artwork is unavailable and adds no local AAR.
-  The matching playback artwork frame is plain dark with no centered music icon.
+  The playback artwork frame retains its original `secondaryContainer` color
+  but has no centered Music icon.
 - Secondary and tertiary page backgrounds remain visible and blur correctly
   from the mini-player top through the screen bottom while their last
   interactive item remains reachable above the mini player.

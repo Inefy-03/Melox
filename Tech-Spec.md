@@ -62,9 +62,11 @@
   An application-level prefetch effect warms current and adjacent queue covers
   at the full-player bucket. The mini player requests its own bar-sized bucket,
   while the directly composed full player requests the full-player bucket.
-  Full-player cover and background consume the same cached bitmap source. The
-  cover retains its existing crossfade, while the background retains the last
-  completed HCT field until the next field is ready. Opening and dismissing use a separate
+  Full-player cover and background consume the same cached bitmap source, but
+  only the cover uses the 320 ms track-change progress. The background retains
+  the last completed HCT field until the next field is ready, then independently
+  interpolates its current color-field state toward the replacement over 640 ms.
+  Missing artwork uses fixed `#242424` as either endpoint. Opening and dismissing use a separate
   shared-player overlay that reuses the resolved current bitmap and interpolates
   the measured mini artwork bound and current visible full-artwork content
   bound, including its playing, paused, or resume-overshoot scale and the
@@ -255,7 +257,11 @@
   phases run only for the settled resumed player while `PlaybackUiState.isPlaying`
   is true. Pausing preserves the current phases for the next resume. Missing artwork uses
   fixed `#242424` in both themes; the last completed non-null field
-  remains visible while a replacement is computed.
+  remains visible while a replacement is computed. Once ready, the replacement
+  uses an independent 640 ms `FastOutSlowInEasing` per-pixel color interpolation.
+  An interrupted transition snapshots its current interpolated 8-by-8 field as
+  the next starting point, so rapid track changes do not jump or restart from a
+  stale cover field.
 - Secondary navigation keeps one stable Miuix scene state and `NavDisplay`.
   The persisted predictive-back setting only enables either the official
   `NavigationBackHandler` or the ordinary back handler; it never swaps two
@@ -692,7 +698,8 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   the light/dark tone targets and chroma cap.
 - Unit-test bar-sized and full-player-sized artwork requests and statically
   review that the processed field retains its previous non-null result while a
-  replacement is prepared.
+  replacement is prepared. Unit-test the field-level transition endpoints and
+  midpoint interpolation.
 - Run Compose/instrumented tests for localization, settings persistence, navigation, and overlay presentation.
 - Validate API 28 opaque fallback and API 37 liquid glass on emulators.
 - Compare focused API 37 root-pager `gfxinfo` frame statistics before and after

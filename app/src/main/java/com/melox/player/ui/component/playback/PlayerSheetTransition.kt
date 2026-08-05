@@ -52,14 +52,16 @@ import com.melox.player.ui.component.library.PlaybackArtworkFrame
 import com.melox.player.ui.component.library.playbackArtworkCornerRadius
 import com.melox.player.ui.component.library.rememberArtworkBitmap
 import kotlin.math.roundToInt
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.utils.getRoundedCorner
 
 internal const val PLAYER_TRACK_ARTWORK_CROSSFADE_DURATION_MILLIS = 320
-internal const val PLAYER_LAYER_HANDOFF_END_PROGRESS = 0.4f
+internal const val PLAYER_LAYER_HANDOFF_END_PROGRESS = 0.15f
 internal const val PLAYER_SCREEN_CORNER_EXPANSION_DURATION_MILLIS = 140
 private const val PLAYER_ARTWORK_VERTICAL_LINEAR_WEIGHT = 0.4f
-private const val PLAYER_MINI_PLAYER_INPUT_ALPHA_THRESHOLD = 0.8f
+private const val PLAYER_MINI_PLAYER_INPUT_TAIL_PROGRESS = 0.03f
 
 internal val PLAYER_FULL_ARTWORK_REQUEST_SIZE = 420.dp
 internal val MINI_PLAYER_RECTANGULAR_ARTWORK_CORNER_REDUCTION = 1.dp
@@ -150,7 +152,6 @@ internal class PlayerSheetTransitionState {
         dragDistanceY = 0f
         lastDragAmountY = 0f
         dragOriginOpen = targetOpen
-        cornerExpansionProgress = 0f
         isDragging = true
         animationRequest += 1
     }
@@ -199,23 +200,23 @@ internal class PlayerSheetTransitionState {
     }
 
     internal suspend fun animateToTarget() {
-        if (progress < 1f) {
-            cornerExpansionProgress = 0f
-        }
         val visibilityThreshold = 0.5f / fullPlayerBounds.height.coerceAtLeast(1f)
-        if (!targetOpen) {
-            animateScreenCornersTo(0f)
-            withFrameNanos { }
+        coroutineScope {
+            if (!targetOpen) {
+                launch {
+                    animateScreenCornersTo(0f)
+                }
+            }
+            progressAnimation.animateTo(
+                targetValue = if (targetOpen) 1f else 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = 300f,
+                    visibilityThreshold = visibilityThreshold,
+                ),
+                initialVelocity = requestedInitialVelocity,
+            )
         }
-        progressAnimation.animateTo(
-            targetValue = if (targetOpen) 1f else 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = 300f,
-                visibilityThreshold = visibilityThreshold,
-            ),
-            initialVelocity = requestedInitialVelocity,
-        )
         if (targetOpen) {
             withFrameNanos { }
             animateScreenCornersTo(1f)
@@ -246,9 +247,6 @@ internal class PlayerSheetTransitionState {
     }
 
     private fun requestSettle(open: Boolean, initialVelocity: Float = 0f) {
-        if (progress < 1f) {
-            cornerExpansionProgress = 0f
-        }
         targetOpen = open
         requestedInitialVelocity = initialVelocity
         animationRequest += 1
@@ -287,6 +285,10 @@ internal fun playerSheetPageAlpha(progress: Float): Float {
     return easeInCubic(handoff)
 }
 
+internal fun playerSheetUsesFullPlayerStatusBar(
+    progress: Float,
+): Boolean = progress > PLAYER_LAYER_HANDOFF_END_PROGRESS
+
 internal fun playerSheetMiniPlayerAcceptsInput(
     targetOpen: Boolean,
     isDragging: Boolean,
@@ -295,7 +297,7 @@ internal fun playerSheetMiniPlayerAcceptsInput(
 ): Boolean = !targetOpen && if (isDragging) {
     !dragOriginOpen
 } else {
-    playerSheetBarAlpha(progress) >= PLAYER_MINI_PLAYER_INPUT_ALPHA_THRESHOLD
+    progress.coerceIn(0f, 1f) <= PLAYER_MINI_PLAYER_INPUT_TAIL_PROGRESS
 }
 
 internal fun Modifier.recordPlayerLayer(
@@ -425,7 +427,6 @@ internal fun PlayerSheetArtworkOverlay(
         dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
         fileSizeBytes = item.fileSizeBytes,
         size = PLAYER_FULL_ARTWORK_REQUEST_SIZE,
-        priorityLoad = true,
     )
     val density = LocalDensity.current
     val source = transition.miniArtworkBounds

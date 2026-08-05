@@ -71,6 +71,7 @@ import com.melox.player.ui.component.library.participatingArtistGroups
 import com.melox.player.ui.component.library.playbackArtworkCornerRadius
 import com.melox.player.ui.component.library.snapshotArtworkDiskCacheEntries
 import com.melox.player.ui.component.playback.hasDifferentMetadataSwipeTarget
+import com.melox.player.ui.component.playback.interpolateArtworkBackgroundField
 import com.melox.player.ui.component.playback.miniMetadataSwipeThresholdDirection
 import com.melox.player.ui.component.playback.shouldTriggerMiniMetadataSwipeThresholdHaptic
 import com.melox.player.ui.shouldClearSearchFocusAfterImeDismissed
@@ -80,6 +81,8 @@ import com.melox.player.ui.component.playback.playerSheetDragProgress
 import com.melox.player.ui.component.playback.playerSheetDragTarget
 import com.melox.player.ui.component.playback.playerSheetMiniPlayerAcceptsInput
 import com.melox.player.ui.component.playback.playerSheetPageAlpha
+import com.melox.player.ui.component.playback.artworkBackgroundUsesLightStatusBarIcons
+import com.melox.player.ui.component.playback.playerSheetUsesFullPlayerStatusBar
 import com.melox.player.ui.component.playback.playerWindowUsesPhysicalScreenCorners
 import com.melox.player.ui.component.playback.resolveArtworkColorFieldPixel
 import com.melox.player.ui.component.playback.resolveArtworkBackgroundColorRotation
@@ -229,6 +232,30 @@ class UiLogicTest {
 
         assertEquals(0xFF000006.toInt(), outputPixels[0])
         assertEquals(0xFF000009.toInt(), outputPixels[15])
+    }
+
+    @Test
+    fun artworkBackgroundColorTransitionInterpolatesAtTheFieldLevel() {
+        val startPixels = IntArray(8 * 8) { 0xFF000000.toInt() }
+        val endPixels = IntArray(8 * 8) { 0xFFFFFFFF.toInt() }
+
+        val midpoint = requireNotNull(
+            interpolateArtworkBackgroundField(
+                startFieldPixels = startPixels,
+                endFieldPixels = endPixels,
+                fraction = 0.5f,
+            ),
+        )
+
+        assertTrue(midpoint.all { it == 0xFF808080.toInt() })
+        assertTrue(
+            requireNotNull(interpolateArtworkBackgroundField(startPixels, endPixels, 0f))
+                .contentEquals(startPixels),
+        )
+        assertTrue(
+            requireNotNull(interpolateArtworkBackgroundField(startPixels, endPixels, 1f))
+                .contentEquals(endPixels),
+        )
     }
 
     @Test
@@ -512,6 +539,20 @@ class UiLogicTest {
         assertFalse(playerSheetMiniPlayerAcceptsInput(true, false, false, 0f))
         assertTrue(playerSheetMiniPlayerAcceptsInput(false, true, false, 0.5f))
         assertFalse(playerSheetMiniPlayerAcceptsInput(false, true, true, 0f))
+    }
+
+    @Test
+    fun fullPlayerStatusBarIconsFollowTheSharedLayerHandoff() {
+        assertFalse(playerSheetUsesFullPlayerStatusBar(0f))
+        assertFalse(playerSheetUsesFullPlayerStatusBar(PLAYER_LAYER_HANDOFF_END_PROGRESS))
+        assertTrue(playerSheetUsesFullPlayerStatusBar(PLAYER_LAYER_HANDOFF_END_PROGRESS + 0.001f))
+        assertTrue(playerSheetUsesFullPlayerStatusBar(1f))
+    }
+
+    @Test
+    fun artworkBackgroundStatusBarIconsUseLuminanceContrast() {
+        assertTrue(artworkBackgroundUsesLightStatusBarIcons(IntArray(16) { 0xFF242424.toInt() }))
+        assertFalse(artworkBackgroundUsesLightStatusBarIcons(IntArray(16) { 0xFFFFFFFF.toInt() }))
     }
 
     @Test

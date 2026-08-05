@@ -139,6 +139,7 @@ internal fun FullPlayerScreen(
     onPlayerDragCancel: () -> Unit,
     onPlayerBoundsChanged: (Rect) -> Unit,
     onArtworkBoundsChanged: (Rect) -> Unit,
+    onStatusBarBackgroundDarkChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val item = playback.currentItem
@@ -150,7 +151,10 @@ internal fun FullPlayerScreen(
             size = PLAYER_FULL_ARTWORK_REQUEST_SIZE,
         )
     }
-    val artworkBlend = rememberArtworkBlend(loadedArtworkBitmap)
+    val artworkBlend = rememberArtworkBlend(
+        targetBitmap = loadedArtworkBitmap,
+        animate = drawInPlace,
+    )
     val emphasisControlColor = Color.White
     val controlColor = emphasisControlColor.copy(alpha = 0.8f)
     val artistControlColor = controlColor
@@ -206,9 +210,11 @@ internal fun FullPlayerScreen(
                 .then(dismissGestureModifier),
         ) {
             ArtworkFlowBackground(
-                artwork = loadedArtworkBitmap,
+                artwork = artworkBlend.currentBitmap,
                 isDark = isDark,
                 animate = drawInPlace && playback.isPlaying,
+                animateColorTransition = drawInPlace,
+                onStatusBarBackgroundDarkChanged = onStatusBarBackgroundDarkChanged,
                 modifier = Modifier.fillMaxSize(),
             )
             Column(
@@ -345,14 +351,26 @@ private data class ArtworkBlend(
 )
 
 @Composable
-private fun rememberArtworkBlend(targetBitmap: Bitmap?): ArtworkBlend {
+private fun rememberArtworkBlend(
+    targetBitmap: Bitmap?,
+    animate: Boolean,
+): ArtworkBlend {
     var previousBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var currentBitmap by remember { mutableStateOf(targetBitmap) }
     var hasPreviousFrame by remember { mutableStateOf(false) }
     val progress = remember { Animatable(1f) }
 
-    LaunchedEffect(targetBitmap) {
-        if (targetBitmap === currentBitmap) return@LaunchedEffect
+    LaunchedEffect(targetBitmap, animate) {
+        if (!animate) {
+            previousBitmap = null
+            currentBitmap = targetBitmap
+            hasPreviousFrame = false
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+        if (targetBitmap === currentBitmap && !hasPreviousFrame) {
+            return@LaunchedEffect
+        }
         previousBitmap = if (progress.value < 0.5f && hasPreviousFrame) {
             previousBitmap
         } else {

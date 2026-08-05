@@ -64,7 +64,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private val ArtworkSize = 48.dp
 private val ArtworkCornerRadius = 6.dp
-private val MissingPlaybackArtworkColor = Color(0xFF242424)
 
 /** Displays a bounded cached thumbnail without blocking the Compose thread. */
 @Composable
@@ -127,7 +126,6 @@ fun PlaybackArtwork(
     contentScale: ContentScale = ContentScale.Crop,
     bitmapCrossfadeDurationMillis: Int = 0,
     bitmapCrossfadeEasing: Easing = LinearEasing,
-    priorityLoad: Boolean = false,
     rectangularCornerRadiusReduction: Dp = 0.dp,
 ) {
     val bitmap = rememberArtworkBitmap(
@@ -135,7 +133,6 @@ fun PlaybackArtwork(
         dateModifiedEpochSeconds = dateModifiedEpochSeconds,
         fileSizeBytes = fileSizeBytes,
         size = requestSize,
-        priorityLoad = priorityLoad,
     )
     if (bitmapCrossfadeDurationMillis > 0) {
         PlaybackArtworkStackedFade(
@@ -310,7 +307,7 @@ internal fun PlaybackArtworkFrame(
             modifier = modifier
                 .size(size)
                 .squircleBackground(
-                    color = MissingPlaybackArtworkColor,
+                    color = MiuixTheme.colorScheme.secondaryContainer,
                     cornerRadius = cornerRadius,
                 ),
         )
@@ -345,7 +342,6 @@ internal fun rememberArtworkBitmap(
     dateModifiedEpochSeconds: Long,
     fileSizeBytes: Long,
     size: Dp,
-    priorityLoad: Boolean = false,
 ): Bitmap? {
     val context = LocalContext.current.applicationContext
     val targetSizePx = normalizeArtworkTargetSize(
@@ -358,11 +354,11 @@ internal fun rememberArtworkBitmap(
         targetSizePx = targetSizePx,
     )
     var retainedBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    val initialResult = remember(cacheKey, priorityLoad) {
+    val initialResult = remember(cacheKey) {
         ArtworkCache.getCached(
             context = context,
             key = cacheKey,
-            includeDisk = priorityLoad,
+            includeDisk = false,
         )
     }
     val result = produceState<ArtworkResult?>(
@@ -406,15 +402,13 @@ internal suspend fun prefetchArtwork(
     dateModifiedEpochSeconds: Long,
     fileSizeBytes: Long,
     targetSizePx: Int,
-) {
-    loadArtworkBitmap(
+): Bitmap? = loadArtworkBitmap(
         context = context,
         contentUri = contentUri,
         dateModifiedEpochSeconds = dateModifiedEpochSeconds,
         fileSizeBytes = fileSizeBytes,
         targetSizePx = targetSizePx,
     )
-}
 
 internal suspend fun loadArtworkBitmap(
     context: Context,

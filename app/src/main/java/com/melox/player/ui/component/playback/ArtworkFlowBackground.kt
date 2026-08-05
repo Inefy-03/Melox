@@ -2,6 +2,7 @@ package com.melox.player.ui.component.playback
 
 import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -13,8 +14,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
@@ -27,7 +31,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.materialkolor.hct.Hct
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.util.WeakHashMap
+import kotlin.math.pow
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.roundToInt
 
@@ -37,22 +46,40 @@ private const val ARTWORK_COLOR_FIELD_LIGHT_TONE = 48.0
 private const val ARTWORK_COLOR_FIELD_DARK_TONE = 24.0
 private const val ARTWORK_BACKGROUND_ROTATION_DURATION_MILLIS = 18_000
 private const val ARTWORK_COLOR_ORBIT_DURATION_MILLIS = 42_000
+private const val ARTWORK_BACKGROUND_COLOR_TRANSITION_DURATION_MILLIS = 640
 private const val ARTWORK_COLOR_ORBIT_LONG_LAP_MILLIS = 24_000f
 private const val ARTWORK_COLOR_ORBIT_SHORT_LAP_MILLIS = 18_000f
 private const val ARTWORK_BACKGROUND_SIZE = 4
 private const val ARTWORK_BACKGROUND_QUADRANT_SIZE = ARTWORK_BACKGROUND_SIZE / 2
 private const val ARTWORK_COLOR_FIELD_CENTER_OFFSET =
     (ARTWORK_COLOR_FIELD_SIZE - ARTWORK_BACKGROUND_SIZE) / 2
+private const val MISSING_ARTWORK_BACKGROUND_COLOR_ARGB = 0xFF242424.toInt()
+private const val STATUS_BAR_DARK_BACKGROUND_LUMINANCE_THRESHOLD = 0.179f
 private val MissingArtworkBackgroundColor = Color(0xFF242424)
+
+private class ArtworkColorFieldCacheEntry {
+    var sourcePixels: IntArray? = null
+    var lightFieldPixels: IntArray? = null
+    var darkFieldPixels: IntArray? = null
+}
+
+private val artworkColorFieldCache = WeakHashMap<Bitmap, ArtworkColorFieldCacheEntry>()
 
 @Composable
 internal fun ArtworkFlowBackground(
     artwork: Bitmap?,
     isDark: Boolean,
     animate: Boolean,
+    animateColorTransition: Boolean = true,
+    onStatusBarBackgroundDarkChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val fieldPixels = rememberArtworkColorFieldPixels(artwork, isDark)
+    val targetFieldPixels = rememberArtworkColorFieldPixels(artwork, isDark)
+    val fieldBlend = rememberArtworkBackgroundFieldBlend(
+        artwork = artwork,
+        targetFieldPixels = targetFieldPixels,
+        animateTransition = animateColorTransition,
+    )
     val backgroundBitmap = remember {
         Bitmap.createBitmap(
             ARTWORK_BACKGROUND_SIZE,
@@ -67,11 +94,21 @@ internal fun ArtworkFlowBackground(
         )
     }
     val orbitPixels = remember { IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE) }
+    val previousOrbitPixels = remember {
+        IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE)
+    }
     val backgroundPixels = remember { IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE) }
+    val previousBackgroundPixels = remember {
+        IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE)
+    }
     val colorRotationPhase = remember { Animatable(0f) }
     val colorOrbitPhase = remember { Animatable(0f) }
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
     val animationEnabled = animate && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val currentOnStatusBarBackgroundDarkChanged by rememberUpdatedState(
+        onStatusBarBackgroundDarkChanged,
+    )
+    val currentFieldBlend by rememberUpdatedState(fieldBlend)
 
     DisposableEffect(backgroundBitmap) {
         onDispose {
@@ -95,6 +132,52 @@ internal fun ArtworkFlowBackground(
             )
             colorRotationPhase.snapTo(0f)
         }
+    }
+
+    LaunchedEffect(fieldBlend.fromFieldPixels, fieldBlend.toFieldPixels, artwork, animationEnabled) {
+        if (fieldBlend.fromFieldPixels == null && fieldBlend.toFieldPixels == null) {
+            currentOnStatusBarBackgroundDarkChanged(artwork == null || isDark)
+            return@LaunchedEffect
+        }
+        val targetOrbitPixels = IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE)
+        val targetBackgroundPixels =
+            IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE)
+        val sourceOrbitPixels = IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE)
+        val sourceBackgroundPixels =
+            IntArray(ARTWORK_BACKGROUND_SIZE * ARTWORK_BACKGROUND_SIZE)
+        snapshotFlow {
+            Triple(
+                colorRotationPhase.value,
+                colorOrbitPhase.value,
+                currentFieldBlend.progress,
+            )
+        }
+            .map { (rotationProgress, orbitProgress, transitionProgress) ->
+                val blend = currentFieldBlend
+                resolveArtworkBackgroundPixels(
+                    fieldPixels = blend.toFieldPixels,
+                    orbitProgress = orbitProgress,
+                    rotationProgress = rotationProgress,
+                    orbitPixels = targetOrbitPixels,
+                    outputPixels = targetBackgroundPixels,
+                )
+                resolveArtworkBackgroundPixels(
+                    fieldPixels = blend.fromFieldPixels,
+                    orbitProgress = orbitProgress,
+                    rotationProgress = rotationProgress,
+                    orbitPixels = sourceOrbitPixels,
+                    outputPixels = sourceBackgroundPixels,
+                )
+                interpolateArtworkBackgroundPixels(
+                    startPixels = sourceBackgroundPixels,
+                    endPixels = targetBackgroundPixels,
+                    fraction = transitionProgress,
+                    outputPixels = targetBackgroundPixels,
+                )
+                artworkBackgroundUsesLightStatusBarIcons(targetBackgroundPixels)
+            }
+            .distinctUntilChanged()
+            .collect(currentOnStatusBarBackgroundDarkChanged)
     }
 
     LaunchedEffect(animationEnabled) {
@@ -126,7 +209,9 @@ internal fun ArtworkFlowBackground(
             )
             .clipToBounds(),
     ) {
-        if (fieldPixels != null) {
+        val shouldDrawBackground = fieldBlend.toFieldPixels != null ||
+            (fieldBlend.fromFieldPixels != null && fieldBlend.progress < 1f)
+        if (shouldDrawBackground) {
             Image(
                 painter = backgroundPainter,
                 contentDescription = null,
@@ -135,14 +220,24 @@ internal fun ArtworkFlowBackground(
                     .fillMaxSize()
                     .drawWithCache {
                         onDrawWithContent {
-                            resolveArtworkOrbitColors(
-                                fieldPixels = fieldPixels,
-                                cycleProgress = colorOrbitPhase.value,
-                                outputPixels = orbitPixels,
-                            )
-                            resolveArtworkBackgroundColorRotation(
-                                sourcePixels = orbitPixels,
+                            resolveArtworkBackgroundPixels(
+                                fieldPixels = fieldBlend.toFieldPixels,
+                                orbitProgress = colorOrbitPhase.value,
                                 rotationProgress = colorRotationPhase.value,
+                                orbitPixels = orbitPixels,
+                                outputPixels = backgroundPixels,
+                            )
+                            resolveArtworkBackgroundPixels(
+                                fieldPixels = fieldBlend.fromFieldPixels,
+                                orbitProgress = colorOrbitPhase.value,
+                                rotationProgress = colorRotationPhase.value,
+                                orbitPixels = previousOrbitPixels,
+                                outputPixels = previousBackgroundPixels,
+                            )
+                            interpolateArtworkBackgroundPixels(
+                                startPixels = previousBackgroundPixels,
+                                endPixels = backgroundPixels,
+                                fraction = fieldBlend.progress,
                                 outputPixels = backgroundPixels,
                             )
                             backgroundBitmap.setPixels(
@@ -159,6 +254,144 @@ internal fun ArtworkFlowBackground(
                     },
             )
         }
+    }
+}
+
+private data class ArtworkBackgroundFieldBlend(
+    val fromFieldPixels: IntArray?,
+    val toFieldPixels: IntArray?,
+    val progress: Float,
+)
+
+@Composable
+private fun rememberArtworkBackgroundFieldBlend(
+    artwork: Bitmap?,
+    targetFieldPixels: IntArray?,
+    animateTransition: Boolean,
+): ArtworkBackgroundFieldBlend {
+    var fromFieldPixels by remember { mutableStateOf<IntArray?>(null) }
+    var toFieldPixels by remember { mutableStateOf<IntArray?>(null) }
+    var currentArtwork by remember { mutableStateOf<Bitmap?>(null) }
+    var initialized by remember { mutableStateOf(false) }
+    val progress = remember { Animatable(1f) }
+
+    LaunchedEffect(artwork, targetFieldPixels, animateTransition) {
+        if (artwork != null && targetFieldPixels == null) return@LaunchedEffect
+
+        if (!initialized) {
+            fromFieldPixels = null
+            toFieldPixels = targetFieldPixels
+            currentArtwork = artwork
+            initialized = true
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+
+        if (!animateTransition) {
+            fromFieldPixels = null
+            toFieldPixels = targetFieldPixels
+            currentArtwork = artwork
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+
+        if (artwork === currentArtwork) {
+            fromFieldPixels = null
+            toFieldPixels = targetFieldPixels
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
+
+        val currentFieldPixels = interpolateArtworkBackgroundField(
+            startFieldPixels = fromFieldPixels,
+            endFieldPixels = toFieldPixels,
+            fraction = progress.value,
+        )
+        fromFieldPixels = currentFieldPixels
+        toFieldPixels = targetFieldPixels
+        currentArtwork = artwork
+        progress.snapTo(0f)
+
+        if (currentFieldPixels == null && targetFieldPixels == null) {
+            progress.snapTo(1f)
+        } else {
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = ARTWORK_BACKGROUND_COLOR_TRANSITION_DURATION_MILLIS,
+                    easing = FastOutSlowInEasing,
+                ),
+            )
+            fromFieldPixels = null
+        }
+    }
+
+    return ArtworkBackgroundFieldBlend(
+        fromFieldPixels = fromFieldPixels,
+        toFieldPixels = toFieldPixels,
+        progress = progress.value,
+    )
+}
+
+internal fun interpolateArtworkBackgroundField(
+    startFieldPixels: IntArray?,
+    endFieldPixels: IntArray?,
+    fraction: Float,
+): IntArray? {
+    if (startFieldPixels == null && endFieldPixels == null) return null
+
+    val pixelCount = ARTWORK_COLOR_FIELD_SIZE * ARTWORK_COLOR_FIELD_SIZE
+    val startPixels = startFieldPixels ?: IntArray(pixelCount) {
+        MISSING_ARTWORK_BACKGROUND_COLOR_ARGB
+    }
+    val endPixels = endFieldPixels ?: IntArray(pixelCount) {
+        MISSING_ARTWORK_BACKGROUND_COLOR_ARGB
+    }
+    return IntArray(pixelCount) { index ->
+        interpolateArgb(
+            startColor = startPixels[index],
+            endColor = endPixels[index],
+            fraction = fraction,
+        )
+    }
+}
+
+private fun resolveArtworkBackgroundPixels(
+    fieldPixels: IntArray?,
+    orbitProgress: Float,
+    rotationProgress: Float,
+    orbitPixels: IntArray,
+    outputPixels: IntArray,
+) {
+    if (fieldPixels == null) {
+        outputPixels.fill(MISSING_ARTWORK_BACKGROUND_COLOR_ARGB)
+        return
+    }
+    resolveArtworkOrbitColors(
+        fieldPixels = fieldPixels,
+        cycleProgress = orbitProgress,
+        outputPixels = orbitPixels,
+    )
+    resolveArtworkBackgroundColorRotation(
+        sourcePixels = orbitPixels,
+        rotationProgress = rotationProgress,
+        outputPixels = outputPixels,
+    )
+}
+
+private fun interpolateArtworkBackgroundPixels(
+    startPixels: IntArray,
+    endPixels: IntArray,
+    fraction: Float,
+    outputPixels: IntArray,
+) {
+    if (fraction >= 1f) return
+    for (index in outputPixels.indices) {
+        outputPixels[index] = interpolateArgb(
+            startColor = startPixels[index],
+            endColor = endPixels[index],
+            fraction = fraction,
+        )
     }
 }
 
@@ -354,25 +587,57 @@ private fun rememberArtworkColorFieldPixels(
 ): IntArray? {
     if (artwork == null) return null
 
-    val sourcePixels by produceState<IntArray?>(
-        initialValue = null,
-        artwork,
-    ) {
-        value = withContext(Dispatchers.Default) {
-            createArtworkColorSamples(artwork)
-        }
+    val cachedFieldPixels = remember(artwork, isDark) {
+        cachedArtworkColorFieldPixels(artwork, isDark)
     }
-    val colorFieldPixels by produceState<IntArray?>(
-        initialValue = null,
-        sourcePixels,
-        isDark,
-    ) {
-        val samples = sourcePixels ?: return@produceState
-        value = withContext(Dispatchers.Default) {
-            createArtworkColorFieldPixels(samples, isDark)
+    var colorFieldPixels by remember(artwork, isDark) {
+        mutableStateOf(cachedFieldPixels)
+    }
+    LaunchedEffect(artwork, isDark) {
+        if (colorFieldPixels == null) {
+            colorFieldPixels = loadArtworkColorFieldPixels(artwork, isDark)
         }
     }
     return colorFieldPixels
+}
+
+internal suspend fun prefetchArtworkColorField(
+    artwork: Bitmap?,
+    isDark: Boolean,
+) {
+    if (artwork == null) return
+    loadArtworkColorFieldPixels(artwork, isDark)
+}
+
+private fun cachedArtworkColorFieldPixels(
+    artwork: Bitmap,
+    isDark: Boolean,
+): IntArray? = synchronized(artworkColorFieldCache) {
+    val entry = artworkColorFieldCache[artwork] ?: return@synchronized null
+    if (isDark) entry.darkFieldPixels else entry.lightFieldPixels
+}
+
+private suspend fun loadArtworkColorFieldPixels(
+    artwork: Bitmap,
+    isDark: Boolean,
+): IntArray = withContext(Dispatchers.Default) {
+    synchronized(artworkColorFieldCache) {
+        val entry = artworkColorFieldCache.getOrPut(artwork) {
+            ArtworkColorFieldCacheEntry()
+        }
+        val cached = if (isDark) entry.darkFieldPixels else entry.lightFieldPixels
+        if (cached != null) return@synchronized cached
+        val sourcePixels = entry.sourcePixels ?: createArtworkColorSamples(artwork).also {
+            entry.sourcePixels = it
+        }
+        val fieldPixels = createArtworkColorFieldPixels(sourcePixels, isDark)
+        if (isDark) {
+            entry.darkFieldPixels = fieldPixels
+        } else {
+            entry.lightFieldPixels = fieldPixels
+        }
+        fieldPixels
+    }
 }
 
 private fun createArtworkColorSamples(source: Bitmap): IntArray {
@@ -438,4 +703,28 @@ internal fun resolveArtworkColorFieldPixel(
         }
     }
     return resolved.toInt()
+}
+
+internal fun artworkBackgroundUsesLightStatusBarIcons(backgroundPixels: IntArray): Boolean {
+    if (backgroundPixels.isEmpty()) return true
+    val sampleCount = minOf(ARTWORK_BACKGROUND_SIZE, backgroundPixels.size)
+    val averageLuminance = (0 until sampleCount).sumOf { index ->
+        relativeLuminance(backgroundPixels[index]).toDouble()
+    }.toFloat() / sampleCount
+    return averageLuminance < STATUS_BAR_DARK_BACKGROUND_LUMINANCE_THRESHOLD
+}
+
+private fun relativeLuminance(color: Int): Float {
+    fun linearChannel(shift: Int): Float {
+        val channel = ((color ushr shift) and 0xff) / 255f
+        return if (channel <= 0.04045f) {
+            channel / 12.92f
+        } else {
+            ((channel + 0.055f) / 1.055f).pow(2.4f)
+        }
+    }
+
+    return 0.2126f * linearChannel(16) +
+        0.7152f * linearChannel(8) +
+        0.0722f * linearChannel(0)
 }

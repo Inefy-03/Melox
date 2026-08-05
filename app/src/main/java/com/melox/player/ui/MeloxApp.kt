@@ -59,6 +59,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
@@ -120,6 +121,8 @@ import com.melox.player.ui.component.playback.MiniPlayer
 import com.melox.player.ui.component.playback.PLAYER_FULL_ARTWORK_REQUEST_SIZE
 import com.melox.player.ui.component.playback.PlayerSheetArtworkOverlay
 import com.melox.player.ui.component.playback.PlayerSheetContentOverlay
+import com.melox.player.ui.component.playback.playerSheetUsesFullPlayerStatusBar
+import com.melox.player.ui.component.playback.prefetchArtworkColorField
 import com.melox.player.ui.component.playback.rememberPlayerSheetTransitionState
 import com.melox.player.ui.navigation.PredictiveNavDisplay
 import com.melox.player.ui.screen.library.MusicListScreen
@@ -215,7 +218,7 @@ fun MeloxApp(
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    PlaybackArtworkPrefetchEffect(viewModel)
+    PlaybackArtworkPrefetchEffect(viewModel, isDark)
     // API level alone is insufficient: liquid glass also needs RuntimeShader support at runtime.
     val liquidGlassSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         isRuntimeShaderSupported()
@@ -316,6 +319,19 @@ fun MeloxApp(
     }
     val openPlayer = { playerTransition.open() }
     val closePlayer = { playerTransition.close() }
+    var playerStatusBarBackgroundIsDark by remember { mutableStateOf(isDark) }
+    val playerUsesFullPlayerStatusBar = playerSheetUsesFullPlayerStatusBar(
+        progress = playerTransition.progress,
+    )
+    val statusBarUsesDarkMode = if (playerUsesFullPlayerStatusBar) {
+        playerStatusBarBackgroundIsDark
+    } else {
+        isDark
+    }
+
+    LaunchedEffect(currentTrackId, isDark) {
+        playerStatusBarBackgroundIsDark = isDark
+    }
 
     LaunchedEffect(uiState.settingsLoaded) {
         if (uiState.settingsLoaded && !libraryPreferencesHydrated) {
@@ -357,6 +373,8 @@ fun MeloxApp(
         snapshotFlow { pagerState.currentPage }.collectLatest(playerPagerState::syncPage)
     }
     LaunchedEffect(playerTransition.animationRequest, playerTransition.isReady) {
+        if (!playerTransition.isReady || playerTransition.isDragging) return@LaunchedEffect
+        withFrameNanos { }
         if (!playerTransition.isReady || playerTransition.isDragging) return@LaunchedEffect
         playerTransition.animateToTarget()
     }
@@ -423,15 +441,19 @@ fun MeloxApp(
     }
 
     MeloxTheme(settings = settings) {
-        DisposableEffect(activity, isDark) {
+        DisposableEffect(activity, isDark, statusBarUsesDarkMode) {
             val componentActivity = activity as? ComponentActivity
-            val transparentStyle = SystemBarStyle.auto(
+            val statusBarStyle = SystemBarStyle.auto(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+            ) { statusBarUsesDarkMode }
+            val navigationBarStyle = SystemBarStyle.auto(
                 Color.TRANSPARENT,
                 Color.TRANSPARENT,
             ) { isDark }
             componentActivity?.enableEdgeToEdge(
-                statusBarStyle = transparentStyle,
-                navigationBarStyle = transparentStyle,
+                statusBarStyle = statusBarStyle,
+                navigationBarStyle = navigationBarStyle,
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 activity?.window?.isNavigationBarContrastEnforced = false
@@ -1214,6 +1236,9 @@ fun MeloxApp(
                             },
                             onPlayerBoundsChanged = playerTransition::updateFullPlayerBounds,
                             onArtworkBoundsChanged = playerTransition::updateFullArtworkBounds,
+                            onStatusBarBackgroundDarkChanged = {
+                                playerStatusBarBackgroundIsDark = it
+                            },
                             modifier = Modifier.zIndex(
                                 if (playerTransition.miniPlayerAcceptsInput) -1f else 1f,
                             ),
@@ -1263,6 +1288,7 @@ private fun FullPlayerHost(
     onPlayerDragCancel: () -> Unit,
     onPlayerBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit,
     onArtworkBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit,
+    onStatusBarBackgroundDarkChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val playback by viewModel.playbackState.collectAsStateWithLifecycle()
@@ -1298,6 +1324,7 @@ private fun FullPlayerHost(
         onPlayerDragCancel = onPlayerDragCancel,
         onPlayerBoundsChanged = onPlayerBoundsChanged,
         onArtworkBoundsChanged = onArtworkBoundsChanged,
+        onStatusBarBackgroundDarkChanged = onStatusBarBackgroundDarkChanged,
         modifier = modifier,
     )
 }
@@ -1344,13 +1371,14 @@ private fun MiniPlayerHost(
 @Composable
 private fun PlaybackArtworkPrefetchEffect(
     viewModel: MeloxViewModel,
+    isDark: Boolean,
 ) {
     val playback by viewModel.compactPlaybackState.collectAsStateWithLifecycle()
     val applicationContext = LocalContext.current.applicationContext
     val artworkPrefetchSizePx = with(LocalDensity.current) {
         PLAYER_FULL_ARTWORK_REQUEST_SIZE.roundToPx()
     }
-    LaunchedEffect(playback.currentIndex, playback.queue, artworkPrefetchSizePx) {
+    LaunchedEffect(playback.currentIndex, playback.queue, artworkPrefetchSizePx, isDark) {
         if (playback.queue.isEmpty() || playback.currentIndex !in playback.queue.indices) {
             return@LaunchedEffect
         }
@@ -1360,13 +1388,14 @@ private fun PlaybackArtworkPrefetchEffect(
             (playback.currentIndex + 1) % playback.queue.size,
         ).distinct().forEach { index ->
             val item = playback.queue[index]
-            prefetchArtwork(
+            val artwork = prefetchArtwork(
                 context = applicationContext,
                 contentUri = item.contentUri,
                 dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
                 fileSizeBytes = item.fileSizeBytes,
                 targetSizePx = artworkPrefetchSizePx,
             )
+            prefetchArtworkColorField(artwork, isDark)
         }
     }
 }

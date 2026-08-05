@@ -4,6 +4,8 @@ Last updated: 2026-08-05
 
 ## Stable Decisions
 
+- Routine work stays on `main` and commits directly there. Create and mention
+  a separate branch only when a new feature or bug fix needs isolated testing.
 - Release APK filenames use `Melox_<versionName>_<yyMMddHHmm>.apk`, with the date
   resolved in the `Asia/Shanghai` time zone at build configuration time.
 - Routine verification avoids emulator clicking, screen recording, and
@@ -535,10 +537,10 @@ Last updated: 2026-08-05
   Cached bitmaps preserve source aspect ratio and never upscale; playback
   artwork uses `Fit`, while library cards retain `Crop`. The mini player uses
   its bar-sized request and the full player uses the full-player request; the
-  requests are independent of opening and closing. Full artwork and atmosphere
-  share one 320 ms old/new bitmap blend for track changes, so they crossfade
-  together without an intermediate placeholder. That blend is not a mini/full
-  transition.
+  requests are independent of opening and closing. Full artwork keeps its
+  320 ms old/new bitmap blend, while the atmosphere retains its last completed
+  HCT field until the replacement is ready and then uses an independent 640 ms
+  color interpolation. That blend is not a mini/full transition.
 - Non-root Navigation3 scene backgrounds render full-screen behind the retained
   mini player and system-bar inset. Only their interactive content consumes the
   live player bottom inset. The scaffold backdrop therefore samples the current
@@ -889,12 +891,23 @@ Last updated: 2026-08-05
   merged Debug manifest retains `locale|layoutDirection|uiMode`. The final APK
   passed archive, v2 signature, and 16 KB ZIP
   alignment checks with SHA-256
-  `bc9817b939190df136c0f7721308f19f5e9d2bd13474057cceb0ffa5069059bd`.
+  `1b9fae76aacc5e7c006ccc3910422c07bb58fc6ce59e09ed8b32a8f119e68c8d`.
   Per maintainer direction, no emulator, screenshot, or interaction test ran.
-- On 2026-08-05, tracks without cover art use the same fixed `#242424`
-  playback backdrop in light and dark themes. Their full-player, mini-player,
-  and transition artwork frame is an empty dark cover without a centered music
-  icon; library-list artwork placeholders retain their existing icon treatment.
+- On 2026-08-05, the playback artwork placeholder keeps its original
+  `secondaryContainer` color but no longer draws a centered Music icon. The
+  fixed `#242424` fallback applies only to the no-artwork playback backdrop.
+- On 2026-08-05, full-player track changes keep the last completed HCT field
+  visible while the replacement is computed. The background no longer reuses
+  the cover's 320 ms progress; once the replacement is ready, it independently
+  interpolates the current 8-by-8 field into the next field over 640 ms. Rapid
+  track changes snapshot the in-flight interpolated field before continuing,
+  and missing artwork remains the fixed `#242424` endpoint. The field cache now
+  resets on a new artwork/theme key so an old field cannot be mistaken for a
+  ready replacement. Debug Kotlin compilation, 89 unit tests, Debug Lint, Debug
+  assembly, APK archive, v2 signature, and 16 KB alignment checks passed. The
+  verified `artifacts/Melox-debug.apk` has SHA-256
+  `2d4bfe5065b0d86ba49930957661c1e9c5b24610ea6a9e8781dd9a1b99d55967`.
+  Per maintainer direction, no emulator, screenshot, or interaction test ran.
 - On 2026-08-03, song rows moved their trailing duration to Miuix `footnote2`,
   artist parsing added `&`, and track actions gained one-line Album/Artist
   ellipsis plus single-artist direct navigation and a multi-artist Miuix sheet.
@@ -1173,3 +1186,16 @@ Last updated: 2026-08-05
   screenshots or recordings. The verified `artifacts/Melox-debug.apk` has
   SHA-256
   `d3b7f87dbb548e6d753e8d967be6d47299481e107f6ab8b294cdebde94b56a03`.
+- On 2026-08-05, the full-player host returned to on-demand mounting after
+  constant composition was found too expensive: hidden full-player progress
+  recomposition and GraphicsLayer recording are no longer retained while the
+  mini player is idle. The existing current/adjacent artwork prefetch now also
+  warms the small 8-by-8 HCT field through a weak bitmap-keyed cache, preserving
+  the expansion path without keeping the full page resident. Status-bar icons
+  now follow the rendered playback background's top-row luminance in real time;
+  only the shared handoff selects the playback status-bar mode, and animation or
+  artwork-field changes can switch between light and dark icons. Navigation-bar
+  behavior is unchanged. Debug unit tests, Debug Lint, Debug assembly, APK
+  archive validation, and `git diff --check` passed without emulator screenshots
+  or recordings. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `b0c9cb8c5a6b6460a126d702b49b787fc862d0c9590f43cbc134ba5cd319428e`.

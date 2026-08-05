@@ -237,7 +237,6 @@ internal fun MiniPlayer(
                     bitmapCrossfadeDurationMillis =
                         PLAYER_TRACK_ARTWORK_CROSSFADE_DURATION_MILLIS,
                     bitmapCrossfadeEasing = PLAYER_TRACK_ARTWORK_CROSSFADE_EASING,
-                    priorityLoad = true,
                     rectangularCornerRadiusReduction =
                         MINI_PLAYER_RECTANGULAR_ARTWORK_CORNER_REDUCTION,
                 )

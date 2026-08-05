@@ -78,6 +78,7 @@ import com.melox.player.ui.component.playback.PLAYER_LAYER_HANDOFF_END_PROGRESS
 import com.melox.player.ui.component.playback.playerSheetBarAlpha
 import com.melox.player.ui.component.playback.playerSheetDragProgress
 import com.melox.player.ui.component.playback.playerSheetDragTarget
+import com.melox.player.ui.component.playback.playerSheetMiniPlayerAcceptsInput
 import com.melox.player.ui.component.playback.playerSheetPageAlpha
 import com.melox.player.ui.component.playback.playerWindowUsesPhysicalScreenCorners
 import com.melox.player.ui.component.playback.resolveArtworkColorFieldPixel
@@ -411,6 +412,7 @@ class UiLogicTest {
     fun sharedArtworkPathMovesRightAndUpThroughoutWithStagedAxisEmphasis() {
         val thumbnail = Rect(16f, 708f, 64f, 756f)
         val albumArt = Rect(28f, 120f, 372f, 464f)
+        val initial = sharedArtworkRect(thumbnail, albumArt, 0.1f)
         val quarter = sharedArtworkRect(thumbnail, albumArt, 0.25f)
         val midpoint = sharedArtworkRect(thumbnail, albumArt, 0.5f)
 
@@ -419,6 +421,7 @@ class UiLogicTest {
         val secondHalfHorizontalDistance = albumArt.center.x - midpoint.center.x
         val secondHalfVerticalDistance = midpoint.center.y - albumArt.center.y
 
+        assertTrue(initial.bottom < thumbnail.bottom)
         assertTrue(quarter.center.x > thumbnail.center.x)
         assertTrue(quarter.center.y < thumbnail.center.y)
         assertTrue(firstHalfHorizontalDistance > firstHalfVerticalDistance)
@@ -499,6 +502,16 @@ class UiLogicTest {
         assertEquals(1f, playerSheetPageAlpha(PLAYER_LAYER_HANDOFF_END_PROGRESS), 0f)
         assertEquals(0f, playerSheetBarAlpha(1f), 0f)
         assertEquals(1f, playerSheetPageAlpha(1f), 0f)
+    }
+
+    @Test
+    fun miniPlayerAcceptsInputBeforeTheClosingSpringTailFinishes() {
+        assertFalse(playerSheetMiniPlayerAcceptsInput(false, false, false, 0.1f))
+        assertTrue(playerSheetMiniPlayerAcceptsInput(false, false, false, 0.02f))
+        assertTrue(playerSheetMiniPlayerAcceptsInput(false, false, false, 0f))
+        assertFalse(playerSheetMiniPlayerAcceptsInput(true, false, false, 0f))
+        assertTrue(playerSheetMiniPlayerAcceptsInput(false, true, false, 0.5f))
+        assertFalse(playerSheetMiniPlayerAcceptsInput(false, true, true, 0f))
     }
 
     @Test

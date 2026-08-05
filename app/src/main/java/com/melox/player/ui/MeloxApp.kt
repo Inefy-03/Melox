@@ -85,6 +85,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -1192,6 +1193,7 @@ fun MeloxApp(
                             onGoToAlbum = openTrackAlbum,
                             onGoToArtist = openTrackArtist,
                             playerLayer = fullPlayerLayer,
+                            interactionEnabled = !playerTransition.miniPlayerAcceptsInput,
                             drawInPlace =
                                 playerTransition.targetOpen &&
                                     !playerTransition.isTransitionActive,
@@ -1212,6 +1214,9 @@ fun MeloxApp(
                             },
                             onPlayerBoundsChanged = playerTransition::updateFullPlayerBounds,
                             onArtworkBoundsChanged = playerTransition::updateFullArtworkBounds,
+                            modifier = Modifier.zIndex(
+                                if (playerTransition.miniPlayerAcceptsInput) -1f else 1f,
+                            ),
                         )
                     }
                     PlayerSheetContentOverlay(
@@ -1249,6 +1254,7 @@ private fun FullPlayerHost(
     onGoToAlbum: (MusicTrack) -> Unit,
     onGoToArtist: (ArtistGroup) -> Unit,
     playerLayer: GraphicsLayer,
+    interactionEnabled: Boolean,
     drawInPlace: Boolean,
     sharedArtworkVisible: Boolean,
     onPlayerDragStart: () -> Unit,
@@ -1257,6 +1263,7 @@ private fun FullPlayerHost(
     onPlayerDragCancel: () -> Unit,
     onPlayerBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit,
     onArtworkBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val playback by viewModel.playbackState.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyricsState.collectAsStateWithLifecycle()
@@ -1282,6 +1289,7 @@ private fun FullPlayerHost(
         artistGroups = artistGroups,
         onGoToArtist = onGoToArtist,
         playerLayer = playerLayer,
+        interactionEnabled = interactionEnabled,
         drawInPlace = drawInPlace,
         sharedArtworkVisible = sharedArtworkVisible,
         onPlayerDragStart = onPlayerDragStart,
@@ -1290,6 +1298,7 @@ private fun FullPlayerHost(
         onPlayerDragCancel = onPlayerDragCancel,
         onPlayerBoundsChanged = onPlayerBoundsChanged,
         onArtworkBoundsChanged = onArtworkBoundsChanged,
+        modifier = modifier,
     )
 }
 

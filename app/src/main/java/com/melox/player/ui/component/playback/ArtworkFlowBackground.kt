@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -42,6 +43,7 @@ private const val ARTWORK_BACKGROUND_SIZE = 4
 private const val ARTWORK_BACKGROUND_QUADRANT_SIZE = ARTWORK_BACKGROUND_SIZE / 2
 private const val ARTWORK_COLOR_FIELD_CENTER_OFFSET =
     (ARTWORK_COLOR_FIELD_SIZE - ARTWORK_BACKGROUND_SIZE) / 2
+private val MissingArtworkBackgroundColor = Color(0xFF242424)
 
 @Composable
 internal fun ArtworkFlowBackground(
@@ -115,7 +117,13 @@ internal fun ArtworkFlowBackground(
 
     Box(
         modifier = modifier
-            .background(MiuixTheme.colorScheme.surfaceContainer)
+            .background(
+                if (artwork == null) {
+                    MissingArtworkBackgroundColor
+                } else {
+                    MiuixTheme.colorScheme.surfaceContainer
+                },
+            )
             .clipToBounds(),
     ) {
         if (fieldPixels != null) {

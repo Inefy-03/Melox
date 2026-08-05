@@ -64,6 +64,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private val ArtworkSize = 48.dp
 private val ArtworkCornerRadius = 6.dp
+private val MissingPlaybackArtworkColor = Color(0xFF242424)
 
 /** Displays a bounded cached thumbnail without blocking the Compose thread. */
 @Composable
@@ -309,19 +310,10 @@ internal fun PlaybackArtworkFrame(
             modifier = modifier
                 .size(size)
                 .squircleBackground(
-                    color = MiuixTheme.colorScheme.secondaryContainer,
+                    color = MissingPlaybackArtworkColor,
                     cornerRadius = cornerRadius,
                 ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = MiuixIcons.Music,
-                contentDescription = null,
-                modifier = Modifier.size(size / 3f),
-                tint = MiuixTheme.colorScheme.onSecondaryContainer
-                    .copy(alpha = 0.3f),
-            )
-        }
+        )
     }
 }
 

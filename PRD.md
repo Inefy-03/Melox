@@ -309,7 +309,7 @@ Melox lets Android users find and play music already stored on their device thro
   deformation. Animation runs only while the settled full player
   is drawing, the lifecycle is resumed, and the current song is playing. Pause
   preserves both animation phases until playback resumes. Missing or invalid
-  artwork falls back to the Miuix card-equivalent `surfaceContainer` color.
+  artwork falls back to fixed `#242424` in both themes.
 - Provide a full player with a safe artwork-derived color field. Song title and
   artist are stacked at the top without a visible back button or "Now
   playing" label. The slightly smaller, less-rounded artwork has a restrained
@@ -517,7 +517,8 @@ store publishing.
   animated center-seeded 4-by-4 output follows the quadrant orbit timing above,
   while its complete color grid rotates through pixel mappings every 18 seconds
   during active playback. The bitmap geometry does not rotate. It uses
-  `surfaceContainer` when artwork is unavailable and adds no local AAR.
+  a fixed `#242424` fallback when artwork is unavailable and adds no local AAR.
+  The matching playback artwork frame is plain dark with no centered music icon.
 - Secondary and tertiary page backgrounds remain visible and blur correctly
   from the mini-player top through the screen bottom while their last
   interactive item remains reachable above the mini player.

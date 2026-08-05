@@ -58,7 +58,8 @@ import top.yukonga.miuix.kmp.utils.getRoundedCorner
 internal const val PLAYER_TRACK_ARTWORK_CROSSFADE_DURATION_MILLIS = 320
 internal const val PLAYER_LAYER_HANDOFF_END_PROGRESS = 0.4f
 internal const val PLAYER_SCREEN_CORNER_EXPANSION_DURATION_MILLIS = 140
-private const val PLAYER_ARTWORK_VERTICAL_EASE_IN_WEIGHT = 0.65f
+private const val PLAYER_ARTWORK_VERTICAL_LINEAR_WEIGHT = 0.4f
+private const val PLAYER_MINI_PLAYER_INPUT_ALPHA_THRESHOLD = 0.8f
 
 internal val PLAYER_FULL_ARTWORK_REQUEST_SIZE = 420.dp
 internal val MINI_PLAYER_RECTANGULAR_ARTWORK_CORNER_REDUCTION = 1.dp
@@ -122,6 +123,14 @@ internal class PlayerSheetTransitionState {
         } else {
             progress > 0f || cornerExpansionProgress > 0f
         }
+
+    val miniPlayerAcceptsInput: Boolean
+        get() = playerSheetMiniPlayerAcceptsInput(
+            targetOpen = targetOpen,
+            isDragging = isDragging,
+            dragOriginOpen = dragOriginOpen,
+            progress = progress,
+        )
 
     val screenCornerExpansionProgress: Float
         get() = cornerExpansionProgress
@@ -276,6 +285,17 @@ internal fun playerSheetPageAlpha(progress: Float): Float {
     val handoff = (progress.coerceIn(0f, 1f) / PLAYER_LAYER_HANDOFF_END_PROGRESS)
         .coerceIn(0f, 1f)
     return easeInCubic(handoff)
+}
+
+internal fun playerSheetMiniPlayerAcceptsInput(
+    targetOpen: Boolean,
+    isDragging: Boolean,
+    dragOriginOpen: Boolean,
+    progress: Float,
+): Boolean = !targetOpen && if (isDragging) {
+    !dragOriginOpen
+} else {
+    playerSheetBarAlpha(progress) >= PLAYER_MINI_PLAYER_INPUT_ALPHA_THRESHOLD
 }
 
 internal fun Modifier.recordPlayerLayer(
@@ -558,9 +578,9 @@ internal fun sharedArtworkRect(
     val fraction = progress.coerceIn(0f, 1f)
     val centerX = lerp(source.center.x, target.center.x, easeOutCubic(fraction))
     val verticalFraction = lerp(
-        fraction,
         easeInCubic(fraction),
-        PLAYER_ARTWORK_VERTICAL_EASE_IN_WEIGHT,
+        fraction,
+        PLAYER_ARTWORK_VERTICAL_LINEAR_WEIGHT,
     )
     val centerY = lerp(source.center.y, target.center.y, verticalFraction)
     val sourceWidth = source.width.coerceAtLeast(1f)

@@ -4,7 +4,7 @@ Last updated: 2026-08-05
 
 ## Stable Decisions
 
-- Release APK filenames use `Melox_<versionName>_<yyMMdd>.apk`, with the date
+- Release APK filenames use `Melox_<versionName>_<yyMMddHHmm>.apk`, with the date
   resolved in the `Asia/Shanghai` time zone at build configuration time.
 - Routine verification avoids emulator clicking, screen recording, and
   screenshots. Prefer compilation, unit tests, Lint, and static inspection;
@@ -354,7 +354,7 @@ Last updated: 2026-08-05
   phases advance only while the settled player is expanded, resumed, and the
   current song is playing; pause preserves their current progress.
   Missing artwork
-  falls back to Miuix `surfaceContainer`; no bitmap blur, `AndroidView`, or local
+  falls back to fixed `#242424` in both themes; no bitmap blur, `AndroidView`, or local
   AAR is part of this path.
 - The persistent mini player's recorded blur layer is explicitly invalidated
   from root-pager offsets and a bounded route-transition draw signal. This
@@ -867,7 +867,7 @@ Last updated: 2026-08-05
 - On 2026-08-05, the full-player background replaced the former experimental
   backdrop implementation with the requested VMusic-style
   8-by-8 HCT field with hue retention, realized chroma capped at 32, tone
-  48/24, cropped full-screen presentation, Miuix `surfaceContainer` fallback,
+  48/24, cropped full-screen presentation, fixed `#242424` missing-artwork fallback,
   and a single center-seeded 4-by-4 field. Matching pixels in its four 2-by-2
   quadrants use the clockwise/counterclockwise 24/18-second orbit pairs, while
   the complete grid rotates through quarter-turn pixel mappings every 18
@@ -889,8 +889,12 @@ Last updated: 2026-08-05
   merged Debug manifest retains `locale|layoutDirection|uiMode`. The final APK
   passed archive, v2 signature, and 16 KB ZIP
   alignment checks with SHA-256
-  `ab404378f54875ac39dc3fbef53c2420f871ec6cd0346285b9c4d94d0047b477`.
+  `bc9817b939190df136c0f7721308f19f5e9d2bd13474057cceb0ffa5069059bd`.
   Per maintainer direction, no emulator, screenshot, or interaction test ran.
+- On 2026-08-05, tracks without cover art use the same fixed `#242424`
+  playback backdrop in light and dark themes. Their full-player, mini-player,
+  and transition artwork frame is an empty dark cover without a centered music
+  icon; library-list artwork placeholders retain their existing icon treatment.
 - On 2026-08-03, song rows moved their trailing duration to Miuix `footnote2`,
   artist parsing added `&`, and track actions gained one-line Album/Artist
   ellipsis plus single-artist direct navigation and a multi-artist Miuix sheet.
@@ -1154,3 +1158,18 @@ Last updated: 2026-08-05
   screenshot, or recording verification. The verified
   `artifacts/Melox-debug.apk` has SHA-256
   `c9a0a480df334b080974287ac2a8fc9e9587656e0f06870f0a741a79a2815ec4`.
+- On 2026-08-05, the closing shared-player host stops intercepting the mini
+  player before the critically damped spring's invisible tail finishes. Once
+  the recorded mini layer reaches 80% opacity, the full-screen host moves
+  behind the root page and disables its Back/down-drag handlers; a vertical
+  drag that starts on the mini player retains ownership for the entire gesture.
+  Click and upward-drag therefore work as soon as the restored bar is visibly
+  available. The artwork vertical path remains one continuous curve but now
+  blends 40% linear progress with 60% `EaseInCubic`, slightly increasing upward
+  travel during the first 35% so the growing cover's bottom edge also rises
+  immediately. Miuix blur, glass, corner, and shared-layer rendering remain
+  unchanged. Focused interaction/trajectory tests, complete Debug unit tests,
+  Debug Lint, Debug assembly, and APK archive validation passed without emulator
+  screenshots or recordings. The verified `artifacts/Melox-debug.apk` has
+  SHA-256
+  `d3b7f87dbb548e6d753e8d967be6d47299481e107f6ab8b294cdebde94b56a03`.

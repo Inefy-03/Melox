@@ -254,7 +254,7 @@
   animated scale, translation, second layer, or X/Y perspective transform. Both
   phases run only for the settled resumed player while `PlaybackUiState.isPlaying`
   is true. Pausing preserves the current phases for the next resume. Missing artwork uses
-  `MiuixTheme.colorScheme.surfaceContainer`; the last completed non-null field
+  fixed `#242424` in both themes; the last completed non-null field
   remains visible while a replacement is computed.
 - Secondary navigation keeps one stable Miuix scene state and `NavDisplay`.
   The persisted predictive-back setting only enables either the official
@@ -623,7 +623,7 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   They must never silently produce `app-release-unsigned.apk` as the release
   deliverable.
 - The root `assembleRelease` task wraps `:app:assembleRelease` and prints the
-  generated `app/build/outputs/apk/release/Melox_<versionName>_<yyMMdd>.apk`
+  generated `app/build/outputs/apk/release/Melox_<versionName>_<yyMMddHHmm>.apk`
   path, so Android Studio Terminal output points directly to the signed artifact.
 - Release uses the stable AGP 9.2 Release DSL with code minification, optimized
   resource shrinking, and `proguard-android-optimize.txt`, which runs R8 code

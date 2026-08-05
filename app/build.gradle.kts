@@ -1,6 +1,6 @@
 import java.util.Properties
-import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 plugins {
@@ -34,8 +34,8 @@ val releaseSigningValues = listOf(
 val releaseSigningConfigured = localPropertiesFile.isFile &&
     releaseKeystoreFile?.isFile == true &&
     releaseSigningValues.all { (_, value) -> !value.isNullOrBlank() }
-val releaseBuildDate = LocalDate.now(ZoneId.of("Asia/Shanghai"))
-    .format(DateTimeFormatter.ofPattern("yyMMdd"))
+val releaseBuildDate = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+    .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
 val appVersionName = "1.0.0"
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.equals("assemble", ignoreCase = true) ||

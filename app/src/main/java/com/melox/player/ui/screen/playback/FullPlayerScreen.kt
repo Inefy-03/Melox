@@ -130,6 +130,7 @@ internal fun FullPlayerScreen(
     artistGroups: List<ArtistGroup>,
     onGoToArtist: (ArtistGroup) -> Unit,
     playerLayer: GraphicsLayer,
+    interactionEnabled: Boolean,
     drawInPlace: Boolean,
     sharedArtworkVisible: Boolean,
     onPlayerDragStart: () -> Unit,
@@ -159,27 +160,32 @@ internal fun FullPlayerScreen(
     val currentOnPlayerDragEnd by rememberUpdatedState(onPlayerDragEnd)
     val currentOnPlayerDragCancel by rememberUpdatedState(onPlayerDragCancel)
     var showTrackActions by remember { mutableStateOf(false) }
-    val dismissGestureModifier = Modifier.pointerInput(Unit) {
-        val velocityTracker = VelocityTracker()
-        detectVerticalDragGestures(
-            onDragStart = {
-                velocityTracker.resetTracking()
-                currentOnPlayerDragStart()
-            },
-            onVerticalDrag = { change, dragAmount ->
-                velocityTracker.addPosition(change.uptimeMillis, change.position)
-                currentOnPlayerDrag(dragAmount)
-                change.consume()
-            },
-            onDragEnd = {
-                currentOnPlayerDragEnd(velocityTracker.calculateVelocity().y)
-            },
-            onDragCancel = {
-                currentOnPlayerDragCancel()
-            },
-        )
+    val dismissGestureModifier = if (interactionEnabled) {
+        Modifier.pointerInput(Unit) {
+            val velocityTracker = VelocityTracker()
+            detectVerticalDragGestures(
+                onDragStart = {
+                    velocityTracker.resetTracking()
+                    currentOnPlayerDragStart()
+                },
+                onVerticalDrag = { change, dragAmount ->
+                    velocityTracker.addPosition(change.uptimeMillis, change.position)
+                    currentOnPlayerDrag(dragAmount)
+                    change.consume()
+                },
+                onDragEnd = {
+                    currentOnPlayerDragEnd(velocityTracker.calculateVelocity().y)
+                },
+                onDragCancel = {
+                    currentOnPlayerDragCancel()
+                },
+            )
+        }
+    } else {
+        Modifier
     }
     BackHandler(
+        enabled = interactionEnabled,
         onBack = onDismiss,
     )
     Scaffold(

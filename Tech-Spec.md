@@ -628,9 +628,11 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
 - Release tasks fail during configuration when any signing value is missing.
   They must never silently produce `app-release-unsigned.apk` as the release
   deliverable.
-- The root `assembleRelease` task wraps `:app:assembleRelease` and prints the
-  generated `app/build/outputs/apk/release/Melox_<versionName>_<yyMMddHHmm>.apk`
-  path, so Android Studio Terminal output points directly to the signed artifact.
+- The root `assembleRelease` task runs `:app:clean` before
+  `:app:assembleRelease`, disables configuration-cache reuse for the timestamped
+  release task, and prints the generated
+  `app/build/outputs/apk/release/Melox_<versionName>_<yyMMddHHmm>.apk` path.
+  Android Studio Terminal output therefore points directly to a newly built signed artifact.
 - Release uses the stable AGP 9.2 Release DSL with code minification, optimized
   resource shrinking, and `proguard-android-optimize.txt`, which runs R8 code
   shrinking, optimization, and obfuscation without the experimental gradual-R8

@@ -8,6 +8,9 @@ Last updated: 2026-08-05
   a separate branch only when a new feature or bug fix needs isolated testing.
 - Release APK filenames use `Melox_<versionName>_<yyMMddHHmm>.apk`, with the date
   resolved in the `Asia/Shanghai` time zone at build configuration time.
+- The root `assembleRelease` task always runs `:app:clean` first, and the
+  release assembly disables configuration-cache reuse so source changes and the
+  timestamped output name are recomputed for every release package.
 - Routine verification avoids emulator clicking, screen recording, and
   screenshots. Prefer compilation, unit tests, Lint, and static inspection;
   use the emulator only for a critical runtime behavior that cannot be

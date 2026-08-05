@@ -29,9 +29,18 @@ abstract class PrintReleaseApkTask : DefaultTask() {
     }
 }
 
+project(":app").tasks.configureEach {
+    if (name == "assembleRelease") {
+        mustRunAfter(":app:clean")
+        notCompatibleWithConfigurationCache(
+            "Release APK filenames include the current build time.",
+        )
+    }
+}
+
 tasks.register<PrintReleaseApkTask>("assembleRelease") {
     group = "build"
-    description = "Assembles the release APK and prints its output path."
-    dependsOn(":app:assembleRelease")
+    description = "Cleans, assembles, and prints the release APK output path."
+    dependsOn(":app:clean", ":app:assembleRelease")
     apkDirectory.set(layout.projectDirectory.dir("app/build/outputs/apk/release"))
 }

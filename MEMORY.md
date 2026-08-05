@@ -1,9 +1,11 @@
 # Melox Project Memory
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ## Stable Decisions
 
+- Release APK filenames use `Melox_<versionName>_<yyMMdd>.apk`, with the date
+  resolved in the `Asia/Shanghai` time zone at build configuration time.
 - Routine verification avoids emulator clicking, screen recording, and
   screenshots. Prefer compilation, unit tests, Lint, and static inspection;
   use the emulator only for a critical runtime behavior that cannot be
@@ -42,12 +44,27 @@ Last updated: 2026-08-04
   modification time.
 - API 28-32 use opaque visual fallbacks. Blur and liquid glass are runtime-gated on API 33+.
 - Playback is owned by one service-side ExoPlayer and MediaSession. UI clients use a MediaController.
-- Tapping a library row snapshots the currently filtered and sorted list as the queue and starts at that row.
+- Tapping a library row snapshots the current page playback list and starts at
+  that row; Songs-page searches resolve the complete sorted list as documented
+  below.
+- Songs-page playback retains the current sorted, unfiltered list alongside
+  the filtered presentation. Any non-empty search starts the clicked song at
+  its position in the full Songs list, regardless of whether one or many
+  results are visible; the active playback mode then orders that complete
+  queue.
 - The last physical queue, stable source order, current item, position, and
   three-state playback mode are restored after leaving/reopening or process
   restart without autoplay. Queue/current-item/mode changes write immediately,
   while position-only updates remain debounced; task removal performs a final
   atomic snapshot write.
+- Startup queue restoration is staged: a bounded 16-item window around the
+  current song is persisted with the mini-player identity and preloaded before
+  the service exposes its session. The service then decodes and publishes the
+  complete checksummed queue before the slower per-file readability pass. Queue
+  therefore opens with at least a visible page immediately after launch;
+  background validation later removes
+  unreadable items while preserving current item, position, playback state, and
+  mode when the user has not mutated the queue. A concurrent queue mutation wins.
 - Settings include language, theme mode, dynamic colors, blur, floating navigation, liquid glass, predictive back, manual library scan, and About.
 - Missing audio access is requested once when the app enters. A grant from this
   startup request changes the library to an unscanned idle state without
@@ -82,6 +99,11 @@ Last updated: 2026-08-04
 - Theme-page switches and the theme-mode dropdown publish a screen-local value
   before their DataStore write completes, so both the preference summary and
   popup selected row update without waiting for persistence.
+- `MainActivity` handles `uiMode` together with locale/layout-direction changes.
+  System light/dark changes therefore preserve the Compose hierarchy, expanded
+  player state, mini-player click handling, and MediaController connection.
+  Artwork source sampling is keyed only to the cover; theme changes remap HCT
+  tone while retaining the output bitmap and painter.
 - Language uses AndroidX per-app locales and is not duplicated in DataStore.
   `MainActivity` handles locale/layout-direction changes in place, and the
   language preference keeps immediate local selection state so an override
@@ -232,7 +254,7 @@ Last updated: 2026-08-04
   Miuix reports that the bottom-sheet exit animation finished.
   Track-action summaries use the same `secondaryContainer` card background as
   the option group, 56 dp artwork with 12 dp left/top/bottom artwork-side
-  padding, and a 20 dp Add-to-queue icon shifted 2 dp right with 1 dp more text
+  padding, and a 20 dp Add-to-queue icon shifted 1 dp right with 2 dp more text
   gap. Album and Artist actions ellipsize after one line. A single artist opens
   its detail page; multiple artists open a titled artist-list sheet with real
   artist groups. Those artist rows keep 12 dp around their artwork and omit the
@@ -241,19 +263,21 @@ Last updated: 2026-08-04
   for unreadable bit depth; the untitled track-actions sheet does not add one.
   More and participating-artist sheets retain Miuix content overscroll while
   keeping nested-scroll dismissal enabled for downward sheet drags.
-- The playback queue sheet uses the official `OverlayBottomSheet` directly,
-  leaving navigation-bar inset ownership to Miuix. Its content height follows
+- The playback queue sheet uses the official `OverlayBottomSheet` directly.
+  Its list viewport extends behind the transparent navigation bar while a
+  scrollable bottom content inset keeps the final row reachable. Its content height follows
   the queue count and remains capped by the sheet maximum. It has a leading
-  Close action. Queue rows share one `secondaryContainer` Miuix card, use
-  full-row `BasicComponent` interaction, 44 dp artwork, 12 dp
-  start/top/bottom padding, no extra inter-item spacer, and only a circle-minus
-  remove action on the trailing side. The current row uses
+  Close action and a Delete action whose visible glyph ends 28 dp from the
+  screen edge. Queue rows are direct full-width `BasicComponent` options with
+  no wrapping card, 44 dp artwork, 24 dp start padding, 16 dp end padding,
+  12 dp top/bottom padding, no extra inter-item spacer, and only a circle-minus
+  remove action on the trailing side. Its glyph shares the header Delete icon's
+  28 dp visual right edge. The current row uses
   `BasicComponent.holdDownState` for the persistent Miuix indication instead of
   a custom colored rounded background, while its title stays the normal
   `onSurface` color. The lazy list opens at the current queue
-  item. The option card ends at its last row, and its outer content reserves the
-  navigation-bar inset plus 12 dp below it, matching the More and
-  participating-artist sheets. Playback artwork displayed with fit scaling clips
+  item. Navigation-bar inset plus 12 dp belongs to the lazy list's scrollable
+  content rather than a separate fixed footer background. Playback artwork displayed with fit scaling clips
   and shadows the actual rectangular image bounds when embedded art is not square.
 - Album, artist, and folder projections are built once per immutable track
   snapshot on `Dispatchers.Default` and reused by root/detail pages. Pager
@@ -288,8 +312,10 @@ Last updated: 2026-08-04
   settles open and non-zero downward release settles closed with the same
   critically damped spring. The stable host accepts only vertical-dominant
   drags so horizontal metadata swipes remain
-  track changes. Crossing the existing commit threshold for a different queued
-  track triggers one system threshold haptic per drag. The trailing action
+  track changes. Entering an eligible Previous or Next commit region for a
+  different queued track triggers a system threshold haptic. Returning below
+  the threshold rearms that direction, and reversing into the opposite commit
+  region triggers its own haptic. The trailing action
   opens the queue. The player page remains over the retained root, and one
   reversible shared-player progress expands a squircle container between the
   recorded mini/full layers while crossfading their content early in the path.
@@ -310,12 +336,26 @@ Last updated: 2026-08-04
   offset to rest using the same path as uncommitted swipes, crossfading old and
   new metadata during that return. Mini-player artwork uses the same 320 ms
   FastOutSlowIn track-artwork crossfade timing as the full player.
-- Full-player atmosphere is produced off the main thread from artwork with a
-  128 px RGB_565 working bitmap, threefold saturation, FlamingoSank-compatible
-  tonal overlays, and a two-pass 25 px Gaussian bitmap blur without bundled
-  native artwork-blur libraries.
-  KenBurnsView drives backdrop motion with
-  `RandomTransitionGenerator(6000, AccelerateDecelerateInterpolator())`.
+- Full-player background reuses the cached artwork bitmap and builds an 8-by-8
+  HCT color field off the main thread. Pixel hue is retained, realized chroma is
+  capped at 32, and tone is fixed to 48 in light theme or 24 in dark theme. The
+  field drives one bilinearly filtered 4-by-4 background seeded from the center
+  4-by-4 source region. Matching pixels in its four 2-by-2 quadrants orbit
+  through center, side, outer-corner, and vertical-side regions: top-left and
+  bottom-right clockwise at 24 then 18 seconds, top-right and bottom-left
+  counterclockwise at 18 then 24 seconds. A separate 18-second phase rotates the
+  complete 4-by-4 field through clockwise quarter-turn pixel mappings, including
+  each pixel's local coordinate, so cardinal endpoints preserve adjacency rather
+  than forming a center cross. ARGB interpolation and the VMusic rendering path (`BitmapPainter` with
+  `FilterQuality.Low`, then `Image` with `ContentScale.Crop`) keep adjacent
+  spatial and temporal color transitions smooth. The
+  bitmap itself stays fixed and fills the viewport without geometric rotation,
+  animated scale, translation, a second layer, or perspective deformation. Both
+  phases advance only while the settled player is expanded, resumed, and the
+  current song is playing; pause preserves their current progress.
+  Missing artwork
+  falls back to Miuix `surfaceContainer`; no bitmap blur, `AndroidView`, or local
+  AAR is part of this path.
 - The persistent mini player's recorded blur layer is explicitly invalidated
   from root-pager offsets and a bounded route-transition draw signal. This
   keeps its backdrop current without recomposing the full page tree. Retained
@@ -605,8 +645,7 @@ Last updated: 2026-08-04
   enlarged/cropped artwork. The previous `animateTo`, `verticalDrag`, 180 ms
   surface enter, transparent full-player scaffold, lyric padding, secondary
   control color, and `0xFFB87800` light `HR` color were restored. The
-  first-complete-measurement guard for the library index remains. Light-mode
-  title uses the deep artwork color and artist uses its 80% softened variant.
+  first-complete-measurement guard for the library index remains.
   `compileDebugKotlin` passed; device motion was not rerun because additional
   tool permission remained unavailable.
 - On 2026-07-29, the player shared transition kept the accepted background
@@ -822,21 +861,36 @@ Last updated: 2026-08-04
   from the top edge into the centered safe-inset-plus-16-dp header.
   Floating mini and navigation pills share a clipped backdrop, the same
   gravity-following highlight, and the official Miuix 10 dp drop shadow on the
-  navigation pill. Full-player atmosphere now runs artwork through saturation,
-  tonal overlays, and a 25 px bitmap blur off the main thread. Debug Kotlin
+  navigation pill. Debug Kotlin
   compilation, all Debug unit tests, and Debug Lint passed. Per the requested
   scope, no emulator was started and no runtime visual claim was recorded.
-- On 2026-08-04, full-player atmosphere retained FlamingoSank's 128 px
-  RGB_565 working bitmap, 3f saturation, and tonal overlays, but removed every
-  legacy native blur AAR. Its blur is a pure-Kotlin two-pass Gaussian
-  implementation with the original 25 px radius, sigma curve, normalized
-  weights, and clamped edges. `KenBurnsView` keeps a new paused artwork alive
-  through its first fitted draw, preventing its 128 px bitmap from remaining at
-  the upper-left identity matrix. KenBurnsView `1.0.7` remains the only local
-  AAR and uses `RandomTransitionGenerator(6000, AccelerateDecelerateInterpolator())`.
-  Debug Kotlin compilation, Debug unit tests, Debug assembly, APK ZIP validation,
-  and the no-RenderScript runtime-dependency check passed. Per the maintainer's
-  request, no emulator launch, screenshot, or interaction verification ran.
+- On 2026-08-05, the full-player background replaced the former experimental
+  backdrop implementation with the requested VMusic-style
+  8-by-8 HCT field with hue retention, realized chroma capped at 32, tone
+  48/24, cropped full-screen presentation, Miuix `surfaceContainer` fallback,
+  and a single center-seeded 4-by-4 field. Matching pixels in its four 2-by-2
+  quadrants use the clockwise/counterclockwise 24/18-second orbit pairs, while
+  the complete grid rotates through quarter-turn pixel mappings every 18
+  seconds without rotating the bitmap geometry. The VMusic `BitmapPainter` /
+  `FilterQuality.Low` / `ContentScale.Crop` path provides bilinear spatial
+  filtering, while continuous
+  ARGB interpolation prevents temporal hard cuts or cardinal-angle center
+  crosses. Theme changes retain the sampled source pixels, output bitmap, and
+  painter, remapping only HCT tone. Both phases advance only on
+  the settled, resumed full player while
+  the current song is playing; pause preserves their current progress.
+  Full-player foreground no
+  longer samples artwork: title and transport controls are solid white, while
+  artist, secondary actions, progress, and time labels are 80% white. The
+  obsolete artwork-motion AAR, dependency, notice, and local-AAR documentation
+  were removed. `MainActivity` now handles `uiMode` in place, preserving the
+  expanded player and mini-player click path during system theme changes. Debug
+  Kotlin compilation, 85 unit tests, Debug Lint, and Debug assembly passed. The
+  merged Debug manifest retains `locale|layoutDirection|uiMode`. The final APK
+  passed archive, v2 signature, and 16 KB ZIP
+  alignment checks with SHA-256
+  `ab404378f54875ac39dc3fbef53c2420f871ec6cd0346285b9c4d94d0047b477`.
+  Per maintainer direction, no emulator, screenshot, or interaction test ran.
 - On 2026-08-03, song rows moved their trailing duration to Miuix `footnote2`,
   artist parsing added `&`, and track actions gained one-line Album/Artist
   ellipsis plus single-artist direct navigation and a multi-artist Miuix sheet.
@@ -951,8 +1005,8 @@ Last updated: 2026-08-04
 - On 2026-08-04, Order and Repeat-one horizontally mirrored only their shared
   Miuix loop glyph, reversing the arrows from counterclockwise to clockwise while
   leaving the separate Repeat-one `1` badge unchanged.
-- On 2026-08-03, the 16 KB/R8 release follow-up kept artwork blur free of
-  bundled native libraries. Release R8 now repackages
+- On 2026-08-03, the 16 KB/R8 release follow-up kept the artwork background free
+  of bundled native libraries. Release R8 now repackages
   obfuscated classes into a short package, normalizes source-file names, limits
   packaged locales to English and Simplified Chinese, and keeps only
   `armeabi-v7a` plus `arm64-v8a`; Debug still retains emulator ABIs. The signed
@@ -997,3 +1051,106 @@ Last updated: 2026-08-04
   or recording verification ran. The verified `artifacts/Melox-debug.apk` has
   SHA-256
   `8e741e9c28bf9128a799258214facb0ad278d035853a7e828235e9fe814f7258`.
+- On 2026-08-04, the shared artwork overlay began interpolating the fitted
+  bitmap rectangle for non-square covers instead of scaling the surrounding
+  square frame as the image geometry. The full player reports the actual
+  centered `Image` layout bound, and the overlay uses that target as its native
+  layer size so progress 1 has scale 1 and zero translation. This prevents a
+  rectangular cover from shrinking toward the upper-right after the shared
+  handoff. Focused fitted-rectangle tests, Kotlin compilation, Debug Lint,
+  Debug assembly, ZIP/v2-signature/16 KB alignment checks passed. The complete
+  Debug unit-test task still has one unrelated existing queue assertion failure
+  in `stagedPlaybackValidationPreservesTheActiveQueueSlotAndPosition`. Per
+  maintainer direction, no emulator, screenshot, or recording verification
+  ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `097a6bfa30c5761d9182ebadfe71fa90b60cd8c265804cb83a810d7cff54c64b`.
+- On 2026-08-04, the playback queue sheet changed from one shared
+  `secondaryContainer` card to direct full-width Miuix rows. Queue artwork now
+  uses 24 dp start, 16 dp end, and 12 dp top/bottom padding, while the header
+  Delete glyph ends 28 dp from the screen edge. Its lazy viewport now extends
+  through the transparent navigation-bar region and keeps the safe bottom inset
+  as scrollable content, removing the separate blocking footer appearance.
+  The row remove glyph now shares the header Delete icon's 28 dp visual right
+  edge. The Add-to-queue action icon moved 1 dp left without changing its footprint.
+  Debug Kotlin compilation, complete Debug unit tests, Lint, Debug assembly, and
+  APK archive validation passed without emulator, screenshot, or recording use.
+  The verified `artifacts/Melox-debug.apk` has SHA-256
+  `04679030636050e1d8e83fcd2b8b21b6b466f74b2f349c02a42c3d8972ae7abe`.
+- On 2026-08-05, the shared artwork path was tuned to match the requested VMusic
+  visual trajectory: horizontal center movement remains front-loaded with
+  `EaseOutCubic`. Vertical center movement is one continuous blend of 35%
+  linear progress and 65% `EaseInCubic`; the linear contribution gives the
+  curve a non-zero initial upward velocity, while the cubic contribution makes
+  the latter half vertically dominant. This is not a two-stage or six-stage
+  animation. Source and target coordinates still come from Melox's measured
+  mini/full artwork bounds, so VMusic's cover height and bottom-bar location are
+  not copied. The cover moves right and up from the first frame, remains
+  uniformly scaled, and reaches the measured full-player endpoint exactly;
+  rectangular-cover fitting, Miuix blur/liquid-glass parameters, and the
+  no-rotation/no-skew constraint are unchanged. The staged-axis trajectory
+  regression, complete Debug unit tests, Debug Lint, and Debug assembly passed.
+  Per maintainer direction, no emulator, screenshot, or recording verification
+  ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `33da2df2533b117639a0101b147b83552c70bd57deb280a446c524620c5f27f4`.
+- On 2026-08-05, the shared-player background corner phase was hardened against
+  interrupted or reversed transitions. Any stored final corner-expansion value
+  is ignored while the main container progress is below 1, cleared when main
+  geometry motion starts, and reset after closing. The physical screen corner
+  can therefore affect only the fully expanded endpoint before the final
+  straight-corner handoff, preventing partial stale values from producing
+  apparently random corners during opening. Physical screen corners are now
+  used only when the Activity occupies the display's maximum window bounds and
+  is outside multi-window and picture-in-picture modes. Split screen, freeform
+  small windows, picture-in-picture, and other undersized window scenes use a
+  `0.dp` expanded target radius. Miuix still supplies the physical radius and
+  squircle clipping for eligible full-screen windows. Focused corner/window
+  tests, complete Debug unit tests, Debug Lint, Debug assembly, and APK archive
+  validation passed without emulator screenshots or recordings. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `5d9a1ea4cd5391ff5a3b02127dcf7005e135d6ca1e7532ff2ec68a14c0f3633b`.
+
+- On 2026-08-05, Songs-page searches now keep the complete current sorted Songs
+  list as the playback queue for both single-result and multi-result searches,
+  while seeking to the selected track's matching index. The active playback
+  mode still orders that queue through the playback controller. The pure
+  selection helper is covered by unit tests for both branches;
+  Debug unit tests, Debug Lint, Debug assembly, and APK archive validation
+  passed without emulator, screenshot, or recording verification. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `8e79922197ac596b01fb4aad6c08953246da79c1b37e078c30374b79a7e903f8`.
+- On 2026-08-05, mini-player horizontal metadata swipes replaced the single
+  per-drag haptic flag with an active commit-direction state. Entering an
+  eligible Next or Previous threshold triggers
+  `GestureThresholdActivate`; staying inside the same threshold does not repeat
+  it, while returning below the threshold or reversing into the other direction
+  rearms the haptic. The focused threshold-direction regression, Debug Kotlin
+  compilation, complete Debug unit tests, Debug Lint, forced Debug assembly,
+  ZIP/v2-signature/16 KB alignment checks passed. Per maintainer direction, no
+  emulator, screenshot, or recording verification ran. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `8e79922197ac596b01fb4aad6c08953246da79c1b37e078c30374b79a7e903f8`.
+
+- On 2026-08-05, Songs-page playback was corrected for multi-result searches:
+  any non-empty Songs search now uses the complete current sorted Songs list as
+  the queue, while the clicked track remains the starting item. The existing
+  playback controller then applies Order, Repeat-one, or Random queue ordering
+  to that complete list. The focused selection regression, Debug unit tests,
+  Debug Lint, Debug assembly, and APK archive validation passed without
+  emulator, screenshot, or recording verification. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `eea7da0326b258e9582994b8f0235400c7ed719a968b83dcfe921f58d8248b28`.
+- On 2026-08-05, the shared Miuix search wrapper observes the IME visibility
+  transition. A focused field now clears focus when the already-visible
+  keyboard is dismissed by Back, so one Back press both hides the keyboard and
+  cancels focus while retaining the query. The focused search-state regression,
+  Debug Kotlin compilation, complete Debug unit tests, Debug Lint, Debug
+  assembly, and APK archive validation passed without emulator, screenshot, or
+  recording verification. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `78bc4840adace89dbcc2874fc8e49b37587786334903fae504154f6bc02d4bcc`.
+- On 2026-08-05, all Miuix search fields now use 16 dp horizontal outer spacing
+  and the generic Search / 搜索 placeholder. The focused search-state regression,
+  Debug Kotlin compilation, complete Debug unit tests, Debug Lint, forced Debug
+  assembly, and ZIP/v2-signature/16 KB alignment checks passed without emulator,
+  screenshot, or recording verification. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `c9a0a480df334b080974287ac2a8fc9e9587656e0f06870f0a741a79a2815ec4`.

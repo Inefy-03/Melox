@@ -172,15 +172,15 @@ internal class PlaybackSnapshotStore(context: Context) {
     private val applicationContext = context.applicationContext
     private val atomicFile = AtomicFile(File(applicationContext.noBackupFilesDir, FILE_NAME))
 
-    fun load(): PlaybackSnapshot? {
-        val snapshot = runCatching {
-            atomicFile.openRead().use(PlaybackSnapshotCodec::read)
-        }.getOrElse {
-            atomicFile.delete()
-            return null
-        }
-        return snapshot.retainReadableItems(::canOpen)
+    fun loadUnvalidated(): PlaybackSnapshot? = runCatching {
+        atomicFile.openRead().use(PlaybackSnapshotCodec::read)
+    }.getOrElse {
+        atomicFile.delete()
+        null
     }
+
+    fun validate(snapshot: PlaybackSnapshot): PlaybackSnapshot? =
+        snapshot.retainReadableItems(::canOpen)
 
     fun save(snapshot: PlaybackSnapshot) {
         if (snapshot.queue.isEmpty()) {
@@ -209,10 +209,7 @@ internal class PlaybackSnapshotStore(context: Context) {
     }
 }
 
-/**
- * Stores only the current queue item so the mini player can restore its identity before the
- * MediaController connection and full queue validation finish.
- */
+/** Stores a bounded queue window for immediate startup playback and queue UI. */
 internal class MiniPlaybackSnapshotStore(context: Context) {
     private val atomicFile = AtomicFile(
         File(context.applicationContext.noBackupFilesDir, FILE_NAME),
@@ -226,18 +223,14 @@ internal class MiniPlaybackSnapshotStore(context: Context) {
     }
 
     fun save(snapshot: PlaybackSnapshot) {
-        val currentItem = snapshot.queue.getOrNull(snapshot.currentIndex)
-        if (currentItem == null) {
+        val preview = snapshot.toStartupPlaybackPreview()
+        if (preview == null) {
             atomicFile.delete()
             return
         }
-        val summary = snapshot.copy(
-            queue = listOf(currentItem),
-            currentIndex = 0,
-        )
         val output = atomicFile.startWrite()
         try {
-            PlaybackSnapshotCodec.write(output, summary)
+            PlaybackSnapshotCodec.write(output, preview)
             atomicFile.finishWrite(output)
         } catch (exception: Exception) {
             atomicFile.failWrite(output)
@@ -253,6 +246,20 @@ internal class MiniPlaybackSnapshotStore(context: Context) {
         const val FILE_NAME = "playback_mini_snapshot.bin"
     }
 }
+
+internal fun PlaybackSnapshot.toStartupPlaybackPreview(
+    maxItemCount: Int = STARTUP_QUEUE_PREVIEW_ITEM_COUNT,
+): PlaybackSnapshot? {
+    if (currentIndex !in queue.indices || maxItemCount <= 0) return null
+    val boundedItemCount = maxItemCount.coerceAtMost(queue.size)
+    val startIndex = currentIndex.coerceAtMost(queue.size - boundedItemCount)
+    return copy(
+        queue = queue.subList(startIndex, startIndex + boundedItemCount),
+        currentIndex = currentIndex - startIndex,
+    )
+}
+
+private const val STARTUP_QUEUE_PREVIEW_ITEM_COUNT = 16
 
 internal fun PlaybackSnapshot.retainReadableItems(
     isReadable: (PlaybackQueueItem) -> Boolean,

@@ -1,11 +1,18 @@
 package com.melox.player.ui.component.playback
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,33 +24,44 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.ui.component.library.PlaybackArtworkFrame
+import com.melox.player.ui.component.library.playbackArtworkCornerRadius
 import com.melox.player.ui.component.library.rememberArtworkBitmap
 import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.squircle.squircleClip
+import top.yukonga.miuix.kmp.utils.getRoundedCorner
 
 internal const val PLAYER_TRACK_ARTWORK_CROSSFADE_DURATION_MILLIS = 320
 internal const val PLAYER_LAYER_HANDOFF_END_PROGRESS = 0.4f
+internal const val PLAYER_SCREEN_CORNER_EXPANSION_DURATION_MILLIS = 140
+private const val PLAYER_ARTWORK_VERTICAL_EASE_IN_WEIGHT = 0.65f
 
 internal val PLAYER_FULL_ARTWORK_REQUEST_SIZE = 420.dp
+internal val MINI_PLAYER_RECTANGULAR_ARTWORK_CORNER_REDUCTION = 1.dp
 internal val PLAYER_TRACK_ARTWORK_CROSSFADE_EASING = androidx.compose.animation.core.FastOutSlowInEasing
 
 /**
@@ -60,6 +78,7 @@ internal class PlayerSheetTransitionState {
     private var lastDragAmountY = 0f
     private var dragOriginOpen = false
     private var requestedInitialVelocity = 0f
+    private var cornerExpansionProgress by mutableFloatStateOf(0f)
 
     var targetOpen by mutableStateOf(false)
         private set
@@ -98,7 +117,14 @@ internal class PlayerSheetTransitionState {
         get() = isDragging || targetOpen || progress > 0f
 
     val isTransitionActive: Boolean
-        get() = isDragging || if (targetOpen) progress < 1f else progress > 0f
+        get() = isDragging || if (targetOpen) {
+            progress < 1f || cornerExpansionProgress < 1f
+        } else {
+            progress > 0f || cornerExpansionProgress > 0f
+        }
+
+    val screenCornerExpansionProgress: Float
+        get() = cornerExpansionProgress
 
     fun open() {
         requestSettle(open = true)
@@ -115,6 +141,7 @@ internal class PlayerSheetTransitionState {
         dragDistanceY = 0f
         lastDragAmountY = 0f
         dragOriginOpen = targetOpen
+        cornerExpansionProgress = 0f
         isDragging = true
         animationRequest += 1
     }
@@ -163,7 +190,14 @@ internal class PlayerSheetTransitionState {
     }
 
     internal suspend fun animateToTarget() {
+        if (progress < 1f) {
+            cornerExpansionProgress = 0f
+        }
         val visibilityThreshold = 0.5f / fullPlayerBounds.height.coerceAtLeast(1f)
+        if (!targetOpen) {
+            animateScreenCornersTo(0f)
+            withFrameNanos { }
+        }
         progressAnimation.animateTo(
             targetValue = if (targetOpen) 1f else 0f,
             animationSpec = spring(
@@ -173,7 +207,11 @@ internal class PlayerSheetTransitionState {
             ),
             initialVelocity = requestedInitialVelocity,
         )
-        if (!targetOpen) {
+        if (targetOpen) {
+            withFrameNanos { }
+            animateScreenCornersTo(1f)
+        } else {
+            cornerExpansionProgress = 0f
             fullPlayerBounds = Rect.Zero
             fullArtworkBounds = Rect.Zero
         }
@@ -199,9 +237,27 @@ internal class PlayerSheetTransitionState {
     }
 
     private fun requestSettle(open: Boolean, initialVelocity: Float = 0f) {
+        if (progress < 1f) {
+            cornerExpansionProgress = 0f
+        }
         targetOpen = open
         requestedInitialVelocity = initialVelocity
         animationRequest += 1
+    }
+
+    private suspend fun animateScreenCornersTo(target: Float) {
+        if (cornerExpansionProgress == target) return
+        val animation = Animatable(cornerExpansionProgress)
+        animation.animateTo(
+            targetValue = target,
+            animationSpec = tween(
+                durationMillis = PLAYER_SCREEN_CORNER_EXPANSION_DURATION_MILLIS,
+                easing = EaseOut,
+            ),
+        ) {
+            cornerExpansionProgress = value
+        }
+        cornerExpansionProgress = target
     }
 }
 
@@ -259,7 +315,18 @@ internal fun PlayerSheetContentOverlay(
         progress = progress,
     )
     val density = LocalDensity.current
-    val cornerRadius = lerp(collapsedCornerRadius.value, 0f, progress).dp
+    val deviceCornerRadius = getRoundedCorner()
+    val expandedCornerRadius = if (rememberPlayerWindowUsesPhysicalScreenCorners()) {
+        deviceCornerRadius
+    } else {
+        0.dp
+    }
+    val cornerRadius = sharedContainerCornerRadius(
+        collapsedCornerRadius = collapsedCornerRadius.value,
+        expandedCornerRadius = expandedCornerRadius.value,
+        progress = progress,
+        screenCornerExpansionProgress = transition.screenCornerExpansionProgress,
+    ).dp
     val miniShadowAlpha = if (floatingMiniPlayer) {
         val baseAlpha = if (isDark) 0.2f else 0.1f
         baseAlpha * playerSheetBarAlpha(progress)
@@ -319,8 +386,8 @@ internal fun PlayerSheetContentOverlay(
 /**
  * Shared cover overlay. The layout is anchored at the mini-player bounds and
  * uses uniform scale plus translation to reach the full-player bounds. The
- * center path is front-loaded like VMusic, so the cover moves right and up as
- * it grows instead of dipping below the bar before settling.
+ * center path follows VMusic's staged feel: horizontal travel is front-loaded,
+ * while the cover rises throughout and vertical travel dominates after halfway.
  */
 @Composable
 internal fun PlayerSheetArtworkOverlay(
@@ -343,42 +410,97 @@ internal fun PlayerSheetArtworkOverlay(
     val density = LocalDensity.current
     val source = transition.miniArtworkBounds
     val target = transition.fullArtworkBounds
-    val renderedBounds = sharedArtworkRect(source, target, progress)
-    val sourceWidth = source.width.coerceAtLeast(1f)
-    val uniformScale = renderedBounds.width / sourceWidth
+    val sourceArtworkBounds = bitmap?.let {
+        fittedArtworkRect(source, it.width, it.height)
+    }
+    val sourceBounds = sourceArtworkBounds ?: source
+    val renderedBounds = sharedArtworkRect(
+        source = sourceBounds,
+        target = target,
+        progress = progress,
+    )
+    val collapsedArtworkCornerRadius = bitmap?.let {
+        playbackArtworkCornerRadius(
+            cornerRadius = collapsedCornerRadius,
+            bitmapWidth = it.width,
+            bitmapHeight = it.height,
+            rectangularReduction = MINI_PLAYER_RECTANGULAR_ARTWORK_CORNER_REDUCTION,
+        )
+    } ?: collapsedCornerRadius
     val artworkCornerRadius = lerp(
-        collapsedCornerRadius.value,
+        collapsedArtworkCornerRadius.value,
         12f,
         progress,
     )
-    val localCornerRadius = (artworkCornerRadius / uniformScale.coerceAtLeast(1f)).dp
 
-    Box(
-        modifier = modifier
-            .offset {
-                IntOffset(
-                    source.left.roundToInt(),
-                    source.top.roundToInt(),
+    if (bitmap == null) {
+        val scaleX = renderedBounds.width / source.width.coerceAtLeast(1f)
+        val scaleY = renderedBounds.height / source.height.coerceAtLeast(1f)
+        val localCornerRadius = (artworkCornerRadius / scaleX.coerceAtLeast(1f)).dp
+        Box(
+            modifier = modifier
+                .offset {
+                    IntOffset(
+                        source.left.roundToInt(),
+                        source.top.roundToInt(),
+                    )
+                }
+                .size(
+                    with(density) { source.width.coerceAtLeast(1f).toDp() },
                 )
-            }
-            .size(
-                with(density) { source.width.coerceAtLeast(1f).toDp() },
+                .graphicsLayer {
+                    transformOrigin = TransformOrigin(0f, 0f)
+                    this.scaleX = scaleX
+                    this.scaleY = scaleY
+                    translationX = renderedBounds.left - source.left
+                    translationY = renderedBounds.top - source.top
+                },
+        ) {
+            PlaybackArtworkFrame(
+                bitmap = null,
+                size = with(density) { source.width.coerceAtLeast(1f).toDp() },
+                cornerRadius = localCornerRadius,
+                modifier = Modifier,
+                contentScale = ContentScale.Fit,
             )
-            .graphicsLayer {
-                transformOrigin = TransformOrigin(0f, 0f)
-                scaleX = uniformScale
-                scaleY = uniformScale
-                translationX = renderedBounds.left - source.left
-                translationY = renderedBounds.top - source.top
-            },
-    ) {
-        PlaybackArtworkFrame(
-            bitmap = bitmap,
-            size = with(density) { source.width.coerceAtLeast(1f).toDp() },
-            cornerRadius = localCornerRadius,
-            modifier = Modifier,
-            contentScale = ContentScale.Fit,
-        )
+        }
+    } else {
+        val targetBounds = target
+        val targetArtworkWidth = targetBounds.width.coerceAtLeast(1f)
+        val targetArtworkHeight = targetBounds.height.coerceAtLeast(1f)
+        val scaleX = renderedBounds.width / targetArtworkWidth
+        val scaleY = renderedBounds.height / targetArtworkHeight
+        val localCornerRadius = (artworkCornerRadius / scaleX.coerceAtLeast(0.001f)).dp
+        Box(
+            modifier = modifier
+                .offset {
+                    IntOffset(
+                        targetBounds.left.roundToInt(),
+                        targetBounds.top.roundToInt(),
+                    )
+                }
+                .size(
+                    width = with(density) { targetArtworkWidth.toDp() },
+                    height = with(density) { targetArtworkHeight.toDp() },
+                )
+                .graphicsLayer {
+                    transformOrigin = TransformOrigin(0f, 0f)
+                    this.scaleX = scaleX
+                    this.scaleY = scaleY
+                    translationX = renderedBounds.left - targetBounds.left
+                    translationY = renderedBounds.top - targetBounds.top
+                },
+        ) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(localCornerRadius)),
+                contentScale = ContentScale.Fit,
+                filterQuality = FilterQuality.High,
+            )
+        }
     }
 }
 
@@ -400,6 +522,34 @@ internal fun sharedContainerRect(
     )
 }
 
+internal fun sharedContainerCornerRadius(
+    collapsedCornerRadius: Float,
+    expandedCornerRadius: Float,
+    progress: Float,
+    screenCornerExpansionProgress: Float,
+): Float {
+    val fraction = progress.coerceIn(0f, 1f)
+    val screenRoundedCorner = lerp(collapsedCornerRadius, expandedCornerRadius, fraction)
+    val cornerExpansionFraction = if (fraction < 1f) {
+        0f
+    } else {
+        screenCornerExpansionProgress
+    }
+    return lerp(screenRoundedCorner, 0f, cornerExpansionFraction)
+}
+
+internal fun playerWindowUsesPhysicalScreenCorners(
+    currentWidth: Int,
+    currentHeight: Int,
+    maximumWidth: Int,
+    maximumHeight: Int,
+    isInMultiWindowMode: Boolean,
+    isInPictureInPictureMode: Boolean,
+): Boolean = !isInMultiWindowMode &&
+    !isInPictureInPictureMode &&
+    currentWidth >= maximumWidth &&
+    currentHeight >= maximumHeight
+
 internal fun sharedArtworkRect(
     source: Rect,
     target: Rect,
@@ -407,7 +557,12 @@ internal fun sharedArtworkRect(
 ): Rect {
     val fraction = progress.coerceIn(0f, 1f)
     val centerX = lerp(source.center.x, target.center.x, easeOutCubic(fraction))
-    val centerY = lerp(source.center.y, target.center.y, EaseOut.transform(fraction))
+    val verticalFraction = lerp(
+        fraction,
+        easeInCubic(fraction),
+        PLAYER_ARTWORK_VERTICAL_EASE_IN_WEIGHT,
+    )
+    val centerY = lerp(source.center.y, target.center.y, verticalFraction)
     val sourceWidth = source.width.coerceAtLeast(1f)
     val targetWidth = target.width.coerceAtLeast(sourceWidth)
     val scale = lerp(1f, targetWidth / sourceWidth, fraction)
@@ -418,6 +573,24 @@ internal fun sharedArtworkRect(
         top = centerY - height / 2f,
         right = centerX + width / 2f,
         bottom = centerY + height / 2f,
+    )
+}
+
+internal fun fittedArtworkRect(
+    bounds: Rect,
+    bitmapWidth: Int,
+    bitmapHeight: Int,
+): Rect {
+    val width = bitmapWidth.coerceAtLeast(1).toFloat()
+    val height = bitmapHeight.coerceAtLeast(1).toFloat()
+    val scale = minOf(bounds.width / width, bounds.height / height)
+    val fittedWidth = width * scale
+    val fittedHeight = height * scale
+    return Rect(
+        left = bounds.center.x - fittedWidth / 2f,
+        top = bounds.center.y - fittedHeight / 2f,
+        right = bounds.center.x + fittedWidth / 2f,
+        bottom = bounds.center.y + fittedHeight / 2f,
     )
 }
 
@@ -457,6 +630,42 @@ internal fun playerSheetDragTarget(
 }
 
 private fun Rect.isUsable(): Boolean = width > 0f && height > 0f
+
+@Composable
+private fun rememberPlayerWindowUsesPhysicalScreenCorners(): Boolean {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    return remember(
+        context,
+        configuration.screenWidthDp,
+        configuration.screenHeightDp,
+    ) {
+        context.playerWindowUsesPhysicalScreenCorners()
+    }
+}
+
+private fun Context.playerWindowUsesPhysicalScreenCorners(): Boolean {
+    val activity = findActivity() ?: return false
+    if (activity.isInMultiWindowMode || activity.isInPictureInPictureMode) return false
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return true
+
+    val currentBounds = activity.windowManager.currentWindowMetrics.bounds
+    val maximumBounds = activity.windowManager.maximumWindowMetrics.bounds
+    return playerWindowUsesPhysicalScreenCorners(
+        currentWidth = currentBounds.width(),
+        currentHeight = currentBounds.height(),
+        maximumWidth = maximumBounds.width(),
+        maximumHeight = maximumBounds.height(),
+        isInMultiWindowMode = false,
+        isInPictureInPictureMode = false,
+    )
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 private fun lerp(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction.coerceIn(0f, 1f)

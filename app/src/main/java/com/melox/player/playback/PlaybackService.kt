@@ -40,7 +40,7 @@ class PlaybackService : MediaSessionService() {
     private lateinit var miniSnapshotStore: MiniPlaybackSnapshotStore
     private var snapshotDebounceJob: Job? = null
     private var snapshotRestorePending = false
-    private var snapshotRestoreSeedItem: PlaybackQueueItem? = null
+    private var snapshotRestoreSeed: PlaybackSnapshot? = null
     private val snapshotWriteMutex = Mutex()
     private val snapshotWriteSequence = AtomicLong()
     private val lastPersistedSnapshotSequence = AtomicLong()
@@ -50,8 +50,7 @@ class PlaybackService : MediaSessionService() {
         snapshotStore = PlaybackSnapshotStore(this)
         miniSnapshotStore = MiniPlaybackSnapshotStore(this)
         val startupSnapshot = miniSnapshotStore.load()
-        val startupItem = startupSnapshot?.queue?.getOrNull(startupSnapshot.currentIndex)
-        snapshotRestoreSeedItem = startupItem
+        snapshotRestoreSeed = startupSnapshot
         PlaybackModeMemory.set(startupSnapshot?.playbackMode ?: PlaybackMode.ORDER)
         val renderersFactory = DefaultRenderersFactory(this)
             .setEnableAudioFloatOutput(true)
@@ -67,10 +66,14 @@ class PlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
         player.setWakeMode(C.WAKE_MODE_LOCAL)
-        startupItem?.let { item ->
-            player.setMediaItem(item.toMediaItem(), startupSnapshot.positionMs)
+        startupSnapshot?.let { snapshot ->
+            player.setMediaItems(
+                snapshot.queue.map(PlaybackQueueItem::toMediaItem),
+                snapshot.currentIndex,
+                snapshot.positionMs,
+            )
             player.shuffleModeEnabled = false
-            player.repeatMode = startupSnapshot.playbackMode.toPlayerRepeatMode()
+            player.repeatMode = snapshot.playbackMode.toPlayerRepeatMode()
         }
         player.addListener(
             object : Player.Listener {
@@ -84,6 +87,7 @@ class PlaybackService : MediaSessionService() {
                 }
             }
         )
+        restoreSnapshot(player, startupSnapshot)
         val sessionActivity = PendingIntent.getActivity(
             this,
             0,
@@ -95,7 +99,6 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(sessionActivity)
             .build()
-        restoreSnapshot(player, startupItem)
         serviceScope.launch {
             while (isActive) {
                 delay(SNAPSHOT_INTERVAL_MS)
@@ -132,44 +135,91 @@ class PlaybackService : MediaSessionService() {
 
     private fun restoreSnapshot(
         player: Player,
-        startupItem: PlaybackQueueItem?,
+        startupSnapshot: PlaybackSnapshot?,
     ) {
         snapshotRestorePending = true
         serviceScope.launch {
             // A controller command issued while the disk read was running wins over restoration.
-            val snapshot = withContext(Dispatchers.IO) { snapshotStore.load() }
-            if (!player.isAwaitingSnapshotRestore(startupItem)) {
-                snapshotRestorePending = false
-                snapshotRestoreSeedItem = null
-                scheduleSnapshotWrite(player, immediate = true)
+            val snapshot = withContext(Dispatchers.IO) { snapshotStore.loadUnvalidated() }
+            if (!player.isAwaitingSnapshotRestore(startupSnapshot)) {
+                completeSnapshotRestore(player)
                 return@launch
             }
             if (snapshot == null) {
                 PlaybackModeMemory.set(PlaybackMode.ORDER)
                 withContext(Dispatchers.IO) { miniSnapshotStore.clear() }
                 player.clearMediaItems()
-                snapshotRestorePending = false
-                snapshotRestoreSeedItem = null
-                scheduleSnapshotWrite(player, immediate = true)
+                completeSnapshotRestore(player)
                 return@launch
             }
             PlaybackModeMemory.set(snapshot.playbackMode)
+            val previewCurrentItem = player.currentPlaybackQueue()
+                .getOrNull(player.currentMediaItemIndex)
+            val restoredCurrentIndex = previewCurrentItem?.let { currentItem ->
+                snapshot.queue.indexOfFirst { item -> item.isSameQueueSlot(currentItem) }
+            }?.takeIf { it >= 0 } ?: snapshot.currentIndex
             val shouldPlay = player.playWhenReady
-            val restorePositionMs = player.currentPosition.takeIf { shouldPlay }
-                ?: snapshot.positionMs
+            val restorePositionMs = if (previewCurrentItem != null) {
+                player.currentPosition
+            } else {
+                snapshot.positionMs
+            }.coerceAtLeast(0L)
+            val activeSnapshot = snapshot.copy(
+                currentIndex = restoredCurrentIndex,
+                positionMs = restorePositionMs,
+            )
             player.setMediaItems(
-                snapshot.queue.map { it.toMediaItem() },
-                snapshot.currentIndex,
+                activeSnapshot.queue.map { it.toMediaItem() },
+                activeSnapshot.currentIndex,
                 restorePositionMs,
             )
             player.shuffleModeEnabled = false
             player.repeatMode = snapshot.playbackMode.toPlayerRepeatMode()
             player.prepare()
             if (shouldPlay) player.play() else player.pause()
-            snapshotRestorePending = false
-            snapshotRestoreSeedItem = null
-            scheduleSnapshotWrite(player, immediate = true)
+            withContext(Dispatchers.IO) {
+                miniSnapshotStore.save(activeSnapshot)
+            }
+
+            val validatedSnapshot = withContext(Dispatchers.IO) {
+                snapshotStore.validate(activeSnapshot)
+            }
+            val reconciledSnapshot = reconcileValidatedPlaybackSnapshot(
+                restoredSnapshot = activeSnapshot,
+                validatedSnapshot = validatedSnapshot,
+                currentQueue = player.currentPlaybackQueue(),
+                currentIndex = player.currentMediaItemIndex,
+                positionMs = player.currentPosition,
+                playbackMode = player.currentPlaybackMode(),
+            )
+            if (reconciledSnapshot == null) {
+                completeSnapshotRestore(player)
+                return@launch
+            }
+            if (!hasSameQueueSlots(reconciledSnapshot.queue, activeSnapshot.queue)) {
+                val keepPlaying = player.playWhenReady
+                if (reconciledSnapshot.queue.isEmpty()) {
+                    player.clearMediaItems()
+                } else {
+                    player.setMediaItems(
+                        reconciledSnapshot.queue.map { it.toMediaItem() },
+                        reconciledSnapshot.currentIndex,
+                        reconciledSnapshot.positionMs,
+                    )
+                    player.shuffleModeEnabled = false
+                    player.repeatMode = reconciledSnapshot.playbackMode.toPlayerRepeatMode()
+                    player.prepare()
+                    if (keepPlaying) player.play() else player.pause()
+                }
+            }
+            completeSnapshotRestore(player)
         }
+    }
+
+    private fun completeSnapshotRestore(player: Player) {
+        snapshotRestorePending = false
+        snapshotRestoreSeed = null
+        scheduleSnapshotWrite(player, immediate = true)
     }
 
     private fun scheduleSnapshotWrite(
@@ -227,19 +277,62 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun Player.isAwaitingSnapshotRestore(
-        startupItem: PlaybackQueueItem?,
-    ): Boolean = if (startupItem == null) {
+        startupSnapshot: PlaybackSnapshot?,
+    ): Boolean = if (startupSnapshot == null) {
         mediaItemCount == 0
     } else {
-        mediaItemCount == 1 &&
-            getMediaItemAt(0).mediaId == startupItem.mediaId
+        hasSameQueueSlots(currentPlaybackQueue(), startupSnapshot.queue)
     }
 
     private fun Player.shouldPersistCurrentSnapshot(): Boolean =
-        !snapshotRestorePending || !isAwaitingSnapshotRestore(snapshotRestoreSeedItem)
+        !snapshotRestorePending || !isAwaitingSnapshotRestore(snapshotRestoreSeed)
 
     private companion object {
         const val SNAPSHOT_DEBOUNCE_MS = 350L
         const val SNAPSHOT_INTERVAL_MS = 5_000L
     }
 }
+
+internal fun reconcileValidatedPlaybackSnapshot(
+    restoredSnapshot: PlaybackSnapshot,
+    validatedSnapshot: PlaybackSnapshot?,
+    currentQueue: List<PlaybackQueueItem>,
+    currentIndex: Int,
+    positionMs: Long,
+    playbackMode: PlaybackMode,
+): PlaybackSnapshot? {
+    if (!hasSameQueueSlots(currentQueue, restoredSnapshot.queue)) return null
+    val validatedQueue = validatedSnapshot?.queue.orEmpty().map { item ->
+        item.copy(playbackMode = playbackMode)
+    }
+    if (validatedQueue.isEmpty()) {
+        return PlaybackSnapshot(
+            queue = emptyList(),
+            currentIndex = -1,
+            positionMs = 0L,
+            playbackMode = playbackMode,
+        )
+    }
+    val currentItem = currentQueue.getOrNull(currentIndex)
+    val retainedCurrentIndex = currentItem?.let { item ->
+        validatedQueue.indexOfFirst { candidate -> candidate.isSameQueueSlot(item) }
+    } ?: -1
+    return PlaybackSnapshot(
+        queue = validatedQueue,
+        currentIndex = retainedCurrentIndex.takeIf { it >= 0 } ?: 0,
+        positionMs = if (retainedCurrentIndex >= 0) positionMs.coerceAtLeast(0L) else 0L,
+        playbackMode = playbackMode,
+    )
+}
+
+internal fun hasSameQueueSlots(
+    first: List<PlaybackQueueItem>,
+    second: List<PlaybackQueueItem>,
+): Boolean = first.size == second.size && first.indices.all { index ->
+    first[index].isSameQueueSlot(second[index])
+}
+
+private fun PlaybackQueueItem.isSameQueueSlot(other: PlaybackQueueItem): Boolean =
+    mediaId == other.mediaId &&
+        contentUri == other.contentUri &&
+        sourceOrder == other.sourceOrder

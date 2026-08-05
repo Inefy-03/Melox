@@ -149,7 +149,7 @@ fun FolderDetailScreen(
                                 visible = searchVisible,
                                 focused = searchFocused,
                                 query = query,
-                                label = stringResource(R.string.music_search_hint),
+                                label = stringResource(R.string.search_hint),
                                 onQueryChange = { query = it },
                                 onFocusedChange = { searchFocused = it },
                                 onVisibleChange = { visible ->

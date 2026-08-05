@@ -144,8 +144,8 @@ fun TrackActionsOverlay(
                         icon = painterResource(R.drawable.ic_add_list),
                         text = stringResource(R.string.music_add_to_queue),
                         iconSize = TrackActionAddToQueueIconSize,
-                        iconStartPadding = 2.dp,
-                        iconEndPadding = 1.dp,
+                        iconStartPadding = 1.dp,
+                        iconEndPadding = 2.dp,
                         onClick = {
                             onAppendToQueue(selectedTrack)
                             onDismiss()

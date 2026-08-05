@@ -29,7 +29,7 @@
         tools:targetApi="33">
         <activity
             android:name=".MainActivity"
-            android:configChanges="locale|layoutDirection"
+            android:configChanges="locale|layoutDirection|uiMode"
             android:exported="true"
             android:launchMode="singleTop">
             <intent-filter>

@@ -44,6 +44,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 fun MusicListScreen(
     onTrackClick: (List<MusicTrack>, Int) -> Unit,
     displayedTracks: List<MusicTrack>,
+    queueTracks: List<MusicTrack> = displayedTracks,
     sectionIndexMap: Map<String, Int>,
     scanStatus: ScanStatus,
     currentTrackId: Long?,
@@ -106,7 +107,16 @@ fun MusicListScreen(
                     MusicTrackRow(
                         track = track,
                         isCurrent = track.id == currentTrackId,
-                        onClick = { onTrackClick(displayedTracks, index) },
+                        onClick = {
+                            resolveMusicPlaybackSelection(
+                                displayedTracks = displayedTracks,
+                                queueTracks = queueTracks,
+                                query = query,
+                                selectedIndex = index,
+                            )?.let { (playbackTracks, playbackIndex) ->
+                                onTrackClick(playbackTracks, playbackIndex)
+                            }
+                        },
                         onMoreClick = { selectedTrack = track },
                     )
                 }
@@ -165,6 +175,22 @@ fun MusicListScreen(
         artistGroups = artistGroups,
         onGoToArtist = onGoToArtist,
     )
+}
+
+internal fun resolveMusicPlaybackSelection(
+    displayedTracks: List<MusicTrack>,
+    queueTracks: List<MusicTrack>,
+    query: String,
+    selectedIndex: Int,
+): Pair<List<MusicTrack>, Int>? {
+    val selectedTrack = displayedTracks.getOrNull(selectedIndex) ?: return null
+    val playbackTracks = if (query.isNotBlank() && queueTracks.isNotEmpty()) {
+        queueTracks
+    } else {
+        displayedTracks
+    }
+    val playbackIndex = playbackTracks.indexOfFirst { it.id == selectedTrack.id }
+    return playbackIndex.takeIf { it >= 0 }?.let { playbackTracks to it }
 }
 
 @Composable

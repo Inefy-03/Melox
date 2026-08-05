@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -36,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.data.library.displayArtistName
@@ -43,8 +43,6 @@ import com.melox.player.model.PlaybackUiState
 import com.melox.player.ui.component.library.PlaybackArtwork
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Text
@@ -62,7 +60,7 @@ private val QueueArtworkCornerRadius = 6.dp
 private val QueueRowHeight = QueueArtworkSize + 24.dp
 private val QueueSheetHeaderHeight = 82.dp
 
-internal fun queueCardHeight(
+internal fun queueListHeight(
     itemCount: Int,
     rowHeight: Dp,
     maxHeight: Dp,
@@ -97,7 +95,7 @@ fun QueueSheet(
         }
     }
     val sheetBackground = BottomSheetDefaults.backgroundColor()
-    val queueBottomPadding = WindowInsets.navigationBars
+    val queueListBottomPadding = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding() + 12.dp
     val queueSheetTopInset = maxOf(
@@ -105,18 +103,24 @@ fun QueueSheet(
         WindowInsets.captionBar.asPaddingValues().calculateTopPadding(),
         WindowInsets.displayCutout.asPaddingValues().calculateTopPadding(),
     )
-    val queueMaxCardHeight = (
+    val queueMaxListHeight = (
         LocalWindowInfo.current.containerDpSize.height -
             queueSheetTopInset -
-            QueueSheetHeaderHeight -
-            queueBottomPadding
-        ).coerceAtLeast(0.dp)
+            QueueSheetHeaderHeight
+    ).coerceAtLeast(0.dp)
+    val queueRowsMaxHeight = (
+        queueMaxListHeight - queueListBottomPadding
+    ).coerceAtLeast(0.dp)
 
     OverlayBottomSheet(
         show = show,
         title = stringResource(R.string.playback_queue),
+        insideMargin = DpSize(0.dp, 0.dp),
         startAction = {
-            IconButton(onClick = onDismiss) {
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.padding(start = 16.dp),
+            ) {
                 Icon(
                     imageVector = MiuixIcons.Close,
                     contentDescription = stringResource(R.string.close),
@@ -128,6 +132,7 @@ fun QueueSheet(
             IconButton(
                 onClick = { showClearConfirm = true },
                 enabled = playback.queue.isNotEmpty(),
+                modifier = Modifier.padding(end = 20.dp),
             ) {
                 Icon(
                     imageVector = MiuixIcons.Delete,
@@ -140,104 +145,97 @@ fun QueueSheet(
         enableWindowDim = true,
         onDismissRequest = onDismiss,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = queueBottomPadding),
-        ) {
-            if (playback.queue.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.queue_empty),
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    )
-                }
-            } else {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(
-                            queueCardHeight(
-                                itemCount = playback.queue.size,
-                                rowHeight = QueueRowHeight,
-                                maxHeight = queueMaxCardHeight,
-                            ),
-                        ),
-                    colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.secondaryContainer,
-                    ),
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        state = queueListState,
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
-                    ) {
-                        itemsIndexed(
-                            items = playback.queue,
-                            key = { index, item -> "${item.mediaId}:$index" },
-                        ) { index, item ->
-                            val isCurrent = index == playback.currentIndex
-                            BasicComponent(
-                                modifier = Modifier.fillMaxWidth(),
-                                holdDownState = isCurrent,
-                                startAction = {
-                                    PlaybackArtwork(
-                                        contentUri = item.contentUri,
-                                        dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
-                                        fileSizeBytes = item.fileSizeBytes,
-                                        size = QueueArtworkSize,
-                                        cornerRadius = QueueArtworkCornerRadius,
-                                        contentScale = ContentScale.Fit,
-                                    )
-                                },
-                                endActions = {
-                                    IconButton(onClick = { onRemove(index) }) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.ic_remove_circle),
-                                            contentDescription =
-                                                stringResource(R.string.remove_from_queue),
-                                            modifier = Modifier.size(22.dp),
-                                        )
-                                    }
-                                },
-                                insideMargin = PaddingValues(
-                                    start = 12.dp,
-                                    top = 12.dp,
-                                    end = 12.dp,
-                                    bottom = 12.dp,
-                                ),
-                                onClick = {
-                                    onJumpTo(index)
-                                    onDismiss()
-                                },
+        if (playback.queue.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp + queueListBottomPadding)
+                    .padding(bottom = queueListBottomPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.queue_empty),
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+            }
+        } else {
+            val queueListViewportHeight = (
+                queueListHeight(
+                    itemCount = playback.queue.size,
+                    rowHeight = QueueRowHeight,
+                    maxHeight = queueRowsMaxHeight,
+                ) + queueListBottomPadding
+            ).coerceAtMost(queueMaxListHeight)
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(queueListViewportHeight),
+                state = queueListState,
+                contentPadding = PaddingValues(bottom = queueListBottomPadding),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                itemsIndexed(
+                    items = playback.queue,
+                    key = { index, item -> "${item.mediaId}:$index" },
+                ) { index, item ->
+                    val isCurrent = index == playback.currentIndex
+                    BasicComponent(
+                        modifier = Modifier.fillMaxWidth(),
+                        holdDownState = isCurrent,
+                        startAction = {
+                            PlaybackArtwork(
+                                contentUri = item.contentUri,
+                                dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
+                                fileSizeBytes = item.fileSizeBytes,
+                                size = QueueArtworkSize,
+                                cornerRadius = QueueArtworkCornerRadius,
+                                contentScale = ContentScale.Fit,
+                            )
+                        },
+                        endActions = {
+                            IconButton(
+                                onClick = { onRemove(index) },
+                                modifier = Modifier.padding(end = 3.dp),
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Text(
-                                        text = item.title,
-                                        style = MiuixTheme.textStyles.headline2,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MiuixTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                    Text(
-                                        text = displayArtistName(item.artist)
-                                            ?: stringResource(R.string.music_unknown_artist),
-                                        style = MiuixTheme.textStyles.footnote1,
-                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_remove_circle),
+                                    contentDescription =
+                                        stringResource(R.string.remove_from_queue),
+                                    modifier = Modifier.size(22.dp),
+                                )
                             }
+                        },
+                        insideMargin = PaddingValues(
+                            start = 24.dp,
+                            top = 12.dp,
+                            end = 16.dp,
+                            bottom = 12.dp,
+                        ),
+                        onClick = {
+                            onJumpTo(index)
+                            onDismiss()
+                        },
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                text = item.title,
+                                style = MiuixTheme.textStyles.headline2,
+                                fontWeight = FontWeight.Medium,
+                                color = MiuixTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = displayArtistName(item.artist)
+                                    ?: stringResource(R.string.music_unknown_artist),
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }

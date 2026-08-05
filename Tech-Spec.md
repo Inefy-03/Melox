@@ -62,12 +62,13 @@
   An application-level prefetch effect warms current and adjacent queue covers
   at the full-player bucket. The mini player requests its own bar-sized bucket,
   while the directly composed full player requests the full-player bucket.
-  Full-player cover and atmosphere consume one loaded bitmap blend state,
-  retaining the old frame until the next track bitmap resolves and then
-  crossfading both surfaces together. Opening and dismissing use a separate
+  Full-player cover and background consume the same cached bitmap source. The
+  cover retains its existing crossfade, while the background retains the last
+  completed HCT field until the next field is ready. Opening and dismissing use a separate
   shared-player overlay that reuses the resolved current bitmap and interpolates
-  the measured mini artwork bound and current visible full-artwork bound,
-  including its playing, paused, or resume-overshoot scale.
+  the measured mini artwork bound and current visible full-artwork content
+  bound, including its playing, paused, or resume-overshoot scale and the
+  bitmap's fitted aspect ratio.
 - `LyricsRepository` performs bounded local reads on `Dispatchers.IO`. It
   inspects Media3 container metadata for embedded lyric text and queries or
   opens same-name sidecar LRC/TTML candidates without requesting network or
@@ -79,14 +80,22 @@
 - `PlaybackService : MediaSessionService` owns the only `ExoPlayer` and `MediaSession`.
 - `PlaybackController` owns only a `MediaController` connection and exposes `StateFlow<PlaybackUiState>`.
 - Local playback uses Media3 audio focus/noisy-route handling and a playback-scoped local wake lock so screen-off playback remains reliable.
-- The service restores valid local media items before publishing paused state. Invalid/unreadable URIs are removed; an empty restored queue clears the snapshot.
+- The service starts decoding the checksummed playback snapshot before exposing
+  its media session, publishes the decoded queue without waiting for per-item
+  descriptor checks, and then validates URI readability on `Dispatchers.IO`.
+  Validation removes invalid/unreadable items while preserving an unchanged
+  queue's active item, position, playback state, and mode. A concurrent queue
+  mutation wins over validation; an empty validated queue clears the snapshot.
 - Media item metadata contains title, artist, album, source URI, and a local track ID when applicable. The app extracts embedded artwork through its shared bounded cache.
 - Position persistence is throttled; UI position updates may tick more frequently without writing to disk every frame. Queue shape, current-item, and playback-mode changes bypass the debounce, and task removal performs one final atomic write so reopening cannot fall back to an older queue.
 - Alongside the full queue snapshot, the service writes a tiny atomic
-  current-item summary. `PlaybackController` may synchronously read only this
-  bounded summary for first-frame mini-player identity, and `PlaybackService`
-  preloads the same item before opening its media session. Queue validation and
-  full service restoration remain asynchronous.
+  16-item window beginning at the current item when enough following items
+  remain, or ending at the queue tail otherwise. `PlaybackController` may
+  synchronously read only this bounded preview for first-frame mini-player and
+  Queue identity, and `PlaybackService` preloads the same window before opening
+  its media session. Full snapshot decoding
+  and queue publication remain asynchronous, but they are no longer blocked by
+  the slower per-file readability pass.
 - Playback-mode changes serialize bulk playlist updates until the expected queue order
   is reported by Media3. This prevents repeated mode taps from interleaving
   queue mutations, while preserving the current media item and position.
@@ -159,7 +168,12 @@
   expanded and 0 dp when the small title is collapsed. Library reserves 6 dp
   below the TabRow and gives an open SearchBar another 6 dp top padding, keeping
   the total TabRow-to-Search spacing at 12 dp. Songs SearchBar uses the same
-  12 dp expanded-title gap and 0 dp small-title gap.
+  12 dp expanded-title gap and 0 dp small-title gap. All visible search fields
+  use 16 dp horizontal inside margin and the shared generic Search / 搜索 hint.
+  The shared search wrapper
+  observes IME visibility; when a focused field's visible IME is dismissed by
+  Back, it clears the field focus in the same state transition while retaining
+  the query.
 - The Album root grid uses 20 dp horizontal content padding. The 2-column style
   uses a 56 dp cover with 6 dp top/bottom/start, 12 dp end card padding, and a
   10 dp cover-to-label gap. The borderless 3-column layout uses 12 dp
@@ -214,14 +228,34 @@
   direction is rightward and upward from the mini-player cover into the page
   cover, with interpolated rounded corners and no rotation, skew, or
   narrow-top/wide-bottom deformation.
-- Full-player atmosphere is computed outside composition from the artwork:
-  the 128 px square working bitmap is converted to RGB_565, saturation is
-  increased threefold, a light or dark tonal overlay is applied, then the bitmap
-  receives a bundled-native-free two-pass Gaussian blur matched to
-  FlamingoSank's 25 px visual kernel. The
-  previous processed frame is retained until the next one is available. The backdrop
-  motion uses the KenBurnsView 1.0.7 AAR with
-  `RandomTransitionGenerator(6000, AccelerateDecelerateInterpolator())`.
+- Full-player background processing runs on `Dispatchers.Default` against the
+  already cached artwork bitmap. The bitmap is bilinearly reduced to 8 by 8;
+  each pixel is converted through MaterialKolor HCT, keeps its source hue, caps
+  realized chroma at 32, and fixes tone to 48 for light theme or 24 for dark
+  theme. The resulting ARGB_8888 field supplies four quadrant paths. One
+  reusable 4-by-4 output bitmap starts as source coordinates `x=2..5,
+  y=2..5`. Each output pixel follows the matching local position through the
+  center region, horizontal 2-pixel offset, outer-corner 2-pixel offset, and
+  vertical 2-pixel offset. Top-left and bottom-right use clockwise 24-second
+  then 18-second laps; top-right and bottom-left use counterclockwise 18-second
+  then 24-second laps. Colors interpolate between each adjacent pixel center,
+  and the two-lap timing pair repeats every 42 seconds. The bitmap is updated in
+  place and wrapped once by a Compose `BitmapPainter` with `FilterQuality.Low`.
+  A standard `Image` draws it with `ContentScale.Crop`, matching VMusic's
+  Compose/Skia bilinear sampling instead of stretching it through a native
+  Canvas destination rectangle. Continuous ARGB interpolation handles temporal
+  transitions while painter filtering smooths adjacent output pixels. A separate
+  18-second phase rotates the complete 4-by-4 field through clockwise
+  quarter-turn source-coordinate mappings. Both the field and each pixel's local
+  coordinate rotate together; consecutive quarter-turn fields interpolate per
+  pixel. This preserves spatial adjacency at 0/90/180/270/360 degrees and
+  removes the cross-shaped seam created by moving unrotated quadrant blocks;
+  it never transforms the bitmap geometry. There is no `graphicsLayer` rotation,
+  animated scale, translation, second layer, or X/Y perspective transform. Both
+  phases run only for the settled resumed player while `PlaybackUiState.isPlaying`
+  is true. Pausing preserves the current phases for the next resume. Missing artwork uses
+  `MiuixTheme.colorScheme.surfaceContainer`; the last completed non-null field
+  remains visible while a replacement is computed.
 - Secondary navigation keeps one stable Miuix scene state and `NavDisplay`.
   The persisted predictive-back setting only enables either the official
   `NavigationBackHandler` or the ordinary back handler; it never swaps two
@@ -244,11 +278,12 @@
   from the queue count, capped by the sheet's remaining maximum height before
   row-height multiplication so a large restored queue cannot create an
   unrepresentable Compose constraint. It has the
-  library-owned title row and default 24 dp horizontal inside margin, plus a
-  leading Close action and trailing Clear action. Queue entries share one
-  `secondaryContainer` `Card` and use `BasicComponent` for full-row interaction,
-  44 dp artwork, and 12 dp start/top/bottom padding without an extra inter-item
-  spacer. Their only trailing control is the per-item remove action; quality
+  library-owned title row, plus a leading Close action and trailing Clear action
+  whose visible glyph ends 28 dp from the screen edge. Queue entries are direct
+  full-width `BasicComponent` rows with no wrapping card, 44 dp artwork, 24 dp
+  start padding, 16 dp end padding, and 12 dp top/bottom padding without an extra inter-item
+  spacer. Their only trailing control is the per-item remove action, whose
+  circle-minus glyph shares the Clear icon's 28 dp visual right edge; quality
   badges, duration, and More are excluded. The current row sets
   `BasicComponent.holdDownState` so Miuix's indication supplies the persistent
   selection effect; no custom colored rounded selection surface is used.
@@ -257,9 +292,10 @@
   one-line ellipsis.
   The active entry relies on the persistent Miuix hold-down indication rather
   than layering a custom selection surface.
-  Clear confirmation is an `OverlayDialog`. The option card contains no list-end
-  spacer; its outer content reserves navigation-bar inset plus 12 dp below the
-  card, matching `TrackActionsOverlay`. The item remove action uses a circle-minus
+  Clear confirmation is an `OverlayDialog`. The list viewport draws through the
+  transparent navigation-bar region. Navigation-bar inset plus 12 dp is applied
+  as `LazyColumn` content padding, so the last row remains reachable without a
+  separate fixed footer background. The item remove action uses a circle-minus
   icon derived from AddCircle.
 - `TrackActionsOverlay` omits a sheet title, uses the default Miuix sheet margin,
   reuses the song-row metadata composition without
@@ -267,7 +303,7 @@
   background as the option card, enlarges the summary artwork to 56 dp with
   12 dp left/top/bottom artwork-side padding, and renders all actions as one
   `Card` of `BasicComponent` rows. Add to queue uses a 20 dp icon shifted
-  2 dp right with 1 dp more text gap. Album and Artist labels use a one-line
+  1 dp right with 2 dp more text gap. Album and Artist labels use a one-line
   ellipsis. A single artist resolves directly to its `ArtistGroup`; multiple
   artists open a titled Miuix sheet with the same rows as the artist library,
   12 dp spacing on every side of the artwork, and no trailing navigation icon,
@@ -316,8 +352,10 @@
   clipped horizontal drag layer with edge alpha masks. Previous/Next text uses
   a density conversion from 12 sp and remains that distance behind the
   translated metadata boundary throughout a swipe. A system
-  `GestureThresholdActivate` haptic fires once when the drag first crosses the
-  existing commit threshold and a different queue item is available.
+  `GestureThresholdActivate` haptic fires whenever the drag enters an eligible
+  Previous or Next commit region and a different queue item is available. The
+  active threshold direction resets below the commit boundary, so re-entering
+  the same direction or reversing into the opposite direction fires again.
 - The normal mini player consumes the same surface color and recorded backdrop
   as the navigation bar. It omits glass highlights, uses the navigation
   divider's reduced monochrome stroke, and has 6 dp outer side/gap spacing with
@@ -458,7 +496,14 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   trims/collapses whitespace, de-duplicates names per track by normalized key,
   and inserts the track into each resulting artist group. Display contexts that
   show a track's artist join split names with ` / `.
-- Tapping a row passes the displayed immutable list and row index to playback.
+- Tapping a row passes the current page playback list and row index to
+  playback.
+  Songs presentation also retains the current sorted, unfiltered list. If a
+  non-empty Songs search has exactly one visible result, row playback resolves
+  that track's index in the retained full list; multi-result searches use the
+  same retained full list and resolve the clicked track's index there. The
+  playback controller applies the active order, repeat-one, or pseudo-random
+  mode to that complete queue.
 - `MusicTrack.albumId` stores MediaStore's stable album identity and
   `MusicTrack.folderPath` stores a normalized direct-parent path. API 29+ reads
   `MediaStore.RELATIVE_PATH`; API 28 reads the legacy media path and removes
@@ -544,8 +589,12 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
 - Use the platform `LocaleManager` directly on API 33+ so the first language
   change follows the same in-place path as later changes. Use
   `AppCompatDelegate` and `LocaleListCompat` only on API 28-32.
-- Handle `locale|layoutDirection` configuration changes in `MainActivity` so
-  locale changes update Compose resources without recreating the page. Keep
+- Handle `locale|layoutDirection|uiMode` configuration changes in `MainActivity`
+  so locale and system light/dark changes update Compose without recreating the
+  page, player transition state, or MediaController connection. The artwork
+  source is reduced to 8-by-8 only when the cover changes; theme changes reuse
+  those source samples, remap only HCT tone, and retain the same 4-by-4 output
+  bitmap and painter. Keep
   immediate dropdown selection state separate from the effective resource
   locale so choosing an override equal to the system locale still updates.
   Apply the locale directly from the selection callback instead of delaying it
@@ -574,8 +623,8 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   They must never silently produce `app-release-unsigned.apk` as the release
   deliverable.
 - The root `assembleRelease` task wraps `:app:assembleRelease` and prints the
-  generated `app/build/outputs/apk/release/app-release.apk` path, so Android
-  Studio Terminal output points directly to the signed artifact.
+  generated `app/build/outputs/apk/release/Melox_<versionName>_<yyMMdd>.apk`
+  path, so Android Studio Terminal output points directly to the signed artifact.
 - Release uses the stable AGP 9.2 Release DSL with code minification, optimized
   resource shrinking, and `proguard-android-optimize.txt`, which runs R8 code
   shrinking, optimization, and obfuscation without the experimental gradual-R8
@@ -595,7 +644,7 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   Activity and MediaSessionService implementations plus TagLib JNI bridge are
   present in the optimized DEX, and verifies APK signing, 16KB ZIP alignment,
   and 16KB alignment for every packaged arm64 native ELF LOAD segment. The
-  artwork-atmosphere blur must not add a bundled native library.
+  full-player artwork background must not add a bundled native library.
 
 ## Failure Handling
 
@@ -639,13 +688,11 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   order, album-grid style column counts, and legacy style migration.
 - Unit-test persisted library-presentation normalization and tiny playback
   summary migration/validation.
-- Unit-test direct full-player visibility behavior and the 128 px RGB_565,
-  saturation-3x, tonal-overlay, bundled-native-free
-  two-pass Gaussian blur image
-  pipeline.
-- Unit-test bar-sized and full-player-sized artwork requests and that the
-  processed atmosphere preserves an opaque fallback while the next bitmap is
-  prepared.
+- Unit-test direct full-player visibility behavior and HCT pixel conversion for
+  the light/dark tone targets and chroma cap.
+- Unit-test bar-sized and full-player-sized artwork requests and statically
+  review that the processed field retains its previous non-null result while a
+  replacement is prepared.
 - Run Compose/instrumented tests for localization, settings persistence, navigation, and overlay presentation.
 - Validate API 28 opaque fallback and API 37 liquid glass on emulators.
 - Compare focused API 37 root-pager `gfxinfo` frame statistics before and after

@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -237,6 +238,8 @@ internal fun MiniPlayer(
                         PLAYER_TRACK_ARTWORK_CROSSFADE_DURATION_MILLIS,
                     bitmapCrossfadeEasing = PLAYER_TRACK_ARTWORK_CROSSFADE_EASING,
                     priorityLoad = true,
+                    rectangularCornerRadiusReduction =
+                        MINI_PLAYER_RECTANGULAR_ARTWORK_CORNER_REDUCTION,
                 )
             }
             Spacer(modifier = Modifier.width(metadataSpacing))
@@ -315,7 +318,7 @@ private fun SwipeableMetadata(
     val hapticFeedback = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     var horizontalOffset by remember { mutableFloatStateOf(0f) }
-    var thresholdHapticTriggered by remember { mutableStateOf(false) }
+    var thresholdHapticDirection by remember { mutableIntStateOf(0) }
     var settleJob by remember { mutableStateOf<Job?>(null) }
     var contentWidth by remember { mutableFloatStateOf(1f) }
     var labelWidth by remember { mutableFloatStateOf(0f) }
@@ -387,29 +390,36 @@ private fun SwipeableMetadata(
                 detectHorizontalDragGestures(
                     onDragStart = {
                         settleJob?.cancel()
-                        thresholdHapticTriggered = false
+                        thresholdHapticDirection = 0
                     },
                     onHorizontalDrag = { change, dragAmount ->
                         change.consume()
                         val updatedOffset =
                             (horizontalOffset + dragAmount).coerceIn(-contentWidth, contentWidth)
                         horizontalOffset = updatedOffset
-                        if (
-                            !thresholdHapticTriggered &&
-                            miniMetadataSwipeCommits(
+                        val currentThresholdDirection = miniMetadataSwipeThresholdDirection(
+                            offsetPx = updatedOffset,
+                            commits = miniMetadataSwipeCommits(
                                 offsetPx = updatedOffset,
                                 contentWidthPx = contentWidth,
                                 labelWidthPx = labelWidth,
                                 edgeMaskWidthPx = edgeMaskWidthPx,
                                 labelSpacingPx = labelSpacingPx,
-                            ) &&
-                            playback.hasDifferentMetadataSwipeTarget(updatedOffset)
+                            ),
+                            hasDifferentTarget =
+                                playback.hasDifferentMetadataSwipeTarget(updatedOffset),
+                        )
+                        if (
+                            shouldTriggerMiniMetadataSwipeThresholdHaptic(
+                                previousDirection = thresholdHapticDirection,
+                                currentDirection = currentThresholdDirection,
+                            )
                         ) {
-                            thresholdHapticTriggered = true
                             hapticFeedback.performHapticFeedback(
                                 HapticFeedbackType.GestureThresholdActivate,
                             )
                         }
+                        thresholdHapticDirection = currentThresholdDirection
                     },
                     onDragEnd = {
                         val startOffset = horizontalOffset
@@ -456,10 +466,10 @@ private fun SwipeableMetadata(
                                 outgoingMetadata = null
                             }
                         }
-                        thresholdHapticTriggered = false
+                        thresholdHapticDirection = 0
                     },
                     onDragCancel = {
-                        thresholdHapticTriggered = false
+                        thresholdHapticDirection = 0
                         settleJob = scope.launch {
                             Animatable(horizontalOffset).animateTo(
                                 0f,
@@ -643,3 +653,19 @@ internal fun miniMetadataSwipeCommits(
     edgeMaskWidthPx = edgeMaskWidthPx,
     labelSpacingPx = labelSpacingPx,
 )
+
+internal fun miniMetadataSwipeThresholdDirection(
+    offsetPx: Float,
+    commits: Boolean,
+    hasDifferentTarget: Boolean,
+): Int = when {
+    !commits || !hasDifferentTarget -> 0
+    offsetPx > 0f -> 1
+    offsetPx < 0f -> -1
+    else -> 0
+}
+
+internal fun shouldTriggerMiniMetadataSwipeThresholdHaptic(
+    previousDirection: Int,
+    currentDirection: Int,
+): Boolean = currentDirection != 0 && currentDirection != previousDirection

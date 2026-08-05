@@ -73,6 +73,9 @@ Melox lets Android users find and play music already stored on their device thro
   automatically. Albums, Artists, and Folders switch only through the `TabRow`;
   horizontal swipes remain reserved for the root pager. Tapping a tab changes
   the selected state directly instead of animating through intermediate tabs.
+  When a focused search field receives Back, the first press hides the software
+  keyboard and clears focus together; the query remains available in the open
+  field.
 - Albums, Artists, and Folders share one stationary alphabet-index overlay.
   Switching the `TabRow` moves only page content and updates that overlay's
   sections and target list without creating a second index.
@@ -117,7 +120,9 @@ Melox lets Android users find and play music already stored on their device thro
   origin and large title.
 - A Search action immediately precedes Sort in each library top bar. It reveals
   the Miuix SearchBar below the title with the same vertical expand/fade motion
-  as dependent theme settings and leaves 6 dp below the field.
+  as dependent theme settings and leaves 6 dp below the field. Every search
+  field has 16 dp of outer horizontal spacing and uses the generic Search / 搜索
+  hint.
 - Albums expose 2-column and 3-column grid styles and sort by album name,
   album artist, song count, or year. The 2-column style uses a rounded
   horizontal card with a square cover at the left and two text lines at the
@@ -171,7 +176,14 @@ Melox lets Android users find and play music already stored on their device thro
 
 ### Playback
 
-- Tapping a row replaces playback with the visible list and starts at that row.
+- Tapping a row starts playback at that row using the current page's playback
+  list.
+  When a non-empty Songs-page search leaves exactly one visible result, the
+  selected track still starts from its position in the complete current Songs
+  page list, rather than creating a one-track queue. Searches with multiple
+  results use the same complete Songs page queue while still starting at the
+  clicked result. The active playback mode then applies its normal order,
+  repeat-one, or pseudo-random queue ordering to that complete list.
 - Continue through the queue in order and highlight the current local track.
 - Support play/pause, previous, next, seek, order/repeat-one/pseudo-random
   playback, play next, append, remove, jump, and clear.
@@ -213,7 +225,7 @@ Melox lets Android users find and play music already stored on their device thro
   summary card with the same option background and 56 dp artwork has 12 dp
   left/top/bottom artwork-side padding and is followed by one preference-style
   action card for Play next, Add to queue, Album, Artist, and Song information.
-  Add to queue uses a 20 dp icon shifted 2 dp right with 1 dp more text gap.
+  Add to queue uses a 20 dp icon shifted 1 dp right with 2 dp more text gap.
   Album and Artist action labels clamp to one line with an ellipsis. A single
   artist opens its matching library detail page; multiple artists open a
   separate titled `OverlayBottomSheet` whose rows reuse the artist-library list
@@ -231,17 +243,18 @@ Melox lets Android users find and play music already stored on their device thro
   count is capped before row-height multiplication so a large restored queue
   cannot create a Compose constraint outside the representable range. Its
   title is centered in the official sheet header, Close is a leading action,
-  and Clear is a trailing Delete icon. It opens at the current queue item. All
-  options share one
-  `secondaryContainer` Miuix card and each full row is one `BasicComponent`.
-  Rows use 44 dp artwork with 12 dp start/top/bottom padding; title and artist
+  and Clear is a trailing Delete icon whose visible glyph ends 28 dp from the
+  screen edge. Queue options are direct full-width Miuix rows with no wrapping
+  item/card. It opens at the current queue item. Rows use 44 dp artwork with
+  24 dp start, 16 dp end, and 12 dp top/bottom padding; title and artist
   use the same `headline2` / `footnote1` hierarchy and one-line ellipsis
-  behavior as song rows. The trailing action only removes that queue item;
+  behavior as song rows. The trailing action only removes that queue item; its
+  circle-minus glyph shares the Clear icon's 28 dp visual right edge.
   quality badges, duration, and More are omitted. The current row uses
   `BasicComponent`'s persistent `holdDownState` Miuix indication rather than a
-  custom colored rounded background. The option card ends immediately after
-  the last row; navigation-bar inset plus 12 dp is reserved below the card,
-  matching the More and participating-artists sheets. Clear opens a Miuix OverlayDialog
+  custom colored rounded background. The list viewport extends behind the
+  transparent navigation bar; navigation-bar inset plus 12 dp is supplied as
+  scrollable list content padding instead of a separate blocking footer. Clear opens a Miuix OverlayDialog
   with separate title, question, Cancel, and Confirm actions. Removing a queue
   item uses a circle minus icon derived from AddCircle.
 - Always show a mini player. Before playback it shows placeholder artwork,
@@ -253,8 +266,10 @@ Melox lets Android users find and play music already stored on their device thro
   tracks on release. Next slides from beneath the trailing-control mask during
   a left swipe; Previous slides from beneath the artwork mask during a right
   swipe. Each label stays 12 sp behind the translated metadata region. The
-  system threshold haptic fires once when a swipe first becomes eligible to
-  change to a different track. Tapping
+  system threshold haptic fires whenever the drag enters an eligible Previous
+  or Next commit region for a different track. Leaving that region rearms the
+  same direction, and reversing into the opposite commit region triggers its
+  own haptic. Tapping
   or swiping upward opens the full player; tapping the trailing queue icon opens
   the queue.
 - Mini and full player stay outside secondary-page navigation while sharing one
@@ -274,13 +289,28 @@ Melox lets Android users find and play music already stored on their device thro
   path and parameters. Normal blur, floating blur, liquid glass, dark/light
   treatment, highlight, and opaque fallback remain owned by `MiniPlayerChrome`
   and `miniPlayerSurface`; the VMusic backdrop implementation is not migrated.
-- The full-player atmosphere is generated from the current artwork off the main
-  thread with a 128 px RGB_565 working bitmap, saturation 3x,
-  theme-appropriate tonal overlays, and a bundled-native-free two-pass Gaussian
-  blur matched to FlamingoSank's 25 px kernel.
-  The previous atmosphere is retained only until the current processed bitmap is
-  ready, so switching tracks does not show a placeholder.
-- Provide a full player with safe artwork-derived atmosphere. Song title and
+- The full-player background reuses the cached artwork bitmap and rebuilds it as
+  an 8-by-8 HCT color field off the main thread. Every pixel retains its hue,
+  caps realized chroma at 32, and uses tone 48 in light theme or 24 in dark
+  theme. The center 4-by-4 pixels seed one VMusic-style background bitmap. Its
+  four 2-by-2 output quadrants then interpolate through matching pixel positions
+  in the center, horizontal side, outer corner, and vertical side regions:
+  top-left and bottom-right move clockwise with 24-second then 18-second laps,
+  while top-right and bottom-left move counterclockwise with 18-second then
+  24-second laps. Independently, the complete 4-by-4 color grid rotates
+  clockwise through quarter-turn pixel mappings every 18 seconds. Each endpoint
+  rotates the local pixel coordinates with the grid, and adjacent quarter-turn
+  states interpolate continuously, preventing a cross-shaped center boundary.
+  The output uses the VMusic rendering path: one remembered `BitmapPainter`
+  with `FilterQuality.Low`, displayed by `Image` with `ContentScale.Crop`.
+  Compose/Skia bilinear sampling and continuous ARGB interpolation blend
+  adjacent samples without hard boundaries. The bitmap stays fixed and has no
+  geometric rotation, animated scale, translation, second layer, or perspective
+  deformation. Animation runs only while the settled full player
+  is drawing, the lifecycle is resumed, and the current song is playing. Pause
+  preserves both animation phases until playback resumes. Missing or invalid
+  artwork falls back to the Miuix card-equivalent `surfaceContainer` color.
+- Provide a full player with a safe artwork-derived color field. Song title and
   artist are stacked at the top without a visible back button or "Now
   playing" label. The slightly smaller, less-rounded artwork has a restrained
   shadow that fades in only after shared expansion has finished and is centered
@@ -296,6 +326,9 @@ Melox lets Android users find and play music already stored on their device thro
   play/pause, and next form the first control row; playback mode, queue, and
   track actions form the second row with one consistent icon size. Previous,
   play/pause, and next retain their intentionally distinct primary sizes.
+  Song title, Previous, Play/Pause, and Next use solid white in both themes.
+  Artist, remaining actions, progress, and time labels use 80% white; none of
+  these foreground colors are derived from artwork.
 - Once expansion completes, the atmosphere also paints the pixels outside the
   physical screen's large corner radius so devices with very rounded displays
   never expose black wedges.
@@ -370,8 +403,13 @@ Melox lets Android users find and play music already stored on their device thro
   of a retained root page or an empty theme surface.
 - The first application frame draws the top bar, root page skeleton, persisted
   normal/floating/liquid-glass navigation style, and the last cached mini-player
-  identity. The service preloads that bounded identity before exposing its media
-  session, while full-queue validation remains asynchronous. One bounded
+  identity plus a bounded 16-item queue window. The service preloads that same
+  window before exposing its media session and starts decoding the complete
+  checksummed queue. The decoded
+  queue is published before slower per-file readability validation, so opening
+  Queue immediately after launch shows at least the first visible page instead
+  of only the current item. Final validation remains asynchronous and removes
+  unreadable items without replacing queue changes made by the user. One bounded
   settings read resolves the navigation style before composition; MediaStore,
   projections, artwork extraction, and the full library snapshot remain
   asynchronous.
@@ -383,6 +421,10 @@ Melox lets Android users find and play music already stored on their device thro
   About.
 - Theme settings: System/Light/Dark, blur, floating bottom bar, liquid glass,
   predictive back, and dynamic colors at the end of the Appearance group.
+- System light/dark changes update the active composition in place. An expanded
+  player remains expanded, the mini-player remains immediately clickable, and
+  the artwork field reuses its sampled source pixels so only the HCT tone target
+  changes.
 - Liquid glass appears only with floating navigation and is disabled with an explanation when unsupported.
 - The liquid-glass preference enters and exits with the official Miuix
   dependent-preference `AnimatedVisibility` motion when floating navigation is
@@ -470,9 +512,12 @@ store publishing.
 - Full-player background and controls follow the shared-player progress while
   the artwork overlay is in flight; the settled page uses the normal final
   layout and the settled mini player uses the normal bar layout.
-  The artwork-derived full-player atmosphere uses the 128 px RGB_565, saturation-3x,
-  tonal-overlay, bundled-native-free two-pass Gaussian blur pipeline and changes tracks
-  without a placeholder.
+  The artwork-derived full-player background uses the cached 8-by-8 HCT color
+  field with realized chroma capped at 32 and tone fixed to 48 or 24. Its
+  animated center-seeded 4-by-4 output follows the quadrant orbit timing above,
+  while its complete color grid rotates through pixel mappings every 18 seconds
+  during active playback. The bitmap geometry does not rotate. It uses
+  `surfaceContainer` when artwork is unavailable and adds no local AAR.
 - Secondary and tertiary page backgrounds remain visible and blur correctly
   from the mini-player top through the screen bottom while their last
   interactive item remains reachable above the mini player.
@@ -527,6 +572,8 @@ store publishing.
 - Every theme-mode selection updates both the preference value and popup
   selection immediately before persistence completes, and predictive back can
   be toggled repeatedly from Theme settings without an app restart or crash.
+- Switching the system between light and dark mode does not recreate or collapse
+  the player, interrupt playback, or leave the mini-player unable to open.
 - Startup permission denial, startup permission grant without scanning, manual
   permission grant followed by scanning, empty library, populated library,
   long metadata, and scan failure states are readable and deterministic.

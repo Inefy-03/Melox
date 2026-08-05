@@ -10,7 +10,6 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -58,11 +57,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.graphics.lerp as lerpColor
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
@@ -92,16 +88,15 @@ import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.ui.component.library.PlaybackArtworkFrame
 import com.melox.player.ui.component.library.TrackActionsOverlay
-import com.melox.player.ui.component.library.extractArtworkColor
 import com.melox.player.ui.component.library.formatDuration
 import com.melox.player.ui.component.library.rememberArtworkBitmap
-import com.melox.player.ui.component.playback.ArtworkKenBurnsBackdrop
+import com.melox.player.ui.component.playback.ArtworkFlowBackground
 import com.melox.player.ui.component.playback.PLAYER_FULL_ARTWORK_REQUEST_SIZE
 import com.melox.player.ui.component.playback.PLAYER_TRACK_ARTWORK_CROSSFADE_DURATION_MILLIS
 import com.melox.player.ui.component.playback.PLAYER_TRACK_ARTWORK_CROSSFADE_EASING
 import com.melox.player.ui.component.playback.playerControlIconTransition
 import com.melox.player.ui.component.playback.recordPlayerLayer
-import com.melox.player.ui.component.playback.rememberArtworkAtmosphere
+import com.melox.player.ui.component.playback.fittedArtworkRect
 import com.melox.player.ui.component.playback.scaledRectAroundCenter
 import kotlin.math.roundToLong
 import top.yukonga.miuix.kmp.basic.Icon
@@ -155,65 +150,9 @@ internal fun FullPlayerScreen(
         )
     }
     val artworkBlend = rememberArtworkBlend(loadedArtworkBitmap)
-    val fallbackArtworkColor = MiuixTheme.colorScheme.primary
-    val previousArtworkColor = remember(
-        artworkBlend.previousBitmap,
-        fallbackArtworkColor,
-    ) {
-        artworkBlend.previousBitmap?.extractArtworkColor() ?: fallbackArtworkColor
-    }
-    val currentArtworkColor = remember(
-        artworkBlend.currentBitmap,
-        fallbackArtworkColor,
-    ) {
-        artworkBlend.currentBitmap?.extractArtworkColor() ?: fallbackArtworkColor
-    }
-    // When the previous frame had no real artwork its color is a theme
-    // fallback (e.g. primary blue). Skip the lerp so control tints jump
-    // straight from the no-artwork default to the current artwork color
-    // without passing through an unrelated blue midpoint.
-    val artworkBackdropColor = if (
-        artworkBlend.hasPreviousFrame &&
-        artworkBlend.previousBitmap != null
-    ) {
-        lerpColor(previousArtworkColor, currentArtworkColor, artworkBlend.progress)
-    } else {
-        currentArtworkColor
-    }
-    val surfaceColor = MiuixTheme.colorScheme.surface
-    val fallbackBackgroundColor = if (isDark) Color.Black else Color.White
-    val currentBackgroundColor = if (artworkBlend.currentBitmap != null) {
-        currentArtworkColor.copy(alpha = 0.24f).compositeOver(surfaceColor)
-    } else {
-        fallbackBackgroundColor
-    }
-    // Background switches instantly on track change (no cross-fade between
-    // the previous and current artwork colors).
-    val backgroundColor = currentBackgroundColor
-    val hasArtwork = artworkBlend.currentBitmap != null
-    val controlColor = when {
-        isDark -> Color.White
-        hasArtwork -> artworkBackdropColor.readableControlColor()
-        else -> MiuixTheme.colorScheme.onSurface
-    }
-    val emphasisControlColor = when {
-        isDark -> Color.White
-        hasArtwork -> controlColor.deeperArtworkControlColor()
-        else -> MiuixTheme.colorScheme.onSurface
-    }
-    val artistControlColor = when {
-        isDark -> Color.White
-        hasArtwork -> emphasisControlColor.copy(alpha = 0.8f)
-        else -> MiuixTheme.colorScheme.onSurface.copy(alpha = 0.68f)
-    }
-    val previousAtmosphere = rememberArtworkAtmosphere(
-        artwork = artworkBlend.previousBitmap,
-        brighten = !isDark,
-    )
-    val currentAtmosphere = rememberArtworkAtmosphere(
-        artwork = artworkBlend.currentBitmap,
-        brighten = !isDark,
-    )
+    val emphasisControlColor = Color.White
+    val controlColor = emphasisControlColor.copy(alpha = 0.8f)
+    val artistControlColor = controlColor
     val artworkCornerRadius = 12.dp
     val currentOnPlayerDragStart by rememberUpdatedState(onPlayerDragStart)
     val currentOnPlayerDrag by rememberUpdatedState(onPlayerDrag)
@@ -258,17 +197,14 @@ internal fun FullPlayerScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(backgroundColor)
                 .then(dismissGestureModifier),
         ) {
-            if (previousAtmosphere != null || currentAtmosphere != null) {
-                ArtworkKenBurnsBackdrop(
-                    bitmap = currentAtmosphere,
-                    fallbackBitmap = previousAtmosphere,
-                    animateDrift = playback.playWhenReady,
-                    isDark = isDark,
-                )
-            }
+            ArtworkFlowBackground(
+                artwork = loadedArtworkBitmap,
+                isDark = isDark,
+                animate = drawInPlace && playback.isPlaying,
+                modifier = Modifier.fillMaxSize(),
+            )
             Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -806,11 +742,31 @@ private fun PlayerArtwork(
     }
     val artworkScale = playbackScale.value
     var artworkLayoutBounds by remember { mutableStateOf(Rect.Zero) }
+    var artworkContentBoundsInFrame by remember(artworkBlend.currentBitmap) {
+        mutableStateOf(Rect.Zero)
+    }
     SideEffect {
         if (artworkLayoutBounds.width > 0f && artworkLayoutBounds.height > 0f) {
+            val unscaledArtworkBounds = when {
+                artworkContentBoundsInFrame.width > 0f &&
+                    artworkContentBoundsInFrame.height > 0f -> Rect(
+                    left = artworkLayoutBounds.left + artworkContentBoundsInFrame.left,
+                    top = artworkLayoutBounds.top + artworkContentBoundsInFrame.top,
+                    right = artworkLayoutBounds.left + artworkContentBoundsInFrame.right,
+                    bottom = artworkLayoutBounds.top + artworkContentBoundsInFrame.bottom,
+                )
+
+                artworkBlend.currentBitmap != null -> fittedArtworkRect(
+                    bounds = artworkLayoutBounds,
+                    bitmapWidth = artworkBlend.currentBitmap.width,
+                    bitmapHeight = artworkBlend.currentBitmap.height,
+                )
+
+                else -> artworkLayoutBounds
+            }
             onArtworkBoundsChanged(
                 scaledRectAroundCenter(
-                    bounds = artworkLayoutBounds,
+                    bounds = unscaledArtworkBounds,
                     scale = artworkScale,
                 ),
             )
@@ -863,6 +819,9 @@ private fun PlayerArtwork(
             shadowElevation = 6.dp * shadowAlpha * artworkBlend.progress,
             ambientShadowColor = Color.Black.copy(alpha = 0.16f * shadowAlpha * artworkBlend.progress),
             spotShadowColor = Color.Black.copy(alpha = 0.22f * shadowAlpha * artworkBlend.progress),
+            onContentBoundsChanged = { bounds ->
+                artworkContentBoundsInFrame = bounds
+            },
         )
     }
 }
@@ -1084,12 +1043,6 @@ private fun PlaybackModeButton(
     }
 }
 
-private fun Color.readableControlColor(): Color =
-    if (luminance() > 0.62f) lerpColor(this, Color.Black, 0.42f) else this
-
-private fun Color.deeperArtworkControlColor(): Color =
-    lerpColor(this, Color.Black, 0.2f)
-
 @Composable
 private fun PlayerProgress(
     positionMs: Long,
@@ -1171,10 +1124,15 @@ private fun PlayerProgress(
         LinearProgressIndicator(
             progress = progress,
             colors = ProgressIndicatorDefaults.progressIndicatorColors(
-                foregroundColor =
-                    indicatorColor.copy(alpha = if (enabled) 1f else 0.55f),
-                disabledForegroundColor = indicatorColor.copy(alpha = 0.55f),
-                backgroundColor = indicatorColor.copy(alpha = 0.28f),
+                foregroundColor = if (enabled) {
+                    indicatorColor
+                } else {
+                    indicatorColor.copy(alpha = indicatorColor.alpha * 0.55f)
+                },
+                disabledForegroundColor =
+                    indicatorColor.copy(alpha = indicatorColor.alpha * 0.55f),
+                backgroundColor =
+                    indicatorColor.copy(alpha = indicatorColor.alpha * 0.28f),
             ),
             height = indicatorHeight,
             modifier = Modifier
@@ -1188,12 +1146,12 @@ private fun PlayerProgress(
         Text(
             text = formatDuration(displayedPosition.roundToLong()),
             style = MiuixTheme.textStyles.footnote1,
-            color = labelColor.copy(alpha = 0.72f),
+            color = labelColor,
         )
         Text(
             text = formatDuration(durationMs),
             style = MiuixTheme.textStyles.footnote1,
-            color = labelColor.copy(alpha = 0.72f),
+            color = labelColor,
         )
     }
 }

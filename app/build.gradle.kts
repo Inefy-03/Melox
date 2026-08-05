@@ -1,4 +1,7 @@
 import java.util.Properties
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 plugins {
     alias(libs.plugins.android.application)
@@ -31,6 +34,9 @@ val releaseSigningValues = listOf(
 val releaseSigningConfigured = localPropertiesFile.isFile &&
     releaseKeystoreFile?.isFile == true &&
     releaseSigningValues.all { (_, value) -> !value.isNullOrBlank() }
+val releaseBuildDate = LocalDate.now(ZoneId.of("Asia/Shanghai"))
+    .format(DateTimeFormatter.ofPattern("yyMMdd"))
+val appVersionName = "1.0.0"
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.equals("assemble", ignoreCase = true) ||
         taskName.endsWith(":assemble", ignoreCase = true) ||
@@ -66,7 +72,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -110,6 +116,14 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("Melox_${appVersionName}_${releaseBuildDate}.apk")
+        }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
@@ -120,7 +134,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.navigation3.runtime)
-    implementation(files("libs/kenburnsview-1.0.7.aar"))
+    implementation(libs.material.color.utilities)
     implementation(libs.miuix.blur)
     implementation(libs.miuix.icons)
     implementation(libs.miuix.navigation3.ui)

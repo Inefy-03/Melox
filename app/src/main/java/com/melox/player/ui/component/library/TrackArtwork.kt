@@ -26,11 +26,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -50,6 +53,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Music
@@ -122,6 +127,7 @@ fun PlaybackArtwork(
     bitmapCrossfadeDurationMillis: Int = 0,
     bitmapCrossfadeEasing: Easing = LinearEasing,
     priorityLoad: Boolean = false,
+    rectangularCornerRadiusReduction: Dp = 0.dp,
 ) {
     val bitmap = rememberArtworkBitmap(
         contentUri = contentUri,
@@ -139,6 +145,7 @@ fun PlaybackArtwork(
             easing = bitmapCrossfadeEasing,
             modifier = modifier,
             contentScale = contentScale,
+            rectangularCornerRadiusReduction = rectangularCornerRadiusReduction,
         )
     } else {
         PlaybackArtworkFrame(
@@ -147,6 +154,7 @@ fun PlaybackArtwork(
             cornerRadius = cornerRadius,
             modifier = modifier,
             contentScale = contentScale,
+            rectangularCornerRadiusReduction = rectangularCornerRadiusReduction,
         )
     }
 }
@@ -160,44 +168,68 @@ private fun PlaybackArtworkStackedFade(
     easing: Easing,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    rectangularCornerRadiusReduction: Dp = 0.dp,
 ) {
-    var baseBitmap by remember { mutableStateOf(targetBitmap) }
+    var outgoingBitmap by remember { mutableStateOf(targetBitmap) }
     var incomingBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var hasIncomingLayer by remember { mutableStateOf(false) }
+    val outgoingAlpha = remember { Animatable(1f) }
     val incomingAlpha = remember { Animatable(1f) }
 
-    // Keep the outgoing frame opaque so SourceOver never exposes the surface.
     LaunchedEffect(targetBitmap) {
-        if (targetBitmap === baseBitmap && !hasIncomingLayer) return@LaunchedEffect
+        if (targetBitmap === outgoingBitmap && !hasIncomingLayer) return@LaunchedEffect
 
-        if (hasIncomingLayer && incomingAlpha.value >= 0.5f) {
-            baseBitmap = incomingBitmap
+        if (hasIncomingLayer) {
+            outgoingBitmap = incomingBitmap
         }
-        hasIncomingLayer = false
         incomingAlpha.snapTo(0f)
+        outgoingAlpha.snapTo(1f)
         incomingBitmap = targetBitmap
         hasIncomingLayer = true
-        incomingAlpha.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(
-                durationMillis = durationMillis,
-                easing = easing,
-            ),
-        )
-        baseBitmap = targetBitmap
+        coroutineScope {
+            launch {
+                outgoingAlpha.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(
+                        durationMillis = durationMillis,
+                        easing = easing,
+                    ),
+                )
+            }
+            launch {
+                incomingAlpha.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = durationMillis,
+                        easing = easing,
+                    ),
+                )
+            }
+        }
+        outgoingBitmap = targetBitmap
         hasIncomingLayer = false
         incomingBitmap = null
+        outgoingAlpha.snapTo(1f)
     }
 
     Box(modifier = modifier.size(size)) {
-        PlaybackArtworkFrame(
-            bitmap = baseBitmap,
-            size = size,
-            cornerRadius = cornerRadius,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = contentScale,
-        )
         if (hasIncomingLayer) {
+            // The two layers crossfade together so a rectangular incoming image
+            // cannot reveal an unchanged outgoing image in its letterbox area.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = outgoingAlpha.value },
+            ) {
+                PlaybackArtworkFrame(
+                    bitmap = outgoingBitmap,
+                    size = size,
+                    cornerRadius = cornerRadius,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = contentScale,
+                    rectangularCornerRadiusReduction = rectangularCornerRadiusReduction,
+                )
+            }
             PlaybackArtworkFrame(
                 bitmap = incomingBitmap,
                 size = size,
@@ -206,6 +238,16 @@ private fun PlaybackArtworkStackedFade(
                     .fillMaxSize()
                     .graphicsLayer { alpha = incomingAlpha.value },
                 contentScale = contentScale,
+                rectangularCornerRadiusReduction = rectangularCornerRadiusReduction,
+            )
+        } else {
+            PlaybackArtworkFrame(
+                bitmap = outgoingBitmap,
+                size = size,
+                cornerRadius = cornerRadius,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = contentScale,
+                rectangularCornerRadiusReduction = rectangularCornerRadiusReduction,
             )
         }
     }
@@ -222,8 +264,16 @@ internal fun PlaybackArtworkFrame(
     shadowElevation: Dp = 0.dp,
     ambientShadowColor: Color = Color.Transparent,
     spotShadowColor: Color = Color.Transparent,
+    onContentBoundsChanged: ((Rect) -> Unit)? = null,
+    rectangularCornerRadiusReduction: Dp = 0.dp,
 ) {
     if (bitmap != null) {
+        val resolvedCornerRadius = playbackArtworkCornerRadius(
+            cornerRadius = cornerRadius,
+            bitmapWidth = bitmap.width,
+            bitmapHeight = bitmap.height,
+            rectangularReduction = rectangularCornerRadiusReduction,
+        )
         val imageSize = remember(bitmap.width, bitmap.height, size, contentScale) {
             if (contentScale == ContentScale.Fit) {
                 fittedArtworkSize(bitmap = bitmap, bound = size)
@@ -240,11 +290,14 @@ internal fun PlaybackArtworkFrame(
                 contentDescription = null,
                 modifier = Modifier
                     .size(imageSize)
+                    .onGloballyPositioned { coordinates ->
+                        onContentBoundsChanged?.invoke(coordinates.boundsInParent())
+                    }
                     .graphicsLayer {
                         this.shadowElevation = shadowElevation.toPx()
                         this.ambientShadowColor = ambientShadowColor
                         this.spotShadowColor = spotShadowColor
-                        shape = RoundedCornerShape(cornerRadius)
+                        shape = RoundedCornerShape(resolvedCornerRadius)
                         clip = true
                     },
                 contentScale = contentScale,
@@ -270,6 +323,17 @@ internal fun PlaybackArtworkFrame(
             )
         }
     }
+}
+
+internal fun playbackArtworkCornerRadius(
+    cornerRadius: Dp,
+    bitmapWidth: Int,
+    bitmapHeight: Int,
+    rectangularReduction: Dp,
+): Dp = if (bitmapWidth != bitmapHeight) {
+    maxOf(0.dp, cornerRadius - rectangularReduction)
+} else {
+    cornerRadius
 }
 
 private fun fittedArtworkSize(bitmap: Bitmap, bound: Dp): DpSize {

@@ -26,6 +26,7 @@
     <string name="music_sort_duration">时长</string>
     <string name="music_sort_descending">倒序</string>
     <string name="music_search_hint">搜索歌曲、艺术家、专辑或文件</string>
+    <string name="search_hint">搜索</string>
     <string name="search_clear">清空搜索</string>
     <string name="music_search_cancel">取消</string>
     <string name="music_no_search_results">没有匹配的歌曲</string>

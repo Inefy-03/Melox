@@ -3,6 +3,7 @@ package com.melox.player
 import android.Manifest
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.dp
+import com.materialkolor.hct.Hct
 import com.melox.player.data.library.AlbumGridStyle
 import com.melox.player.data.library.AlbumSortConfig
 import com.melox.player.data.library.AlbumSortField
@@ -35,6 +36,7 @@ import com.melox.player.data.library.sortMusicTracks
 import com.melox.player.data.library.splitArtistNames
 import com.melox.player.data.playback.PlaybackSnapshotCodec
 import com.melox.player.data.playback.retainReadableItems
+import com.melox.player.data.playback.toStartupPlaybackPreview
 import com.melox.player.data.repository.resolveAlbumGridStyleOrdinal
 import com.melox.player.model.AppSettings
 import com.melox.player.model.AudioQuality
@@ -49,10 +51,12 @@ import com.melox.player.model.ThemeMode
 import com.melox.player.model.resolveAudioQuality
 import com.melox.player.playback.isValidQueueIndex
 import com.melox.player.playback.buildHomeRecommendationPlaybackQueue
+import com.melox.player.playback.hasSameQueueSlots
 import com.melox.player.playback.nextPlaybackMode
 import com.melox.player.playback.nextQueueInsertionIndex
 import com.melox.player.playback.playbackQueueReplacement
 import com.melox.player.playback.reorderQueueForPlaybackMode
+import com.melox.player.playback.reconcileValidatedPlaybackSnapshot
 import com.melox.player.playback.sourceOrderForPlayNext
 import com.melox.player.playback.toInitialPlaybackState
 import com.melox.player.ui.component.library.findAlphabetTargetIndex
@@ -64,15 +68,26 @@ import com.melox.player.ui.component.library.AlphabetSections
 import com.melox.player.ui.component.library.audioFormatLabel
 import com.melox.player.ui.component.library.displayFileLocation
 import com.melox.player.ui.component.library.participatingArtistGroups
+import com.melox.player.ui.component.library.playbackArtworkCornerRadius
 import com.melox.player.ui.component.library.snapshotArtworkDiskCacheEntries
 import com.melox.player.ui.component.playback.hasDifferentMetadataSwipeTarget
+import com.melox.player.ui.component.playback.miniMetadataSwipeThresholdDirection
+import com.melox.player.ui.component.playback.shouldTriggerMiniMetadataSwipeThresholdHaptic
+import com.melox.player.ui.shouldClearSearchFocusAfterImeDismissed
 import com.melox.player.ui.component.playback.PLAYER_LAYER_HANDOFF_END_PROGRESS
 import com.melox.player.ui.component.playback.playerSheetBarAlpha
 import com.melox.player.ui.component.playback.playerSheetDragProgress
 import com.melox.player.ui.component.playback.playerSheetDragTarget
 import com.melox.player.ui.component.playback.playerSheetPageAlpha
+import com.melox.player.ui.component.playback.playerWindowUsesPhysicalScreenCorners
+import com.melox.player.ui.component.playback.resolveArtworkColorFieldPixel
+import com.melox.player.ui.component.playback.resolveArtworkBackgroundColorRotation
+import com.melox.player.ui.component.playback.resolveArtworkOrbitColors
+import com.melox.player.ui.component.playback.resolveArtworkOrbitProgress
+import com.melox.player.ui.component.playback.fittedArtworkRect
 import com.melox.player.ui.component.playback.scaledRectAroundCenter
 import com.melox.player.ui.component.playback.sharedArtworkRect
+import com.melox.player.ui.component.playback.sharedContainerCornerRadius
 import com.melox.player.ui.component.playback.sharedContainerRect
 import com.melox.player.ui.navigation.predictiveBackHandlerEnabled
 import com.melox.player.ui.requiredAudioPermission
@@ -81,8 +96,9 @@ import com.melox.player.ui.rootPagerUserScrollEnabled
 import com.melox.player.ui.screen.home.buildHomeRecentlyAddedTracks
 import com.melox.player.ui.screen.home.selectHomeRecommendations
 import com.melox.player.ui.screen.library.MusicLibraryPlaceholder
+import com.melox.player.ui.screen.library.resolveMusicPlaybackSelection
 import com.melox.player.ui.screen.library.toMusicLibraryPlaceholder
-import com.melox.player.ui.screen.playback.queueCardHeight
+import com.melox.player.ui.screen.playback.queueListHeight
 import com.melox.player.ui.theme.toColorSchemeMode
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -94,6 +110,7 @@ import java.util.zip.CRC32
 import java.util.zip.CheckedOutputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -101,9 +118,118 @@ import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import kotlin.math.abs
 import kotlin.random.Random
 
 class UiLogicTest {
+    @Test
+    fun artworkColorFieldCapsChromaAndUsesThemeTone() {
+        val sourceColor = 0xFFFF1744.toInt()
+        val source = Hct.fromInt(sourceColor)
+        val light = Hct.fromInt(resolveArtworkColorFieldPixel(sourceColor, isDark = false))
+        val dark = Hct.fromInt(resolveArtworkColorFieldPixel(sourceColor, isDark = true))
+        val lightHueDelta = abs(source.hue - light.hue).let { minOf(it, 360.0 - it) }
+        val darkHueDelta = abs(source.hue - dark.hue).let { minOf(it, 360.0 - it) }
+
+        assertTrue(light.chroma <= 32.01)
+        assertTrue(dark.chroma <= 32.01)
+        // HCT may shift the realized hue slightly when the requested tone and
+        // chroma sit near the target gamut boundary.
+        assertTrue(lightHueDelta <= 5.0)
+        assertTrue(darkHueDelta <= 5.0)
+        assertEquals(48.0, light.tone, 0.5)
+        assertEquals(24.0, dark.tone, 0.5)
+    }
+
+    @Test
+    fun artworkOrbitStartsFromTheCenterFourByFour() {
+        val fieldPixels = IntArray(8 * 8) { index -> 0xFF000000.toInt() or index }
+        val outputPixels = IntArray(4 * 4)
+
+        resolveArtworkOrbitColors(fieldPixels, cycleProgress = 0f, outputPixels)
+
+        for (outputY in 0 until 4) {
+            for (outputX in 0 until 4) {
+                val sourceIndex = (outputY + 2) * 8 + outputX + 2
+                assertEquals(fieldPixels[sourceIndex], outputPixels[outputY * 4 + outputX])
+            }
+        }
+    }
+
+    @Test
+    fun artworkOrbitMovesSidewaysBeforeTheOuterCorners() {
+        val fieldPixels = IntArray(8 * 8) { index -> 0xFF000000.toInt() or index }
+        val outputPixels = IntArray(4 * 4)
+
+        resolveArtworkOrbitColors(
+            fieldPixels,
+            cycleProgress = 6_000f / 42_000f,
+            outputPixels,
+        )
+        assertEquals(fieldPixels[2 * 8], outputPixels[0])
+        assertEquals(fieldPixels[5 * 8 + 7], outputPixels[3 * 4 + 3])
+
+        resolveArtworkOrbitColors(
+            fieldPixels,
+            cycleProgress = 4_500f / 42_000f,
+            outputPixels,
+        )
+        assertEquals(fieldPixels[2 * 8 + 7], outputPixels[3])
+        assertEquals(fieldPixels[5 * 8], outputPixels[3 * 4])
+    }
+
+    @Test
+    fun artworkOrbitAlternatesTwentyFourAndEighteenSecondLaps() {
+        assertEquals(0.25f, resolveArtworkOrbitProgress(6_000f, 24_000f, 18_000f), 0f)
+        assertEquals(1f, resolveArtworkOrbitProgress(24_000f, 24_000f, 18_000f), 0f)
+        assertEquals(1.25f, resolveArtworkOrbitProgress(28_500f, 24_000f, 18_000f), 0f)
+        assertEquals(0.25f, resolveArtworkOrbitProgress(4_500f, 18_000f, 24_000f), 0f)
+        assertEquals(1f, resolveArtworkOrbitProgress(18_000f, 18_000f, 24_000f), 0f)
+        assertEquals(2f, resolveArtworkOrbitProgress(42_000f, 18_000f, 24_000f), 0f)
+    }
+
+    @Test
+    fun artworkBackgroundRotatesTheWholeGridWithoutBreakingAdjacency() {
+        val sourcePixels = IntArray(4 * 4) { index -> 0xFF000000.toInt() or index }
+        val outputPixels = IntArray(4 * 4)
+
+        resolveArtworkBackgroundColorRotation(sourcePixels, 0f, outputPixels)
+        assertTrue(sourcePixels.contentEquals(outputPixels))
+
+        resolveArtworkBackgroundColorRotation(sourcePixels, 0.25f, outputPixels)
+        assertArrayEquals(
+            intArrayOf(12, 8, 4, 0, 13, 9, 5, 1, 14, 10, 6, 2, 15, 11, 7, 3)
+                .map { 0xFF000000.toInt() or it }
+                .toIntArray(),
+            outputPixels,
+        )
+
+        resolveArtworkBackgroundColorRotation(sourcePixels, 0.5f, outputPixels)
+        assertArrayEquals(sourcePixels.reversedArray(), outputPixels)
+
+        resolveArtworkBackgroundColorRotation(sourcePixels, 0.75f, outputPixels)
+        assertArrayEquals(
+            intArrayOf(3, 7, 11, 15, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12)
+                .map { 0xFF000000.toInt() or it }
+                .toIntArray(),
+            outputPixels,
+        )
+
+        resolveArtworkBackgroundColorRotation(sourcePixels, 1f, outputPixels)
+        assertTrue(sourcePixels.contentEquals(outputPixels))
+    }
+
+    @Test
+    fun artworkBackgroundInterpolatesBetweenWholeGridRotations() {
+        val sourcePixels = IntArray(4 * 4) { index -> 0xFF000000.toInt() or index }
+        val outputPixels = IntArray(4 * 4)
+
+        resolveArtworkBackgroundColorRotation(sourcePixels, 0.125f, outputPixels)
+
+        assertEquals(0xFF000006.toInt(), outputPixels[0])
+        assertEquals(0xFF000009.toInt(), outputPixels[15])
+    }
+
     @Test
     fun rootPagerYieldsHorizontalGestureToRecommendationsAfterFirstCard() {
         assertTrue(rootPagerUserScrollEnabled(selectedPage = 0, homeRecommendationPage = 0))
@@ -205,6 +331,65 @@ class UiLogicTest {
     }
 
     @Test
+    fun sharedPlayerContainerTargetsTheAvailableScreenCornerRadius() {
+        assertEquals(18f, sharedContainerCornerRadius(18f, 46f, 0f, 0f), 0f)
+        assertEquals(46f, sharedContainerCornerRadius(18f, 46f, 1f, 0f), 0f)
+        assertEquals(0f, sharedContainerCornerRadius(18f, 46f, 1f, 1f), 0f)
+        assertEquals(0f, sharedContainerCornerRadius(18f, 0f, 1f, 0f), 0f)
+    }
+
+    @Test
+    fun sharedPlayerContainerIgnoresStaleCornerExpansionBeforeFullBounds() {
+        assertEquals(32f, sharedContainerCornerRadius(18f, 46f, 0.5f, 1f), 0f)
+        assertEquals(46f, sharedContainerCornerRadius(18f, 46f, 1f, 0f), 0f)
+        assertEquals(23f, sharedContainerCornerRadius(18f, 46f, 1f, 0.5f), 0f)
+    }
+
+    @Test
+    fun playerWindowUsesPhysicalCornersOnlyWhenItFillsTheMainScreen() {
+        assertTrue(
+            playerWindowUsesPhysicalScreenCorners(
+                currentWidth = 1080,
+                currentHeight = 2400,
+                maximumWidth = 1080,
+                maximumHeight = 2400,
+                isInMultiWindowMode = false,
+                isInPictureInPictureMode = false,
+            ),
+        )
+        assertFalse(
+            playerWindowUsesPhysicalScreenCorners(
+                currentWidth = 760,
+                currentHeight = 1200,
+                maximumWidth = 1080,
+                maximumHeight = 2400,
+                isInMultiWindowMode = false,
+                isInPictureInPictureMode = false,
+            ),
+        )
+        assertFalse(
+            playerWindowUsesPhysicalScreenCorners(
+                currentWidth = 1080,
+                currentHeight = 2400,
+                maximumWidth = 1080,
+                maximumHeight = 2400,
+                isInMultiWindowMode = true,
+                isInPictureInPictureMode = false,
+            ),
+        )
+        assertFalse(
+            playerWindowUsesPhysicalScreenCorners(
+                currentWidth = 1080,
+                currentHeight = 2400,
+                maximumWidth = 1080,
+                maximumHeight = 2400,
+                isInMultiWindowMode = false,
+                isInPictureInPictureMode = true,
+            ),
+        )
+    }
+
+    @Test
     fun sharedArtworkGrowsRightAndUpWithoutChangingAspectRatio() {
         val thumbnail = Rect(16f, 708f, 64f, 756f)
         val albumArt = Rect(28f, 120f, 372f, 464f)
@@ -220,6 +405,26 @@ class UiLogicTest {
             assertTrue(after.width > before.width)
             assertEquals(before.width / before.height, after.width / after.height, 0.0001f)
         }
+    }
+
+    @Test
+    fun sharedArtworkPathMovesRightAndUpThroughoutWithStagedAxisEmphasis() {
+        val thumbnail = Rect(16f, 708f, 64f, 756f)
+        val albumArt = Rect(28f, 120f, 372f, 464f)
+        val quarter = sharedArtworkRect(thumbnail, albumArt, 0.25f)
+        val midpoint = sharedArtworkRect(thumbnail, albumArt, 0.5f)
+
+        val firstHalfHorizontalDistance = midpoint.center.x - thumbnail.center.x
+        val firstHalfVerticalDistance = thumbnail.center.y - midpoint.center.y
+        val secondHalfHorizontalDistance = albumArt.center.x - midpoint.center.x
+        val secondHalfVerticalDistance = midpoint.center.y - albumArt.center.y
+
+        assertTrue(quarter.center.x > thumbnail.center.x)
+        assertTrue(quarter.center.y < thumbnail.center.y)
+        assertTrue(firstHalfHorizontalDistance > firstHalfVerticalDistance)
+        assertTrue(secondHalfVerticalDistance > secondHalfHorizontalDistance)
+        assertEquals(albumArt.center.x, sharedArtworkRect(thumbnail, albumArt, 1f).center.x, 0f)
+        assertEquals(albumArt.center.y, sharedArtworkRect(thumbnail, albumArt, 1f).center.y, 0f)
     }
 
     @Test
@@ -241,6 +446,47 @@ class UiLogicTest {
         assertEquals(layoutBounds.center.x, resumePeakBounds.center.x, 0.0001f)
         assertEquals(layoutBounds.center.y, resumePeakBounds.center.y, 0.0001f)
         assertEquals(layoutBounds.width * 1.02f, resumePeakBounds.width, 0.0001f)
+    }
+
+    @Test
+    fun fittedArtworkRectCentersRectangularArtworkInsideTheFrame() {
+        val frame = Rect(100f, 200f, 300f, 400f)
+
+        assertEquals(
+            Rect(100f, 250f, 300f, 350f),
+            fittedArtworkRect(frame, bitmapWidth = 2, bitmapHeight = 1),
+        )
+        assertEquals(
+            Rect(150f, 200f, 250f, 400f),
+            fittedArtworkRect(frame, bitmapWidth = 1, bitmapHeight = 2),
+        )
+
+        val miniImage = fittedArtworkRect(Rect(0f, 700f, 48f, 748f), 2, 1)
+        val fullImage = fittedArtworkRect(Rect(100f, 100f, 400f, 400f), 2, 1)
+        assertEquals(miniImage, sharedArtworkRect(miniImage, fullImage, 0f))
+        val expandedImage = sharedArtworkRect(miniImage, fullImage, 1f)
+        assertEquals(fullImage, expandedImage)
+        assertEquals(1f, expandedImage.width / fullImage.width, 0f)
+        assertEquals(0f, expandedImage.left - fullImage.left, 0f)
+        assertEquals(0f, expandedImage.top - fullImage.top, 0f)
+    }
+
+    @Test
+    fun rectangularMiniPlayerArtworkUsesASlightlySmallerCornerRadius() {
+        val cornerRadius = 8.dp
+
+        assertEquals(
+            cornerRadius,
+            playbackArtworkCornerRadius(cornerRadius, 512, 512, 1.dp),
+        )
+        assertEquals(
+            7.dp,
+            playbackArtworkCornerRadius(cornerRadius, 1024, 512, 1.dp),
+        )
+        assertEquals(
+            7.dp,
+            playbackArtworkCornerRadius(cornerRadius, 512, 1024, 1.dp),
+        )
     }
 
     @Test
@@ -375,6 +621,45 @@ class UiLogicTest {
             tracks.sortedIds(MusicSortField.TITLE, descending = true),
         )
         assertEquals("A", createMusicSortKeys(tracks[2].fileName).section)
+    }
+
+    @Test
+    fun singleSongSearchFallsBackToTheSortedSongsPageQueue() {
+        val queue = listOf(
+            musicTrack(1L, "Alpha", 1L, "alpha.mp3", 1L, 1L),
+            musicTrack(2L, "Bravo", 2L, "bravo.mp3", 2L, 2L),
+            musicTrack(3L, "Charlie", 3L, "charlie.mp3", 3L, 3L),
+        )
+        val displayed = listOf(queue[1])
+
+        val selection = resolveMusicPlaybackSelection(
+            displayedTracks = displayed,
+            queueTracks = queue,
+            query = "brav",
+            selectedIndex = 0,
+        )
+
+        assertEquals(queue, selection?.first)
+        assertEquals(1, selection?.second)
+    }
+
+    @Test
+    fun multipleSongSearchUsesTheCompleteSongsPageQueue() {
+        val displayed = listOf(
+            musicTrack(1L, "Alpha", 1L, "alpha.mp3", 1L, 1L),
+            musicTrack(2L, "Alpine", 2L, "alpine.mp3", 2L, 2L),
+        )
+        val fullQueue = displayed + musicTrack(3L, "Bravo", 3L, "bravo.mp3", 3L, 3L)
+
+        val selection = resolveMusicPlaybackSelection(
+            displayedTracks = displayed,
+            queueTracks = fullQueue,
+            query = "al",
+            selectedIndex = 1,
+        )
+
+        assertEquals(fullQueue, selection?.first)
+        assertEquals(1, selection?.second)
     }
 
     @Test
@@ -531,6 +816,74 @@ class UiLogicTest {
         assertFalse(single.hasDifferentMetadataSwipeTarget(1f))
         assertEquals(true, multiple.hasDifferentMetadataSwipeTarget(-1f))
         assertEquals(true, multiple.hasDifferentMetadataSwipeTarget(1f))
+    }
+
+    @Test
+    fun metadataSwipeHapticTracksEachThresholdDirection() {
+        assertEquals(
+            -1,
+            miniMetadataSwipeThresholdDirection(
+                offsetPx = -100f,
+                commits = true,
+                hasDifferentTarget = true,
+            ),
+        )
+        assertEquals(
+            0,
+            miniMetadataSwipeThresholdDirection(
+                offsetPx = 0f,
+                commits = false,
+                hasDifferentTarget = true,
+            ),
+        )
+        assertEquals(
+            1,
+            miniMetadataSwipeThresholdDirection(
+                offsetPx = 100f,
+                commits = true,
+                hasDifferentTarget = true,
+            ),
+        )
+        assertEquals(
+            0,
+            miniMetadataSwipeThresholdDirection(
+                offsetPx = 100f,
+                commits = true,
+                hasDifferentTarget = false,
+            ),
+        )
+
+        assertTrue(shouldTriggerMiniMetadataSwipeThresholdHaptic(0, -1))
+        assertFalse(shouldTriggerMiniMetadataSwipeThresholdHaptic(-1, -1))
+        assertFalse(shouldTriggerMiniMetadataSwipeThresholdHaptic(-1, 0))
+        assertTrue(shouldTriggerMiniMetadataSwipeThresholdHaptic(0, 1))
+        assertTrue(shouldTriggerMiniMetadataSwipeThresholdHaptic(-1, 1))
+        assertTrue(shouldTriggerMiniMetadataSwipeThresholdHaptic(1, -1))
+    }
+
+    @Test
+    fun searchFocusClearsWhenTheVisibleKeyboardIsDismissed() {
+        assertTrue(
+            shouldClearSearchFocusAfterImeDismissed(
+                searchFocused = true,
+                imeVisible = false,
+                imeWasVisible = true,
+            ),
+        )
+        assertFalse(
+            shouldClearSearchFocusAfterImeDismissed(
+                searchFocused = true,
+                imeVisible = true,
+                imeWasVisible = false,
+            ),
+        )
+        assertFalse(
+            shouldClearSearchFocusAfterImeDismissed(
+                searchFocused = false,
+                imeVisible = false,
+                imeWasVisible = true,
+            ),
+        )
     }
 
     @Test
@@ -1468,22 +1821,102 @@ class UiLogicTest {
 
     @Test
     fun miniPlaybackSnapshotSeedsLastCurrentItemBeforeServiceConnection() {
-        val item = playbackQueueItem("last").copy(
+        val queue = List(24) { index -> playbackQueueItem(index.toString()) }
+        val item = queue[12].copy(
             durationMs = 123_000L,
             playbackMode = PlaybackMode.RANDOM,
         )
+        val snapshotQueue = queue.toMutableList().also { items -> items[12] = item }
 
-        val state = PlaybackSnapshot(
-            queue = listOf(item),
-            currentIndex = 0,
+        val preview = PlaybackSnapshot(
+            queue = snapshotQueue,
+            currentIndex = 12,
             positionMs = 4_000L,
             playbackMode = PlaybackMode.RANDOM,
-        ).toInitialPlaybackState()
+        ).toStartupPlaybackPreview(maxItemCount = 10)
+
+        requireNotNull(preview)
+        val state = preview.toInitialPlaybackState()
 
         assertEquals(item, state.currentItem)
+        assertEquals(10, state.queue.size)
+        assertEquals(0, state.currentIndex)
         assertEquals(4_000L, state.positionMs)
         assertEquals(PlaybackMode.RANDOM, state.playbackMode)
         assertFalse(state.isPlaying)
+    }
+
+    @Test
+    fun startupPlaybackPreviewUsesTheLastFullWindowNearQueueEnd() {
+        val queue = List(24) { index -> playbackQueueItem(index.toString()) }
+
+        val preview = PlaybackSnapshot(
+            queue = queue,
+            currentIndex = 22,
+            positionMs = 0L,
+            playbackMode = PlaybackMode.ORDER,
+        ).toStartupPlaybackPreview(maxItemCount = 10)
+
+        requireNotNull(preview)
+        assertEquals(queue.subList(14, 24), preview.queue)
+        assertEquals(8, preview.currentIndex)
+    }
+
+    @Test
+    fun stagedPlaybackValidationPreservesTheActiveQueueSlotAndPosition() {
+        val first = playbackQueueItem("duplicate").copy(sourceOrder = 0.0)
+        val second = playbackQueueItem("duplicate").copy(sourceOrder = 1.0)
+        val third = playbackQueueItem("third").copy(sourceOrder = 2.0)
+        val restored = PlaybackSnapshot(
+            queue = listOf(first, second, third),
+            currentIndex = 0,
+            positionMs = 1_000L,
+            playbackMode = PlaybackMode.ORDER,
+        )
+        val validated = restored.copy(queue = listOf(second, third))
+
+        val reconciled = reconcileValidatedPlaybackSnapshot(
+            restoredSnapshot = restored,
+            validatedSnapshot = validated,
+            currentQueue = restored.queue,
+            currentIndex = 1,
+            positionMs = 8_000L,
+            playbackMode = PlaybackMode.REPEAT_ONE,
+        )
+
+        requireNotNull(reconciled)
+        assertEquals(
+            listOf(second, third).map { item ->
+                item.copy(playbackMode = PlaybackMode.REPEAT_ONE)
+            },
+            reconciled.queue,
+        )
+        assertEquals(0, reconciled.currentIndex)
+        assertEquals(8_000L, reconciled.positionMs)
+        assertEquals(PlaybackMode.REPEAT_ONE, reconciled.playbackMode)
+    }
+
+    @Test
+    fun stagedPlaybackValidationDoesNotReplaceAUserMutatedQueue() {
+        val restored = PlaybackSnapshot(
+            queue = listOf(playbackQueueItem("one"), playbackQueueItem("two")),
+            currentIndex = 0,
+            positionMs = 0L,
+            playbackMode = PlaybackMode.ORDER,
+        )
+
+        assertNull(
+            reconcileValidatedPlaybackSnapshot(
+                restoredSnapshot = restored,
+                validatedSnapshot = restored,
+                currentQueue = restored.queue.dropLast(1),
+                currentIndex = 0,
+                positionMs = 0L,
+                playbackMode = PlaybackMode.ORDER,
+            ),
+        )
+        assertTrue(hasSameQueueSlots(restored.queue, restored.queue))
+        assertFalse(hasSameQueueSlots(restored.queue, restored.queue.reversed()))
     }
 
     @Test
@@ -1514,14 +1947,14 @@ class UiLogicTest {
     }
 
     @Test
-    fun queueCardHeightCapsLargeRestoredQueuesBeforeMultiplication() {
+    fun queueListHeightCapsLargeRestoredQueuesBeforeMultiplication() {
         val rowHeight = 68.dp
         val maxHeight = 600.dp
 
-        assertEquals(0.dp, queueCardHeight(itemCount = 0, rowHeight, maxHeight))
-        assertEquals(204.dp, queueCardHeight(itemCount = 3, rowHeight, maxHeight))
-        assertEquals(maxHeight, queueCardHeight(itemCount = 100_000, rowHeight, maxHeight))
-        assertEquals(maxHeight, queueCardHeight(itemCount = Int.MAX_VALUE, rowHeight, maxHeight))
+        assertEquals(0.dp, queueListHeight(itemCount = 0, rowHeight, maxHeight))
+        assertEquals(204.dp, queueListHeight(itemCount = 3, rowHeight, maxHeight))
+        assertEquals(maxHeight, queueListHeight(itemCount = 100_000, rowHeight, maxHeight))
+        assertEquals(maxHeight, queueListHeight(itemCount = Int.MAX_VALUE, rowHeight, maxHeight))
     }
 
     @Test

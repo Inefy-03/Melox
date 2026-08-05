@@ -22,8 +22,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +37,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -79,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -565,7 +569,7 @@ fun MeloxApp(
                                 visible = songSearchVisible,
                                 focused = songSearchFocused,
                                 query = songSearchQuery,
-                                label = stringResource(R.string.music_search_hint),
+                                label = stringResource(R.string.search_hint),
                                 topPadding = expandedTopBarBottomContentGap(
                                     songsScrollBehavior,
                                     12.dp,
@@ -585,6 +589,7 @@ fun MeloxApp(
                         MusicListScreen(
                             onTrackClick = viewModel::playTracks,
                             displayedTracks = musicPresentation.items,
+                            queueTracks = musicPresentation.queueItems,
                             sectionIndexMap = musicPresentation.sectionIndexMap,
                             scanStatus = uiState.scanStatus,
                             currentTrackId = currentTrackId,
@@ -712,13 +717,7 @@ fun MeloxApp(
                                     visible = librarySearchVisible,
                                     focused = librarySearchFocused,
                                     query = librarySearchQuery,
-                                    label = when (libraryPagerState.currentPage) {
-                                        LIBRARY_ARTISTS_TAB_INDEX ->
-                                            stringResource(R.string.artist_search_hint)
-                                        LIBRARY_FOLDERS_TAB_INDEX ->
-                                            stringResource(R.string.folder_search_hint)
-                                        else -> stringResource(R.string.album_search_hint)
-                                    },
+                                    label = stringResource(R.string.search_hint),
                                     topPadding = 6.dp,
                                     onQueryChange = { query -> librarySearchQuery = query },
                                     onFocusedChange = { librarySearchFocused = it },
@@ -1480,6 +1479,7 @@ private fun LibraryTabRow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LibrarySearchBar(
     visible: Boolean,
@@ -1492,6 +1492,23 @@ internal fun LibrarySearchBar(
     onVisibleChange: (Boolean) -> Unit,
 ) {
     val clearSearchContentDescription = stringResource(R.string.search_clear)
+    val imeVisible = WindowInsets.isImeVisible
+    var imeWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(focused, imeVisible) {
+        if (!focused) {
+            imeWasVisible = false
+        } else if (shouldClearSearchFocusAfterImeDismissed(
+                searchFocused = focused,
+                imeVisible = imeVisible,
+                imeWasVisible = imeWasVisible,
+            )
+        ) {
+            imeWasVisible = false
+            onFocusedChange(false)
+        } else if (imeVisible) {
+            imeWasVisible = true
+        }
+    }
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(animationSpec = tween(200)) +
@@ -1540,12 +1557,19 @@ internal fun LibrarySearchBar(
             },
             onExpandedChange = onFocusedChange,
             expanded = focused,
+            insideMargin = DpSize(16.dp, 0.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = topPadding, bottom = 6.dp),
         ) {}
     }
 }
+
+internal fun shouldClearSearchFocusAfterImeDismissed(
+    searchFocused: Boolean,
+    imeVisible: Boolean,
+    imeWasVisible: Boolean,
+): Boolean = searchFocused && imeWasVisible && !imeVisible
 
 @Composable
 private fun expandedTopBarBottomContentGap(

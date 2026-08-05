@@ -351,8 +351,8 @@ internal fun PlaybackSnapshot?.toInitialPlaybackState(): PlaybackUiState {
     val snapshot = this ?: return PlaybackUiState()
     val item = snapshot.queue.getOrNull(snapshot.currentIndex) ?: return PlaybackUiState()
     return PlaybackUiState(
-        queue = listOf(item),
-        currentIndex = 0,
+        queue = snapshot.queue,
+        currentIndex = snapshot.currentIndex,
         isPlaying = false,
         playWhenReady = false,
         positionMs = snapshot.positionMs.coerceAtLeast(0L),

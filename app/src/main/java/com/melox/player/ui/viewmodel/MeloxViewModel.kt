@@ -78,6 +78,7 @@ data class AppUiState(
 
 data class MusicPresentationState(
     val items: List<MusicTrack> = emptyList(),
+    val queueItems: List<MusicTrack> = emptyList(),
     val sectionIndexMap: Map<String, Int> = emptyMap(),
 )
 
@@ -264,14 +265,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         library,
         musicPresentationRequest,
     ) { projection, request ->
-        val items = if (request.query.isBlank() && request.sortConfig == MusicSortConfig()) {
+        val queueItems = if (request.sortConfig == MusicSortConfig()) {
             projection.tracks
         } else {
-            sortMusicTracks(
-                filterMusicTracks(projection.tracks, request.query),
-                request.sortConfig,
-            )
+            sortMusicTracks(projection.tracks, request.sortConfig)
         }
+        val items = filterMusicTracks(queueItems, request.query)
         val sectionIndexMap = if (
             request.query.isBlank() &&
             (
@@ -291,7 +290,11 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             emptyMap()
         }
-        MusicPresentationState(items, sectionIndexMap)
+        MusicPresentationState(
+            items = items,
+            queueItems = queueItems,
+            sectionIndexMap = sectionIndexMap,
+        )
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, MusicPresentationState())

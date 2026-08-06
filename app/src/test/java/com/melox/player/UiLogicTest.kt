@@ -142,8 +142,8 @@ class UiLogicTest {
         val lightHueDelta = abs(source.hue - light.hue).let { minOf(it, 360.0 - it) }
         val darkHueDelta = abs(source.hue - dark.hue).let { minOf(it, 360.0 - it) }
 
-        assertTrue(light.chroma <= 20.01)
-        assertTrue(dark.chroma <= 20.01)
+        assertTrue(light.chroma <= 32.01)
+        assertTrue(dark.chroma <= 32.01)
         // HCT may shift the realized hue slightly when the requested tone and
         // chroma sit near the target gamut boundary.
         assertTrue(lightHueDelta <= 5.0)

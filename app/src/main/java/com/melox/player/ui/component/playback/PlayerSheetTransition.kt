@@ -487,13 +487,12 @@ internal fun PlayerSheetContentOverlay(
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (miniPlayerLayer.size.width > 0 && progress < PLAYER_LAYER_HANDOFF_END_PROGRESS) {
-                val scale = size.width / miniPlayerLayer.size.width
                 miniPlayerLayer.alpha = playerSheetBarAlpha(progress)
-                withTransform({
-                    scale(scaleX = scale, scaleY = scale, pivot = Offset.Zero)
-                }) {
-                    drawLayer(miniPlayerLayer)
-                }
+                // Keep the recorded mini-player geometry at its original local
+                // coordinates. The expanding container moves underneath it;
+                // cover, metadata, and buttons therefore retain their offsets
+                // from the mini-player's top edge throughout the handoff.
+                drawLayer(miniPlayerLayer)
             }
             if (fullPlayerLayer.size.width > 0 && progress > 0f) {
                 val scale = size.width / fullPlayerLayer.size.width

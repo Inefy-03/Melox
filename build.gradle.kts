@@ -33,6 +33,5 @@ tasks.register<PrintReleaseApkTask>("assembleRelease") {
     group = "build"
     description = "Assembles the release APK and prints its output path."
     dependsOn(":app:assembleRelease")
-    mustRunAfter(":app:timestampReleaseApk")
     apkDirectory.set(layout.projectDirectory.dir("app/build/outputs/apk/release"))
 }

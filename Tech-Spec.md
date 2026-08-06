@@ -259,11 +259,13 @@
   Lyrics has no shared cover element: when the measured artwork target is
   horizontally offscreen, the shared overlay is absent and applies no partial
   visibility fade. The mini-layer keeps its own cover with the title and buttons
-  and restores the complete bar together during close.
+  at their original local offsets from the mini-player's top edge; it does not
+  scale those elements with the expanding container and restores the complete
+  bar together during close.
 - Full-player background processing runs on `Dispatchers.Default` against the
   already cached artwork bitmap. The bitmap is bilinearly reduced to 8 by 8;
   each pixel is converted through MaterialKolor HCT, keeps its source hue, caps
-  realized chroma at 20, and fixes tone to 64 for light theme or 32 for dark
+  realized chroma at 32, and fixes tone to 64 for light theme or 32 for dark
   theme. The resulting ARGB_8888 field supplies four quadrant paths. One
   reusable 4-by-4 output bitmap starts as source coordinates `x=2..5,
   y=2..5`. Each output pixel follows the matching local position through the

@@ -310,11 +310,13 @@ Melox lets Android users find and play music already stored on their device thro
   vertical dragging on the artwork page. Lyrics has no shared cover element:
   once the artwork page is horizontally offscreen, no independent cover fade or
   return path is drawn. During close, the mini-player's own cover remains in the
-  recorded bar layer with its title and buttons, and all three fade back and
+  recorded bar layer with its title and buttons. That recorded layer keeps the
+  original local positions relative to the mini-player's top edge instead of
+  scaling those elements with the expanding container; all three fade back and
   settle together.
 - The full-player background reuses the cached artwork bitmap and rebuilds it as
   an 8-by-8 HCT color field off the main thread. Every pixel retains its hue,
-  caps realized chroma at 20, and uses tone 64 in light theme or 32 in dark
+  caps realized chroma at 32, and uses tone 64 in light theme or 32 in dark
   theme. The center 4-by-4 pixels seed one VMusic-style background bitmap. Its
   four 2-by-2 output quadrants then interpolate through matching pixel positions
   in the center, horizontal side, outer corner, and vertical side regions:
@@ -550,7 +552,7 @@ store publishing.
   the artwork overlay is in flight; the settled page uses the normal final
   layout and the settled mini player uses the normal bar layout.
   The artwork-derived full-player background uses the cached 8-by-8 HCT color
-  field with realized chroma capped at 20 and tone fixed to 64 or 32. Its
+  field with realized chroma capped at 32 and tone fixed to 64 or 32. Its
   animated center-seeded 4-by-4 output follows the quadrant orbit timing above,
   while its complete color grid rotates through pixel mappings every 18 seconds
   during active playback. The bitmap geometry does not rotate. It uses

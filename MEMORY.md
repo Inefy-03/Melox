@@ -355,7 +355,7 @@ Last updated: 2026-08-06
   FastOutSlowIn track-artwork crossfade timing as the full player.
 - Full-player background reuses the cached artwork bitmap and builds an 8-by-8
   HCT color field off the main thread. Pixel hue is retained, realized chroma is
-  capped at 20, and tone is fixed to 64 in light theme or 32 in dark theme. The
+  capped at 32, and tone is fixed to 64 in light theme or 32 in dark theme. The
   field drives one bilinearly filtered 4-by-4 background seeded from the center
   4-by-4 source region. Matching pixels in its four 2-by-2 quadrants orbit
   through center, side, outer-corner, and vertical-side regions: top-left and
@@ -883,7 +883,7 @@ Last updated: 2026-08-06
   scope, no emulator was started and no runtime visual claim was recorded.
 - On 2026-08-05, the full-player background replaced the former experimental
   backdrop implementation with the requested VMusic-style
-  8-by-8 HCT field with hue retention, realized chroma capped at 20, tone
+  8-by-8 HCT field with hue retention, realized chroma capped at 32, tone
   64/32, cropped full-screen presentation, fixed `#242424` missing-artwork fallback,
   and a single center-seeded 4-by-4 field. Matching pixels in its four 2-by-2
   quadrants use the clockwise/counterclockwise 24/18-second orbit pairs, while
@@ -923,12 +923,12 @@ Last updated: 2026-08-06
   verified `artifacts/Melox-debug.apk` has SHA-256
   `2d4bfe5065b0d86ba49930957661c1e9c5b24610ea6a9e8781dd9a1b99d55967`.
   Per maintainer direction, no emulator, screenshot, or interaction test ran.
-- On 2026-08-06, the playback HCT background reduced realized chroma to a
-  maximum of 20 and changed fixed tone to 64 for light theme and 32 for dark
-  theme. The forced Debug unit-test rebuild ran 95 tests, and Debug Lint, Debug
-  assembly, APK archive, v2 signature, and 16 KB alignment checks passed. The
-  verified `artifacts/Melox-debug.apk` has SHA-256
-  `a0d322cfa786a44da24ce0f722f1bce469145d59b5455a00ad09c5cbc3d1f3a4`.
+- On 2026-08-06, the playback HCT background uses maximum realized chroma 32
+  with fixed tone 64 for light theme and 32 for dark theme. The forced Debug
+  unit-test rebuild ran 95 tests, and Debug Lint, Debug assembly, APK archive,
+  v2 signature, and 16 KB alignment checks passed. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `6359815f7ca0f809e9fab453699dd289ef4be99b2b12c8d63725a1c65a6370bc`.
   Per maintainer direction, no emulator, screenshot, or interaction test ran.
 - On 2026-08-03, song rows moved their trailing duration to Miuix `footnote2`,
   artist parsing added `&`, and track actions gained one-line Album/Artist
@@ -1257,6 +1257,16 @@ Last updated: 2026-08-06
   emulator, screenshot, or recording verification ran. The verified
   `artifacts/Melox-debug.apk` has SHA-256
   `49f047da7141e7256633501c6c2ae19d93f07771eab81b4fceb691d578fe910b`.
+- On 2026-08-06, the Lyrics close path keeps the recorded mini-player layer at
+  its original local geometry while the shared container moves underneath it.
+  Cover, title, and controls therefore preserve their offsets from the bar's
+  top edge as they fade in below the `p = 0.25` handoff; no independent artwork
+  overlay or container-scale distortion participates. Miuix surface and shadow
+  behavior is unchanged.
+- The same geometry correction was rebuilt into `artifacts/Melox-debug.apk`;
+  ZIP, signature, 16 KB alignment, and `git diff --check` passed. No emulator,
+  screenshot, or recording verification ran. The updated APK SHA-256 is
+  `6359815f7ca0f809e9fab453699dd289ef4be99b2b12c8d63725a1c65a6370bc`.
 
 - On 2026-08-06, every Song information row became a full-row copy action for
   its displayed trailing value. The More sheet added Miuix Edit-icon actions

@@ -1,6 +1,7 @@
 package com.melox.player.ui.component.library
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -49,6 +50,7 @@ fun AlbumSortButton(
     LibrarySortPopup(
         modifier = modifier,
         contentDescription = stringResource(R.string.album_sort_action),
+        popupPositionProvider = ListPopupDefaults.DropdownPositionProvider,
     ) { dismiss ->
         gridStyles.forEachIndexed { index, (gridStyle, label) ->
             DropdownImpl(
@@ -174,18 +176,21 @@ fun FolderSortButton(
 private fun LibrarySortPopup(
     contentDescription: String,
     modifier: Modifier = Modifier,
+    popupPositionProvider: PopupPositionProvider = ListPopupDefaults.ContextMenuPositionProvider,
     content: @Composable (dismiss: () -> Unit) -> Unit,
 ) {
     var showPopup by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
         OverlayListPopup(
             show = showPopup,
-            popupPositionProvider = ListPopupDefaults.ContextMenuPositionProvider,
+            popupPositionProvider = popupPositionProvider,
             alignment = PopupPositionProvider.Align.TopEnd,
             onDismissRequest = { showPopup = false },
         ) {
             ListPopupColumn {
-                content { showPopup = false }
+                Column {
+                    content { showPopup = false }
+                }
             }
         }
         IconButton(

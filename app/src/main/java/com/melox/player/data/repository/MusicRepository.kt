@@ -46,6 +46,7 @@ class MusicRepository(context: Context) {
     suspend fun scanMusic(
         previousTracks: List<MusicTrack> = emptyList(),
         refreshAudioProperties: Boolean = false,
+        onlyTrackId: Long? = null,
     ): List<MusicTrack> = withContext(Dispatchers.IO) {
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val previousTracksById = previousTracks.associateBy(MusicTrack::id)
@@ -74,13 +75,19 @@ class MusicRepository(context: Context) {
             add(MediaStore.Audio.Media.SIZE)
             add(MediaStore.Audio.Media.MIME_TYPE)
         }.toTypedArray()
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val selection = buildString {
+            append("${MediaStore.Audio.Media.IS_MUSIC} != 0")
+            if (onlyTrackId != null) {
+                append(" AND ${MediaStore.Audio.Media._ID} = ?")
+            }
+        }
+        val selectionArgs = onlyTrackId?.let { arrayOf(it.toString()) }
 
         contentResolver.query(
             collection,
             projection,
             selection,
-            null,
+            selectionArgs,
             null,
         )?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
@@ -187,6 +194,13 @@ class MusicRepository(context: Context) {
             )
         } ?: emptyList()
     }
+
+    /** Re-reads one MediaStore row and its embedded tags without scanning the full library. */
+    suspend fun refreshTrack(track: MusicTrack): MusicTrack? = scanMusic(
+        previousTracks = listOf(track),
+        refreshAudioProperties = true,
+        onlyTrackId = track.id,
+    ).singleOrNull()
 
     /** Atomically stores a successful scan without changing the visible scan result on failure. */
     suspend fun cacheMusic(tracks: List<MusicTrack>) = withContext(Dispatchers.IO) {

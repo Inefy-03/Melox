@@ -1,16 +1,19 @@
 # Melox Project Memory
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 ## Stable Decisions
 
-- Routine work stays on `main` and commits directly there. Create and mention
-  a separate branch only when a new feature or bug fix needs isolated testing.
+- Routine work stays on the currently checked-out branch, which is normally
+  `main`. Never create, switch, or delete a branch unless the user explicitly
+  requests that branch operation in the current task. Do not carry an older or
+  revoked branch request into later work.
 - Release APK filenames use `Melox_<versionName>_<yyMMddHHmm>.apk`, with the date
-  resolved in the `Asia/Shanghai` time zone at build configuration time.
-- The root `assembleRelease` task always runs `:app:clean` first, and the
-  release assembly disables configuration-cache reuse so source changes and the
-  timestamped output name are recomputed for every release package.
+  resolved in the `Asia/Shanghai` time zone during the APK timestamp task's
+  execution, so configuration-cache reuse does not freeze the build time.
+- The root `assembleRelease` task wraps `:app:assembleRelease` without forcing
+  `:app:clean`; Gradle configuration-cache reuse remains enabled for incremental
+  release builds.
 - Routine verification avoids emulator clicking, screen recording, and
   screenshots. Prefer compilation, unit tests, Lint, and static inspection;
   use the emulator only for a critical runtime behavior that cannot be
@@ -70,7 +73,7 @@ Last updated: 2026-08-05
   background validation later removes
   unreadable items while preserving current item, position, playback state, and
   mode when the user has not mutated the queue. A concurrent queue mutation wins.
-- Settings include language, theme mode, dynamic colors, blur, floating navigation, liquid glass, predictive back, manual library scan, and About.
+- Settings include language, theme mode, dynamic colors, blur, floating navigation, liquid glass, predictive back, manual library scan, and About. Dynamic colors default to the complete Android system desktop-wallpaper Monet palette instead of reducing it to one framework accent resource; the persisted source can switch to the current playback artwork seed and falls back to the platform palette when no cover is loaded. Enabling floating navigation persists liquid glass enabled by default, while unsupported devices resolve to the opaque floating fallback.
 - Missing audio access is requested once when the app enters. A grant from this
   startup request changes the library to an unscanned idle state without
   querying MediaStore; a grant triggered by the Settings scan preference scans
@@ -188,6 +191,9 @@ Last updated: 2026-08-05
   Search another 6 dp top padding, preserving a 12 dp total gap.
   Songs retains its title/file-name alphabet index in descending order by
   reversing the same section sequence used by Library.
+  Search visibility is separate from input focus: the first Back press hides
+  the IME and clears focus while retaining the visible query, and the second
+  Back press closes Search without a transient query flash.
 - Root Album, Artist, and Folder searches match only their current-page primary
   titles: album name, artist name, or folder name. Album artists, counts, paths,
   and all metadata from songs inside those groups never participate.
@@ -265,7 +271,13 @@ Last updated: 2026-08-05
   artist groups. Those artist rows keep 12 dp around their artwork and omit the
   trailing navigation indicator. The separate titled song-information sheet has
   a leading Close action, two metadata cards, and a localized unavailable value
-  for unreadable bit depth; the untitled track-actions sheet does not add one.
+  for unreadable bit depth; every information row copies its rendered trailing
+  value when tapped. The untitled track-actions sheet adds Edit-icon entries for
+  `com.xjcheng.musictageditor` and `com.lonx.lyrico` immediately before Song
+  information. Returning to Melox through either an activity result or Activity
+  resume triggers a targeted tag/audio-property and lyrics refresh for that
+  track. Playback UI overlays the refreshed library metadata without replacing
+  Media3 items, preparing, seeking, or interrupting the active song.
   More and participating-artist sheets retain Miuix content overscroll while
   keeping nested-scroll dismissal enabled for downward sheet drags.
 - The playback queue sheet uses the official `OverlayBottomSheet` directly.
@@ -343,7 +355,7 @@ Last updated: 2026-08-05
   FastOutSlowIn track-artwork crossfade timing as the full player.
 - Full-player background reuses the cached artwork bitmap and builds an 8-by-8
   HCT color field off the main thread. Pixel hue is retained, realized chroma is
-  capped at 32, and tone is fixed to 48 in light theme or 24 in dark theme. The
+  capped at 20, and tone is fixed to 64 in light theme or 32 in dark theme. The
   field drives one bilinearly filtered 4-by-4 background seeded from the center
   4-by-4 source region. Matching pixels in its four 2-by-2 quadrants orbit
   through center, side, outer-corner, and vertical-side regions: top-left and
@@ -871,8 +883,8 @@ Last updated: 2026-08-05
   scope, no emulator was started and no runtime visual claim was recorded.
 - On 2026-08-05, the full-player background replaced the former experimental
   backdrop implementation with the requested VMusic-style
-  8-by-8 HCT field with hue retention, realized chroma capped at 32, tone
-  48/24, cropped full-screen presentation, fixed `#242424` missing-artwork fallback,
+  8-by-8 HCT field with hue retention, realized chroma capped at 20, tone
+  64/32, cropped full-screen presentation, fixed `#242424` missing-artwork fallback,
   and a single center-seeded 4-by-4 field. Matching pixels in its four 2-by-2
   quadrants use the clockwise/counterclockwise 24/18-second orbit pairs, while
   the complete grid rotates through quarter-turn pixel mappings every 18
@@ -910,6 +922,13 @@ Last updated: 2026-08-05
   assembly, APK archive, v2 signature, and 16 KB alignment checks passed. The
   verified `artifacts/Melox-debug.apk` has SHA-256
   `2d4bfe5065b0d86ba49930957661c1e9c5b24610ea6a9e8781dd9a1b99d55967`.
+  Per maintainer direction, no emulator, screenshot, or interaction test ran.
+- On 2026-08-06, the playback HCT background reduced realized chroma to a
+  maximum of 20 and changed fixed tone to 64 for light theme and 32 for dark
+  theme. The forced Debug unit-test rebuild ran 95 tests, and Debug Lint, Debug
+  assembly, APK archive, v2 signature, and 16 KB alignment checks passed. The
+  verified `artifacts/Melox-debug.apk` has SHA-256
+  `a0d322cfa786a44da24ce0f722f1bce469145d59b5455a00ad09c5cbc3d1f3a4`.
   Per maintainer direction, no emulator, screenshot, or interaction test ran.
 - On 2026-08-03, song rows moved their trailing duration to Miuix `footnote2`,
   artist parsing added `&`, and track actions gained one-line Album/Artist
@@ -1174,6 +1193,26 @@ Last updated: 2026-08-05
   screenshot, or recording verification. The verified
   `artifacts/Melox-debug.apk` has SHA-256
   `c9a0a480df334b080974287ac2a8fc9e9587656e0f06870f0a741a79a2815ec4`.
+- On 2026-08-06, closing from the horizontally offscreen Lyrics page no longer
+  draws a shared artwork overlay back toward the mini-player origin. The shared
+  overlay stops when the measured artwork bound leaves the player viewport;
+  the recorded mini layer retains its own cover together with the title and
+  controls, so the complete bar content fades back as one layer. Forced Debug
+  unit tests, Debug Kotlin compilation, Debug Lint, Debug assembly, APK archive
+  validation, and `git diff --check` passed without emulator screenshots or
+  recordings. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `ad52c59fb50d713c7935f19bbc40c3e8284a579ed7471144e3dcc3b8d99954ff`.
+- On 2026-08-06, desktop-wallpaper dynamic color stopped reducing the platform
+  Monet palette to `system_accent1_500`; Miuix now resolves the complete system
+  desktop-wallpaper palette, while loaded playback artwork supplies its own seed
+  and unavailable artwork falls back to the system palette. Artwork sampling also retains a
+  valid monochrome seed. The Album sort popup measures all options as one
+  column so `Descending` is visible without an initial scroll. Debug Kotlin
+  compilation, unit tests, Lint, assembly, APK archive, v2 signature, 16 KB
+  alignment, and `git diff --check` passed. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `9163a0a18e7db673a572adc09250b88c0c733c2fb7e819cf59ce2904a2b07100`.
+  Per maintainer direction, no emulator, screenshot, or interaction test ran.
 - On 2026-08-05, the closing shared-player host stops intercepting the mini
   player before the critically damped spring's invisible tail finishes. Once
   the recorded mini layer reaches 80% opacity, the full-screen host moves
@@ -1202,3 +1241,33 @@ Last updated: 2026-08-05
   archive validation, and `git diff --check` passed without emulator screenshots
   or recordings. The verified `artifacts/Melox-debug.apk` has SHA-256
   `b0c9cb8c5a6b6460a126d702b49b787fc862d0c9590f43cbc134ba5cd319428e`.
+- On 2026-08-06, the shared-player cover stopped handing drag release through a
+  non-observable pending value. Pointer movement and the critically damped
+  spring now publish through one observable rendered progress, preventing the
+  cover from remaining at the last dragged frame while the container continues
+  to an endpoint. Lyrics remains a no-cover shared-element state: an offscreen
+  artwork target disables the shared cover as a binary decision with no partial
+  visibility alpha, while the recorded mini layer retains its cover, title, and
+  controls and restores the complete bar together below the `p = 0.25` handoff.
+  Existing Miuix blur, liquid-glass, highlight, and navigation-matched shadow
+  parameters remain unchanged, and the glass still stops only after full
+  expansion. Focused and complete Debug unit tests, Debug Kotlin compilation,
+  Debug Lint, Debug assembly, ZIP validation, APK signature verification, 16 KB
+  ZIP alignment, and `git diff --check` passed. Per maintainer direction, no
+  emulator, screenshot, or recording verification ran. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `49f047da7141e7256633501c6c2ae19d93f07771eab81b4fceb691d578fe910b`.
+
+- On 2026-08-06, every Song information row became a full-row copy action for
+  its displayed trailing value. The More sheet added Miuix Edit-icon actions
+  that target `com.xjcheng.musictageditor` through audio View and
+  `com.lonx.lyrico` through its `EDIT_TAG` action, with URI read/write grants.
+  Returning by Back, activity result, or recent-task switching re-reads only
+  the selected track's MediaStore row, embedded tags, audio properties, and
+  lyrics. Library and compact playback UI metadata update without replacing or
+  preparing the service-owned Media3 queue, so the active song and position are
+  uninterrupted. Debug Kotlin compilation, complete Debug unit tests, Debug
+  Lint, Debug assembly, APK archive validation, and `git diff --check` passed.
+  Per maintainer direction, no emulator, screenshot, or recording verification
+  ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `3bc4ce74dce5eae6fedfdf6db968470cc6d6eaf620d728e15a9964ac26706bd3`.

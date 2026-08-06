@@ -138,6 +138,9 @@ Melox lets Android users find and play music already stored on their device thro
   compact title and song-count text. Songs with the same normalized album
   name and album-artist tag belong to one album even when MediaStore assigns
   different album IDs or their track artists differ.
+  The Album sort popup uses Miuix dropdown positioning, measures the complete
+  option column so `Descending` is visible without initial scrolling, and
+  flips above the action when the lower viewport cannot show all options.
 - Folders group tracks by their direct parent directory. Each row follows the
   song-row information hierarchy, uses the folder name as its title, and shows
   a localized song count followed by the shared-storage-relative path. For
@@ -225,6 +228,9 @@ Melox lets Android users find and play music already stored on their device thro
   summary card with the same option background and 56 dp artwork has 12 dp
   left/top/bottom artwork-side padding and is followed by one preference-style
   action card for Play next, Add to queue, Album, Artist, and Song information.
+  Immediately before Song information, Edit with Music Tag Editor opens the
+  selected audio URI in `com.xjcheng.musictageditor`, and Edit with Lyrico
+  opens it in `com.lonx.lyrico`; both actions use the Miuix Edit icon.
   Add to queue uses a 20 dp icon shifted 1 dp right with 2 dp more text gap.
   Album and Artist action labels clamp to one line with an ellipsis. A single
   artist opens its matching library detail page; multiple artists open a
@@ -235,7 +241,11 @@ Melox lets Android users find and play music already stored on their device thro
   groups Title, Artist, Album, and Album artist separately from Duration,
   Format, File size, Bitrate, Sample rate, Bit depth, and file location. Fields
   unavailable from local metadata show the localized unavailable value. The
-  summary begins directly below the standard Miuix header without clipping, and
+  complete information row is clickable and copies the exact value displayed
+  at its trailing edge. Returning from either external editor re-reads that
+  track's tags, audio properties, and lyrics without rebuilding, preparing, or
+  interrupting the active playback queue.
+  The summary begins directly below the standard Miuix header without clipping, and
   the More and participating-artists lists use Miuix vertical overscroll while
   retaining the standard content-drag downward sheet dismissal.
 - The playback queue sheet sizes itself from the number of queue songs while
@@ -285,13 +295,26 @@ Melox lets Android users find and play music already stored on their device thro
   rounded rectangle with no rotation, skew, or narrow-top/wide-bottom
   deformation. Bar content fades out as page content fades in on the same
   reversible progress.
-- Recording the mini-player layer must preserve Melox's existing Miuix surface
-  path and parameters. Normal blur, floating blur, liquid glass, dark/light
-  treatment, highlight, and opaque fallback remain owned by `MiniPlayerChrome`
-  and `miniPlayerSurface`; the VMusic backdrop implementation is not migrated.
+- During shared expansion, the recorded mini-player layer contains only bar
+  content. The shared container redraws the existing Miuix blur or liquid-glass
+  surface at its current interpolated size using the same backdrop, highlight,
+  dark/light, outline, and opaque-fallback parameters. Content handoff reaches
+  the full-player layer at `p = 0.25`, while the glass surface remains active
+  until the shared container is fully expanded, matching VMusic's
+  `isFullyExpanded` boundary. The VMusic backdrop implementation and its fixed
+  blur/refraction values are not migrated. The floating highlight and
+  navigation-matched shadow fade from full strength at expansion start to zero
+  at the content handoff. One observable progress drives both pointer movement
+  and spring settlement, so the shared cover cannot remain at the release frame
+  while the container continues. The shared cover stays fully visible during
+  vertical dragging on the artwork page. Lyrics has no shared cover element:
+  once the artwork page is horizontally offscreen, no independent cover fade or
+  return path is drawn. During close, the mini-player's own cover remains in the
+  recorded bar layer with its title and buttons, and all three fade back and
+  settle together.
 - The full-player background reuses the cached artwork bitmap and rebuilds it as
   an 8-by-8 HCT color field off the main thread. Every pixel retains its hue,
-  caps realized chroma at 32, and uses tone 48 in light theme or 24 in dark
+  caps realized chroma at 20, and uses tone 64 in light theme or 32 in dark
   theme. The center 4-by-4 pixels seed one VMusic-style background bitmap. Its
   four 2-by-2 output quadrants then interpolate through matching pixel positions
   in the center, horizontal side, outer corner, and vertical side regions:
@@ -386,8 +409,8 @@ Melox lets Android users find and play music already stored on their device thro
 - In floating navigation, the mini player matches the navigation pill's width,
   64 dp height, blur/lens treatment, and gravity-following highlight with an
   8 dp gap. Its final blurred layer is clipped to the same larger pill corner
-  radius. The navigation pill uses the official Miuix 10 dp black drop shadow
-  (20% dark / 10% light), which the mini player also uses. The mini artwork is
+  radius. The navigation pill and mini player share one Miuix-style 10 dp black
+  drop-shadow implementation (20% dark / 10% light). The mini artwork is
   44 dp, remains shifted inward,
   and the two trailing controls use matching compact geometry with reduced
   spacing.
@@ -421,15 +444,25 @@ Melox lets Android users find and play music already stored on their device thro
   About.
 - Theme settings: System/Light/Dark, blur, floating bottom bar, liquid glass,
   predictive back, and dynamic colors at the end of the Appearance group.
+  Dynamic colors default to the complete system desktop-wallpaper Monet palette.
+  When enabled, a dependent Miuix dropdown titled `Color source` / `颜色来源`
+  lets the user switch between `Desktop wallpaper` / `桌面壁纸` and
+  `Playing song artwork` / `播放歌曲封面`; the artwork choice falls back to the
+  desktop-wallpaper color until a cover is available.
 - System light/dark changes update the active composition in place. An expanded
   player remains expanded, the mini-player remains immediately clickable, and
   the artwork field reuses its sampled source pixels so only the HCT tone target
   changes.
 - Liquid glass appears only with floating navigation and is disabled with an explanation when unsupported.
+  Enabling floating navigation turns liquid glass on by default; disabling
+  floating navigation turns it off.
 - The liquid-glass preference enters and exits with the official Miuix
   dependent-preference `AnimatedVisibility` motion when floating navigation is
   toggled.
 - Blur and predictive back are enabled by default on fresh installs.
+- Search uses one Back press to hide the IME and clear focus while retaining the
+  open query, and a second Back press to close the search field. Losing focus
+  does not briefly clear or flash the retained query.
 - Secondary pages use the official Miuix Navigation3 enter, exit, and
   predictive-back motion.
 
@@ -517,7 +550,7 @@ store publishing.
   the artwork overlay is in flight; the settled page uses the normal final
   layout and the settled mini player uses the normal bar layout.
   The artwork-derived full-player background uses the cached 8-by-8 HCT color
-  field with realized chroma capped at 32 and tone fixed to 48 or 24. Its
+  field with realized chroma capped at 20 and tone fixed to 64 or 32. Its
   animated center-seeded 4-by-4 output follows the quadrant orbit timing above,
   while its complete color grid rotates through pixel mappings every 18 seconds
   during active playback. The bitmap geometry does not rotate. It uses

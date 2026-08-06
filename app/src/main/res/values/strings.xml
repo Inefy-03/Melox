@@ -28,13 +28,13 @@
     <string name="music_search_hint">Search songs, artists, albums, or files</string>
     <string name="search_hint">Search</string>
     <string name="search_clear">Clear search</string>
-    <string name="music_search_cancel">Cancel</string>
     <string name="music_no_search_results">No matching songs</string>
     <string name="music_play_next">Play next</string>
     <string name="music_add_to_queue">Add to queue</string>
-    <string name="music_go_to_album">Go to album</string>
-    <string name="music_go_to_artist">Go to artist</string>
     <string name="music_song_info">Song info</string>
+    <string name="music_edit_with_music_tag_editor">Edit with Music Tag Editor</string>
+    <string name="music_edit_with_lyrico">Edit with Lyrico</string>
+    <string name="music_external_editor_unavailable">Unable to open the selected editor</string>
     <string name="music_album_label">Album: %1$s</string>
     <string name="music_artist_label">Artist: %1$s</string>
     <string name="music_quality_hr">HR</string>
@@ -45,7 +45,6 @@
     <string name="song_info_title">Title</string>
     <string name="song_info_album_artist">Album artist</string>
     <string name="song_info_format">Format</string>
-    <string name="song_info_file_name">File</string>
     <string name="song_info_file_size">Size</string>
     <string name="song_info_duration">Duration</string>
     <string name="song_info_bitrate">Bitrate</string>
@@ -75,7 +74,6 @@
         <item quantity="other">%1$d songs</item>
     </plurals>
     <string name="album_detail_year">%1$d</string>
-    <string name="album_detail_summary">%1$s · %2$s</string>
 
     <string name="artist_sort_action">Sort artists</string>
     <string name="artist_sort_name">Name</string>
@@ -110,7 +108,6 @@
         <item quantity="other">%1$d songs</item>
     </plurals>
 
-    <string name="now_playing">Now playing</string>
     <string name="no_track_selected">No track selected</string>
     <string name="mini_player_title">Melox</string>
     <string name="mini_player_empty">No music playing</string>
@@ -118,8 +115,6 @@
     <string name="pause">Pause</string>
     <string name="previous_track">Previous song</string>
     <string name="next_track">Next song</string>
-    <string name="shuffle">Shuffle</string>
-    <string name="repeat_mode">Repeat mode</string>
     <string name="playback_mode_order">Order playback</string>
     <string name="playback_mode_repeat_one">Repeat one</string>
     <string name="playback_mode_random">Random queue</string>
@@ -155,8 +150,11 @@
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_dark">Dark</string>
     <string name="settings_dynamic_color_title">Dynamic colors</string>
-    <string name="settings_dynamic_color_summary">Use colors based on your system wallpaper</string>
+    <string name="settings_dynamic_color_summary">Adjust app colors based on the selected source</string>
     <string name="settings_dynamic_color_unsupported">Dynamic colors require Android 12 or later</string>
+    <string name="settings_dynamic_color_source_title">Color source</string>
+    <string name="settings_dynamic_color_source_desktop">Desktop wallpaper</string>
+    <string name="settings_dynamic_color_source_artwork">Playing song artwork</string>
     <string name="settings_blur_title">Blur</string>
     <string name="settings_blur_summary">Blur navigation and top bar backdrops</string>
     <string name="settings_blur_unsupported">Blur requires Android 13 or later</string>

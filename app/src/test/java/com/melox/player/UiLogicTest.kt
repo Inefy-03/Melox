@@ -2,6 +2,7 @@ package com.melox.player
 
 import android.Manifest
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.materialkolor.hct.Hct
 import com.melox.player.data.library.AlbumGridStyle
@@ -41,6 +42,7 @@ import com.melox.player.data.repository.resolveAlbumGridStyleOrdinal
 import com.melox.player.model.AppSettings
 import com.melox.player.model.AudioQuality
 import com.melox.player.model.BottomBarStyle
+import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.MusicTrack
 import com.melox.player.model.PlaybackMode
 import com.melox.player.model.PlaybackQueueItem
@@ -49,6 +51,7 @@ import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.ScanStatus
 import com.melox.player.model.ThemeMode
 import com.melox.player.model.resolveAudioQuality
+import com.melox.player.model.withTrackMetadata
 import com.melox.player.playback.isValidQueueIndex
 import com.melox.player.playback.buildHomeRecommendationPlaybackQueue
 import com.melox.player.playback.hasSameQueueSlots
@@ -79,6 +82,7 @@ import com.melox.player.ui.component.playback.PLAYER_LAYER_HANDOFF_END_PROGRESS
 import com.melox.player.ui.component.playback.playerSheetBarAlpha
 import com.melox.player.ui.component.playback.playerSheetDragProgress
 import com.melox.player.ui.component.playback.playerSheetDragTarget
+import com.melox.player.ui.component.playback.playerSheetGlassVisible
 import com.melox.player.ui.component.playback.playerSheetMiniPlayerAcceptsInput
 import com.melox.player.ui.component.playback.playerSheetPageAlpha
 import com.melox.player.ui.component.playback.artworkBackgroundUsesLightStatusBarIcons
@@ -91,8 +95,10 @@ import com.melox.player.ui.component.playback.resolveArtworkOrbitProgress
 import com.melox.player.ui.component.playback.fittedArtworkRect
 import com.melox.player.ui.component.playback.scaledRectAroundCenter
 import com.melox.player.ui.component.playback.sharedArtworkRect
+import com.melox.player.ui.component.playback.sharedArtworkTargetIsOnscreen
 import com.melox.player.ui.component.playback.sharedContainerCornerRadius
 import com.melox.player.ui.component.playback.sharedContainerRect
+import com.melox.player.ui.component.playback.PlayerSheetTransitionState
 import com.melox.player.ui.navigation.predictiveBackHandlerEnabled
 import com.melox.player.ui.requiredAudioPermission
 import com.melox.player.ui.resolveBottomBarStyle
@@ -104,6 +110,7 @@ import com.melox.player.ui.screen.library.resolveMusicPlaybackSelection
 import com.melox.player.ui.screen.library.toMusicLibraryPlaceholder
 import com.melox.player.ui.screen.playback.queueListHeight
 import com.melox.player.ui.theme.toColorSchemeMode
+import com.melox.player.ui.theme.resolveDynamicColorSeed
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.BufferedOutputStream
@@ -135,14 +142,14 @@ class UiLogicTest {
         val lightHueDelta = abs(source.hue - light.hue).let { minOf(it, 360.0 - it) }
         val darkHueDelta = abs(source.hue - dark.hue).let { minOf(it, 360.0 - it) }
 
-        assertTrue(light.chroma <= 32.01)
-        assertTrue(dark.chroma <= 32.01)
+        assertTrue(light.chroma <= 20.01)
+        assertTrue(dark.chroma <= 20.01)
         // HCT may shift the realized hue slightly when the requested tone and
         // chroma sit near the target gamut boundary.
         assertTrue(lightHueDelta <= 5.0)
         assertTrue(darkHueDelta <= 5.0)
-        assertEquals(48.0, light.tone, 0.5)
-        assertEquals(24.0, dark.tone, 0.5)
+        assertEquals(64.0, light.tone, 0.5)
+        assertEquals(32.0, dark.tone, 0.5)
     }
 
     @Test
@@ -271,6 +278,7 @@ class UiLogicTest {
 
         assertEquals(ThemeMode.SYSTEM, settings.themeMode)
         assertFalse(settings.dynamicColorEnabled)
+        assertEquals(DynamicColorSource.DESKTOP, settings.dynamicColorSource)
         assertEquals(true, settings.blurEnabled)
         assertEquals(true, settings.predictiveBackEnabled)
         assertEquals(BottomBarStyle.NORMAL, settings.bottomBarStyle)
@@ -312,6 +320,44 @@ class UiLogicTest {
                 themeMode = ThemeMode.DARK,
                 dynamicColorEnabled = true,
             ).toColorSchemeMode(dynamicColorSupported = false),
+        )
+    }
+
+    @Test
+    fun dynamicColorSourceSelectsPlatformOrArtworkSeed() {
+        val artworkColor = Color(0xFFB3261E)
+
+        assertEquals(
+            null,
+            resolveDynamicColorSeed(
+                dynamicColorEnabled = true,
+                source = DynamicColorSource.DESKTOP,
+                playbackArtworkColor = artworkColor,
+            ),
+        )
+        assertEquals(
+            artworkColor,
+            resolveDynamicColorSeed(
+                dynamicColorEnabled = true,
+                source = DynamicColorSource.PLAYBACK_ARTWORK,
+                playbackArtworkColor = artworkColor,
+            ),
+        )
+        assertEquals(
+            null,
+            resolveDynamicColorSeed(
+                dynamicColorEnabled = true,
+                source = DynamicColorSource.PLAYBACK_ARTWORK,
+                playbackArtworkColor = null,
+            ),
+        )
+        assertEquals(
+            null,
+            resolveDynamicColorSeed(
+                dynamicColorEnabled = false,
+                source = DynamicColorSource.PLAYBACK_ARTWORK,
+                playbackArtworkColor = artworkColor,
+            ),
         )
     }
 
@@ -458,6 +504,20 @@ class UiLogicTest {
     }
 
     @Test
+    fun sharedArtworkTargetUsesTheMeasuredPagerPositionAsABinaryDecision() {
+        val viewport = Rect(0f, 0f, 360f, 800f)
+        val visible = Rect(40f, 120f, 320f, 400f)
+        val partiallyLeftButStillOnArtworkPage = Rect(-120f, 120f, 160f, 400f)
+        val offscreenLeft = Rect(-360f, 120f, -80f, 400f)
+
+        assertTrue(sharedArtworkTargetIsOnscreen(visible, viewport))
+        assertTrue(
+            sharedArtworkTargetIsOnscreen(partiallyLeftButStillOnArtworkPage, viewport),
+        )
+        assertFalse(sharedArtworkTargetIsOnscreen(offscreenLeft, viewport))
+    }
+
+    @Test
     fun sharedArtworkTargetMatchesVisiblePlaybackScale() {
         val layoutBounds = Rect(28f, 120f, 372f, 464f)
 
@@ -532,13 +592,62 @@ class UiLogicTest {
     }
 
     @Test
-    fun miniPlayerAcceptsInputBeforeTheClosingSpringTailFinishes() {
-        assertFalse(playerSheetMiniPlayerAcceptsInput(false, false, false, 0.1f))
+    fun playerSheetGlassStopsOnlyAtFullExpansion() {
+        assertTrue(playerSheetGlassVisible(isFullyExpanded = false))
+        assertFalse(playerSheetGlassVisible(isFullyExpanded = true))
+    }
+
+    @Test
+    fun miniPlayerAcceptsInputAsSoonAsTheSharedBarReturns() {
+        assertTrue(playerSheetMiniPlayerAcceptsInput(false, false, false, 0.1f))
         assertTrue(playerSheetMiniPlayerAcceptsInput(false, false, false, 0.02f))
         assertTrue(playerSheetMiniPlayerAcceptsInput(false, false, false, 0f))
+        assertFalse(
+            playerSheetMiniPlayerAcceptsInput(
+                false,
+                false,
+                false,
+                PLAYER_LAYER_HANDOFF_END_PROGRESS + 0.001f,
+            ),
+        )
         assertFalse(playerSheetMiniPlayerAcceptsInput(true, false, false, 0f))
-        assertTrue(playerSheetMiniPlayerAcceptsInput(false, true, false, 0.5f))
-        assertFalse(playerSheetMiniPlayerAcceptsInput(false, true, true, 0f))
+        assertFalse(playerSheetMiniPlayerAcceptsInput(false, true, false, 0.5f))
+        assertTrue(playerSheetMiniPlayerAcceptsInput(false, true, true, 0f))
+    }
+
+    @Test
+    fun activeDragKeepsItsStartingInputHost() {
+        assertTrue(
+            playerSheetMiniPlayerAcceptsInput(
+                targetOpen = true,
+                isDragging = true,
+                dragStartedFromMiniPlayer = true,
+                progress = 0.6f,
+            ),
+        )
+        assertFalse(
+            playerSheetMiniPlayerAcceptsInput(
+                targetOpen = false,
+                isDragging = true,
+                dragStartedFromMiniPlayer = false,
+                progress = 0.2f,
+            ),
+        )
+    }
+
+    @Test
+    fun interruptedDragCanBeTakenOverImmediately() {
+        val state = PlayerSheetTransitionState()
+        state.updateFullPlayerBounds(Rect(0f, 0f, 360f, 800f))
+
+        state.beginMiniPlayerDrag()
+        state.dragBy(-160f)
+        state.endDrag(velocityY = -900f)
+
+        assertFalse(state.isDragging)
+        state.beginFullPlayerDrag()
+        assertTrue(state.isDragging)
+        assertEquals(0.2f, state.progress, 0.001f)
     }
 
     @Test
@@ -714,6 +823,49 @@ class UiLogicTest {
 
         assertEquals(fullQueue, selection?.first)
         assertEquals(1, selection?.second)
+    }
+
+    @Test
+    fun refreshedLibraryMetadataUpdatesPlaybackUiWithoutChangingQueueIdentity() {
+        val queueItem = playbackQueueItem("track-7").copy(
+            trackId = 7L,
+            title = "Old title",
+            artist = "Old artist",
+            album = "Old album",
+            durationMs = 1_000L,
+            dateModifiedEpochSeconds = 10L,
+            fileSizeBytes = 20L,
+        )
+        val refreshedTrack = musicTrack(
+            id = 7L,
+            title = "New title",
+            dateAddedEpochSeconds = 1L,
+            fileName = "new.flac",
+            fileSizeBytes = 40L,
+            durationMs = 2_000L,
+            dateModifiedEpochSeconds = 30L,
+        ).copy(
+            artist = "New artist",
+            album = "New album",
+        )
+
+        val updated = PlaybackUiState(
+            queue = listOf(queueItem),
+            currentIndex = 0,
+            positionMs = 500L,
+            isPlaying = true,
+        ).withTrackMetadata(listOf(refreshedTrack))
+
+        assertEquals(queueItem.mediaId, updated.currentItem?.mediaId)
+        assertEquals(queueItem.contentUri, updated.currentItem?.contentUri)
+        assertEquals("New title", updated.currentItem?.title)
+        assertEquals("New artist", updated.currentItem?.artist)
+        assertEquals("New album", updated.currentItem?.album)
+        assertEquals(2_000L, updated.currentItem?.durationMs)
+        assertEquals(30L, updated.currentItem?.dateModifiedEpochSeconds)
+        assertEquals(40L, updated.currentItem?.fileSizeBytes)
+        assertEquals(500L, updated.positionMs)
+        assertTrue(updated.isPlaying)
     }
 
     @Test

@@ -7,6 +7,12 @@ enum class ThemeMode {
     DARK,
 }
 
+/** Selects the seed used when dynamic colors are enabled. */
+enum class DynamicColorSource {
+    DESKTOP,
+    PLAYBACK_ARTWORK,
+}
+
 /**
  * Selects the navigation bar presentation.
  *
@@ -29,6 +35,7 @@ enum class DefaultHomePage {
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColorEnabled: Boolean = false,
+    val dynamicColorSource: DynamicColorSource = DynamicColorSource.DESKTOP,
     val blurEnabled: Boolean = true,
     val floatingBottomBar: Boolean = false,
     val liquidGlass: Boolean = false,

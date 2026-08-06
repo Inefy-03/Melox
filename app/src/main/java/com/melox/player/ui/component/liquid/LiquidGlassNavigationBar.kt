@@ -49,11 +49,9 @@ import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -434,13 +432,9 @@ fun LiquidGlassNavigationBar(
                                 tabWidthPx = (contentWidthPx / tabsCount).coerceAtLeast(0f)
                             }
                             .graphicsLayer { translationX = panelOffset }
-                            .dropShadow(
+                            .miuixFloatingBarShadow(
                                 shape = pillShape,
-                                shadow = Shadow(
-                                    radius = 10.dp,
-                                    color = Color.Black,
-                                    alpha = if (isDark) 0.2f else 0.1f,
-                                ),
+                                isDark = isDark,
                             )
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },

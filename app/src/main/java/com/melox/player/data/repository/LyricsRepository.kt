@@ -34,6 +34,7 @@ data class LyricsRequest(
     val contentUri: String,
     val fileName: String?,
     val folderPath: String?,
+    val refreshRevision: Long = 0L,
 )
 
 /** Reads timestamped lyrics from local sidecars or audio metadata without network access. */

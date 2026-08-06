@@ -41,11 +41,13 @@ import com.melox.player.data.repository.SettingsRepository
 import com.melox.player.model.AppSettings
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DefaultHomePage
+import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.MusicTrack
 import com.melox.player.model.LyricsUiState
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.ScanStatus
 import com.melox.player.model.ThemeMode
+import com.melox.player.model.withTrackMetadata
 import com.melox.player.playback.PlaybackController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -157,6 +159,7 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         if (hasInitialAudioPermission) ScanStatus.Scanning else ScanStatus.PermissionRequired,
     )
     private val recentlyAddedTrackIds = MutableStateFlow<Set<Long>>(emptySet())
+    private val lyricsRefreshRevision = MutableStateFlow(0L)
     val playbackState: StateFlow<PlaybackUiState> = playbackController.state
     val currentTrackId: StateFlow<Long?> = playbackState
         .map { state -> state.currentItem?.trackId }
@@ -174,7 +177,7 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
             started = SharingStarted.Eagerly,
             initialValue = playbackState.value.currentItem != null,
         )
-    val compactPlaybackState: StateFlow<PlaybackUiState> = playbackState
+    private val compactControllerPlaybackState = playbackState
         .map { state ->
             state.copy(
                 positionMs = 0L,
@@ -182,19 +185,27 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
         .distinctUntilChanged()
+    val compactPlaybackState: StateFlow<PlaybackUiState> = combine(
+        compactControllerPlaybackState,
+        library,
+    ) { playback, projection ->
+        playback.withTrackMetadata(projection.tracks)
+    }
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = playbackState.value.copy(
                 positionMs = 0L,
                 bufferedPositionMs = 0L,
-            ),
+            ).withTrackMetadata(library.value.tracks),
         )
     @OptIn(ExperimentalCoroutinesApi::class)
     val lyricsState: StateFlow<LyricsUiState> = combine(
         playbackState,
         library,
-    ) { playback, projection ->
+        lyricsRefreshRevision,
+    ) { playback, projection, refreshRevision ->
         val item = playback.currentItem ?: return@combine null
         val track = item.trackId?.let { trackId ->
             projection.tracks.firstOrNull { it.id == trackId }
@@ -204,6 +215,7 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
             contentUri = item.contentUri,
             fileName = track?.fileName,
             folderPath = track?.folderPath,
+            refreshRevision = refreshRevision,
         )
     }
         .distinctUntilChanged()
@@ -398,6 +410,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setDynamicColorSource(source: DynamicColorSource) {
+        viewModelScope.launch {
+            settingsRepository.setDynamicColorSource(source)
+        }
+    }
+
     fun setBottomBarStyle(bottomBarStyle: BottomBarStyle) {
         viewModelScope.launch {
             settingsRepository.setBottomBarStyle(bottomBarStyle)
@@ -500,6 +518,31 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         startIndex: Int,
     ) {
         playbackController.playQueue(tracks, startIndex)
+    }
+
+    fun refreshTrackAfterExternalEdit(trackId: Long) {
+        viewModelScope.launch {
+            val track = library.value.tracks.firstOrNull { it.id == trackId }
+            try {
+                val refreshedTrack = track?.let { musicRepository.refreshTrack(it) }
+                if (refreshedTrack != null) {
+                    val currentTracks = library.value.tracks
+                    if (currentTracks.any { it.id == trackId }) {
+                        val updatedTracks = currentTracks.map { currentTrack ->
+                            if (currentTrack.id == trackId) refreshedTrack else currentTrack
+                        }
+                        library.value = createLibraryProjection(updatedTracks)
+                        musicRepository.cacheMusic(updatedTracks)
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                // Keep the last valid library metadata when the edited file cannot be read.
+            } finally {
+                lyricsRefreshRevision.value += 1L
+            }
+        }
     }
 
     fun playHomeRecommendation(

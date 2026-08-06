@@ -55,6 +55,7 @@ fun MusicListScreen(
     onGoToAlbum: (MusicTrack) -> Unit,
     artistGroups: List<ArtistGroup>,
     onGoToArtist: (ArtistGroup) -> Unit,
+    onExternalEditReturned: (Long) -> Unit,
     scrollBehavior: ScrollBehavior,
     indexTopPadding: Dp,
     listState: LazyListState,
@@ -174,6 +175,7 @@ fun MusicListScreen(
         onGoToAlbum = onGoToAlbum,
         artistGroups = artistGroups,
         onGoToArtist = onGoToArtist,
+        onExternalEditReturned = onExternalEditReturned,
     )
 }
 

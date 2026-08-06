@@ -25,7 +25,13 @@
 - `SettingsRepository` exposes `Flow<AppSettings>` backed by Preferences DataStore.
 - `SettingsRepository` also persists the default root destination, selected
   Music-library tab, Songs and per-tab sort field/direction, and the Albums
-  2-column/3-column style. Legacy stored column `2` and the removed large
+  2-column/3-column style, and the dynamic-color source. Dynamic color source
+  defaults to `DESKTOP`; the UI labels it as desktop wallpaper, and Miuix
+  resolves it from the system desktop-wallpaper Monet palette.
+  `PLAYBACK_ARTWORK` is labeled as playing song artwork, uses the cached
+  current-cover sample, and falls back to the platform palette when artwork is
+  unavailable.
+  Legacy stored column `2` and the removed large
   2-column style map to 2-column; stored column `3` maps to 3-column.
   ViewModel initialization resolves the
   first small DataStore value on `Dispatchers.IO` before `setContent`, then
@@ -172,16 +178,21 @@
   the total TabRow-to-Search spacing at 12 dp. Songs SearchBar uses the same
   12 dp expanded-title gap and 0 dp small-title gap. All visible search fields
   use 16 dp horizontal inside margin and the shared generic Search / 搜索 hint.
-  The shared search wrapper
-  observes IME visibility; when a focused field's visible IME is dismissed by
-  Back, it clears the field focus in the same state transition while retaining
-  the query.
+  The shared search wrapper separates visibility from focus: the first Back
+  press hides the IME and clears focus while keeping the field open and
+  retaining its query; the second Back press closes it. The wrapper never feeds
+  Miuix's collapsed-field empty callback back into the retained query state,
+  preventing a focus-loss flash.
 - The Album root grid uses 20 dp horizontal content padding. The 2-column style
   uses a 56 dp cover with 6 dp top/bottom/start, 12 dp end card padding, and a
   10 dp cover-to-label gap. The borderless 3-column layout uses 12 dp
   row/column spacing, 14 dp cover corners, and a 6 dp inset shared by title and
   song count. Both Album styles use `body2` title text and explicit 12 sp song
   count text because Miuix has no matching text token.
+  Its sort popup uses Miuix dropdown positioning and measures the option set as
+  one complete column, keeping `Descending` visible without an initial scroll
+  while still placing the popup above the action when the lower viewport is
+  too short for all choices.
 - Albums, Artists, and Folders attach their lists to one
   `MiuixScrollBehavior`, giving the shared top bar one collapse state across
   pages. One index overlay is owned above the nested pager and dynamically
@@ -217,23 +228,42 @@
   record independent `GraphicsLayer` content. The transition host draws those
   layers inside one interpolated squircle container and crossfades them on the
   same progress. Their artwork nodes separately publish root-coordinate bounds
-  for one shared bitmap. Vertical drag distance updates that bounded progress
-  directly; release velocity is normalized by the full-player height before a
-  critically damped spring settles to the direction-selected endpoint. Back
-  and cancelled gestures reverse the active path without swapping the root tree.
-- Mini-player recording happens outside its existing surface implementation.
-  `MiniPlayerChrome` still supplies Melox's Miuix backdrop, blur-active,
-  liquid-glass-active, dark/light, and floating-highlight values to
-  `miniPlayerSurface`; the captured layer is reused as rendered and no VMusic
-  backdrop parameters are introduced.
+  for one shared bitmap. Vertical drag distance and spring settlement publish
+  through the same observable progress; release cannot leave the artwork layer
+  subscribed only to the last pointer-driven value. Release velocity is
+  normalized by the full-player height before a critically damped spring
+  settles to the direction-selected endpoint. Back and cancelled gestures
+  reverse the active path without swapping the root tree.
+  A vertical gesture records whether it began on the mini-player or full-player
+  host and keeps that host interactive until pointer release, even when the
+  reversible progress crosses the content-handoff threshold. This prevents a
+  mid-gesture z-order change from cancelling the pointer stream and freezing
+  the shared background or artwork at an intermediate frame.
+- During an active shared-player transition, mini-player recording excludes
+  the surface itself and retains only the bar content. The shared container
+  re-applies the existing `miniPlayerSurface` with the current
+  `MiniPlayerChrome` backdrop, blur-active, liquid-glass-active, dark/light,
+  highlight, outline, and fallback values at the interpolated container size.
+  This keeps Miuix's live backdrop sampling while the bar height changes.
+  Content handoff reaches the full-player layer at `p = 0.25`, but the surface
+  remains active until the shared container is fully expanded, matching VMusic's
+  `isFullyExpanded` boundary. No VMusic blur or refraction parameters are
+  introduced. Floating highlight and shadow alpha reuse the mini-layer handoff
+  curve, reaching zero at `p = 0.25`, while the backdrop continues drawing.
 - The shared artwork path uses uniform scale and translation only. Its opening
   direction is rightward and upward from the mini-player cover into the page
   cover, with interpolated rounded corners and no rotation, skew, or
-  narrow-top/wide-bottom deformation.
+  narrow-top/wide-bottom deformation. Its `GraphicsLayer` reads the same shared
+  progress used by the container so both pointer movement and the release spring
+  update the cover continuously. The cover-page path remains fully visible.
+  Lyrics has no shared cover element: when the measured artwork target is
+  horizontally offscreen, the shared overlay is absent and applies no partial
+  visibility fade. The mini-layer keeps its own cover with the title and buttons
+  and restores the complete bar together during close.
 - Full-player background processing runs on `Dispatchers.Default` against the
   already cached artwork bitmap. The bitmap is bilinearly reduced to 8 by 8;
   each pixel is converted through MaterialKolor HCT, keeps its source hue, caps
-  realized chroma at 32, and fixes tone to 48 for light theme or 24 for dark
+  realized chroma at 20, and fixes tone to 64 for light theme or 32 for dark
   theme. The resulting ARGB_8888 field supplies four quadrant paths. One
   reusable 4-by-4 output bitmap starts as source coordinates `x=2..5,
   y=2..5`. Each output pixel follows the matching local position through the
@@ -313,8 +343,17 @@
   ellipsis. A single artist resolves directly to its `ArtistGroup`; multiple
   artists open a titled Miuix sheet with the same rows as the artist library,
   12 dp spacing on every side of the artwork, and no trailing navigation icon,
-  then navigate from the selected real group. Song information opens a separate
-  titled official `OverlayBottomSheet` with a leading Close action. Its identity
+  then navigate from the selected real group. Song-information rows copy their
+  rendered trailing value to the platform
+  clipboard on click. Two Edit-icon actions before Song information launch the
+  selected MediaStore URI with read/write grants: `Intent.ACTION_VIEW` targeted
+  to `com.xjcheng.musictageditor`, and
+  `com.lonx.lyrico.action.EDIT_TAG` targeted to `com.lonx.lyrico`.
+  Their activity-result return triggers one targeted repository refresh and a
+  lyrics revision signal. Library and UI playback metadata are updated without
+  replacing Media3 items, changing the queue, calling `prepare()`, or seeking.
+  Song information uses a separate titled official `OverlayBottomSheet` with a
+  leading Close action. Its identity
   and technical metadata are separate option cards, including a localized
   unavailable value only when Android does not expose the file's bit depth. The
   More summary stays directly after the standard Miuix header rather than
@@ -370,11 +409,12 @@
   inset preserves the resting title and artist position.
 - Floating navigation computes one shared pill width for both the 64 dp mini
   player and 64 dp navigation bar. Their gap is 8 dp. Both consume the exact
-  same backdrop, blur/lens parameters, and gravity-following highlight object;
+  same backdrop, blur/lens parameters, gravity-following highlight object, and
+  shared Miuix-style shadow modifier;
   the mini-player draw result is finally clipped to its larger pill shape so
   blur cannot square off its corners. The navigation container uses the local
   Miuix example's `dropShadow`: black, 10 dp radius, 20% alpha in dark mode and
-  10% alpha in light mode; the mini player uses the same shadow. The 44 dp mini
+  10% alpha in light mode. The 44 dp mini
   artwork keeps its additional start
   inset. Compact trailing controls retain reduced spacing.
 - Mini-player upward and full-player downward drags update the shared-player
@@ -443,6 +483,7 @@
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColorEnabled: Boolean = false,
+    val dynamicColorSource: DynamicColorSource = DynamicColorSource.DESKTOP,
     val blurEnabled: Boolean = true,
     val floatingBottomBar: Boolean = false,
     val liquidGlass: Boolean = false,
@@ -592,6 +633,15 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   theme-mode dropdown, then reconcile it with the DataStore-backed setting
   after persistence. The preference summary and popup selected row read that
   same local theme-mode value.
+- `MeloxTheme` leaves Miuix `ThemeController.keyColor` unset for the desktop
+  wallpaper source so the controller resolves the complete platform Monet
+  palette.
+  Artwork source supplies the existing cached cover sample as `keyColor`; an
+  unavailable cover leaves it unset and therefore falls back to the platform
+  palette. The controller is recreated when the effective mode, key color, or
+  dark appearance changes. Enabling the floating bottom bar persists liquid
+  glass as enabled by default, while unsupported devices still resolve to the
+  opaque floating fallback.
 - Use the platform `LocaleManager` directly on API 33+ so the first language
   change follows the same in-place path as later changes. Use
   `AppCompatDelegate` and `LocaleListCompat` only on API 28-32.
@@ -628,11 +678,12 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
 - Release tasks fail during configuration when any signing value is missing.
   They must never silently produce `app-release-unsigned.apk` as the release
   deliverable.
-- The root `assembleRelease` task runs `:app:clean` before
-  `:app:assembleRelease`, disables configuration-cache reuse for the timestamped
-  release task, and prints the generated
+- The root `assembleRelease` task wraps `:app:assembleRelease`, allows Gradle's
+  configuration cache to be reused, and prints the generated
   `app/build/outputs/apk/release/Melox_<versionName>_<yyMMddHHmm>.apk` path.
-  Android Studio Terminal output therefore points directly to a newly built signed artifact.
+  The timestamp is computed by the APK timestamp task during execution, so
+  Android Studio Terminal output points directly to the signed artifact without
+  freezing the build time in the configuration cache.
 - Release uses the stable AGP 9.2 Release DSL with code minification, optimized
   resource shrinking, and `proguard-android-optimize.txt`, which runs R8 code
   shrinking, optimization, and obfuscation without the experimental gradual-R8

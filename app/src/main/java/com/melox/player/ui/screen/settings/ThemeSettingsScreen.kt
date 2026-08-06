@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.AppSettings
+import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.ThemeMode
 import com.melox.player.ui.component.MiuixBlurredBar
 import com.melox.player.ui.component.miuixBarColor
@@ -50,6 +51,7 @@ fun ThemeSettingsScreen(
     onBack: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
+    onDynamicColorSourceChange: (DynamicColorSource) -> Unit,
     onBlurChange: (Boolean) -> Unit,
     onFloatingBottomBarChange: (Boolean) -> Unit,
     onLiquidGlassChange: (Boolean) -> Unit,
@@ -68,6 +70,9 @@ fun ThemeSettingsScreen(
     }
     var dynamicColorChecked by remember(settings.dynamicColorEnabled) {
         mutableStateOf(settings.dynamicColorEnabled)
+    }
+    var dynamicColorSource by remember(settings.dynamicColorSource) {
+        mutableStateOf(settings.dynamicColorSource)
     }
     var predictiveBackChecked by remember(settings.predictiveBackEnabled) {
         mutableStateOf(settings.predictiveBackEnabled)
@@ -162,7 +167,7 @@ fun ThemeSettingsScreen(
                             checked = floatingBottomBarChecked,
                             onCheckedChange = { checked ->
                                 floatingBottomBarChecked = checked
-                                if (!checked) liquidGlassChecked = false
+                                liquidGlassChecked = checked
                                 onFloatingBottomBarChange(checked)
                             },
                             title = stringResource(R.string.settings_floating_bottom_bar_title),
@@ -209,6 +214,34 @@ fun ThemeSettingsScreen(
                             ),
                             enabled = dynamicColorSupported,
                         )
+                        AnimatedVisibility(
+                            visible = dynamicColorChecked && dynamicColorSupported,
+                            enter = fadeIn(animationSpec = tween(200)) +
+                                expandVertically(animationSpec = tween(250)),
+                            exit = fadeOut(animationSpec = tween(150)) +
+                                shrinkVertically(animationSpec = tween(200)),
+                            label = "dynamicColorSourceVisibility",
+                        ) {
+                            val sources = listOf(
+                                DynamicColorSource.DESKTOP to
+                                    stringResource(R.string.settings_dynamic_color_source_desktop),
+                                DynamicColorSource.PLAYBACK_ARTWORK to
+                                    stringResource(R.string.settings_dynamic_color_source_artwork),
+                            )
+                            OverlayDropdownPreference(
+                                items = sources.map { it.second },
+                                selectedIndex = sources.indexOfFirst {
+                                    it.first == dynamicColorSource
+                                }.coerceAtLeast(0),
+                                title = stringResource(R.string.settings_dynamic_color_source_title),
+                                onSelectedIndexChange = { index ->
+                                    sources.getOrNull(index)?.first?.let { source ->
+                                        dynamicColorSource = source
+                                        onDynamicColorSourceChange(source)
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
                 item {

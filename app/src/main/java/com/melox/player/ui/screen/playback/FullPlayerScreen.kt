@@ -13,7 +13,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,7 +59,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -86,6 +84,7 @@ import com.melox.player.model.LyricsUiState
 import com.melox.player.model.PlaybackMode
 import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
+import com.melox.player.model.withTrackMetadata
 import com.melox.player.ui.component.library.PlaybackArtworkFrame
 import com.melox.player.ui.component.library.TrackActionsOverlay
 import com.melox.player.ui.component.library.formatDuration
@@ -96,6 +95,7 @@ import com.melox.player.ui.component.playback.PLAYER_TRACK_ARTWORK_CROSSFADE_DUR
 import com.melox.player.ui.component.playback.PLAYER_TRACK_ARTWORK_CROSSFADE_EASING
 import com.melox.player.ui.component.playback.playerControlIconTransition
 import com.melox.player.ui.component.playback.recordPlayerLayer
+import com.melox.player.ui.component.playback.rememberPlayerSheetVerticalDragModifier
 import com.melox.player.ui.component.playback.fittedArtworkRect
 import com.melox.player.ui.component.playback.scaledRectAroundCenter
 import kotlin.math.roundToLong
@@ -129,8 +129,10 @@ internal fun FullPlayerScreen(
     onGoToAlbum: (MusicTrack) -> Unit,
     artistGroups: List<ArtistGroup>,
     onGoToArtist: (ArtistGroup) -> Unit,
+    onExternalEditReturned: (Long) -> Unit,
     playerLayer: GraphicsLayer,
     interactionEnabled: Boolean,
+    lyricsPagingEnabled: Boolean,
     drawInPlace: Boolean,
     sharedArtworkVisible: Boolean,
     onPlayerDragStart: () -> Unit,
@@ -142,7 +144,9 @@ internal fun FullPlayerScreen(
     onStatusBarBackgroundDarkChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val item = playback.currentItem
+    val item = playback.currentItem?.let { queueItem ->
+        currentTrack?.let(queueItem::withTrackMetadata) ?: queueItem
+    }
     val loadedArtworkBitmap = item?.let {
         rememberArtworkBitmap(
             contentUri = it.contentUri,
@@ -159,35 +163,15 @@ internal fun FullPlayerScreen(
     val controlColor = emphasisControlColor.copy(alpha = 0.8f)
     val artistControlColor = controlColor
     val artworkCornerRadius = 12.dp
-    val currentOnPlayerDragStart by rememberUpdatedState(onPlayerDragStart)
-    val currentOnPlayerDrag by rememberUpdatedState(onPlayerDrag)
-    val currentOnPlayerDragEnd by rememberUpdatedState(onPlayerDragEnd)
-    val currentOnPlayerDragCancel by rememberUpdatedState(onPlayerDragCancel)
     var showTrackActions by remember { mutableStateOf(false) }
-    val dismissGestureModifier = if (interactionEnabled) {
-        Modifier.pointerInput(Unit) {
-            val velocityTracker = VelocityTracker()
-            detectVerticalDragGestures(
-                onDragStart = {
-                    velocityTracker.resetTracking()
-                    currentOnPlayerDragStart()
-                },
-                onVerticalDrag = { change, dragAmount ->
-                    velocityTracker.addPosition(change.uptimeMillis, change.position)
-                    currentOnPlayerDrag(dragAmount)
-                    change.consume()
-                },
-                onDragEnd = {
-                    currentOnPlayerDragEnd(velocityTracker.calculateVelocity().y)
-                },
-                onDragCancel = {
-                    currentOnPlayerDragCancel()
-                },
-            )
-        }
-    } else {
-        Modifier
-    }
+    val dismissGestureModifier = rememberPlayerSheetVerticalDragModifier(
+        enabled = interactionEnabled,
+        hasItem = item != null,
+        onDragStart = onPlayerDragStart,
+        onDrag = onPlayerDrag,
+        onDragEnd = onPlayerDragEnd,
+        onDragCancel = onPlayerDragCancel,
+    )
     BackHandler(
         enabled = interactionEnabled,
         onBack = onDismiss,
@@ -265,6 +249,7 @@ internal fun FullPlayerScreen(
                                     artworkCornerRadius = artworkCornerRadius,
                                     sharedArtworkVisible = sharedArtworkVisible,
                                     onArtworkBoundsChanged = onArtworkBoundsChanged,
+                                    lyricsPagingEnabled = lyricsPagingEnabled,
                                     modifier = Modifier.weight(1f),
                                 )
                                 PlayerDetails(
@@ -306,6 +291,7 @@ internal fun FullPlayerScreen(
                                     artworkCornerRadius = artworkCornerRadius,
                                     sharedArtworkVisible = sharedArtworkVisible,
                                     onArtworkBoundsChanged = onArtworkBoundsChanged,
+                                    lyricsPagingEnabled = lyricsPagingEnabled,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .weight(1f),
@@ -339,6 +325,7 @@ internal fun FullPlayerScreen(
             onGoToAlbum = onGoToAlbum,
             artistGroups = artistGroups,
             onGoToArtist = onGoToArtist,
+            onExternalEditReturned = onExternalEditReturned,
         )
     }
 }
@@ -411,11 +398,13 @@ private fun PlayerMiddlePager(
     artworkCornerRadius: Dp,
     sharedArtworkVisible: Boolean,
     onArtworkBoundsChanged: (Rect) -> Unit,
+    lyricsPagingEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(pageCount = { 2 })
     HorizontalPager(
         state = pagerState,
+        userScrollEnabled = lyricsPagingEnabled,
         modifier = modifier.clipToBounds(),
         beyondViewportPageCount = 1,
         verticalAlignment = Alignment.CenterVertically,

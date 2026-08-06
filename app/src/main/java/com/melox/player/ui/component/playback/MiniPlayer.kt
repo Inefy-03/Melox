@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,13 +28,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -43,10 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onSizeChanged
@@ -69,6 +64,7 @@ import com.melox.player.model.PlaybackUiState
 import com.melox.player.ui.MiniPlayerChrome
 import com.melox.player.ui.NORMAL_BAR_STROKE_ALPHA
 import com.melox.player.ui.component.library.PlaybackArtwork
+import com.melox.player.ui.component.liquid.miuixFloatingBarShadow
 import com.melox.player.ui.component.liquid.miniPlayerSurface
 import kotlin.math.abs
 import kotlin.math.max
@@ -97,6 +93,7 @@ internal fun MiniPlayer(
     onPlayerDragCancel: () -> Unit,
     playerLayer: GraphicsLayer,
     drawInPlace: Boolean,
+    surfaceVisible: Boolean,
     sharedArtworkVisible: Boolean,
     onPlayerBoundsChanged: (Rect) -> Unit,
     onArtworkBoundsChanged: (Rect) -> Unit,
@@ -108,10 +105,6 @@ internal fun MiniPlayer(
     val surfaceCornerRadius = if (isNormal) 18.dp else 32.dp
     val artworkCornerRadius = if (isNormal) 7.dp else 8.dp
     val shape = RoundedCornerShape(surfaceCornerRadius)
-    val currentOnPlayerDragStart by rememberUpdatedState(onPlayerDragStart)
-    val currentOnPlayerDrag by rememberUpdatedState(onPlayerDrag)
-    val currentOnPlayerDragEnd by rememberUpdatedState(onPlayerDragEnd)
-    val currentOnPlayerDragCancel by rememberUpdatedState(onPlayerDragCancel)
     val normalOutlineColor = DividerDefaults.DividerColor.copy(
         alpha = NORMAL_BAR_STROKE_ALPHA,
     )
@@ -121,27 +114,14 @@ internal fun MiniPlayer(
     val playPauseIconSize = 22.dp
     val controlIconSize = 24.dp
     val artworkShape = RoundedCornerShape(artworkCornerRadius)
-    val expansionGestureModifier = Modifier.pointerInput(hasItem) {
-        if (!hasItem) return@pointerInput
-        val velocityTracker = VelocityTracker()
-        detectVerticalDragGestures(
-            onDragStart = {
-                velocityTracker.resetTracking()
-                currentOnPlayerDragStart()
-            },
-            onVerticalDrag = { change, dragAmount ->
-                velocityTracker.addPosition(change.uptimeMillis, change.position)
-                currentOnPlayerDrag(dragAmount)
-                change.consume()
-            },
-            onDragEnd = {
-                currentOnPlayerDragEnd(velocityTracker.calculateVelocity().y)
-            },
-            onDragCancel = {
-                currentOnPlayerDragCancel()
-            },
-        )
-    }
+    val expansionGestureModifier = rememberPlayerSheetVerticalDragModifier(
+        enabled = true,
+        hasItem = hasItem,
+        onDragStart = onPlayerDragStart,
+        onDrag = onPlayerDrag,
+        onDragEnd = onPlayerDragEnd,
+        onDragCancel = onPlayerDragCancel,
+    )
 
     Box(
         modifier = modifier
@@ -165,45 +145,43 @@ internal fun MiniPlayer(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .then(
-                    if (isNormal) {
-                        Modifier
-                    } else {
-                        Modifier.dropShadow(
-                            shape = shape,
-                            shadow = Shadow(
-                                radius = 10.dp,
-                                color = Color.Black,
-                                alpha = if (chrome.isDark) 0.2f else 0.1f,
-                            ),
-                        )
-                    },
-                )
-                .clip(shape)
-                .miniPlayerSurface(
-                    shape = shape,
-                    backdrop = chrome.backdrop,
-                    blurActive = chrome.blurActive,
-                    liquidGlassActive = chrome.liquidGlassActive,
-                    isDark = chrome.isDark,
-                    followsNavigationBar = isNormal,
-                    floatingHighlight = chrome.floatingHighlight,
-                )
-                .then(
-                    if (isNormal) {
-                        Modifier.border(
-                            width = DividerDefaults.Thickness,
-                            color = normalOutlineColor,
-                            shape = shape,
-                        )
-                    } else {
-                        Modifier
-                    },
-                ),
-        )
+        if (surfaceVisible) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .then(
+                        if (isNormal) {
+                            Modifier
+                        } else {
+                            Modifier.miuixFloatingBarShadow(
+                                shape = shape,
+                                isDark = chrome.isDark,
+                            )
+                        },
+                    )
+                    .clip(shape)
+                    .miniPlayerSurface(
+                        shape = shape,
+                        backdrop = chrome.backdrop,
+                        blurActive = chrome.blurActive,
+                        liquidGlassActive = chrome.liquidGlassActive,
+                        isDark = chrome.isDark,
+                        followsNavigationBar = isNormal,
+                        floatingHighlight = chrome.floatingHighlight,
+                    )
+                    .then(
+                        if (isNormal) {
+                            Modifier.border(
+                                width = DividerDefaults.Thickness,
+                                color = normalOutlineColor,
+                                shape = shape,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()

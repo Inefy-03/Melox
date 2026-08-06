@@ -3,7 +3,10 @@ package com.melox.player.ui.component.liquid
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurDefaults
@@ -23,6 +26,7 @@ internal fun Modifier.miniPlayerSurface(
     isDark: Boolean,
     followsNavigationBar: Boolean,
     floatingHighlight: Highlight? = null,
+    highlightAlpha: Float = 1f,
 ): Modifier {
     val surfaceColor = if (followsNavigationBar) {
         MiuixTheme.colorScheme.surface
@@ -30,6 +34,7 @@ internal fun Modifier.miniPlayerSurface(
         MiuixTheme.colorScheme.surfaceContainer
     }
     val usableBackdrop = backdrop.takeIf { blurActive || liquidGlassActive }
+    val resolvedHighlightAlpha = highlightAlpha.coerceIn(0f, 1f)
     return then(
         when {
             usableBackdrop != null && liquidGlassActive -> Modifier.drawBackdrop(
@@ -44,11 +49,12 @@ internal fun Modifier.miniPlayerSurface(
                     )
                 },
                 highlight = {
-                    floatingHighlight?.copy(alpha = 0.75f) ?: if (isDark) {
+                    val highlight = floatingHighlight?.copy(alpha = 0.75f) ?: if (isDark) {
                         Highlight.GlassStrokeMiddleDark
                     } else {
                         Highlight.GlassStrokeMiddleLight
                     }
+                    highlight.copy(alpha = highlight.alpha * resolvedHighlightAlpha)
                 },
                 onDrawSurface = {
                     drawRect(surfaceColor.copy(alpha = 0.4f))
@@ -66,7 +72,7 @@ internal fun Modifier.miniPlayerSurface(
                         ),
                     ),
                 ),
-                highlight = if (followsNavigationBar) {
+                highlight = (if (followsNavigationBar) {
                     null
                 } else if (floatingHighlight != null) {
                     floatingHighlight
@@ -74,10 +80,29 @@ internal fun Modifier.miniPlayerSurface(
                     Highlight.GlassStrokeMiddleDark
                 } else {
                     Highlight.GlassStrokeMiddleLight
+                })?.let { highlight ->
+                    highlight.copy(alpha = highlight.alpha * resolvedHighlightAlpha)
                 },
             )
 
             else -> Modifier.background(surfaceColor, shape)
         },
+    )
+}
+
+internal fun Modifier.miuixFloatingBarShadow(
+    shape: Shape,
+    isDark: Boolean,
+    alpha: Float = 1f,
+): Modifier {
+    val resolvedAlpha = alpha.coerceIn(0f, 1f)
+    if (resolvedAlpha <= 0f) return this
+    return dropShadow(
+        shape = shape,
+        shadow = Shadow(
+            radius = 10.dp,
+            color = Color.Black,
+            alpha = (if (isDark) 0.2f else 0.1f) * resolvedAlpha,
+        ),
     )
 }

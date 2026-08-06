@@ -23,6 +23,30 @@ data class PlaybackQueueItem(
     val playbackMode: PlaybackMode = PlaybackMode.ORDER,
 )
 
+internal fun PlaybackQueueItem.withTrackMetadata(track: MusicTrack): PlaybackQueueItem {
+    if (trackId != track.id) return this
+    return copy(
+        title = track.title ?: title,
+        artist = track.artist,
+        album = track.album,
+        durationMs = track.durationMs.takeIf { it > 0L } ?: durationMs,
+        dateModifiedEpochSeconds = track.dateModifiedEpochSeconds,
+        fileSizeBytes = track.fileSizeBytes,
+    )
+}
+
+internal fun PlaybackUiState.withTrackMetadata(tracks: List<MusicTrack>): PlaybackUiState {
+    if (queue.isEmpty() || tracks.isEmpty()) return this
+    val tracksById = tracks.associateBy(MusicTrack::id)
+    val updatedQueue = queue.map { item ->
+        item.trackId
+            ?.let(tracksById::get)
+            ?.let(item::withTrackMetadata)
+            ?: item
+    }
+    return if (updatedQueue == queue) this else copy(queue = updatedQueue)
+}
+
 /** Immutable projection of the service-owned Media3 player. */
 data class PlaybackUiState(
     val queue: List<PlaybackQueueItem> = emptyList(),

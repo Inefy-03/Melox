@@ -78,6 +78,7 @@ fun AlbumDetailScreen(
     onAppendToQueue: (MusicTrack) -> Unit,
     onGoToAlbum: (MusicTrack) -> Unit,
     onGoToArtist: (ArtistGroup) -> Unit,
+    onExternalEditReturned: (Long) -> Unit,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
@@ -149,6 +150,7 @@ fun AlbumDetailScreen(
             onGoToAlbum = onGoToAlbum,
             artistGroups = artistGroups,
             onGoToArtist = onGoToArtist,
+            onExternalEditReturned = onExternalEditReturned,
         )
     }
 }
@@ -168,6 +170,7 @@ fun ArtistDetailScreen(
     onAppendToQueue: (MusicTrack) -> Unit,
     onGoToAlbum: (MusicTrack) -> Unit,
     onGoToArtist: (ArtistGroup) -> Unit,
+    onExternalEditReturned: (Long) -> Unit,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
@@ -300,6 +303,7 @@ fun ArtistDetailScreen(
             onGoToAlbum = onGoToAlbum,
             artistGroups = artistGroups,
             onGoToArtist = onGoToArtist,
+            onExternalEditReturned = onExternalEditReturned,
         )
     }
 }

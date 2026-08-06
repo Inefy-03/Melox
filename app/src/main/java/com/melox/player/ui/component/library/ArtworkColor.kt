@@ -12,6 +12,10 @@ internal fun Bitmap.extractArtworkColor(): Color? {
     var greenTotal = 0.0
     var blueTotal = 0.0
     var weightTotal = 0.0
+    var opaqueRedTotal = 0.0
+    var opaqueGreenTotal = 0.0
+    var opaqueBlueTotal = 0.0
+    var opaquePixelCount = 0
     for (y in stepY / 2 until height step stepY) {
         for (x in stepX / 2 until width step stepX) {
             val pixel = this[x, y]
@@ -19,6 +23,10 @@ internal fun Bitmap.extractArtworkColor(): Color? {
             val red = android.graphics.Color.red(pixel) / 255.0
             val green = android.graphics.Color.green(pixel) / 255.0
             val blue = android.graphics.Color.blue(pixel) / 255.0
+            opaqueRedTotal += red
+            opaqueGreenTotal += green
+            opaqueBlueTotal += blue
+            opaquePixelCount += 1
             val maximum = maxOf(red, green, blue)
             val minimum = minOf(red, green, blue)
             val luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722
@@ -31,7 +39,14 @@ internal fun Bitmap.extractArtworkColor(): Color? {
             weightTotal += weight
         }
     }
-    if (weightTotal == 0.0) return null
+    if (weightTotal == 0.0) {
+        if (opaquePixelCount == 0) return null
+        return Color(
+            red = (opaqueRedTotal / opaquePixelCount).toFloat().coerceIn(0f, 1f),
+            green = (opaqueGreenTotal / opaquePixelCount).toFloat().coerceIn(0f, 1f),
+            blue = (opaqueBlueTotal / opaquePixelCount).toFloat().coerceIn(0f, 1f),
+        )
+    }
     return Color(
         red = (redTotal / weightTotal).toFloat().coerceIn(0f, 1f),
         green = (greenTotal / weightTotal).toFloat().coerceIn(0f, 1f),

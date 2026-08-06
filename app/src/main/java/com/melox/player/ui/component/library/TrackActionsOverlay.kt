@@ -1,5 +1,11 @@
 package com.melox.player.ui.component.library
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
@@ -12,20 +18,28 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.artistGroupKey
@@ -45,6 +59,7 @@ import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Album
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.ContactsCircle
+import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -54,6 +69,9 @@ private val TrackActionIconSize = 22.dp
 private val TrackActionAddToQueueIconSize = 20.dp
 private val TrackActionSummaryArtworkSize = 56.dp
 private val TrackActionSummaryArtworkCornerRadius = 8.dp
+internal const val MusicTagEditorPackage = "com.xjcheng.musictageditor"
+internal const val LyricoPackage = "com.lonx.lyrico"
+internal const val LyricoEditTagAction = "com.lonx.lyrico.action.EDIT_TAG"
 
 @Composable
 fun TrackActionsOverlay(
@@ -64,12 +82,62 @@ fun TrackActionsOverlay(
     onGoToAlbum: ((MusicTrack) -> Unit)? = null,
     artistGroups: List<ArtistGroup> = emptyList(),
     onGoToArtist: ((ArtistGroup) -> Unit)? = null,
+    onExternalEditReturned: (Long) -> Unit,
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val latestOnExternalEditReturned by rememberUpdatedState(onExternalEditReturned)
+    val externalEditorUnavailableMessage =
+        stringResource(R.string.music_external_editor_unavailable)
     var retainedTrack by remember { mutableStateOf(track) }
     var songInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var retainedSongInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var artistListTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var retainedArtistListTrack by remember { mutableStateOf<MusicTrack?>(null) }
+    var pendingExternalEditTrackId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val finishExternalEdit = {
+        pendingExternalEditTrackId?.let { trackId ->
+            pendingExternalEditTrackId = null
+            latestOnExternalEditReturned(trackId)
+        }
+    }
+    val externalEditorLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) {
+        finishExternalEdit()
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                finishExternalEdit()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    val launchExternalEditor: (MusicTrack, String, String) -> Unit =
+        { selectedTrack, packageName, action ->
+            pendingExternalEditTrackId = selectedTrack.id
+            runCatching {
+                externalEditorLauncher.launch(
+                    selectedTrack.externalEditorIntent(
+                        packageName = packageName,
+                        action = action,
+                    ),
+                )
+            }.onSuccess {
+                onDismiss()
+            }.onFailure {
+                pendingExternalEditTrackId = null
+                Toast.makeText(
+                    context,
+                    externalEditorUnavailableMessage,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
     val navigationBarBottomPadding = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding()
@@ -194,6 +262,28 @@ fun TrackActionsOverlay(
                             )
                         }
                     }
+                    TrackAction(
+                        icon = MiuixIcons.Edit,
+                        text = stringResource(R.string.music_edit_with_music_tag_editor),
+                        onClick = {
+                            launchExternalEditor(
+                                selectedTrack,
+                                MusicTagEditorPackage,
+                                Intent.ACTION_VIEW,
+                            )
+                        },
+                    )
+                    TrackAction(
+                        icon = MiuixIcons.Edit,
+                        text = stringResource(R.string.music_edit_with_lyrico),
+                        onClick = {
+                            launchExternalEditor(
+                                selectedTrack,
+                                LyricoPackage,
+                                LyricoEditTagAction,
+                            )
+                        },
+                    )
                     TrackAction(
                         icon = MiuixIcons.Info,
                         text = stringResource(R.string.music_song_info),
@@ -438,12 +528,19 @@ private fun BottomSheetCloseButton(onClick: () -> Unit) {
 
 @Composable
 private fun SongInfoRow(label: String, value: String?) {
+    val context = LocalContext.current
+    val displayValue = value?.takeIf(String::isNotBlank)
+        ?: stringResource(R.string.not_available)
     BasicComponent(
         title = label,
+        onClick = {
+            context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(
+                ClipData.newPlainText(label, displayValue),
+            )
+        },
         endActions = {
             Text(
-                text = value?.takeIf(String::isNotBlank)
-                    ?: stringResource(R.string.not_available),
+                text = displayValue,
                 style = MiuixTheme.textStyles.body2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantActions,
                 maxLines = 2,
@@ -451,6 +548,25 @@ private fun SongInfoRow(label: String, value: String?) {
             )
         },
     )
+}
+
+internal fun MusicTrack.externalEditorIntent(
+    packageName: String,
+    action: String,
+): Intent {
+    val uri = contentUri.toUri()
+    return Intent(action).apply {
+        setDataAndType(
+            uri,
+            mimeType?.takeIf { it.startsWith("audio/", ignoreCase = true) } ?: "audio/*",
+        )
+        setPackage(packageName)
+        clipData = ClipData.newRawUri("audio", uri)
+        addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+        )
+    }
 }
 
 internal fun participatingArtistGroups(

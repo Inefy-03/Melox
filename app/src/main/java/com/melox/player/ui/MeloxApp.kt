@@ -104,6 +104,7 @@ import com.melox.player.data.library.FolderSortConfig
 import com.melox.player.data.library.FolderSortField
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DefaultHomePage
+import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.ScanStatus
 import com.melox.player.model.ThemeMode
 import com.melox.player.model.MusicTrack
@@ -112,6 +113,8 @@ import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberMiuixBlurBackdrop
 import com.melox.player.ui.component.library.MusicSortButton
 import com.melox.player.ui.component.library.prefetchArtwork
+import com.melox.player.ui.component.library.extractArtworkColor
+import com.melox.player.ui.component.library.rememberArtworkBitmap
 import com.melox.player.ui.component.library.AlphabetSections
 import com.melox.player.ui.component.library.AlphabetSideBar
 import com.melox.player.ui.component.library.AlbumSortButton
@@ -121,6 +124,7 @@ import com.melox.player.ui.component.playback.MiniPlayer
 import com.melox.player.ui.component.playback.PLAYER_FULL_ARTWORK_REQUEST_SIZE
 import com.melox.player.ui.component.playback.PlayerSheetArtworkOverlay
 import com.melox.player.ui.component.playback.PlayerSheetContentOverlay
+import com.melox.player.ui.component.playback.sharedArtworkTargetIsOnscreen
 import com.melox.player.ui.component.playback.playerSheetUsesFullPlayerStatusBar
 import com.melox.player.ui.component.playback.prefetchArtworkColorField
 import com.melox.player.ui.component.playback.rememberPlayerSheetTransitionState
@@ -273,6 +277,7 @@ fun MeloxApp(
     val playerTransition = rememberPlayerSheetTransitionState()
     val miniPlayerLayer = rememberGraphicsLayer()
     val fullPlayerLayer = rememberGraphicsLayer()
+    var miniPlayerChrome by remember { mutableStateOf<MiniPlayerChrome?>(null) }
     var currentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
     var selectedAlbumKey by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedArtistKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -332,7 +337,6 @@ fun MeloxApp(
     LaunchedEffect(currentTrackId, isDark) {
         playerStatusBarBackgroundIsDark = isDark
     }
-
     LaunchedEffect(uiState.settingsLoaded) {
         if (uiState.settingsLoaded && !libraryPreferencesHydrated) {
             musicSortFieldOrdinal = settings.musicSortFieldOrdinal
@@ -440,7 +444,26 @@ fun MeloxApp(
         }
     }
 
-    MeloxTheme(settings = settings) {
+    val playbackArtworkColor = if (
+        settings.dynamicColorEnabled &&
+            settings.dynamicColorSource == DynamicColorSource.PLAYBACK_ARTWORK
+    ) {
+        compactPlayback.currentItem?.let { item ->
+            rememberArtworkBitmap(
+                contentUri = item.contentUri,
+                dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
+                fileSizeBytes = item.fileSizeBytes,
+                size = 48.dp,
+            )?.extractArtworkColor()
+        }
+    } else {
+        null
+    }
+
+    MeloxTheme(
+        settings = settings,
+        playbackArtworkColor = playbackArtworkColor,
+    ) {
         DisposableEffect(activity, isDark, statusBarUsesDarkMode) {
             val componentActivity = activity as? ComponentActivity
             val statusBarStyle = SystemBarStyle.auto(
@@ -623,6 +646,8 @@ fun MeloxApp(
                             onGoToAlbum = openTrackAlbum,
                             artistGroups = uiState.artists,
                             onGoToArtist = openTrackArtist,
+                            onExternalEditReturned =
+                                viewModel::refreshTrackAfterExternalEdit,
                             scrollBehavior = scrollBehavior,
                             indexTopPadding = indexTopPadding,
                             listState = songsListState,
@@ -1003,25 +1028,21 @@ fun MeloxApp(
                                 MiniPlayerHost(
                                     viewModel = viewModel,
                                     chrome = chrome,
+                                    onChromeChanged = { miniPlayerChrome = it },
                                     onOpen = openPlayer,
                                     onOpenQueue = { showQueue = true },
-                                    onPlayerDragStart = playerTransition::beginDrag,
+                                    onPlayerDragStart = playerTransition::beginMiniPlayerDrag,
                                     onPlayerDrag = playerTransition::dragBy,
-                                    onPlayerDragEnd = { velocityY ->
-                                        rootScope.launch {
-                                            playerTransition.endDrag(velocityY)
-                                        }
-                                    },
-                                    onPlayerDragCancel = {
-                                        rootScope.launch {
-                                            playerTransition.cancelDrag()
-                                        }
-                                    },
+                                    onPlayerDragEnd = playerTransition::endDrag,
+                                    onPlayerDragCancel = playerTransition::cancelDrag,
                                     playerLayer = miniPlayerLayer,
                                     drawInPlace = !playerTransition.isMounted || !playerTransition.isReady,
+                                    surfaceVisible =
+                                        !playerTransition.isMounted || !playerTransition.isReady,
                                     sharedArtworkVisible =
                                         !playerTransition.isReady ||
-                                            !playerTransition.isTransitionActive,
+                                            !playerTransition.isTransitionActive ||
+                                            playerSheetArtworkIsOffscreen(playerTransition),
                                     onPlayerBoundsChanged = playerTransition::updateMiniPlayerBounds,
                                     onArtworkBoundsChanged = playerTransition::updateMiniArtworkBounds,
                                 )
@@ -1080,6 +1101,8 @@ fun MeloxApp(
                                                                 viewModel::setThemeMode,
                                                             onDynamicColorChange =
                                                                 viewModel::setDynamicColorEnabled,
+                                                            onDynamicColorSourceChange =
+                                                                viewModel::setDynamicColorSource,
                                                             onBlurChange =
                                                                 viewModel::setBlurEnabled,
                                                             onFloatingBottomBarChange =
@@ -1122,6 +1145,8 @@ fun MeloxApp(
                                                                     viewModel::appendToQueue,
                                                                 onGoToAlbum = openTrackAlbum,
                                                                 onGoToArtist = openTrackArtist,
+                                                                onExternalEditReturned =
+                                                                    viewModel::refreshTrackAfterExternalEdit,
                                                             )
                                                         }
                                                     }
@@ -1161,6 +1186,8 @@ fun MeloxApp(
                                                                     viewModel::appendToQueue,
                                                                 onGoToAlbum = openTrackAlbum,
                                                                 onGoToArtist = openTrackArtist,
+                                                                onExternalEditReturned =
+                                                                    viewModel::refreshTrackAfterExternalEdit,
                                                             )
                                                         }
                                                     }
@@ -1191,6 +1218,8 @@ fun MeloxApp(
                                                                     viewModel::appendToQueue,
                                                                 onGoToAlbum = openTrackAlbum,
                                                                 onGoToArtist = openTrackArtist,
+                                                                onExternalEditReturned =
+                                                                    viewModel::refreshTrackAfterExternalEdit,
                                                             )
                                                         }
                                                     }
@@ -1216,24 +1245,17 @@ fun MeloxApp(
                             onGoToArtist = openTrackArtist,
                             playerLayer = fullPlayerLayer,
                             interactionEnabled = !playerTransition.miniPlayerAcceptsInput,
+                            lyricsPagingEnabled = playerTransition.isFullyExpanded,
                             drawInPlace =
                                 playerTransition.targetOpen &&
                                     !playerTransition.isTransitionActive,
                             sharedArtworkVisible =
                                 !playerTransition.isReady ||
                                     !playerTransition.isTransitionActive,
-                            onPlayerDragStart = playerTransition::beginDrag,
+                            onPlayerDragStart = playerTransition::beginFullPlayerDrag,
                             onPlayerDrag = playerTransition::dragBy,
-                            onPlayerDragEnd = { velocityY ->
-                                rootScope.launch {
-                                    playerTransition.endDrag(velocityY)
-                                }
-                            },
-                            onPlayerDragCancel = {
-                                rootScope.launch {
-                                    playerTransition.cancelDrag()
-                                }
-                            },
+                            onPlayerDragEnd = playerTransition::endDrag,
+                            onPlayerDragCancel = playerTransition::cancelDrag,
                             onPlayerBoundsChanged = playerTransition::updateFullPlayerBounds,
                             onArtworkBoundsChanged = playerTransition::updateFullArtworkBounds,
                             onStatusBarBackgroundDarkChanged = {
@@ -1248,6 +1270,7 @@ fun MeloxApp(
                         transition = playerTransition,
                         miniPlayerLayer = miniPlayerLayer,
                         fullPlayerLayer = fullPlayerLayer,
+                        miniPlayerChrome = miniPlayerChrome,
                         collapsedCornerRadius =
                             if (miniPlayerUsesNormalChrome) 18.dp else 32.dp,
                         floatingMiniPlayer = !miniPlayerUsesNormalChrome,
@@ -1280,6 +1303,7 @@ private fun FullPlayerHost(
     onGoToArtist: (ArtistGroup) -> Unit,
     playerLayer: GraphicsLayer,
     interactionEnabled: Boolean,
+    lyricsPagingEnabled: Boolean,
     drawInPlace: Boolean,
     sharedArtworkVisible: Boolean,
     onPlayerDragStart: () -> Unit,
@@ -1314,8 +1338,10 @@ private fun FullPlayerHost(
         onGoToAlbum = onGoToAlbum,
         artistGroups = artistGroups,
         onGoToArtist = onGoToArtist,
+        onExternalEditReturned = viewModel::refreshTrackAfterExternalEdit,
         playerLayer = playerLayer,
         interactionEnabled = interactionEnabled,
+        lyricsPagingEnabled = lyricsPagingEnabled,
         drawInPlace = drawInPlace,
         sharedArtworkVisible = sharedArtworkVisible,
         onPlayerDragStart = onPlayerDragStart,
@@ -1333,6 +1359,7 @@ private fun FullPlayerHost(
 private fun MiniPlayerHost(
     viewModel: MeloxViewModel,
     chrome: MiniPlayerChrome,
+    onChromeChanged: (MiniPlayerChrome) -> Unit,
     onOpen: () -> Unit,
     onOpenQueue: () -> Unit,
     onPlayerDragStart: () -> Unit,
@@ -1341,11 +1368,15 @@ private fun MiniPlayerHost(
     onPlayerDragCancel: () -> Unit,
     playerLayer: GraphicsLayer,
     drawInPlace: Boolean,
+    surfaceVisible: Boolean,
     sharedArtworkVisible: Boolean,
     onPlayerBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit,
     onArtworkBoundsChanged: (androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
     val playback by viewModel.compactPlaybackState.collectAsStateWithLifecycle()
+    SideEffect {
+        onChromeChanged(chrome)
+    }
     MiniPlayer(
         playback = playback,
         chrome = chrome,
@@ -1362,11 +1393,20 @@ private fun MiniPlayerHost(
         onPlayerDragCancel = onPlayerDragCancel,
         playerLayer = playerLayer,
         drawInPlace = drawInPlace,
+        surfaceVisible = surfaceVisible,
         sharedArtworkVisible = sharedArtworkVisible,
         onPlayerBoundsChanged = onPlayerBoundsChanged,
         onArtworkBoundsChanged = onArtworkBoundsChanged,
     )
 }
+
+private fun playerSheetArtworkIsOffscreen(
+    transition: com.melox.player.ui.component.playback.PlayerSheetTransitionState,
+): Boolean = transition.isReady &&
+    !sharedArtworkTargetIsOnscreen(
+        artworkBounds = transition.fullArtworkBounds,
+        viewportBounds = transition.fullPlayerBounds,
+    )
 
 @Composable
 private fun PlaybackArtworkPrefetchEffect(
@@ -1531,6 +1571,7 @@ internal fun LibrarySearchBar(
 ) {
     val clearSearchContentDescription = stringResource(R.string.search_clear)
     val imeVisible = WindowInsets.isImeVisible
+    val searchFocusManager = LocalFocusManager.current
     var imeWasVisible by remember { mutableStateOf(false) }
     LaunchedEffect(focused, imeVisible) {
         if (!focused) {
@@ -1542,6 +1583,7 @@ internal fun LibrarySearchBar(
             )
         ) {
             imeWasVisible = false
+            searchFocusManager.clearFocus(force = true)
             onFocusedChange(false)
         } else if (imeVisible) {
             imeWasVisible = true
@@ -1554,6 +1596,13 @@ internal fun LibrarySearchBar(
         exit = fadeOut(animationSpec = tween(150)) +
             shrinkVertically(animationSpec = tween(200)),
     ) {
+        val handleExpandedChange: (Boolean) -> Unit = { expanded ->
+            if (expanded) {
+                onFocusedChange(true)
+            } else {
+                onVisibleChange(false)
+            }
+        }
         SearchBar(
             inputField = {
                 InputField(
@@ -1567,8 +1616,8 @@ internal fun LibrarySearchBar(
                         }
                     },
                     onSearch = onQueryChange,
-                    expanded = focused,
-                    onExpandedChange = onFocusedChange,
+                    expanded = visible,
+                    onExpandedChange = handleExpandedChange,
                     label = label,
                     trailingIcon = {
                         AnimatedVisibility(
@@ -1593,8 +1642,8 @@ internal fun LibrarySearchBar(
                     },
                 )
             },
-            onExpandedChange = onFocusedChange,
-            expanded = focused,
+            onExpandedChange = handleExpandedChange,
+            expanded = visible,
             insideMargin = DpSize(16.dp, 0.dp),
             modifier = Modifier
                 .fillMaxWidth()

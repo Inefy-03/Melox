@@ -21,6 +21,7 @@ import com.melox.player.data.library.MusicSortField
 import com.melox.player.model.AppSettings
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DefaultHomePage
+import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.ThemeMode
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
@@ -58,6 +59,11 @@ class SettingsRepository(context: Context) {
                     }
                     ?: ThemeMode.SYSTEM,
                 dynamicColorEnabled = preferences[Keys.DynamicColorEnabled] ?: false,
+                dynamicColorSource = preferences[Keys.DynamicColorSource]
+                    ?.let { storedValue ->
+                        enumValueOrDefault(storedValue, DynamicColorSource.DESKTOP)
+                    }
+                    ?: DynamicColorSource.DESKTOP,
                 blurEnabled = preferences[Keys.BlurEnabled] ?: true,
                 floatingBottomBar = preferences[Keys.FloatingBottomBar]
                     ?: (preferences[Keys.BottomBarStyle] != null &&
@@ -110,6 +116,12 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    suspend fun setDynamicColorSource(source: DynamicColorSource) {
+        dataStore.edit { preferences ->
+            preferences[Keys.DynamicColorSource] = source.name
+        }
+    }
+
     suspend fun setBottomBarStyle(bottomBarStyle: BottomBarStyle) {
         dataStore.edit { preferences ->
             preferences[Keys.FloatingBottomBar] = bottomBarStyle != BottomBarStyle.NORMAL
@@ -126,7 +138,7 @@ class SettingsRepository(context: Context) {
     suspend fun setFloatingBottomBar(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.FloatingBottomBar] = enabled
-            if (!enabled) preferences[Keys.LiquidGlass] = false
+            preferences[Keys.LiquidGlass] = enabled
         }
     }
 
@@ -187,6 +199,7 @@ class SettingsRepository(context: Context) {
     private object Keys {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DynamicColorEnabled = booleanPreferencesKey("dynamic_color_enabled")
+        val DynamicColorSource = stringPreferencesKey("dynamic_color_source")
         val BottomBarStyle = stringPreferencesKey("bottom_bar_style")
         val BlurEnabled = booleanPreferencesKey("blur_enabled")
         val FloatingBottomBar = booleanPreferencesKey("floating_bottom_bar")

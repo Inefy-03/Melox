@@ -41,9 +41,9 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.roundToInt
 
 private const val ARTWORK_COLOR_FIELD_SIZE = 8
-private const val ARTWORK_COLOR_FIELD_MAX_CHROMA = 32.0
-private const val ARTWORK_COLOR_FIELD_LIGHT_TONE = 48.0
-private const val ARTWORK_COLOR_FIELD_DARK_TONE = 24.0
+private const val ARTWORK_COLOR_FIELD_MAX_CHROMA = 20.0
+private const val ARTWORK_COLOR_FIELD_LIGHT_TONE = 64.0
+private const val ARTWORK_COLOR_FIELD_DARK_TONE = 32.0
 private const val ARTWORK_BACKGROUND_ROTATION_DURATION_MILLIS = 18_000
 private const val ARTWORK_COLOR_ORBIT_DURATION_MILLIS = 42_000
 private const val ARTWORK_BACKGROUND_COLOR_TRANSITION_DURATION_MILLIS = 640

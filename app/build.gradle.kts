@@ -1,4 +1,11 @@
 import java.util.Properties
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -34,8 +41,6 @@ val releaseSigningValues = listOf(
 val releaseSigningConfigured = localPropertiesFile.isFile &&
     releaseKeystoreFile?.isFile == true &&
     releaseSigningValues.all { (_, value) -> !value.isNullOrBlank() }
-val releaseBuildDate = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
-    .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
 val appVersionName = "1.0.0"
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.equals("assemble", ignoreCase = true) ||
@@ -116,12 +121,48 @@ android {
     }
 }
 
-androidComponents {
-    onVariants(selector().withBuildType("release")) { variant ->
-        variant.outputs.forEach { output ->
-            output.outputFileName.set("Melox_${appVersionName}_${releaseBuildDate}.apk")
+@DisableCachingByDefault(because = "The output filename includes the execution-time clock.")
+abstract class TimestampReleaseApkTask : DefaultTask() {
+    @get:Internal
+    abstract val apkDirectory: DirectoryProperty
+
+    @get:Input
+    abstract val versionName: Property<String>
+
+    @TaskAction
+    fun copyTimestampedApk() {
+        val outputDirectory = apkDirectory.get().asFile
+        val timestamp = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+            .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
+        val targetFile = outputDirectory.resolve("Melox_${versionName.get()}_${timestamp}.apk")
+        val sourceFile = outputDirectory
+            .listFiles { candidate ->
+                candidate.isFile &&
+                    candidate.extension == "apk" &&
+                    !candidate.name.startsWith("Melox_")
+            }
+            ?.maxByOrNull { candidate -> candidate.lastModified() }
+
+        check(sourceFile?.isFile == true) {
+            "Release APK was not generated in ${outputDirectory.absolutePath}"
         }
+
+        sourceFile.copyTo(targetFile, overwrite = true)
+        targetFile.setLastModified(System.currentTimeMillis())
+        logger.lifecycle("Timestamped release APK: ${targetFile.absolutePath}")
     }
+}
+
+val timestampReleaseApk = tasks.register<TimestampReleaseApkTask>("timestampReleaseApk") {
+    group = "build"
+    description = "Copies the release APK to a timestamped filename."
+    dependsOn("packageRelease")
+    apkDirectory.set(layout.buildDirectory.dir("outputs/apk/release"))
+    versionName.set(appVersionName)
+}
+
+tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
+    dependsOn(timestampReleaseApk)
 }
 
 dependencies {

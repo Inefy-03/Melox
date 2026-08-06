@@ -28,13 +28,13 @@
     <string name="music_search_hint">搜索歌曲、艺术家、专辑或文件</string>
     <string name="search_hint">搜索</string>
     <string name="search_clear">清空搜索</string>
-    <string name="music_search_cancel">取消</string>
     <string name="music_no_search_results">没有匹配的歌曲</string>
     <string name="music_play_next">下一首播放</string>
     <string name="music_add_to_queue">添加到队列</string>
-    <string name="music_go_to_album">转到专辑</string>
-    <string name="music_go_to_artist">转到艺术家</string>
     <string name="music_song_info">歌曲信息</string>
+    <string name="music_edit_with_music_tag_editor">使用音乐标签编辑</string>
+    <string name="music_edit_with_lyrico">使用Lyrico编辑</string>
+    <string name="music_external_editor_unavailable">无法打开所选编辑器</string>
     <string name="music_album_label">专辑：%1$s</string>
     <string name="music_artist_label">艺术家：%1$s</string>
     <string name="music_quality_hr">HR</string>
@@ -45,7 +45,6 @@
     <string name="song_info_title">标题</string>
     <string name="song_info_album_artist">专辑艺术家</string>
     <string name="song_info_format">格式</string>
-    <string name="song_info_file_name">文件</string>
     <string name="song_info_file_size">大小</string>
     <string name="song_info_duration">时长</string>
     <string name="song_info_bitrate">比特率</string>
@@ -74,7 +73,6 @@
         <item quantity="other">%1$d 首歌曲</item>
     </plurals>
     <string name="album_detail_year">%1$d年</string>
-    <string name="album_detail_summary">%1$s · %2$s</string>
 
     <string name="artist_sort_action">艺术家排序</string>
     <string name="artist_sort_name">名称</string>
@@ -106,7 +104,6 @@
         <item quantity="other">%1$d 首歌曲</item>
     </plurals>
 
-    <string name="now_playing">正在播放</string>
     <string name="no_track_selected">未选择歌曲</string>
     <string name="mini_player_title">Melox</string>
     <string name="mini_player_empty">暂无播放音乐</string>
@@ -114,8 +111,6 @@
     <string name="pause">暂停</string>
     <string name="previous_track">上一首</string>
     <string name="next_track">下一首</string>
-    <string name="shuffle">随机播放</string>
-    <string name="repeat_mode">循环模式</string>
     <string name="playback_mode_order">顺序播放</string>
     <string name="playback_mode_repeat_one">单曲循环</string>
     <string name="playback_mode_random">随机队列</string>
@@ -150,8 +145,11 @@
     <string name="theme_mode_light">浅色</string>
     <string name="theme_mode_dark">深色</string>
     <string name="settings_dynamic_color_title">动态取色</string>
-    <string name="settings_dynamic_color_summary">根据系统壁纸调整应用配色</string>
+    <string name="settings_dynamic_color_summary">根据来源调整应用配色</string>
     <string name="settings_dynamic_color_unsupported">动态取色需要 Android 12 或更高版本</string>
+    <string name="settings_dynamic_color_source_title">颜色来源</string>
+    <string name="settings_dynamic_color_source_desktop">桌面壁纸</string>
+    <string name="settings_dynamic_color_source_artwork">播放歌曲封面</string>
     <string name="settings_blur_title">模糊</string>
     <string name="settings_blur_summary">为顶栏和导航栏启用背景模糊</string>
     <string name="settings_blur_unsupported">模糊需要 Android 13 或更高版本</string>

@@ -201,9 +201,10 @@ Melox lets Android users find and play music already stored on their device thro
   first-occurrence order, reuses the standard artist row, and opens that
   artist's global detail page. An Artist Detail opened this way is a third-level
   child of its source Album Detail, so Back restores that exact album. Opening
-  an album from the child Artist Detail preserves the existing Artist-to-Album
-  parent state: Back returns to that Artist Detail, then restores the source
-  album. Album and artist detail pagers support both tab taps and horizontal
+  any album from this child Artist Detail performs that same Back action and
+  restores the source Album Detail rather than replacing it or adding another
+  page. Album and artist detail
+  pagers support both tab taps and horizontal
   swipes because they have no competing root-page gesture. Album-detail song
   rows omit the current album suffix, while artist-detail song rows omit the
   current artist prefix. The artist-detail album tab uses the same 2-column or

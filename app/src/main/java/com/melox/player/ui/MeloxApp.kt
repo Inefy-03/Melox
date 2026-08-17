@@ -95,6 +95,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavEntry
 import com.melox.player.R
+import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.MusicSortConfig
 import com.melox.player.data.library.MusicSortField
 import com.melox.player.data.library.AlbumSortConfig
@@ -207,6 +208,12 @@ private enum class AppRoute {
     ARTIST_DETAIL,
     FOLDER_DETAIL,
 }
+
+private data class AppNavDestination(
+    val route: AppRoute,
+    val contentKey: String? = null,
+    val depth: Int,
+)
 
 private enum class PermissionRequestSource {
     STARTUP,
@@ -337,6 +344,7 @@ fun MeloxApp(
     var selectedArtistKey by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedFolderKey by rememberSaveable { mutableStateOf<String?>(null) }
     var albumParentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
+    var albumParentArtistKey by rememberSaveable { mutableStateOf<String?>(null) }
     var artistParentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
     var artistParentAlbumKey by rememberSaveable { mutableStateOf<String?>(null) }
     var libraryPreferencesHydrated by remember { mutableStateOf(false) }
@@ -628,19 +636,41 @@ fun MeloxApp(
             libraryScrollBehavior.state.contentOffset = 0f
             pendingFolderSortReset = null
         }
+        val returnToArtistParentAlbum: () -> Unit = {
+            artistParentAlbumKey?.let { parentAlbumKey ->
+                selectedAlbumKey = parentAlbumKey
+                artistParentRoute = AppRoute.ROOT
+                artistParentAlbumKey = null
+                currentRoute = AppRoute.ALBUM_DETAIL
+            }
+        }
+        val openAlbumFromArtist: (AlbumGroup) -> Unit = { album ->
+            if (
+                artistParentRoute == AppRoute.ALBUM_DETAIL &&
+                    artistParentAlbumKey != null
+            ) {
+                returnToArtistParentAlbum()
+            } else {
+                selectedAlbumKey = album.key
+                albumParentRoute = AppRoute.ARTIST_DETAIL
+                albumParentArtistKey = selectedArtistKey
+                currentRoute = AppRoute.ALBUM_DETAIL
+            }
+        }
         val openTrackAlbum: (MusicTrack) -> Unit = { track ->
             uiState.albums.firstOrNull { album ->
                 album.tracks.any { it.id == track.id }
             }?.let { album ->
-                if (currentRoute != AppRoute.ALBUM_DETAIL || selectedAlbumKey != album.key) {
-                    albumParentRoute = if (currentRoute == AppRoute.ARTIST_DETAIL) {
-                        AppRoute.ARTIST_DETAIL
-                    } else {
-                        AppRoute.ROOT
+                when {
+                    currentRoute == AppRoute.ARTIST_DETAIL -> openAlbumFromArtist(album)
+                    currentRoute == AppRoute.ALBUM_DETAIL && selectedAlbumKey == album.key -> Unit
+                    else -> {
+                        selectedAlbumKey = album.key
+                        albumParentRoute = AppRoute.ROOT
+                        albumParentArtistKey = null
+                        currentRoute = AppRoute.ALBUM_DETAIL
                     }
                 }
-                selectedAlbumKey = album.key
-                currentRoute = AppRoute.ALBUM_DETAIL
                 if (playerTransition.targetOpen) closePlayer()
             }
         }
@@ -652,6 +682,8 @@ fun MeloxApp(
                 } else {
                     artistParentRoute = AppRoute.ROOT
                     artistParentAlbumKey = null
+                    albumParentRoute = AppRoute.ROOT
+                    albumParentArtistKey = null
                 }
             }
             selectedArtistKey = artist.key
@@ -941,6 +973,7 @@ fun MeloxApp(
                                             dismissLibrarySearchFocus()
                                             selectedAlbumKey = album.key
                                             albumParentRoute = AppRoute.ROOT
+                                            albumParentArtistKey = null
                                             currentRoute = AppRoute.ALBUM_DETAIL
                                         },
                                         scrollBehavior = libraryScrollBehavior,
@@ -1095,28 +1128,77 @@ fun MeloxApp(
             }
         }
 
+        val currentRouteContentKey = when (currentRoute) {
+            AppRoute.ALBUM_DETAIL -> selectedAlbumKey
+            AppRoute.ARTIST_DETAIL -> selectedArtistKey
+            AppRoute.FOLDER_DETAIL -> selectedFolderKey
+            else -> null
+        }
         val navBackStack = remember(
             currentRoute,
+            currentRouteContentKey,
             albumParentRoute,
+            albumParentArtistKey,
             artistParentRoute,
             artistParentAlbumKey,
         ) {
+            val root = AppNavDestination(AppRoute.ROOT, depth = 0)
             when {
-                currentRoute == AppRoute.ROOT -> listOf(AppRoute.ROOT)
+                currentRoute == AppRoute.ROOT -> listOf(root)
                 currentRoute == AppRoute.ALBUM_DETAIL &&
-                    albumParentRoute == AppRoute.ARTIST_DETAIL -> listOf(
-                    AppRoute.ROOT,
-                    AppRoute.ARTIST_DETAIL,
-                    AppRoute.ALBUM_DETAIL,
+                    albumParentRoute == AppRoute.ARTIST_DETAIL &&
+                    albumParentArtistKey != null -> listOf(
+                    root,
+                    AppNavDestination(
+                        route = AppRoute.ARTIST_DETAIL,
+                        contentKey = albumParentArtistKey,
+                        depth = 1,
+                    ),
+                    AppNavDestination(
+                        route = AppRoute.ALBUM_DETAIL,
+                        contentKey = selectedAlbumKey,
+                        depth = 2,
+                    ),
                 )
                 currentRoute == AppRoute.ARTIST_DETAIL &&
                     artistParentRoute == AppRoute.ALBUM_DETAIL &&
-                    artistParentAlbumKey != null -> listOf(
-                    AppRoute.ROOT,
-                    AppRoute.ALBUM_DETAIL,
-                    AppRoute.ARTIST_DETAIL,
+                    artistParentAlbumKey != null -> buildList {
+                    add(root)
+                    if (
+                        albumParentRoute == AppRoute.ARTIST_DETAIL &&
+                            albumParentArtistKey != null
+                    ) {
+                        add(
+                            AppNavDestination(
+                                route = AppRoute.ARTIST_DETAIL,
+                                contentKey = albumParentArtistKey,
+                                depth = 1,
+                            ),
+                        )
+                    }
+                    add(
+                        AppNavDestination(
+                            route = AppRoute.ALBUM_DETAIL,
+                            contentKey = artistParentAlbumKey,
+                            depth = size,
+                        ),
+                    )
+                    add(
+                        AppNavDestination(
+                            route = AppRoute.ARTIST_DETAIL,
+                            contentKey = selectedArtistKey,
+                            depth = size,
+                        ),
+                    )
+                }
+                else -> listOf(
+                    root,
+                    AppNavDestination(
+                        route = currentRoute,
+                        contentKey = currentRouteContentKey,
+                        depth = 1,
+                    ),
                 )
-                else -> listOf(AppRoute.ROOT, currentRoute)
             }
         }
         val navigateBack = {
@@ -1124,25 +1206,19 @@ fun MeloxApp(
                 showQueue = false
             } else if (
                 currentRoute == AppRoute.ALBUM_DETAIL &&
-                albumParentRoute == AppRoute.ARTIST_DETAIL
+                albumParentRoute == AppRoute.ARTIST_DETAIL &&
+                albumParentArtistKey != null
             ) {
-                if (
-                    artistParentRoute == AppRoute.ALBUM_DETAIL &&
-                    artistParentAlbumKey != null
-                ) {
-                    selectedAlbumKey = artistParentAlbumKey
-                }
+                selectedArtistKey = albumParentArtistKey
                 albumParentRoute = AppRoute.ROOT
+                albumParentArtistKey = null
                 currentRoute = AppRoute.ARTIST_DETAIL
             } else if (
                 currentRoute == AppRoute.ARTIST_DETAIL &&
                 artistParentRoute == AppRoute.ALBUM_DETAIL &&
                 artistParentAlbumKey != null
             ) {
-                selectedAlbumKey = artistParentAlbumKey
-                artistParentRoute = AppRoute.ROOT
-                artistParentAlbumKey = null
-                currentRoute = AppRoute.ALBUM_DETAIL
+                returnToArtistParentAlbum()
             } else {
                 currentRoute = AppRoute.ROOT
             }
@@ -1225,7 +1301,7 @@ fun MeloxApp(
                                     modifier = Modifier.fillMaxSize(),
                                     entryProvider = { route ->
                                         NavEntry(route) {
-                                            if (route == AppRoute.ROOT) {
+                                            if (route.route == AppRoute.ROOT) {
                                                 content(currentRootPadding)
                                             } else {
                                                 val routeBottomPadding =
@@ -1234,7 +1310,7 @@ fun MeloxApp(
                                                 Box(
                                                     modifier = Modifier.fillMaxSize(),
                                                 ) {
-                                                    when (route) {
+                                                    when (route.route) {
                                                     AppRoute.THEME_SETTINGS ->
                                                         ThemeSettingsScreen(
                                                             settings = settings,
@@ -1288,10 +1364,10 @@ fun MeloxApp(
                                                     AppRoute.ALBUM_DETAIL -> {
                                                         val album = remember(
                                                             uiState.albums,
-                                                            selectedAlbumKey,
+                                                            route.contentKey,
                                                         ) {
                                                             uiState.albums.firstOrNull {
-                                                                it.key == selectedAlbumKey
+                                                                it.key == route.contentKey
                                                             }
                                                         }
                                                         album?.let {
@@ -1320,10 +1396,10 @@ fun MeloxApp(
                                                     AppRoute.ARTIST_DETAIL -> {
                                                         val artist = remember(
                                                             uiState.artists,
-                                                            selectedArtistKey,
+                                                            route.contentKey,
                                                         ) {
                                                             uiState.artists.firstOrNull {
-                                                                it.key == selectedArtistKey
+                                                                it.key == route.contentKey
                                                             }
                                                         }
                                                         artist?.let {
@@ -1337,13 +1413,7 @@ fun MeloxApp(
                                                                 albumGridStyle =
                                                                     albumSortConfig.gridStyle,
                                                                 onBack = navigateBack,
-                                                                onAlbumClick = { album ->
-                                                                    selectedAlbumKey = album.key
-                                                                    albumParentRoute =
-                                                                        AppRoute.ARTIST_DETAIL
-                                                                    currentRoute =
-                                                                        AppRoute.ALBUM_DETAIL
-                                                                },
+                                                                onAlbumClick = openAlbumFromArtist,
                                                                 onTrackClick =
                                                                     viewModel::playTracks,
                                                                 onPlayNext =
@@ -1361,10 +1431,10 @@ fun MeloxApp(
                                                     AppRoute.FOLDER_DETAIL -> {
                                                         val folder = remember(
                                                             uiState.folders,
-                                                            selectedFolderKey,
+                                                            route.contentKey,
                                                         ) {
                                                             uiState.folders.firstOrNull {
-                                                                it.key == selectedFolderKey
+                                                                it.key == route.contentKey
                                                             }
                                                         }
                                                         folder?.let {

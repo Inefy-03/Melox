@@ -276,9 +276,9 @@ Last updated: 2026-08-17
   every distinct split artist from all album tracks in first-occurrence order
   and use the standard artist rows/global detail destination. An Artist Detail
   opened from Participating artists retains the source album key as its parent,
-  so Back restores that exact Album Detail. Its Albums tab keeps the existing
-  Artist-to-Album parent context, so Back returns to Artist Detail before a
-  second Back restores the source album. Both detail pagers allow TabRow taps
+  so Back restores that exact Album Detail. Its Albums tab performs that same
+  Back action, restoring the source Album Detail with its prior state instead
+  of replacing it or adding a route. Both detail pagers allow TabRow taps
   and direct horizontal swipes because their routes do not compete with
   root-pager navigation. When Blur is active, selector Cards and unselected
   contour backgrounds stay transparent so the top-bar blur remains visible.

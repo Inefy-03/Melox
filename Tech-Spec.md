@@ -281,8 +281,8 @@
   direct horizontal swiping as well as TabRow taps because no root pager is
   present on those routes. An Artist Detail opened from an Album Detail stores
   the source album key as its parent context and Back restores that exact album.
-  Its Albums tab retains the existing Artist-to-Album parent context, so Back
-  returns to the Artist Detail before a second Back restores the source album.
+  Its Albums tab performs the same Back action, restoring the source Album
+  Detail with its prior state instead of replacing it or adding another route.
   Album-detail song rows use artist-only descriptions, and artist-detail song
   rows use album-only descriptions. Artist-detail Albums uses the persisted
   Album grid style and its column count.
@@ -795,8 +795,8 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   compete with root-pager navigation. A participating-artist route saves the
   source album key, making Artist Detail a third-level child whose Back restores
   that Album Detail. If the Artist Detail opens an album through its Albums tab,
-  the existing Artist-to-Album parent route is used first; a second Back still
-  restores the saved source album. Both detail screens use an empty-title Miuix
+  it pops back to that source Album Detail with its prior state instead of
+  replacing it or adding a route. Both detail screens use an empty-title Miuix
   `SmallTopAppBar`; its `bottomContent` owns the fixed metadata header and
   selector so the complete fixed region shares the outer Miuix blur/fallback
   surface. With Blur active, the selector Card and contour background stay

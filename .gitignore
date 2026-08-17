@@ -7,6 +7,11 @@
 *~
 out/
 
+# Keep README files in Git; other Markdown documents are local-only
+*.md
+!README.md
+!README.en.md
+
 # Gradle and Kotlin caches
 .gradle/
 .kotlin/

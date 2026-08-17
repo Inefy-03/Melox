@@ -139,9 +139,8 @@
     <string name="language_english">English</string>
     <string name="settings_default_home_title">默认主页</string>
     <string name="settings_theme_settings_title">主题设置</string>
-    <string name="settings_theme_settings_summary">配色、效果、导航与动效</string>
+    <string name="settings_theme_settings_summary">自定义外观</string>
     <string name="settings_about_title">关于</string>
-    <string name="settings_about_summary">Melox 版本与开发人员</string>
     <string name="settings_theme_mode_title">主题模式</string>
     <string name="theme_mode_system">跟随系统</string>
     <string name="theme_mode_light">浅色</string>
@@ -209,7 +208,7 @@
     <string name="lyrics_center">歌词居中</string>
     <string name="lyrics_hide_controls">歌词页隐藏控制</string>
 
-    <string name="about_version">v%1$s</string>
+    <string name="about_version">%1$s</string>
     <string name="about_project_title">项目地址</string>
     <string name="about_developer_title">开发人员</string>
     <string name="about_telegram_title">加入Telegram频道</string>

@@ -144,17 +144,7 @@ data class LyricsDocument(
 
     fun currentLineIndex(positionMs: Long): Int {
         if (lines.isEmpty() || positionMs < lines.first().startTimeMs) return -1
-        var low = 0
-        var high = lines.lastIndex
-        while (low <= high) {
-            val middle = (low + high).ushr(1)
-            if (lines[middle].startTimeMs <= positionMs) {
-                low = middle + 1
-            } else {
-                high = middle - 1
-            }
-        }
-        val candidate = high
+        val candidate = lastLineIndexAtOrBefore(positionMs)
         if (candidate < 0) return -1
         val line = lines[candidate]
         return candidate.takeIf {
@@ -163,21 +153,47 @@ data class LyricsDocument(
         } ?: -1
     }
 
+    /**
+     * Keeps a completed line visually focused through a short gap until the next line starts.
+     * Long gaps are excluded because their precomputed transition owns the visual focus.
+     */
+    fun visualLineIndex(positionMs: Long): Int {
+        currentLineIndex(positionMs).takeIf { it >= 0 }?.let { return it }
+        val previousIndex = lastLineIndexAtOrBefore(positionMs)
+        if (previousIndex < 0 || previousIndex >= lines.lastIndex) return -1
+        val nextLineStartTimeMs = lines[previousIndex + 1].startTimeMs
+        return previousIndex.takeIf {
+            positionMs < nextLineStartTimeMs && transitionIndex(positionMs) < 0
+        } ?: -1
+    }
+
+    /**
+     * Resolves the line that owns visual centering, while allowing a transition to override it.
+     */
+    fun visualFocusLineIndex(positionMs: Long): Int =
+        visualLineIndex(positionMs).takeIf { it >= 0 } ?: focusLineIndex(positionMs)
+
     fun focusLineIndex(positionMs: Long): Int {
         currentLineIndex(positionMs).takeIf { it >= 0 }?.let { return it }
         if (lines.isEmpty()) return -1
 
+        return (lastLineIndexAtOrBefore(positionMs) + 1).coerceAtMost(lines.lastIndex)
+    }
+
+    private fun lastLineIndexAtOrBefore(positionMs: Long): Int {
         var low = 0
         var high = lines.lastIndex
+        var candidate = -1
         while (low <= high) {
             val middle = (low + high).ushr(1)
             if (lines[middle].startTimeMs <= positionMs) {
+                candidate = middle
                 low = middle + 1
             } else {
                 high = middle - 1
             }
         }
-        return low.coerceAtMost(lines.lastIndex)
+        return candidate
     }
 }
 

@@ -55,6 +55,9 @@ import com.melox.player.model.PlaybackSnapshot
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.ScanStatus
 import com.melox.player.model.ThemeMode
+import com.melox.player.model.LyricLine
+import com.melox.player.model.LyricTransition
+import com.melox.player.model.LyricsRenderItem
 import com.melox.player.model.resolveAudioQuality
 import com.melox.player.model.withTrackMetadata
 import com.melox.player.playback.isValidQueueIndex
@@ -129,6 +132,7 @@ import com.melox.player.ui.screen.playback.LYRIC_TRANSLATION_LINE_HEIGHT_SP
 import com.melox.player.ui.screen.playback.LYRICS_MANUAL_FOLLOW_RESUME_DELAY_MS
 import com.melox.player.ui.screen.playback.characterMotion
 import com.melox.player.ui.screen.playback.characterProgress
+import com.melox.player.ui.screen.playback.buildLyricsRenderIndexMap
 import com.melox.player.ui.screen.playback.shouldUseWordAnimation
 import com.melox.player.ui.screen.playback.simpleFloatOffset
 import com.melox.player.ui.screen.playback.wordMotion
@@ -730,6 +734,35 @@ class UiLogicTest {
             ),
             0f,
         )
+    }
+
+    @Test
+    fun lyricRenderIndicesAreBuiltInOnePass() {
+        val line = LyricLine(
+            agent = "default",
+            startTimeMs = 0L,
+            endTimeMs = 1_000L,
+            text = "line",
+            words = emptyList(),
+            translation = null,
+        )
+        val transition = LyricTransition(
+            afterLineIndex = 0,
+            startTimeMs = 1_000L,
+            endTimeMs = 6_000L,
+        )
+        val map = buildLyricsRenderIndexMap(
+            renderItems = listOf(
+                LyricsRenderItem.Line(lineIndex = 0, line = line),
+                LyricsRenderItem.Transition(transitionIndex = 0, transition = transition),
+                LyricsRenderItem.Line(lineIndex = 1, line = line.copy(startTimeMs = 6_000L)),
+            ),
+            lineCount = 2,
+            transitionCount = 1,
+        )
+
+        assertArrayEquals(intArrayOf(0, 2), map.lineRenderIndices)
+        assertArrayEquals(intArrayOf(1), map.transitionRenderIndices)
     }
 
     @Test

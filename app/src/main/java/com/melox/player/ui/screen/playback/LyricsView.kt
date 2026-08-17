@@ -7,7 +7,6 @@ import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -96,6 +95,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 private const val LYRIC_EDGE_FADE_DP = 100f
 internal const val LYRIC_INACTIVE_TEXT_ALPHA = 0.4f
 internal const val LYRICS_MANUAL_FOLLOW_RESUME_DELAY_MS = 5_000L
+private const val LYRIC_FOCUS_ALPHA_ANIMATION_DURATION_MS = 180
 internal const val LYRIC_PRIMARY_FONT_SIZE_SP = 24f
 internal const val LYRIC_PRIMARY_LINE_HEIGHT_SP = 28f
 internal const val LYRIC_TRANSLATION_FONT_SIZE_SP = 16f
@@ -205,6 +205,39 @@ internal fun lyricProgrammaticTranslationStart(
     targetRenderIndex > previousRenderIndex -> offscreenTravelPx
     targetRenderIndex < previousRenderIndex -> -offscreenTravelPx
     else -> 0f
+}
+
+internal data class LyricsRenderIndexMap(
+    val lineRenderIndices: IntArray,
+    val transitionRenderIndices: IntArray,
+)
+
+internal fun buildLyricsRenderIndexMap(
+    renderItems: List<LyricsRenderItem>,
+    lineCount: Int,
+    transitionCount: Int,
+): LyricsRenderIndexMap {
+    val lineRenderIndices = IntArray(lineCount) { -1 }
+    val transitionRenderIndices = IntArray(transitionCount) { -1 }
+    renderItems.forEachIndexed { renderIndex, item ->
+        when (item) {
+            is LyricsRenderItem.Line -> {
+                if (item.lineIndex in lineRenderIndices.indices) {
+                    lineRenderIndices[item.lineIndex] = renderIndex
+                }
+            }
+
+            is LyricsRenderItem.Transition -> {
+                if (item.transitionIndex in transitionRenderIndices.indices) {
+                    transitionRenderIndices[item.transitionIndex] = renderIndex
+                }
+            }
+        }
+    }
+    return LyricsRenderIndexMap(
+        lineRenderIndices = lineRenderIndices,
+        transitionRenderIndices = transitionRenderIndices,
+    )
 }
 
 internal fun lyricOffscreenTranslationDistance(
@@ -403,25 +436,24 @@ internal fun LyricsView(
     val centerOffsetPx = with(density) { centerOffsetY.toPx() }
     val keepAliveZone = 100.dp
     val renderItems = remember(document) { document.renderItems() }
-    val lineRenderIndices = remember(renderItems, document.lines.size) {
-        IntArray(document.lines.size) { lineIndex ->
-            renderItems.indexOfFirst { item ->
-                item is LyricsRenderItem.Line && item.lineIndex == lineIndex
-            }
-        }
+    val renderIndexMap = remember(
+        renderItems,
+        document.lines.size,
+        document.transitions.size,
+    ) {
+        buildLyricsRenderIndexMap(
+            renderItems = renderItems,
+            lineCount = document.lines.size,
+            transitionCount = document.transitions.size,
+        )
     }
-    val transitionRenderIndices = remember(renderItems) {
-        IntArray(document.transitions.size) { transitionIndex ->
-            renderItems.indexOfFirst { item ->
-                item is LyricsRenderItem.Transition && item.transitionIndex == transitionIndex
-            }
-        }
-    }
-    val currentLineIndex by remember(document) {
-        derivedStateOf { document.currentLineIndex(lyricTimeProvider()) }
+    val lineRenderIndices = renderIndexMap.lineRenderIndices
+    val transitionRenderIndices = renderIndexMap.transitionRenderIndices
+    val visualCurrentLineIndex by remember(document) {
+        derivedStateOf { document.visualLineIndex(lyricTimeProvider()) }
     }
     val focusLineIndex by remember(document) {
-        derivedStateOf { document.focusLineIndex(lyricTimeProvider()) }
+        derivedStateOf { document.visualFocusLineIndex(lyricTimeProvider()) }
     }
     var isUserBrowsingLyrics by remember(document) { mutableStateOf(false) }
     val isPreviewing = previewPositionMs != null
@@ -447,7 +479,6 @@ internal fun LyricsView(
             ?: -1
         else -> lineRenderIndices.getOrNull(focusLineIndex) ?: -1
     }
-    val visualCurrentLineIndex = currentLineIndex
     val visualFocusRenderIndex = playbackFocusRenderIndex
     val normalTextStyle = MiuixTheme.textStyles.title3.copy(
         fontSize = (LYRIC_PRIMARY_FONT_SIZE_SP * lyricFontScale).sp,
@@ -580,6 +611,7 @@ internal fun LyricsView(
         val previousRenderIndex = lastVisualFocusRenderIndex
             .takeIf { it >= 0 }
             ?: visualFocusRenderIndex
+        val currentTranslationVelocity = programmaticTranslationY.velocity
         lastCenterOffsetY = centerOffsetY
         if (animateCentering) {
             programmaticTranslationY.snapTo(
@@ -637,6 +669,7 @@ internal fun LyricsView(
                     dampingRatio = 1f,
                     stiffness = centeringSpringStiffness,
                 ),
+                initialVelocity = currentTranslationVelocity,
             )
         }
     }
@@ -818,7 +851,10 @@ private fun LyricsLineItem(
     )
     val alpha by animateFloatAsState(
         targetValue = if (isFocused) 1f else 0.4f,
-        animationSpec = if (isFocused) spring() else snap(),
+        animationSpec = tween(
+            durationMillis = LYRIC_FOCUS_ALPHA_ANIMATION_DURATION_MS,
+            easing = LinearOutSlowInEasing,
+        ),
         label = "lyricFocusAlpha",
     )
 

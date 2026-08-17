@@ -41,7 +41,8 @@ val releaseSigningValues = listOf(
 val releaseSigningConfigured = localPropertiesFile.isFile &&
     releaseKeystoreFile?.isFile == true &&
     releaseSigningValues.all { (_, value) -> !value.isNullOrBlank() }
-val appVersionName = "1.0.0"
+val appVersionName = "1.0.0-" + ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+    .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.equals("assemble", ignoreCase = true) ||
         taskName.endsWith(":assemble", ignoreCase = true) ||
@@ -122,8 +123,8 @@ android {
     }
 }
 
-@DisableCachingByDefault(because = "The output filename includes the execution-time clock.")
-abstract class TimestampReleaseApkTask : DefaultTask() {
+@DisableCachingByDefault(because = "The renamed APK is copied after the packaged release APK.")
+abstract class RenameReleaseApkTask : DefaultTask() {
     @get:Internal
     abstract val apkDirectory: DirectoryProperty
 
@@ -131,11 +132,9 @@ abstract class TimestampReleaseApkTask : DefaultTask() {
     abstract val versionName: Property<String>
 
     @TaskAction
-    fun copyTimestampedApk() {
+    fun copyVersionedApk() {
         val outputDirectory = apkDirectory.get().asFile
-        val timestamp = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
-            .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
-        val targetFile = outputDirectory.resolve("Melox_${versionName.get()}_${timestamp}.apk")
+        val targetFile = outputDirectory.resolve("Melox_${versionName.get()}.apk")
         val sourceFile = outputDirectory
             .listFiles { candidate ->
                 candidate.isFile &&
@@ -150,20 +149,20 @@ abstract class TimestampReleaseApkTask : DefaultTask() {
 
         sourceFile.copyTo(targetFile, overwrite = true)
         targetFile.setLastModified(System.currentTimeMillis())
-        logger.lifecycle("Timestamped release APK: ${targetFile.absolutePath}")
+        logger.lifecycle("Versioned release APK: ${targetFile.absolutePath}")
     }
 }
 
-val timestampReleaseApk = tasks.register<TimestampReleaseApkTask>("timestampReleaseApk") {
+val renameReleaseApk = tasks.register<RenameReleaseApkTask>("renameReleaseApk") {
     group = "build"
-    description = "Copies the release APK to a timestamped filename."
+    description = "Copies the release APK to a versioned filename."
     dependsOn("packageRelease")
     apkDirectory.set(layout.buildDirectory.dir("outputs/apk/release"))
     versionName.set(appVersionName)
 }
 
 tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
-    dependsOn(timestampReleaseApk)
+    dependsOn(renameReleaseApk)
 }
 
 dependencies {

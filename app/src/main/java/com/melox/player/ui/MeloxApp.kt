@@ -215,6 +215,11 @@ private data class AppNavDestination(
     val depth: Int,
 )
 
+// Keep Navigation3 identity tied to the stack slot so a return can swap the displayed
+// detail object without changing a pop into a forward replacement transition.
+private fun AppNavDestination.entryContentKey(): String =
+    "melox:${route.name}:$depth"
+
 private enum class PermissionRequestSource {
     STARTUP,
     MANUAL_SCAN,
@@ -636,17 +641,17 @@ fun MeloxApp(
             libraryScrollBehavior.state.contentOffset = 0f
             pendingFolderSortReset = null
         }
-        val returnToArtistParentAlbum: () -> Unit = {
+        val returnToArtistParentAlbum: (String?) -> Unit = { targetAlbumKey ->
             artistParentAlbumKey?.let { parentAlbumKey ->
-                selectedAlbumKey = parentAlbumKey
+                selectedAlbumKey = targetAlbumKey ?: parentAlbumKey
                 artistParentRoute = AppRoute.ROOT
                 artistParentAlbumKey = null
                 currentRoute = AppRoute.ALBUM_DETAIL
             }
         }
-        val returnToAlbumParentArtist: () -> Unit = {
+        val returnToAlbumParentArtist: (String?) -> Unit = { targetArtistKey ->
             albumParentArtistKey?.let { parentArtistKey ->
-                selectedArtistKey = parentArtistKey
+                selectedArtistKey = targetArtistKey ?: parentArtistKey
                 albumParentRoute = AppRoute.ROOT
                 albumParentArtistKey = null
                 currentRoute = AppRoute.ARTIST_DETAIL
@@ -657,7 +662,7 @@ fun MeloxApp(
                 artistParentRoute == AppRoute.ALBUM_DETAIL &&
                     artistParentAlbumKey != null
             ) {
-                returnToArtistParentAlbum()
+                returnToArtistParentAlbum(album.key)
             } else {
                 selectedAlbumKey = album.key
                 albumParentRoute = AppRoute.ARTIST_DETAIL
@@ -688,7 +693,7 @@ fun MeloxApp(
                     albumParentRoute == AppRoute.ARTIST_DETAIL &&
                     albumParentArtistKey != null
             ) {
-                returnToAlbumParentArtist()
+                returnToAlbumParentArtist(artist.key)
             } else {
                 if (currentRoute != AppRoute.ARTIST_DETAIL || selectedArtistKey != artist.key) {
                     if (currentRoute == AppRoute.ALBUM_DETAIL) {
@@ -912,7 +917,7 @@ fun MeloxApp(
                                 )
                                 LibraryTabRow(
                                     tabs = libraryTabs,
-                                    selectedTabIndex = libraryPagerState.currentPage,
+                                    selectedTabIndex = libraryPagerState.targetPage,
                                     onTabSelected = { selectedTab ->
                                         rootScope.launch {
                                             libraryPagerState.animateScrollToPage(selectedTab)
@@ -1225,13 +1230,13 @@ fun MeloxApp(
                 albumParentRoute == AppRoute.ARTIST_DETAIL &&
                 albumParentArtistKey != null
             ) {
-                returnToAlbumParentArtist()
+                returnToAlbumParentArtist(null)
             } else if (
                 currentRoute == AppRoute.ARTIST_DETAIL &&
                 artistParentRoute == AppRoute.ALBUM_DETAIL &&
                 artistParentAlbumKey != null
             ) {
-                returnToArtistParentAlbum()
+                returnToArtistParentAlbum(null)
             } else {
                 currentRoute = AppRoute.ROOT
             }
@@ -1313,7 +1318,10 @@ fun MeloxApp(
                                     onBack = navigateBack,
                                     modifier = Modifier.fillMaxSize(),
                                     entryProvider = { route ->
-                                        NavEntry(route) {
+                                        NavEntry(
+                                            route,
+                                            contentKey = route.entryContentKey(),
+                                        ) {
                                             if (route.route == AppRoute.ROOT) {
                                                 content(currentRootPadding)
                                             } else {

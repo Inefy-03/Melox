@@ -96,7 +96,6 @@ fun SettingsScreen(
             SettingsCard {
                 ArrowPreference(
                     title = stringResource(R.string.settings_about_title),
-                    summary = stringResource(R.string.settings_about_summary),
                     onClick = onOpenAbout,
                 )
             }

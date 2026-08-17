@@ -45,6 +45,7 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -208,9 +209,15 @@ fun ScanMusicScreen(
                             .padding(top = 16.dp),
                         colors = ButtonDefaults.buttonColorsPrimary(),
                     ) {
-                        Text(
-                            text = stringResource(R.string.scan_start),
-                        )
+                        if (isScanning) {
+                            InfiniteProgressIndicator(
+                                color = MiuixTheme.colorScheme.disabledOnPrimaryButton,
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.scan_start),
+                            )
+                        }
                     }
                 }
             }

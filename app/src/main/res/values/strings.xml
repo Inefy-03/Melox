@@ -144,9 +144,8 @@
     <string name="language_english">English</string>
     <string name="settings_default_home_title">Default home page</string>
     <string name="settings_theme_settings_title">Theme settings</string>
-    <string name="settings_theme_settings_summary">Colors, effects, navigation, and motion</string>
+    <string name="settings_theme_settings_summary">Customize appearance</string>
     <string name="settings_about_title">About</string>
-    <string name="settings_about_summary">Melox version and developer</string>
     <string name="settings_theme_mode_title">Theme</string>
     <string name="theme_mode_system">Follow system</string>
     <string name="theme_mode_light">Light</string>
@@ -217,7 +216,7 @@
     <string name="lyrics_center">Center lyrics</string>
     <string name="lyrics_hide_controls">Hide controls on Lyrics</string>
 
-    <string name="about_version">v%1$s</string>
+    <string name="about_version">%1$s</string>
     <string name="about_project_title">Project address</string>
     <string name="about_developer_title">Developer</string>
     <string name="about_telegram_title">Join Telegram channel</string>

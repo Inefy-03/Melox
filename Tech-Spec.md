@@ -283,6 +283,9 @@
   the source album key as its parent context and Back restores that exact album.
   Its Albums tab performs the same Back action, restoring the source Album
   Detail with its prior state instead of replacing it or adding another route.
+  Symmetrically, a Participating artists tap from an Album Detail that is a
+  child of Artist Detail restores the source Artist Detail with its prior state
+  instead of adding another route.
   Album-detail song rows use artist-only descriptions, and artist-detail song
   rows use album-only descriptions. Artist-detail Albums uses the persisted
   Album grid style and its column count.
@@ -796,7 +799,9 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   source album key, making Artist Detail a third-level child whose Back restores
   that Album Detail. If the Artist Detail opens an album through its Albums tab,
   it pops back to that source Album Detail with its prior state instead of
-  replacing it or adding a route. Both detail screens use an empty-title Miuix
+  replacing it or adding a route. The inverse child Album Detail similarly pops
+  to its source Artist Detail when a Participating artists row is tapped. Both
+  detail screens use an empty-title Miuix
   `SmallTopAppBar`; its `bottomContent` owns the fixed metadata header and
   selector so the complete fixed region shares the outer Miuix blur/fallback
   surface. With Blur active, the selector Card and contour background stay

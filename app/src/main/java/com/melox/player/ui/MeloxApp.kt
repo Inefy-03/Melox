@@ -644,6 +644,14 @@ fun MeloxApp(
                 currentRoute = AppRoute.ALBUM_DETAIL
             }
         }
+        val returnToAlbumParentArtist: () -> Unit = {
+            albumParentArtistKey?.let { parentArtistKey ->
+                selectedArtistKey = parentArtistKey
+                albumParentRoute = AppRoute.ROOT
+                albumParentArtistKey = null
+                currentRoute = AppRoute.ARTIST_DETAIL
+            }
+        }
         val openAlbumFromArtist: (AlbumGroup) -> Unit = { album ->
             if (
                 artistParentRoute == AppRoute.ALBUM_DETAIL &&
@@ -675,19 +683,27 @@ fun MeloxApp(
             }
         }
         val openTrackArtist: (ArtistGroup) -> Unit = { artist ->
-            if (currentRoute != AppRoute.ARTIST_DETAIL || selectedArtistKey != artist.key) {
-                if (currentRoute == AppRoute.ALBUM_DETAIL) {
-                    artistParentRoute = AppRoute.ALBUM_DETAIL
-                    artistParentAlbumKey = selectedAlbumKey
-                } else {
-                    artistParentRoute = AppRoute.ROOT
-                    artistParentAlbumKey = null
-                    albumParentRoute = AppRoute.ROOT
-                    albumParentArtistKey = null
+            if (
+                currentRoute == AppRoute.ALBUM_DETAIL &&
+                    albumParentRoute == AppRoute.ARTIST_DETAIL &&
+                    albumParentArtistKey != null
+            ) {
+                returnToAlbumParentArtist()
+            } else {
+                if (currentRoute != AppRoute.ARTIST_DETAIL || selectedArtistKey != artist.key) {
+                    if (currentRoute == AppRoute.ALBUM_DETAIL) {
+                        artistParentRoute = AppRoute.ALBUM_DETAIL
+                        artistParentAlbumKey = selectedAlbumKey
+                    } else {
+                        artistParentRoute = AppRoute.ROOT
+                        artistParentAlbumKey = null
+                        albumParentRoute = AppRoute.ROOT
+                        albumParentArtistKey = null
+                    }
                 }
+                selectedArtistKey = artist.key
+                currentRoute = AppRoute.ARTIST_DETAIL
             }
-            selectedArtistKey = artist.key
-            currentRoute = AppRoute.ARTIST_DETAIL
             if (playerTransition.targetOpen) closePlayer()
         }
         val content: @Composable (PaddingValues) -> Unit = { outerPadding ->
@@ -1209,10 +1225,7 @@ fun MeloxApp(
                 albumParentRoute == AppRoute.ARTIST_DETAIL &&
                 albumParentArtistKey != null
             ) {
-                selectedArtistKey = albumParentArtistKey
-                albumParentRoute = AppRoute.ROOT
-                albumParentArtistKey = null
-                currentRoute = AppRoute.ARTIST_DETAIL
+                returnToAlbumParentArtist()
             } else if (
                 currentRoute == AppRoute.ARTIST_DETAIL &&
                 artistParentRoute == AppRoute.ALBUM_DETAIL &&

@@ -203,7 +203,9 @@ Melox lets Android users find and play music already stored on their device thro
   child of its source Album Detail, so Back restores that exact album. Opening
   any album from this child Artist Detail performs that same Back action and
   restores the source Album Detail rather than replacing it or adding another
-  page. Album and artist detail
+  page. Symmetrically, a participating-artist tap from an Album Detail that is
+  itself a child of Artist Detail restores that source Artist Detail rather than
+  adding another artist page. Album and artist detail
   pagers support both tab taps and horizontal
   swipes because they have no competing root-page gesture. Album-detail song
   rows omit the current album suffix, while artist-detail song rows omit the

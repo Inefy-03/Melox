@@ -278,7 +278,9 @@ Last updated: 2026-08-17
   opened from Participating artists retains the source album key as its parent,
   so Back restores that exact Album Detail. Its Albums tab performs that same
   Back action, restoring the source Album Detail with its prior state instead
-  of replacing it or adding a route. Both detail pagers allow TabRow taps
+  of replacing it or adding a route. Symmetrically, a participating-artist tap
+  from a child Album Detail returns to its source Artist Detail instead of
+  adding another route. Both detail pagers allow TabRow taps
   and direct horizontal swipes because their routes do not compete with
   root-pager navigation. When Blur is active, selector Cards and unselected
   contour backgrounds stay transparent so the top-bar blur remains visible.

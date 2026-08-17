@@ -20,13 +20,18 @@ local.properties
 # Generated packages and reports
 artifacts/
 captures/
+work/
 *.apk
 *.aab
 *.ap_
+*.idsig
 *.class
 *.dex
 *.hprof
 *.log
+*.trace
+*.prof
+*.profm
 hs_err_pid*
 replay_pid*
 

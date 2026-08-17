@@ -1,25 +1,23 @@
-<h1 style="text-align: center;">
+<div style="text-align: center;">
   <img src="assets/Melox-icon.png" alt="Melox 应用图标" width="96"><br>
-  Melox
-</h1>
+  <h1>Melox</h1>
+  <p>
+    <strong>一款基于 <a href="https://github.com/compose-miuix-ui/miuix">Miuix</a> 的 Android 本地音乐播放器</strong>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/Android-9%2B-3DDC84?style=flat&logo=android&logoColor=white" alt="Android 9+">
+    <a href="https://github.com/compose-miuix-ui/miuix"><img src="https://img.shields.io/badge/Miuix-0.9.3-4F6BED?style=flat" alt="Miuix 0.9.3"></a>
+    <a href="https://developer.android.com/media/media3"><img src="https://img.shields.io/badge/Media3-1.11.0-4F6BED?style=flat" alt="AndroidX Media3 1.11.0"></a>
+  </p>
+  <p><a href="README.en.md">English</a></p>
+</div>
 
-<p style="text-align: center;">
-  <b>一款基于[ Miuix ](https://github.com/compose-miuix-ui/miuix)的 Android 本地音乐播放器</b>
-</p>
-
-<p style="text-align: center;">
-  <img src="https://img.shields.io/badge/Android-9%2B-3DDC84?style=flat&logo=android&logoColor=white" alt="Android 9+">
-  <a href="https://github.com/compose-miuix-ui/miuix"><img src="https://img.shields.io/badge/Miuix-0.9.3-4F6BED?style=flat" alt="Miuix 0.9.3"></a>
-  <a href="https://developer.android.com/media/media3"><img src="https://img.shields.io/badge/Media3-1.11.0-4F6BED?style=flat" alt="AndroidX Media3 1.11.0"></a>
-</p>
-<p style="text-align: center;">
-[English](README.en.md)
-</p>
 ---
 
 ## 项目简介
 
 Melox 是一款基于 Jetpack Compose、Miuix 和 AndroidX Media3 构建的 Android 本地音乐播放器。
+
 ## 功能特性
 
 ### 音乐库与首页
@@ -57,7 +55,7 @@ Melox 是一款基于 Jetpack Compose、Miuix 和 AndroidX Media3 构建的 Andr
 - 当前 APK 构建目标为 `arm64-v8a`
 - 首次扫描时需要授予本地音乐读取权限
 - 液态玻璃等运行时视觉效果需要 Android 13+
-- 
+
 ## 下载与安装
 
 从 [Releases](https://github.com/Inefy-03/Melox/releases) 下载适用于设备的 APK。

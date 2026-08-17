@@ -1,20 +1,16 @@
-<h1 style="text-align: center;">
-  <img src="assets/Melox-icon-readme.png" alt="Melox app icon" width="96"><br>
-  Melox
-</h1>
-
-<p style="text-align: center;">
-  <b>An Android local music player built on [Miuix](https://github.com/compose-miuix-ui/miuix)</b>
-</p>
-
-<p style="text-align: center;">
-  <img src="https://img.shields.io/badge/Android-9%2B-3DDC84?style=flat&logo=android&logoColor=white" alt="Android 9+">
-  <a href="https://github.com/compose-miuix-ui/miuix"><img src="https://img.shields.io/badge/Miuix-0.9.3-4F6BED?style=flat" alt="Miuix 0.9.3"></a>
-  <a href="https://developer.android.com/media/media3"><img src="https://img.shields.io/badge/Media3-1.11.0-4F6BED?style=flat" alt="AndroidX Media3 1.11.0"></a>
-</p>
-<p style="text-align: center;">
-  [简体中文](README.md)
-</p>
+<div style="text-align: center;">
+  <img src="assets/Melox-icon.png" alt="Melox app icon" width="96"><br>
+  <h1>Melox</h1>
+  <p>
+    <strong>An Android local music player based on <a href="https://github.com/compose-miuix-ui/miuix">Miuix</a></strong>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/Android-9%2B-3DDC84?style=flat&logo=android&logoColor=white" alt="Android 9+">
+    <a href="https://github.com/compose-miuix-ui/miuix"><img src="https://img.shields.io/badge/Miuix-0.9.3-4F6BED?style=flat" alt="Miuix 0.9.3"></a>
+    <a href="https://developer.android.com/media/media3"><img src="https://img.shields.io/badge/Media3-1.11.0-4F6BED?style=flat" alt="AndroidX Media3 1.11.0"></a>
+  </p>
+  <p><a href="README.md">简体中文</a></p>
+</div>
 
 ---
 

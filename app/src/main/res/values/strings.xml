@@ -218,6 +218,7 @@
     <string name="lyrics_hide_controls">Hide controls on Lyrics</string>
 
     <string name="about_version">v%1$s</string>
+    <string name="about_project_title">Project address</string>
     <string name="about_developer_title">Developer</string>
-    <string name="about_developer_platform">Github</string>
+    <string name="about_telegram_title">Join Telegram channel</string>
 </resources>

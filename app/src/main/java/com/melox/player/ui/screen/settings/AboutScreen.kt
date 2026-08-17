@@ -256,16 +256,21 @@ private fun AboutContent(
                         ),
                     ) {
                         ArrowPreference(
-                            title = stringResource(R.string.about_developer_title),
-                            endActions = {
-                                Text(
-                                    text = stringResource(R.string.about_developer_platform),
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                )
+                            title = stringResource(R.string.about_project_title),
+                            onClick = {
+                                uriHandler.openUri(PROJECT_URL)
                             },
+                        )
+                        ArrowPreference(
+                            title = stringResource(R.string.about_developer_title),
                             onClick = {
                                 uriHandler.openUri(DEVELOPER_GITHUB_URL)
+                            },
+                        )
+                        ArrowPreference(
+                            title = stringResource(R.string.about_telegram_title),
+                            onClick = {
+                                uriHandler.openUri(TELEGRAM_CHANNEL_URL)
                             },
                         )
                     }
@@ -275,7 +280,9 @@ private fun AboutContent(
     }
 }
 
+private const val PROJECT_URL = "https://github.com/Inefy-03/Melox"
 private const val DEVELOPER_GITHUB_URL = "https://github.com/Inefy-03"
+private const val TELEGRAM_CHANNEL_URL = "https://t.me/MeloxPlayer"
 
 @Composable
 private fun AboutHeader(

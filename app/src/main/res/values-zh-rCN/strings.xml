@@ -210,6 +210,7 @@
     <string name="lyrics_hide_controls">歌词页隐藏控制</string>
 
     <string name="about_version">v%1$s</string>
+    <string name="about_project_title">项目地址</string>
     <string name="about_developer_title">开发人员</string>
-    <string name="about_developer_platform">Github</string>
+    <string name="about_telegram_title">加入Telegram频道</string>
 </resources>

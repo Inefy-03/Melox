@@ -378,8 +378,8 @@ internal fun playerSheetPageAlpha(progress: Float): Float {
     return easeInCubic(handoff)
 }
 
-internal fun playerSheetGlassVisible(isFullyExpanded: Boolean): Boolean =
-    !isFullyExpanded
+internal fun playerSheetGlassVisible(progress: Float): Boolean =
+    progress.coerceIn(0f, 1f) < PLAYER_LAYER_HANDOFF_END_PROGRESS
 
 internal fun playerSheetUsesFullPlayerStatusBar(
     progress: Float,
@@ -455,7 +455,7 @@ internal fun PlayerSheetContentOverlay(
 
     val surfaceShape = RoundedCornerShape(cornerRadius)
     val glassChrome = miniPlayerChrome?.takeIf {
-        playerSheetGlassVisible(transition.isFullyExpanded)
+        playerSheetGlassVisible(progress)
     }
     val glassSurfaceModifier = if (glassChrome != null) {
         Modifier

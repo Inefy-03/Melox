@@ -1,6 +1,6 @@
 # Melox Project Memory
 
-Last updated: 2026-08-10
+Last updated: 2026-08-17
 
 ## Stable Decisions
 
@@ -71,7 +71,7 @@ Last updated: 2026-08-10
   background validation later removes
   unreadable items while preserving current item, position, playback state, and
   mode when the user has not mutated the queue. A concurrent queue mutation wins.
-- Settings include language, theme mode, dynamic colors, blur, floating navigation, liquid glass, predictive back, a dedicated Scan music page, and About. The root Scan music summary is `No songs` for an unscanned or empty library and otherwise shows the localized song count. The scan page persists refresh-on-launch, sub-60-second exclusion, and Android folder-picker tree URIs; selected folders restrict later scans to those folders and descendants. Stored folders use Miuix `BasicComponent` spacing with a 24 dp file glyph and 16 dp visual text gap. Its full-width button always keeps the `Start scan` label, and an explicit unchanged scan shows a one-shot `No music file changes` Toast. Dynamic color source defaults to the current playback artwork seed and falls back to the complete Android system desktop-wallpaper Monet palette when no cover is loaded. Track changes generate the target palette once and interpolate every Miuix color role from the currently displayed palette over 600 ms with fast-out-slow-in timing, including continuous retargeting during rapid skips and transitions to or from the no-artwork desktop fallback. Enabling or disabling floating navigation persists liquid glass as disabled; liquid glass must be enabled separately while floating mode is active.
+- Settings include language, theme mode, dynamic colors, blur, floating navigation, liquid glass, predictive back, a dedicated Scan music page, and About. The root Scan music summary is `No songs` for an unscanned or empty library and otherwise shows the localized song count. The scan page persists refresh-on-launch, sub-60-second exclusion, and Android folder-picker tree URIs; selected folders restrict later scans to those folders and descendants. Stored folders use Miuix `BasicComponent` spacing with a 24 dp file glyph and 16 dp visual text gap. Its full-width button always keeps the `Start scan` label. An explicit scan that changes the library shows a one-shot localized completed-song-count Toast; an explicit unchanged scan shows `No music file changes`; launch refreshes show neither Toast. Dynamic color source defaults to the current playback artwork seed and falls back to the complete Android system desktop-wallpaper Monet palette when no cover is loaded. Track changes generate the target palette once and interpolate every Miuix color role from the currently displayed palette over 600 ms with fast-out-slow-in timing, including continuous retargeting during rapid skips and transitions to or from the no-artwork desktop fallback. Enabling or disabling floating navigation persists liquid glass as disabled; liquid glass must be enabled separately while floating mode is active.
 - Missing audio access is requested once when the app enters. A grant from this
   startup request changes the library to an unscanned idle state without
   querying MediaStore; a grant triggered by the Settings scan preference scans
@@ -222,8 +222,8 @@ Last updated: 2026-08-10
   pager disables user swiping so it does not conflict with the root pager. The
   Library TabRow retains the default Miuix outlined-tab visual while using
   20 dp side padding, 12 dp item spacing, 38 dp height, and 13 sp text. Tab taps
-  switch selection directly without animating through intermediate tabs. Its
-  background becomes transparent while Blur is active so the owning top bar's
+  animate the nested pager with the official Miuix `animateScrollToPage` pattern
+  while direct swiping remains disabled. Its background becomes transparent while Blur is active so the owning top bar's
   blur remains visible, while opaque fallback keeps the normal surface. Songs
   and Library search regions keep 12 dp under expanded large titles and 0 dp
   under collapsed small titles. Library keeps 6 dp below the TabRow and gives
@@ -264,20 +264,27 @@ Last updated: 2026-08-10
   joined with ` / ` in track and album-header display contexts.
 - Album and artist detail pages use empty-title `SmallTopAppBar`s because their
   fixed headers already show album or artist identity. Those headers are hosted
-  in `bottomContent`, with the artist selector on the same fixed surface, so
+  in `bottomContent`, with their contour selectors on the same fixed surface, so
   artwork and information share the outer Miuix blur/opaque fallback while the
   app bar itself stays transparent. Detail lists fill the page behind the bar
   with top content padding so scrolled content remains available to the blur
   backdrop. The Album-detail cover matches the root three-column width with a
   14 dp corner radius and its title uses `title3`; the Artist-detail header uses
   a 72 dp cover, `title3` name, then separate 12 sp song-count and album-count
-  rows. Both detail headers begin 12 dp below the SmallTopAppBar; the Artist
-  header's 12 dp bottom padding is the only gap before its TabRow. When Blur is
-  active, the Artist contour selector Card and unselected contour background
-  stay transparent so the top-bar blur remains visible.
-  Album-detail song rows show artist-only descriptions,
-  artist-detail song rows show album-only descriptions, and the artist-detail
-  album tab follows the persisted root Album grid style.
+  rows. Both detail pages use Miuix `TabRowWithContour` with a two-page pager.
+  Album tabs are Songs and Participating artists; participating artists are
+  every distinct split artist from all album tracks in first-occurrence order
+  and use the standard artist rows/global detail destination. An Artist Detail
+  opened from Participating artists retains the source album key as its parent,
+  so Back restores that exact Album Detail. Its Albums tab keeps the existing
+  Artist-to-Album parent context, so Back returns to Artist Detail before a
+  second Back restores the source album. Both detail pagers allow TabRow taps
+  and direct horizontal swipes because their routes do not compete with
+  root-pager navigation. When Blur is active, selector Cards and unselected
+  contour backgrounds stay transparent so the top-bar blur remains visible.
+  Album-detail song rows show artist-only descriptions, artist-detail song rows
+  show album-only descriptions, and the artist-detail album tab follows the
+  persisted root Album grid style.
 - Folders group songs by normalized direct-parent path, not only by folder
   name. Rows show the folder name and localized song count followed by a
   shared-storage-relative display path. Folder rows use a colored 32 dp file
@@ -1922,3 +1929,15 @@ Last updated: 2026-08-10
   the secondary action row was restored from 20 dp to 16 dp. The
   progress-edge-to-primary-row spacing remains 32 dp. No emulator, ADB,
   screenshot, recording, or interaction test ran.
+- On 2026-08-17, Library Albums, Artists, and Folders defer their top reset
+  until the ViewModel has emitted the matching query/sort projection and that
+  projection has reached a Compose frame. This prevents stable lazy-item keys
+  from restoring the pre-sort anchor after an early `scrollToItem(0)`. The
+  shared-player mini surface stops drawing at the opaque full-player content
+  handoff (`p = 0.25`) rather than at `p = 1`; this removes redundant backdrop
+  blur/refraction work without changing the visible transition. Debug Kotlin
+  compilation, complete Debug unit tests, Debug Lint, Debug assembly, APK
+  archive validation, v2-signature verification, and 16 KB ZIP alignment
+  passed. No emulator, ADB, screenshot, recording, or interaction test ran.
+  The verified `artifacts/Melox-debug.apk` has SHA-256
+  `4988327f92ec13f786a3666165f79e5623e29944fc1035e0d63e364fe7b376fb`.

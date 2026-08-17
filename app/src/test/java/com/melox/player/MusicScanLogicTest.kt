@@ -5,6 +5,7 @@ import com.melox.player.data.repository.exactLyricsSidecarCandidates
 import com.melox.player.data.repository.folderMatchesPrefix
 import com.melox.player.model.LyricsFormat
 import com.melox.player.ui.screen.playback.correctedLyricClockMs
+import com.melox.player.ui.viewmodel.shouldEmitScanCompletion
 import com.melox.player.ui.viewmodel.shouldEmitScanNoChanges
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -75,6 +76,28 @@ class MusicScanLogicTest {
             shouldEmitScanNoChanges(
                 libraryChanged = false,
                 notifyIfUnchanged = false,
+            ),
+        )
+    }
+
+    @Test
+    fun onlyExplicitChangedScansRequestCompletionFeedback() {
+        assertTrue(
+            shouldEmitScanCompletion(
+                libraryChanged = true,
+                notifyUser = true,
+            ),
+        )
+        assertFalse(
+            shouldEmitScanCompletion(
+                libraryChanged = false,
+                notifyUser = true,
+            ),
+        )
+        assertFalse(
+            shouldEmitScanCompletion(
+                libraryChanged = true,
+                notifyUser = false,
             ),
         )
     }

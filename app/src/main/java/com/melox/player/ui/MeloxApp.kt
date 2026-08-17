@@ -247,6 +247,19 @@ fun MeloxApp(
             ).show()
         }
     }
+    LaunchedEffect(viewModel, context) {
+        viewModel.scanCompletionEvents.collectLatest { songCount ->
+            Toast.makeText(
+                context,
+                context.resources.getQuantityString(
+                    R.plurals.scan_complete,
+                    songCount,
+                    songCount,
+                ),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
     val activity = remember(context) { context.findActivity() }
     val systemDark = isSystemInDarkTheme()
     val isDark = when (settings.themeMode) {
@@ -310,6 +323,9 @@ fun MeloxApp(
         mutableIntStateOf(FolderSortField.NAME.ordinal)
     }
     var folderSortDescending by rememberSaveable { mutableStateOf(false) }
+    var pendingAlbumSortReset by remember { mutableStateOf<AlbumSortConfig?>(null) }
+    var pendingArtistSortReset by remember { mutableStateOf<ArtistSortConfig?>(null) }
+    var pendingFolderSortReset by remember { mutableStateOf<FolderSortConfig?>(null) }
     var showQueue by rememberSaveable { mutableStateOf(false) }
     val playerTransition = rememberPlayerSheetTransitionState()
     val sharedPlayerArtworkEnabled = playerTransition.fullPlayerArtworkPageSelected
@@ -321,6 +337,8 @@ fun MeloxApp(
     var selectedArtistKey by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedFolderKey by rememberSaveable { mutableStateOf<String?>(null) }
     var albumParentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
+    var artistParentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
+    var artistParentAlbumKey by rememberSaveable { mutableStateOf<String?>(null) }
     var libraryPreferencesHydrated by remember { mutableStateOf(false) }
     val musicSortConfig = MusicSortConfig(
         field = MusicSortField.entries.getOrElse(musicSortFieldOrdinal) {
@@ -553,6 +571,63 @@ fun MeloxApp(
         val songsScrollBehavior = MiuixScrollBehavior()
         val libraryScrollBehavior = MiuixScrollBehavior()
         val settingsScrollBehavior = MiuixScrollBehavior()
+        LaunchedEffect(
+            pendingAlbumSortReset,
+            librarySearchQuery,
+            albumPresentation.query,
+            albumPresentation.sortConfig,
+        ) {
+            val pendingSortConfig = pendingAlbumSortReset ?: return@LaunchedEffect
+            if (
+                albumPresentation.query != librarySearchQuery ||
+                albumPresentation.sortConfig != pendingSortConfig
+            ) {
+                return@LaunchedEffect
+            }
+            withFrameNanos { }
+            albumsGridState.scrollToItem(0)
+            libraryScrollBehavior.state.heightOffset = 0f
+            libraryScrollBehavior.state.contentOffset = 0f
+            pendingAlbumSortReset = null
+        }
+        LaunchedEffect(
+            pendingArtistSortReset,
+            librarySearchQuery,
+            artistPresentation.query,
+            artistPresentation.sortConfig,
+        ) {
+            val pendingSortConfig = pendingArtistSortReset ?: return@LaunchedEffect
+            if (
+                artistPresentation.query != librarySearchQuery ||
+                artistPresentation.sortConfig != pendingSortConfig
+            ) {
+                return@LaunchedEffect
+            }
+            withFrameNanos { }
+            artistsListState.scrollToItem(0)
+            libraryScrollBehavior.state.heightOffset = 0f
+            libraryScrollBehavior.state.contentOffset = 0f
+            pendingArtistSortReset = null
+        }
+        LaunchedEffect(
+            pendingFolderSortReset,
+            librarySearchQuery,
+            folderPresentation.query,
+            folderPresentation.sortConfig,
+        ) {
+            val pendingSortConfig = pendingFolderSortReset ?: return@LaunchedEffect
+            if (
+                folderPresentation.query != librarySearchQuery ||
+                folderPresentation.sortConfig != pendingSortConfig
+            ) {
+                return@LaunchedEffect
+            }
+            withFrameNanos { }
+            foldersListState.scrollToItem(0)
+            libraryScrollBehavior.state.heightOffset = 0f
+            libraryScrollBehavior.state.contentOffset = 0f
+            pendingFolderSortReset = null
+        }
         val openTrackAlbum: (MusicTrack) -> Unit = { track ->
             uiState.albums.firstOrNull { album ->
                 album.tracks.any { it.id == track.id }
@@ -570,6 +645,15 @@ fun MeloxApp(
             }
         }
         val openTrackArtist: (ArtistGroup) -> Unit = { artist ->
+            if (currentRoute != AppRoute.ARTIST_DETAIL || selectedArtistKey != artist.key) {
+                if (currentRoute == AppRoute.ALBUM_DETAIL) {
+                    artistParentRoute = AppRoute.ALBUM_DETAIL
+                    artistParentAlbumKey = selectedAlbumKey
+                } else {
+                    artistParentRoute = AppRoute.ROOT
+                    artistParentAlbumKey = null
+                }
+            }
             selectedArtistKey = artist.key
             currentRoute = AppRoute.ARTIST_DETAIL
             if (playerTransition.targetOpen) closePlayer()
@@ -735,11 +819,7 @@ fun MeloxApp(
                                         artistSortDescending = config.descending
                                         viewModel.setArtistSortConfig(config)
                                         if (changed) {
-                                            rootScope.launch {
-                                                artistsListState.scrollToItem(0)
-                                                libraryScrollBehavior.state.heightOffset = 0f
-                                                libraryScrollBehavior.state.contentOffset = 0f
-                                            }
+                                            pendingArtistSortReset = config
                                         }
                                     },
                                 )
@@ -752,11 +832,7 @@ fun MeloxApp(
                                         folderSortDescending = config.descending
                                         viewModel.setFolderSortConfig(config)
                                         if (changed) {
-                                            rootScope.launch {
-                                                foldersListState.scrollToItem(0)
-                                                libraryScrollBehavior.state.heightOffset = 0f
-                                                libraryScrollBehavior.state.contentOffset = 0f
-                                            }
+                                            pendingFolderSortReset = config
                                         }
                                     },
                                 )
@@ -770,11 +846,7 @@ fun MeloxApp(
                                         albumGridStyleOrdinal = config.gridStyle.ordinal
                                         viewModel.setAlbumSortConfig(config)
                                         if (changed) {
-                                            rootScope.launch {
-                                                albumsGridState.scrollToItem(0)
-                                                libraryScrollBehavior.state.heightOffset = 0f
-                                                libraryScrollBehavior.state.contentOffset = 0f
-                                            }
+                                            pendingAlbumSortReset = config
                                         }
                                     },
                                 )
@@ -795,7 +867,7 @@ fun MeloxApp(
                                     selectedTabIndex = libraryPagerState.currentPage,
                                     onTabSelected = { selectedTab ->
                                         rootScope.launch {
-                                            libraryPagerState.scrollToPage(selectedTab)
+                                            libraryPagerState.animateScrollToPage(selectedTab)
                                         }
                                         viewModel.setLibraryTabIndex(selectedTab)
                                     },
@@ -885,8 +957,7 @@ fun MeloxApp(
                                         sortConfig = artistSortConfig,
                                         onArtistClick = { artist ->
                                             dismissLibrarySearchFocus()
-                                            selectedArtistKey = artist.key
-                                            currentRoute = AppRoute.ARTIST_DETAIL
+                                            openTrackArtist(artist)
                                         },
                                         scrollBehavior = libraryScrollBehavior,
                                         indexTopPadding = indexTopPadding,
@@ -1024,7 +1095,12 @@ fun MeloxApp(
             }
         }
 
-        val navBackStack = remember(currentRoute, albumParentRoute) {
+        val navBackStack = remember(
+            currentRoute,
+            albumParentRoute,
+            artistParentRoute,
+            artistParentAlbumKey,
+        ) {
             when {
                 currentRoute == AppRoute.ROOT -> listOf(AppRoute.ROOT)
                 currentRoute == AppRoute.ALBUM_DETAIL &&
@@ -1032,6 +1108,13 @@ fun MeloxApp(
                     AppRoute.ROOT,
                     AppRoute.ARTIST_DETAIL,
                     AppRoute.ALBUM_DETAIL,
+                )
+                currentRoute == AppRoute.ARTIST_DETAIL &&
+                    artistParentRoute == AppRoute.ALBUM_DETAIL &&
+                    artistParentAlbumKey != null -> listOf(
+                    AppRoute.ROOT,
+                    AppRoute.ALBUM_DETAIL,
+                    AppRoute.ARTIST_DETAIL,
                 )
                 else -> listOf(AppRoute.ROOT, currentRoute)
             }
@@ -1043,7 +1126,23 @@ fun MeloxApp(
                 currentRoute == AppRoute.ALBUM_DETAIL &&
                 albumParentRoute == AppRoute.ARTIST_DETAIL
             ) {
+                if (
+                    artistParentRoute == AppRoute.ALBUM_DETAIL &&
+                    artistParentAlbumKey != null
+                ) {
+                    selectedAlbumKey = artistParentAlbumKey
+                }
+                albumParentRoute = AppRoute.ROOT
                 currentRoute = AppRoute.ARTIST_DETAIL
+            } else if (
+                currentRoute == AppRoute.ARTIST_DETAIL &&
+                artistParentRoute == AppRoute.ALBUM_DETAIL &&
+                artistParentAlbumKey != null
+            ) {
+                selectedAlbumKey = artistParentAlbumKey
+                artistParentRoute = AppRoute.ROOT
+                artistParentAlbumKey = null
+                currentRoute = AppRoute.ALBUM_DETAIL
             } else {
                 currentRoute = AppRoute.ROOT
             }

@@ -24,9 +24,11 @@ Melox lets Android users find and play music already stored on their device thro
   persisted custom folders selected through Android's folder picker, and the
   explicit full-width scan action. Switches and folder additions/removals update
   visually before persistence completes. The scan button keeps its `Start scan`
-  label while disabled during a scan; an explicit scan with no library changes
-  shows a localized `No music file changes` Toast. If permission is missing,
-  the explicit scan requests it in place and continues immediately after grant.
+  label while disabled during a scan; an explicit scan with library changes
+  shows a localized `Scan complete, N songs` Toast, while one with no changes
+  shows `No music file changes`. Launch refreshes remain silent. If permission
+  is missing, the explicit scan requests it in place and continues immediately
+  after grant.
 - Cache the last successful result and keep cached rows visible during refresh.
 - The four root destinations are Home, Songs, Library, and Settings. Home is
   labeled `首页` in Simplified Chinese and is always the first navigation item
@@ -94,8 +96,9 @@ Melox lets Android users find and play music already stored on their device thro
   action. Returning to a page whose search
   field is already open must not focus it or open the software keyboard
   automatically. Albums, Artists, and Folders switch only through the `TabRow`;
-  horizontal swipes remain reserved for the root pager. Tapping a tab changes
-  the selected state directly instead of animating through intermediate tabs.
+  horizontal swipes remain reserved for the root pager. Tapping a tab uses the
+  standard Miuix pager transition to its target page, while direct user paging
+  remains disabled.
   When a focused search field receives Back, the first press hides the software
   keyboard and clears focus together; the query remains available in the open
   field.
@@ -190,13 +193,21 @@ Melox lets Android users find and play music already stored on their device thro
   order.
   Album and artist detail top bars keep an empty small title because their
   fixed metadata already shows identity. The artwork and metadata are hosted
-  in the top bar's Miuix `bottomContent`, and the artist tab selector joins that
-  same fixed blurred or opaque-fallback surface: when Blur is active, its Card
-  and contour background are transparent so the outer bar blur remains visible.
-  Album-detail song rows omit the
-  current album suffix, while artist-detail song rows omit the current artist
-  prefix. The artist-detail album tab uses the same 2-column or 3-column Album
-  grid style selected for the root Albums page.
+  in the top bar's Miuix `bottomContent`, and their contour tab selectors join
+  that same fixed blurred or opaque-fallback surface: when Blur is active, the
+  Card and contour background are transparent so the outer bar blur remains
+  visible. Album Detail offers `Songs` and `Participating artists`; the latter
+  lists every distinct split artist represented by any song in the album in
+  first-occurrence order, reuses the standard artist row, and opens that
+  artist's global detail page. An Artist Detail opened this way is a third-level
+  child of its source Album Detail, so Back restores that exact album. Opening
+  an album from the child Artist Detail preserves the existing Artist-to-Album
+  parent state: Back returns to that Artist Detail, then restores the source
+  album. Album and artist detail pagers support both tab taps and horizontal
+  swipes because they have no competing root-page gesture. Album-detail song
+  rows omit the current album suffix, while artist-detail song rows omit the
+  current artist prefix. The artist-detail album tab uses the same 2-column or
+  3-column Album grid style selected for the root Albums page.
 - Artist names split on `，`, `,`, `、`, `/`, and `&` into separate artist entries.
   Song rows and album headers display split artist names joined with ` / `.
 - Leaving Albums, Artists, or Folders for a detail page and returning restores
@@ -749,6 +760,10 @@ store publishing.
   layers are retained in a bounded memory cache, so opening the player can draw
   the prepared blur on its first frame without flashing the clear cover. The
   centered page cover retains its shared mini-player trajectory. The shared container
+  stops drawing the mini-player surface, backdrop blur, and refraction as soon
+  as the opaque full-player layer reaches the `p = 0.25` content handoff. This
+  is a rendering-cost optimization only; the visible transition remains the
+  same. The shared container
   uses the exact measured full-player bounds while its final screen corners
   settle, avoiding a transient 1 dp bottom gap before the in-place page layer
   takes over. Lyrics does not apply a separate enlarged background transform.
@@ -793,7 +808,10 @@ store publishing.
 - A search left open does not summon the keyboard when its root page is
   revisited. One Music-library query filters Albums, Artists, and Folders
   consistently across tab changes, and the selected tab plus every requested
-  sort/column preference restores after process restart.
+  sort/column preference restores after process restart. Changing a Library
+  sort resets the corresponding reordered list to its first item after the new
+  projection is visible; stable item keys must not restore the old scroll
+  anchor.
 - Home, Songs, and Library can each be persisted as the default startup
   destination, and English UI labels use `Library`.
 - Cold composition waits only for one bounded DataStore settings value so the

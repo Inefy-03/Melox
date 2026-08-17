@@ -1416,9 +1416,11 @@ class UiLogicTest {
     }
 
     @Test
-    fun playerSheetGlassStopsOnlyAtFullExpansion() {
-        assertTrue(playerSheetGlassVisible(isFullyExpanded = false))
-        assertFalse(playerSheetGlassVisible(isFullyExpanded = true))
+    fun playerSheetGlassStopsAtContentHandoff() {
+        assertTrue(playerSheetGlassVisible(0f))
+        assertTrue(playerSheetGlassVisible(PLAYER_LAYER_HANDOFF_END_PROGRESS - 0.001f))
+        assertFalse(playerSheetGlassVisible(PLAYER_LAYER_HANDOFF_END_PROGRESS))
+        assertFalse(playerSheetGlassVisible(1f))
     }
 
     @Test
@@ -1794,7 +1796,11 @@ class UiLogicTest {
                 album = "Album",
             ),
             musicTrack(2L, "Solo", 2L, "solo.flac", 2L, 2L).copy(
-                artist = "Artist A",
+                artist = "Artist A & Artist C",
+                album = "Album",
+            ),
+            musicTrack(3L, "Guest", 3L, "guest.flac", 3L, 3L).copy(
+                artist = "Artist C / Artist D",
                 album = "Album",
             ),
         )
@@ -1803,6 +1809,10 @@ class UiLogicTest {
         assertEquals(
             listOf("Artist B", "Artist A"),
             participatingArtistGroups(tracks.first(), groups).map { it.name },
+        )
+        assertEquals(
+            listOf("Artist B", "Artist A", "Artist C", "Artist D"),
+            participatingArtistGroups(tracks, groups).map { it.name },
         )
     }
 

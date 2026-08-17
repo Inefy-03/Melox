@@ -186,6 +186,10 @@
     <string name="scan_add_custom_folder">Add custom folder</string>
     <string name="scan_start">Start scan</string>
     <string name="scan_no_changes">No music file changes</string>
+    <plurals name="scan_complete">
+        <item quantity="one">Scan complete, %1$d song</item>
+        <item quantity="other">Scan complete, %1$d songs</item>
+    </plurals>
     <string name="scan_remove_folder_title">Delete</string>
     <string name="scan_remove_folder_message">Delete this custom folder?</string>
     <string name="scan_status_idle">Tap to scan local music on this device</string>

@@ -546,8 +546,20 @@ private fun SongInfoRow(label: String, value: String?) {
 internal fun participatingArtistGroups(
     track: MusicTrack,
     artistGroups: List<ArtistGroup>,
-): List<ArtistGroup> = splitArtistNames(track.artist).mapNotNull { artistName ->
-    artistGroups.firstOrNull { it.key == artistGroupKey(artistName) }
+): List<ArtistGroup> = participatingArtistGroups(listOf(track), artistGroups)
+
+internal fun participatingArtistGroups(
+    tracks: List<MusicTrack>,
+    artistGroups: List<ArtistGroup>,
+): List<ArtistGroup> {
+    val artistGroupsByKey = artistGroups.associateBy(ArtistGroup::key)
+    return tracks
+        .asSequence()
+        .flatMap { track -> splitArtistNames(track.artist).asSequence() }
+        .map(::artistGroupKey)
+        .distinct()
+        .mapNotNull { artistGroupsByKey[it] }
+        .toList()
 }
 
 internal fun MusicTrack.audioFormatLabel(): String? {

@@ -91,16 +91,22 @@ data class MusicPresentationState(
 data class AlbumPresentationState(
     val items: List<AlbumGroup> = emptyList(),
     val sectionIndexMap: Map<String, Int> = emptyMap(),
+    val query: String = "",
+    val sortConfig: AlbumSortConfig = AlbumSortConfig(),
 )
 
 data class ArtistPresentationState(
     val items: List<ArtistGroup> = emptyList(),
     val sectionIndexMap: Map<String, Int> = emptyMap(),
+    val query: String = "",
+    val sortConfig: ArtistSortConfig = ArtistSortConfig(),
 )
 
 data class FolderPresentationState(
     val items: List<FolderGroup> = emptyList(),
     val sectionIndexMap: Map<String, Int> = emptyMap(),
+    val query: String = "",
+    val sortConfig: FolderSortConfig = FolderSortConfig(),
 )
 
 private data class LibraryProjection(
@@ -162,6 +168,8 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     private val scanStatus = MutableStateFlow<ScanStatus>(
         if (hasInitialAudioPermission) ScanStatus.Scanning else ScanStatus.PermissionRequired,
     )
+    private val mutableScanCompletionEvents = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    val scanCompletionEvents: SharedFlow<Int> = mutableScanCompletionEvents.asSharedFlow()
     private val mutableScanNoChangesEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val scanNoChangesEvents: SharedFlow<Unit> = mutableScanNoChangesEvents.asSharedFlow()
     private val recentlyAddedTrackIds = MutableStateFlow<Set<Long>>(emptySet())
@@ -343,7 +351,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             emptyMap()
         }
-        AlbumPresentationState(items, sectionIndexMap)
+        AlbumPresentationState(
+            items = items,
+            sectionIndexMap = sectionIndexMap,
+            query = request.query,
+            sortConfig = request.sortConfig,
+        )
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, AlbumPresentationState())
@@ -368,7 +381,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             emptyMap()
         }
-        ArtistPresentationState(items, sectionIndexMap)
+        ArtistPresentationState(
+            items = items,
+            sectionIndexMap = sectionIndexMap,
+            query = request.query,
+            sortConfig = request.sortConfig,
+        )
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, ArtistPresentationState())
@@ -393,7 +411,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             emptyMap()
         }
-        FolderPresentationState(items, sectionIndexMap)
+        FolderPresentationState(
+            items = items,
+            sectionIndexMap = sectionIndexMap,
+            query = request.query,
+            sortConfig = request.sortConfig,
+        )
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, FolderPresentationState())
@@ -673,14 +696,14 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         startMusicScan(
             restoreCachedTracks = false,
             refreshAfterRestore = true,
-            notifyIfUnchanged = true,
+            notifyUser = true,
         )
     }
 
     private fun startMusicScan(
         restoreCachedTracks: Boolean,
         refreshAfterRestore: Boolean,
-        notifyIfUnchanged: Boolean = false,
+        notifyUser: Boolean = false,
     ) {
         // The UI invokes commands on the main thread, so this debounces repeated scan taps.
         if (scanJob?.isActive == true) return
@@ -736,7 +759,10 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
                     musicRepository.cacheMusic(scannedTracks)
                 }
                 scanStatus.value = ScanStatus.Success(scannedTracks.size)
-                if (shouldEmitScanNoChanges(libraryChanged, notifyIfUnchanged)) {
+                if (shouldEmitScanCompletion(libraryChanged, notifyUser)) {
+                    mutableScanCompletionEvents.emit(scannedTracks.size)
+                }
+                if (shouldEmitScanNoChanges(libraryChanged, notifyUser)) {
                     mutableScanNoChangesEvents.emit(Unit)
                 }
             } catch (cancellation: CancellationException) {
@@ -792,3 +818,8 @@ internal fun shouldEmitScanNoChanges(
     libraryChanged: Boolean,
     notifyIfUnchanged: Boolean,
 ): Boolean = !libraryChanged && notifyIfUnchanged
+
+internal fun shouldEmitScanCompletion(
+    libraryChanged: Boolean,
+    notifyUser: Boolean,
+): Boolean = libraryChanged && notifyUser

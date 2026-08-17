@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -46,10 +47,12 @@ import com.melox.player.ui.component.MiuixBlurredBar
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberMiuixBlurBackdrop
 import com.melox.player.ui.component.library.ArtistArtwork
+import com.melox.player.ui.component.library.ArtistListItem
 import com.melox.player.ui.component.library.MusicTrackDescriptionMode
 import com.melox.player.ui.component.library.MusicTrackRow
 import com.melox.player.ui.component.library.PlaybackArtwork
 import com.melox.player.ui.component.library.TrackActionsOverlay
+import com.melox.player.ui.component.library.participatingArtistGroups
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -85,6 +88,12 @@ fun AlbumDetailScreen(
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberMiuixBlurBackdrop(blurEnabled)
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val scope = rememberCoroutineScope()
+    val tabRowBackgroundColor = backdrop.miuixBarColor()
+    val participatingArtists = remember(album.tracks, artistGroups) {
+        participatingArtistGroups(album.tracks, artistGroups)
+    }
     var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
     Scaffold(
         topBar = {
@@ -105,7 +114,33 @@ fun AlbumDetailScreen(
                         }
                     },
                     bottomContent = {
-                        AlbumDetailHeader(album)
+                        Column {
+                            AlbumDetailHeader(album)
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                                insideMargin = PaddingValues(0.dp),
+                                colors = CardDefaults.defaultColors(
+                                    color = tabRowBackgroundColor,
+                                    contentColor = MiuixTheme.colorScheme.onSurface,
+                                ),
+                            ) {
+                                TabRowWithContour(
+                                    tabs = listOf(
+                                        stringResource(R.string.artist_songs),
+                                        stringResource(R.string.participating_artists),
+                                    ),
+                                    selectedTabIndex = pagerState.currentPage,
+                                    onTabSelected = { page ->
+                                        scope.launch { pagerState.animateScrollToPage(page) }
+                                    },
+                                    colors = TabRowDefaults.tabRowColors(
+                                        backgroundColor = tabRowBackgroundColor,
+                                    ),
+                                )
+                            }
+                        }
                     },
                 )
             }
@@ -116,32 +151,80 @@ fun AlbumDetailScreen(
                 .fillMaxSize()
                 .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
         ) {
-            LazyColumn(
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .scrollEndHaptic()
-                    .overScrollVertical()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-                contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + 4.dp,
-                    bottom = maxOf(
-                        padding.calculateBottomPadding(),
-                        bottomContentPadding,
-                    ) + 16.dp,
-                ),
-                overscrollEffect = null,
-            ) {
-                itemsIndexed(
-                    items = album.tracks,
-                    key = { _, track -> track.id },
-                ) { index, track ->
-                    MusicTrackRow(
-                        track = track,
-                        isCurrent = track.id == currentTrackId,
-                        onClick = { onTrackClick(album.tracks, index) },
-                        onMoreClick = { selectedTrack = track },
-                        descriptionMode = MusicTrackDescriptionMode.Artist,
-                    )
+                    .fillMaxSize(),
+                userScrollEnabled = true,
+                beyondViewportPageCount = 1,
+                key = { it },
+            ) { page ->
+                if (page == 0) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .scrollEndHaptic()
+                            .overScrollVertical()
+                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        contentPadding = PaddingValues(
+                            top = padding.calculateTopPadding() + 4.dp,
+                            bottom = maxOf(
+                                padding.calculateBottomPadding(),
+                                bottomContentPadding,
+                            ) + 16.dp,
+                        ),
+                        overscrollEffect = null,
+                    ) {
+                        itemsIndexed(
+                            items = album.tracks,
+                            key = { _, track -> track.id },
+                        ) { index, track ->
+                            MusicTrackRow(
+                                track = track,
+                                isCurrent = track.id == currentTrackId,
+                                onClick = { onTrackClick(album.tracks, index) },
+                                onMoreClick = { selectedTrack = track },
+                                descriptionMode = MusicTrackDescriptionMode.Artist,
+                            )
+                        }
+                    }
+                } else if (participatingArtists.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.artist_empty),
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .scrollEndHaptic()
+                            .overScrollVertical()
+                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        contentPadding = PaddingValues(
+                            top = padding.calculateTopPadding(),
+                            bottom = maxOf(
+                                padding.calculateBottomPadding(),
+                                bottomContentPadding,
+                            ) + 16.dp,
+                        ),
+                        overscrollEffect = null,
+                    ) {
+                        items(
+                            items = participatingArtists,
+                            key = ArtistGroup::key,
+                        ) { artist ->
+                            ArtistListItem(
+                                artist = artist,
+                                onClick = { onGoToArtist(artist) },
+                                artworkTextSpacing = 12.dp,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -241,7 +324,7 @@ fun ArtistDetailScreen(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = false,
+                userScrollEnabled = true,
                 beyondViewportPageCount = 1,
                 key = { it },
             ) { page ->

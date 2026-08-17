@@ -180,6 +180,9 @@
     <string name="scan_add_custom_folder">添加自定义文件夹</string>
     <string name="scan_start">开始扫描</string>
     <string name="scan_no_changes">音乐文件无变化</string>
+    <plurals name="scan_complete">
+        <item quantity="other">扫描完成，共%1$d首歌曲</item>
+    </plurals>
     <string name="scan_remove_folder_title">删除</string>
     <string name="scan_remove_folder_message">确认删除该自定义文件夹？</string>
     <string name="scan_status_idle">点击扫描设备中的本地音乐</string>

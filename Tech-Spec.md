@@ -212,10 +212,11 @@
   swiping so only TabRow clicks switch Albums, Artists, and Folders; root pager
   horizontal swiping stays unambiguous. The TabRow keeps the default Miuix
   outlined-tab visual treatment, with 20 dp side padding, 12 dp item spacing,
-  38 dp height, and 13 sp text. Taps switch selection directly with no
-  intermediate-page animation. Its own background becomes transparent when
-  Blur is active so the parent top-bar blur remains visible; opaque fallback
-  keeps the normal surface. Its top gap is 12 dp when the large title is
+  38 dp height, and 13 sp text. Taps use the official Miuix example's
+  `animateScrollToPage` pattern, so content transitions to the target page
+  while direct pager swiping remains disabled. Its own background becomes
+  transparent when Blur is active so the parent top-bar blur remains visible;
+  opaque fallback keeps the normal surface. Its top gap is 12 dp when the large title is
   expanded and 0 dp when the small title is collapsed. Library reserves 6 dp
   below the TabRow and gives an open SearchBar another 6 dp top padding, keeping
   the total TabRow-to-Search spacing at 12 dp. Songs SearchBar uses the same
@@ -270,12 +271,21 @@
   the app bar's `bottomContent`. Album Detail uses the root three-column cover
   width and 14 dp corner radius with a `title3` album name. Artist Detail uses
   a 72 dp cover with a `title3` artist name, then separate 12 sp song-count and
-  album-count rows in that order. Its contour tab selector is hosted in the
-  same fixed top-bar surface; its Card and unselected contour background are
-  transparent while Blur is available so the bar backdrop remains visible.
-  Album-detail song rows use artist-only
-  descriptions, and artist-detail song rows use album-only descriptions.
-  Artist-detail Albums uses the persisted Album grid style and its column count.
+  album-count rows in that order. Both detail pages use the Miuix
+  `TabRowWithContour` plus a two-page `HorizontalPager` in the same fixed top-bar
+  surface; their Cards and unselected contour backgrounds are transparent while
+  Blur is available so the bar backdrop remains visible. Album pages use Songs
+  and Participating artists. The latter derives every distinct split artist from
+  all album tracks in first-occurrence order, renders the standard artist row,
+  and navigates with the matching global artist key. Both detail pagers enable
+  direct horizontal swiping as well as TabRow taps because no root pager is
+  present on those routes. An Artist Detail opened from an Album Detail stores
+  the source album key as its parent context and Back restores that exact album.
+  Its Albums tab retains the existing Artist-to-Album parent context, so Back
+  returns to the Artist Detail before a second Back restores the source album.
+  Album-detail song rows use artist-only descriptions, and artist-detail song
+  rows use album-only descriptions. Artist-detail Albums uses the persisted
+  Album grid style and its column count.
 - Full player is intentionally outside `NavDisplay`. The root remains composed
   while one reversible shared-player progress mounts the full-player overlay.
   Mini-player and full-player roots publish their root-coordinate bounds and
@@ -301,11 +311,11 @@
   is supplied only by the liquid-glass path; the ordinary floating blur path
   passes `null` to the Miuix blur highlight parameter.
   This keeps Miuix's live backdrop sampling while the bar height changes.
-  Content handoff reaches the full-player layer at `p = 0.25`, but the surface
-  remains active until the shared container is fully expanded, matching the shared container's
-  `isFullyExpanded` boundary. No external blur or refraction parameters are
-  introduced. Liquid-glass highlight and floating shadow alpha reuse the mini-layer handoff
-  curve, reaching zero at `p = 0.25`, while the backdrop continues drawing.
+  Content handoff reaches the opaque full-player layer at `p = 0.25`; at that
+  same boundary the mini-player surface, backdrop blur, and refraction stop
+  drawing. No external blur or refraction parameters are introduced. This is a
+  rendering-cost optimization only, so the liquid-glass highlight, floating
+  shadow, and visible handoff remain unchanged.
 - The shared artwork path uses uniform scale and translation only. Its opening
   direction is rightward and upward from the mini-player cover into the page
   cover, with interpolated rounded corners and no rotation, skew, or
@@ -767,23 +777,32 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   retains its hit-space but fades its icon and disables the action while the
   large title is expanded.
 - Root lazy states and Miuix top-bar states are hoisted above the navigation
-  entry. Sort actions explicitly reset the owning state; screen composition
-  does not run an initial sort-reset effect. Alphabet scroll jobs are cancelled
-  when their map changes and validate the latest item count before scrolling.
+  entry. Sort actions explicitly reset the owning state only after the
+  ViewModel has emitted the matching query/sort projection and that projection
+  reaches a Compose frame; screen composition does not run an initial
+  sort-reset effect. This prevents stable lazy-item keys from restoring the
+  pre-sort anchor. Alphabet scroll jobs are cancelled when their map changes
+  and validate the latest item count before scrolling.
 - Album detail keeps its root-three-column-sized, 14 dp-cornered artwork plus
   title3 name/artist/optional-year/count header outside the song `LazyColumn`.
   A positive year appears directly above the song count; both use 12 sp
-  `onSurface` text, and a missing year adds no row. Artist detail uses a 72 dp
-  cover, title3 name, 12 sp song count, then 12 sp album count, plus
-  `TabRowWithContour` backed by a two-page
-  `HorizontalPager`, matching the local Miuix/Lyrico interaction instead of a
-  crossfade. Both detail screens use an empty-title Miuix `SmallTopAppBar`; its
-  `bottomContent` owns the fixed metadata header, plus the Artist selector, so
-  the complete fixed region shares the outer Miuix blur/fallback surface. With
-  Blur active, the selector Card and contour background stay transparent. The
-  app bar itself stays transparent. Detail lists fill the page behind that
-  surface and use top content padding, allowing scrolled rows to supply the
-  backdrop without changing their initial placement.
+  `onSurface` text, and a missing year adds no row. Album Detail and Artist
+  Detail each use `TabRowWithContour` backed by a two-page `HorizontalPager`,
+  matching the local Miuix interaction instead of a crossfade. Album pages
+  contain Songs and Participating artists, where every distinct split artist
+  from the album's tracks appears once in first-occurrence order. Both detail
+  pagers accept TabRow taps and horizontal swipes because their routes do not
+  compete with root-pager navigation. A participating-artist route saves the
+  source album key, making Artist Detail a third-level child whose Back restores
+  that Album Detail. If the Artist Detail opens an album through its Albums tab,
+  the existing Artist-to-Album parent route is used first; a second Back still
+  restores the saved source album. Both detail screens use an empty-title Miuix
+  `SmallTopAppBar`; its `bottomContent` owns the fixed metadata header and
+  selector so the complete fixed region shares the outer Miuix blur/fallback
+  surface. With Blur active, the selector Card and contour background stay
+  transparent. The app bar itself stays transparent. Detail lists fill the page
+  behind that surface and use top content padding, allowing scrolled rows to
+  supply the backdrop without changing their initial placement.
 
 ## Lyrics
 
@@ -1041,9 +1060,10 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
 - A scan failure retains the last successful rows; Settings remains the retry
   entry point.
 - An explicit scan compares the resulting immutable track list with the current
-  library. When they are equal, the full-width button keeps the `Start scan`
-  label and a one-shot UI event shows `No music file changes`; launch refreshes
-  do not emit this Toast.
+  library. When it changes, a one-shot UI event shows the localized completed
+  song count; when it is equal, the full-width button keeps the `Start scan`
+  label and shows `No music file changes`. Launch refreshes do not emit either
+  Toast.
 - Playback errors remain available through controller state and system
   diagnostics. A newly reported error shows one localized Toast; the full-
   player header does not show an unsupported-audio message. Unavailable

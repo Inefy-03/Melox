@@ -1,12 +1,12 @@
 # Melox Project Guide
 
-Last updated: 2026-08-01
+Last updated: 2026-08-10
 
 ## Project
 
 - Melox is an offline Android local-music player.
 - Application ID and namespace: `com.melox.player`.
-- Stack: Kotlin, Jetpack Compose, Miuix `0.9.3`, AndroidX Media3 `1.10.1`.
+- Stack: Kotlin, Jetpack Compose, Miuix `0.9.3`, AndroidX Media3 `1.11.0`.
 - SDK baseline: `minSdk 28`, `compileSdk 37`, `targetSdk 36`.
 - The app must not request network access.
 
@@ -23,12 +23,6 @@ Use this precedence for visible UI and Miuix API decisions:
 5. `/Users/bocchi/Code/AGENTS.md` and `/Users/bocchi/Code/CLAUDE.md` as upstream UI guidance.
 
 The upstream files may describe another application or a newer library revision. Reuse general UI rules, not product-specific routes, icons, thresholds, or business behavior.
-
-## Authorized Reuse
-
-- The maintainer owns `/Users/bocchi/Code/UixPlayer`; its music-home UI, MediaStore scan, artwork cache, sorting, index, playback, and external-audio behavior may be migrated directly.
-- The maintainer owns `/Users/bocchi/Code/IconEditor`; its settings hierarchy, theme settings, and About-page interaction may be adapted for Melox.
-- Preserve Apache-2.0 headers and `THIRD_PARTY_NOTICES.md` attribution. Do not copy GPL-only IconEditor floating-navigation code.
 
 ## Architecture
 
@@ -62,7 +56,7 @@ The upstream files may describe another application or a newer library revision.
   host. Keep the default transition effects and do not add a parallel
   hand-written page translation state machine.
 - Use a bottom navigation bar below 600 dp and a navigation rail at 600 dp and above.
-- Keep the music list visually aligned with UixPlayer. The full player is the only strongly atmospheric surface.
+- Keep the music list visually aligned with the rest of the library. The full player is the only strongly atmospheric surface.
 - Blur and liquid glass are optional. API 28-32 must render a complete opaque fallback; API 33+ may enable runtime-shader effects when supported.
 - All visible strings live in Android resources. Maintain Simplified Chinese and English together.
 - Reusable composables expose `modifier: Modifier = Modifier` as the first optional parameter and apply it to their root.

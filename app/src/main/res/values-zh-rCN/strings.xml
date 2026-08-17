@@ -35,6 +35,8 @@
     <string name="music_edit_with_music_tag_editor">使用音乐标签编辑</string>
     <string name="music_edit_with_lyrico">使用Lyrico编辑</string>
     <string name="music_external_editor_unavailable">无法打开所选编辑器</string>
+    <string name="music_tag_editor_not_found">未发现 音乐标签 应用</string>
+    <string name="lyrico_not_found">未发现 Lyrico 应用</string>
     <string name="music_album_label">专辑：%1$s</string>
     <string name="music_artist_label">艺术家：%1$s</string>
     <string name="music_quality_hr">HR</string>
@@ -58,8 +60,8 @@
     <string name="not_available">暂无</string>
 
     <string name="album_sort_action">专辑排序</string>
-    <string name="album_grid_two_small">2列</string>
-    <string name="album_grid_three">3列</string>
+    <string name="album_grid_two_small">小封面</string>
+    <string name="album_grid_three">大封面</string>
     <string name="album_sort_album">专辑名</string>
     <string name="album_sort_album_artist">专辑艺术家</string>
     <string name="album_sort_song_count">歌曲数</string>
@@ -144,6 +146,9 @@
     <string name="theme_mode_system">跟随系统</string>
     <string name="theme_mode_light">浅色</string>
     <string name="theme_mode_dark">深色</string>
+    <string name="settings_playback_background_title">播放页背景</string>
+    <string name="settings_playback_background_blurred_artwork">模糊封面</string>
+    <string name="settings_playback_background_flowing_colors">取色流动</string>
     <string name="settings_dynamic_color_title">动态取色</string>
     <string name="settings_dynamic_color_summary">根据来源调整应用配色</string>
     <string name="settings_dynamic_color_unsupported">动态取色需要 Android 12 或更高版本</string>
@@ -151,10 +156,10 @@
     <string name="settings_dynamic_color_source_desktop">桌面壁纸</string>
     <string name="settings_dynamic_color_source_artwork">播放歌曲封面</string>
     <string name="settings_blur_title">模糊</string>
-    <string name="settings_blur_summary">为顶栏和导航栏启用背景模糊</string>
+    <string name="settings_blur_summary">为应用启用模糊效果</string>
     <string name="settings_blur_unsupported">模糊需要 Android 13 或更高版本</string>
     <string name="settings_floating_bottom_bar_title">悬浮底栏</string>
-    <string name="settings_floating_bottom_bar_summary">让主导航悬浮在页面内容上方</string>
+    <string name="settings_floating_bottom_bar_summary">使用悬浮样式的导航栏</string>
     <string name="settings_liquid_glass_title">液态玻璃</string>
     <string name="settings_liquid_glass_summary">为悬浮底栏启用折射玻璃效果</string>
     <string name="settings_predictive_back_title">预测返回手势</string>
@@ -162,7 +167,21 @@
     <string name="settings_liquid_glass_unsupported">悬浮液态玻璃底栏需要 Android 13 及以上</string>
 
     <string name="settings_section_music_library">音乐库</string>
-    <string name="settings_scan_local_music_title">扫描本地音乐</string>
+    <string name="settings_scan_local_music_title">扫描音乐</string>
+    <string name="settings_scan_music_empty_summary">暂无歌曲</string>
+    <plurals name="settings_scan_music_song_count">
+        <item quantity="other">%1$d首歌曲</item>
+    </plurals>
+    <string name="scan_music_page_title">扫描音乐</string>
+    <string name="scan_music_card_title">扫描</string>
+    <string name="scan_refresh_on_start">每次启动时刷新</string>
+    <string name="scan_skip_short_audio">不扫描60s以下音频</string>
+    <string name="scan_custom_folder_title">自定义文件夹</string>
+    <string name="scan_add_custom_folder">添加自定义文件夹</string>
+    <string name="scan_start">开始扫描</string>
+    <string name="scan_no_changes">音乐文件无变化</string>
+    <string name="scan_remove_folder_title">删除</string>
+    <string name="scan_remove_folder_message">确认删除该自定义文件夹？</string>
     <string name="scan_status_idle">点击扫描设备中的本地音乐</string>
     <string name="scan_status_permission_required">需要授予音频读取权限</string>
     <string name="scan_status_scanning">正在扫描本地音乐…</string>
@@ -172,8 +191,20 @@
     <string name="scan_status_error">扫描失败：%1$s</string>
     <string name="scan_status_error_default">扫描失败，请重试</string>
     <string name="playback_error">无法播放此音频</string>
-    <string name="lyrics_loading">正在加载歌词…</string>
-    <string name="lyrics_unavailable">暂无时间轴歌词</string>
+    <string name="lyrics_unavailable">暂无歌词</string>
+    <string name="lyrics_settings">歌词设置</string>
+    <string name="lyrics_settings_open">打开歌词设置</string>
+    <string name="lyrics_translation">歌词翻译</string>
+    <string name="lyrics_size">歌词大小</string>
+    <string name="lyrics_size_value">%1$d%%</string>
+    <string name="lyrics_weight">歌词字重</string>
+    <string name="lyrics_weight_value">%1$d</string>
+    <string name="lyrics_force_word_by_word">强制逐字歌词</string>
+    <string name="lyrics_force_word_by_word_summary">将非逐字歌词以线性速度渐变显示</string>
+    <string name="lyrics_blur">歌词模糊</string>
+    <string name="lyrics_blur_summary">模糊显示非当前歌词</string>
+    <string name="lyrics_center">歌词居中</string>
+    <string name="lyrics_hide_controls">歌词页隐藏控制</string>
 
     <string name="about_version">v%1$s</string>
     <string name="about_developer_title">开发人员</string>

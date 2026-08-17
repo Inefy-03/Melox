@@ -3,6 +3,7 @@ package com.melox.player.ui.component.library
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.BlurMaskFilter
 import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.util.AtomicFile
@@ -26,11 +27,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -58,6 +65,8 @@ import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Music
+import top.yukonga.miuix.kmp.squircle.addSquircleRect
+import top.yukonga.miuix.kmp.squircle.isSquircleEnabled
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -259,9 +268,10 @@ internal fun PlaybackArtworkFrame(
     cornerRadius: Dp,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
-    shadowElevation: Dp = 0.dp,
-    ambientShadowColor: Color = Color.Transparent,
-    spotShadowColor: Color = Color.Transparent,
+    useSquircleClip: Boolean = false,
+    drawArtworkShadow: Boolean = false,
+    artworkAlpha: Float = 1f,
+    artworkShadowAlpha: Float = artworkAlpha,
     onContentBoundsChanged: ((Rect) -> Unit)? = null,
     rectangularCornerRadiusReduction: Dp = 0.dp,
 ) {
@@ -279,6 +289,31 @@ internal fun PlaybackArtworkFrame(
                 DpSize(size, size)
             }
         }
+        val imageModifier = Modifier
+            .size(imageSize)
+            .onGloballyPositioned { coordinates ->
+                onContentBoundsChanged?.invoke(coordinates.boundsInParent())
+            }
+            .let { baseModifier ->
+                if (useSquircleClip) {
+                    val shadowModifier = if (drawArtworkShadow) {
+                        baseModifier.playbackArtworkShadow(
+                            cornerRadius = resolvedCornerRadius,
+                            alpha = artworkShadowAlpha,
+                        )
+                    } else {
+                        baseModifier
+                    }
+                    shadowModifier
+                        .graphicsLayer { alpha = artworkAlpha.coerceIn(0f, 1f) }
+                        .squircleClip(resolvedCornerRadius)
+                } else {
+                    baseModifier.graphicsLayer {
+                        shape = RoundedCornerShape(resolvedCornerRadius)
+                        clip = true
+                    }
+                }
+            }
         Box(
             modifier = modifier.size(size),
             contentAlignment = Alignment.Center,
@@ -286,32 +321,92 @@ internal fun PlaybackArtworkFrame(
             Image(
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = null,
-                modifier = Modifier
-                    .size(imageSize)
-                    .onGloballyPositioned { coordinates ->
-                        onContentBoundsChanged?.invoke(coordinates.boundsInParent())
-                    }
-                    .graphicsLayer {
-                        this.shadowElevation = shadowElevation.toPx()
-                        this.ambientShadowColor = ambientShadowColor
-                        this.spotShadowColor = spotShadowColor
-                        shape = RoundedCornerShape(resolvedCornerRadius)
-                        clip = true
-                    },
+                modifier = imageModifier,
                 contentScale = contentScale,
                 filterQuality = FilterQuality.High,
             )
         }
     } else {
+        val placeholderModifier = if (drawArtworkShadow) {
+            modifier.size(size)
+                .playbackArtworkShadow(
+                    cornerRadius = cornerRadius,
+                    alpha = artworkShadowAlpha,
+                )
+        } else {
+            modifier.size(size)
+        }
+        val fadedPlaceholderModifier = if (artworkAlpha < 1f) {
+            placeholderModifier.graphicsLayer {
+                alpha = artworkAlpha.coerceIn(0f, 1f)
+            }
+        } else {
+            placeholderModifier
+        }
         Box(
-            modifier = modifier
-                .size(size)
+            modifier = fadedPlaceholderModifier
                 .squircleBackground(
                     color = MiuixTheme.colorScheme.secondaryContainer,
                     cornerRadius = cornerRadius,
                 ),
         )
     }
+}
+
+@Composable
+internal fun Modifier.playbackArtworkShadow(
+    cornerRadius: Dp,
+    alpha: Float,
+): Modifier {
+    val resolvedAlpha = alpha.coerceIn(0f, 1f)
+    if (resolvedAlpha == 0f) return this
+    val squircleEnabled = isSquircleEnabled()
+    return drawWithCache {
+        val shadowBounds = playbackArtworkShadowBounds(
+            width = size.width,
+            height = size.height,
+        )
+        val shadowPath = Path().apply {
+            addSquircleRect(
+                width = shadowBounds.width,
+                height = shadowBounds.height,
+                cornerRadius = cornerRadius.toPx(),
+                squircleEnabled = squircleEnabled,
+            )
+        }
+        val shadowPaint = Paint().apply {
+            color = Color.Black.copy(alpha = PLAYBACK_ARTWORK_SHADOW_ALPHA * resolvedAlpha)
+            blendMode = BlendMode.Overlay
+            nativePaint.maskFilter = BlurMaskFilter(
+                PLAYBACK_ARTWORK_SHADOW_BLUR_RADIUS.toPx(),
+                BlurMaskFilter.Blur.NORMAL,
+            )
+        }
+        onDrawBehind {
+            drawIntoCanvas { canvas ->
+                canvas.save()
+                canvas.translate(shadowBounds.left, shadowBounds.top)
+                canvas.drawPath(shadowPath, shadowPaint)
+                canvas.restore()
+            }
+        }
+    }
+}
+
+internal fun playbackArtworkShadowBounds(
+    width: Float,
+    height: Float,
+): Rect {
+    val resolvedWidth = width.coerceAtLeast(0f)
+    val resolvedHeight = height.coerceAtLeast(0f)
+    val left = resolvedWidth * PLAYBACK_ARTWORK_SHADOW_HORIZONTAL_OFFSET_FRACTION
+    val top = resolvedHeight * PLAYBACK_ARTWORK_SHADOW_VERTICAL_OFFSET_FRACTION
+    return Rect(
+        left = left,
+        top = top,
+        right = left + resolvedWidth * PLAYBACK_ARTWORK_SHADOW_SIZE_FRACTION,
+        bottom = top + resolvedHeight * PLAYBACK_ARTWORK_SHADOW_SIZE_FRACTION,
+    )
 }
 
 internal fun playbackArtworkCornerRadius(
@@ -335,6 +430,12 @@ private fun fittedArtworkSize(bitmap: Bitmap, bound: Dp): DpSize {
     }
 }
 
+private const val PLAYBACK_ARTWORK_SHADOW_ALPHA = 0.2f
+private const val PLAYBACK_ARTWORK_SHADOW_SIZE_FRACTION = 0.9f
+private const val PLAYBACK_ARTWORK_SHADOW_HORIZONTAL_OFFSET_FRACTION = 0f
+private const val PLAYBACK_ARTWORK_SHADOW_VERTICAL_OFFSET_FRACTION = 0.1f
+private val PLAYBACK_ARTWORK_SHADOW_BLUR_RADIUS = 16.dp
+
 /** Loads a cached artwork bitmap for surfaces that need their own rendering treatment. */
 @Composable
 internal fun rememberArtworkBitmap(
@@ -343,10 +444,39 @@ internal fun rememberArtworkBitmap(
     fileSizeBytes: Long,
     size: Dp,
 ): Bitmap? {
-    val context = LocalContext.current.applicationContext
     val targetSizePx = normalizeArtworkTargetSize(
         with(LocalDensity.current) { size.roundToPx() },
     )
+    return rememberArtworkBitmapForTargetSize(
+        contentUri = contentUri,
+        dateModifiedEpochSeconds = dateModifiedEpochSeconds,
+        fileSizeBytes = fileSizeBytes,
+        targetSizePx = targetSizePx,
+    )
+}
+
+/** Loads a cached artwork bitmap at a fixed pixel bucket instead of a density-derived size. */
+@Composable
+internal fun rememberArtworkBitmapPixels(
+    contentUri: String,
+    dateModifiedEpochSeconds: Long,
+    fileSizeBytes: Long,
+    targetSizePx: Int,
+): Bitmap? = rememberArtworkBitmapForTargetSize(
+    contentUri = contentUri,
+    dateModifiedEpochSeconds = dateModifiedEpochSeconds,
+    fileSizeBytes = fileSizeBytes,
+    targetSizePx = normalizeArtworkTargetSize(targetSizePx),
+)
+
+@Composable
+private fun rememberArtworkBitmapForTargetSize(
+    contentUri: String,
+    dateModifiedEpochSeconds: Long,
+    fileSizeBytes: Long,
+    targetSizePx: Int,
+): Bitmap? {
+    val context = LocalContext.current.applicationContext
     val cacheKey = createArtworkCacheKey(
         contentUri = contentUri,
         dateModifiedEpochSeconds = dateModifiedEpochSeconds,
@@ -436,6 +566,22 @@ internal suspend fun loadArtworkBitmap(
         ArtworkResult.Missing -> null
     }
 }
+
+/** Stores a derived artwork bitmap in the same bounded cache under a caller-owned key. */
+internal suspend fun loadCachedArtworkDerivative(
+    context: Context,
+    cacheKey: String,
+    createBitmap: () -> Bitmap?,
+): Bitmap? = runCatching {
+    when (val result = ArtworkCache.getOrLoad(context.applicationContext, cacheKey) {
+        createBitmap()
+            ?.let(ArtworkExtractionResult::Loaded)
+            ?: ArtworkExtractionResult.Failed
+    }) {
+        is ArtworkResult.Loaded -> result.bitmap
+        ArtworkResult.Missing -> null
+    }
+}.getOrNull()
 
 internal fun normalizeArtworkTargetSize(targetSizePx: Int): Int {
     val requested = targetSizePx.coerceAtLeast(1)

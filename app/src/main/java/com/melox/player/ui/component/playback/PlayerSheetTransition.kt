@@ -54,6 +54,7 @@ import com.melox.player.model.BottomBarStyle
 import com.melox.player.ui.MiniPlayerChrome
 import com.melox.player.ui.NORMAL_BAR_STROKE_ALPHA
 import com.melox.player.ui.component.library.PlaybackArtworkFrame
+import com.melox.player.ui.component.library.playbackArtworkShadow
 import com.melox.player.ui.component.library.playbackArtworkCornerRadius
 import com.melox.player.ui.component.library.rememberArtworkBitmap
 import com.melox.player.ui.component.liquid.miuixFloatingBarShadow
@@ -72,13 +73,14 @@ internal const val PLAYER_SCREEN_CORNER_EXPANSION_DURATION_MILLIS = 140
 private const val PLAYER_ARTWORK_VERTICAL_LINEAR_WEIGHT = 0.4f
 
 internal val PLAYER_FULL_ARTWORK_REQUEST_SIZE = 420.dp
+internal val PLAYER_FULL_ARTWORK_CORNER_RADIUS = 12.dp
 internal val MINI_PLAYER_RECTANGULAR_ARTWORK_CORNER_REDUCTION = 1.dp
 internal val PLAYER_TRACK_ARTWORK_CROSSFADE_EASING = androidx.compose.animation.core.FastOutSlowInEasing
 
 /**
  * Owns the one progress value shared by the mini player, full player, and
- * artwork overlay. The spring mirrors VMusic's endpoint-driven container
- * motion while allowing a close gesture to reverse from its current frame.
+ * artwork overlay. Its endpoint-driven spring allows a close gesture to
+ * reverse from the current frame.
  */
 @Stable
 internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
@@ -96,9 +98,18 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
     )
 
     companion object {
-        val Saver: Saver<PlayerSheetTransitionState, Float> = Saver(
-            save = { state -> if (state.targetOpen) 1f else 0f },
-            restore = { savedProgress -> PlayerSheetTransitionState(savedProgress) },
+        val Saver: Saver<PlayerSheetTransitionState, List<Any>> = Saver(
+            save = { state ->
+                listOf(
+                    if (state.targetOpen) 1f else 0f,
+                    state.fullPlayerArtworkPageSelected,
+                )
+            },
+            restore = { savedState ->
+                PlayerSheetTransitionState(savedState[0] as Float).apply {
+                    updateFullPlayerArtworkPageSelected(savedState[1] as Boolean)
+                }
+            },
         )
     }
 
@@ -121,6 +132,9 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         private set
 
     var fullArtworkBounds by mutableStateOf(Rect.Zero)
+        private set
+
+    var fullPlayerArtworkPageSelected by mutableStateOf(true)
         private set
 
     val progress: Float
@@ -150,6 +164,9 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         } else {
             progress > 0f || cornerExpansionProgress > 0f
         }
+
+    val sharedArtworkEnabled: Boolean
+        get() = fullPlayerArtworkPageSelected
 
     val miniPlayerAcceptsInput: Boolean
         get() = playerSheetMiniPlayerAcceptsInput(
@@ -240,6 +257,10 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         if (bounds.isUsable()) fullArtworkBounds = bounds
     }
 
+    fun updateFullPlayerArtworkPageSelected(selected: Boolean) {
+        fullPlayerArtworkPageSelected = selected
+    }
+
     internal suspend fun animateToTarget() {
         progressAnimation.snapTo(renderedProgress)
         val visibilityThreshold = 0.5f / fullPlayerBounds.height.coerceAtLeast(1f)
@@ -253,7 +274,7 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
                 targetValue = if (targetOpen) 1f else 0f,
                 animationSpec = spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 300f,
+                    stiffness = 500f,
                     visibilityThreshold = visibilityThreshold,
                 ),
                 initialVelocity = requestedInitialVelocity,
@@ -390,8 +411,8 @@ internal fun Modifier.recordPlayerLayer(
 
 /**
  * Shared container overlay. Mini-player and full-player content are recorded
- * independently, then drawn inside one expanding squircle. This mirrors
- * VMusic's layer handoff instead of fading a fixed bar under a fixed screen.
+ * independently, then drawn inside one expanding squircle instead of fading a
+ * fixed bar under a fixed screen.
  */
 @Composable
 internal fun PlayerSheetContentOverlay(
@@ -407,12 +428,17 @@ internal fun PlayerSheetContentOverlay(
     if (!transition.isReady || !transition.isTransitionActive) return
 
     val progress = transition.progress
-    val bounds = sharedContainerRect(
+    val density = LocalDensity.current
+    val contentBounds = sharedContainerRect(
         source = transition.miniPlayerBounds,
         target = transition.fullPlayerBounds,
         progress = progress,
     )
-    val density = LocalDensity.current
+    val bounds = sharedContainerRenderRect(
+        source = transition.miniPlayerBounds,
+        target = transition.fullPlayerBounds,
+        progress = progress,
+    )
     val deviceCornerRadius = getRoundedCorner()
     val expandedCornerRadius = if (rememberPlayerWindowUsesPhysicalScreenCorners()) {
         deviceCornerRadius
@@ -495,9 +521,14 @@ internal fun PlayerSheetContentOverlay(
                 drawLayer(miniPlayerLayer)
             }
             if (fullPlayerLayer.size.width > 0 && progress > 0f) {
-                val scale = size.width / fullPlayerLayer.size.width
+                val contentOffset = sharedContainerContentOffset(
+                    renderBounds = bounds,
+                    contentBounds = contentBounds,
+                )
+                val scale = contentBounds.width / fullPlayerLayer.size.width
                 fullPlayerLayer.alpha = playerSheetPageAlpha(progress)
                 withTransform({
+                    translate(left = contentOffset.x, top = contentOffset.y)
                     scale(scaleX = scale, scaleY = scale, pivot = Offset.Zero)
                 }) {
                     drawLayer(fullPlayerLayer)
@@ -510,19 +541,20 @@ internal fun PlayerSheetContentOverlay(
 /**
  * Shared cover overlay. The layout is anchored at the mini-player bounds and
  * uses uniform scale plus translation to reach the full-player bounds. The
- * center path follows VMusic's staged feel: horizontal travel is front-loaded,
- * while the cover rises throughout and vertical travel dominates after halfway.
+ * center path front-loads horizontal travel while the cover rises throughout
+ * and vertical travel dominates after halfway.
  */
 @Composable
 internal fun PlayerSheetArtworkOverlay(
     playback: PlaybackUiState,
     transition: PlayerSheetTransitionState,
     collapsedCornerRadius: Dp,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val item = playback.currentItem ?: return
     val progress = transition.progress
-    if (!transition.isReady || !transition.isTransitionActive) return
+    if (!enabled || !transition.isReady || !transition.isTransitionActive) return
 
     val bitmap = rememberArtworkBitmap(
         contentUri = item.contentUri,
@@ -551,7 +583,7 @@ internal fun PlayerSheetArtworkOverlay(
     } ?: collapsedCornerRadius
     val artworkCornerRadius = lerp(
         collapsedArtworkCornerRadius.value,
-        12f,
+        PLAYER_FULL_ARTWORK_CORNER_RADIUS.value,
         progress,
     )
 
@@ -590,6 +622,9 @@ internal fun PlayerSheetArtworkOverlay(
                 cornerRadius = localCornerRadius,
                 modifier = Modifier,
                 contentScale = ContentScale.Fit,
+                useSquircleClip = true,
+                drawArtworkShadow = true,
+                artworkShadowAlpha = progress,
             )
         }
     } else {
@@ -630,6 +665,10 @@ internal fun PlayerSheetArtworkOverlay(
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()
+                    .playbackArtworkShadow(
+                        cornerRadius = localCornerRadius,
+                        alpha = progress,
+                    )
                     .squircleClip(localCornerRadius),
                 contentScale = ContentScale.Fit,
                 filterQuality = FilterQuality.High,
@@ -655,6 +694,32 @@ internal fun sharedContainerRect(
         bottom = centerY + height / 2f,
     )
 }
+
+internal fun sharedContainerRenderRect(
+    source: Rect,
+    target: Rect,
+    progress: Float,
+    endpointOverscanPx: Float = 0f,
+): Rect {
+    val bounds = sharedContainerRect(source, target, progress)
+    if (progress.coerceIn(0f, 1f) < 1f) return bounds
+
+    val overscan = endpointOverscanPx.coerceAtLeast(0f)
+    return Rect(
+        left = minOf(bounds.left, target.left) - overscan,
+        top = minOf(bounds.top, target.top) - overscan,
+        right = maxOf(bounds.right, target.right) + overscan,
+        bottom = maxOf(bounds.bottom, target.bottom) + overscan,
+    )
+}
+
+internal fun sharedContainerContentOffset(
+    renderBounds: Rect,
+    contentBounds: Rect,
+): Offset = Offset(
+    x = contentBounds.left - renderBounds.left,
+    y = contentBounds.top - renderBounds.top,
+)
 
 internal fun sharedContainerCornerRadius(
     collapsedCornerRadius: Float,
@@ -735,17 +800,17 @@ internal fun fittedArtworkRect(
     )
 }
 
-internal fun scaledRectAroundCenter(
+internal fun artworkInsetRect(
     bounds: Rect,
-    scale: Float,
+    inset: Float,
 ): Rect {
-    val halfWidth = bounds.width * scale / 2f
-    val halfHeight = bounds.height * scale / 2f
+    val horizontalInset = inset.coerceIn(0f, bounds.width / 2f)
+    val verticalInset = inset.coerceIn(0f, bounds.height / 2f)
     return Rect(
-        left = bounds.center.x - halfWidth,
-        top = bounds.center.y - halfHeight,
-        right = bounds.center.x + halfWidth,
-        bottom = bounds.center.y + halfHeight,
+        left = bounds.left + horizontalInset,
+        top = bounds.top + verticalInset,
+        right = bounds.right - horizontalInset,
+        bottom = bounds.bottom - verticalInset,
     )
 }
 

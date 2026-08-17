@@ -35,6 +35,8 @@
     <string name="music_edit_with_music_tag_editor">Edit with Music Tag Editor</string>
     <string name="music_edit_with_lyrico">Edit with Lyrico</string>
     <string name="music_external_editor_unavailable">Unable to open the selected editor</string>
+    <string name="music_tag_editor_not_found">Music Tag Editor app not found</string>
+    <string name="lyrico_not_found">Lyrico app not found</string>
     <string name="music_album_label">Album: %1$s</string>
     <string name="music_artist_label">Artist: %1$s</string>
     <string name="music_quality_hr">HR</string>
@@ -58,8 +60,8 @@
     <string name="not_available">Not available</string>
 
     <string name="album_sort_action">Sort albums</string>
-    <string name="album_grid_two_small">2 columns</string>
-    <string name="album_grid_three">3 columns</string>
+    <string name="album_grid_two_small">Small cover</string>
+    <string name="album_grid_three">Large cover</string>
     <string name="album_sort_album">Album name</string>
     <string name="album_sort_album_artist">Album artist</string>
     <string name="album_sort_song_count">Song count</string>
@@ -149,6 +151,9 @@
     <string name="theme_mode_system">Follow system</string>
     <string name="theme_mode_light">Light</string>
     <string name="theme_mode_dark">Dark</string>
+    <string name="settings_playback_background_title">Playback background</string>
+    <string name="settings_playback_background_blurred_artwork">Blurred artwork</string>
+    <string name="settings_playback_background_flowing_colors">Flowing colors</string>
     <string name="settings_dynamic_color_title">Dynamic colors</string>
     <string name="settings_dynamic_color_summary">Adjust app colors based on the selected source</string>
     <string name="settings_dynamic_color_unsupported">Dynamic colors require Android 12 or later</string>
@@ -156,10 +161,10 @@
     <string name="settings_dynamic_color_source_desktop">Desktop wallpaper</string>
     <string name="settings_dynamic_color_source_artwork">Playing song artwork</string>
     <string name="settings_blur_title">Blur</string>
-    <string name="settings_blur_summary">Blur navigation and top bar backdrops</string>
+    <string name="settings_blur_summary">Enable blur effects for the app</string>
     <string name="settings_blur_unsupported">Blur requires Android 13 or later</string>
     <string name="settings_floating_bottom_bar_title">Floating bottom bar</string>
-    <string name="settings_floating_bottom_bar_summary">Float the main navigation above page content</string>
+    <string name="settings_floating_bottom_bar_summary">Use a floating-style navigation bar</string>
     <string name="settings_liquid_glass_title">Liquid glass</string>
     <string name="settings_liquid_glass_summary">Use refractive glass for the floating bottom bar</string>
     <string name="settings_predictive_back_title">Predictive back gesture</string>
@@ -167,7 +172,22 @@
     <string name="settings_liquid_glass_unsupported">Floating liquid glass requires Android 13 or later</string>
 
     <string name="settings_section_music_library">Library</string>
-    <string name="settings_scan_local_music_title">Scan local music</string>
+    <string name="settings_scan_local_music_title">Scan music</string>
+    <string name="settings_scan_music_empty_summary">No songs</string>
+    <plurals name="settings_scan_music_song_count">
+        <item quantity="one">%1$d song</item>
+        <item quantity="other">%1$d songs</item>
+    </plurals>
+    <string name="scan_music_page_title">Scan music</string>
+    <string name="scan_music_card_title">Scan</string>
+    <string name="scan_refresh_on_start">Refresh on every launch</string>
+    <string name="scan_skip_short_audio">Skip audio shorter than 60s</string>
+    <string name="scan_custom_folder_title">Custom folders</string>
+    <string name="scan_add_custom_folder">Add custom folder</string>
+    <string name="scan_start">Start scan</string>
+    <string name="scan_no_changes">No music file changes</string>
+    <string name="scan_remove_folder_title">Delete</string>
+    <string name="scan_remove_folder_message">Delete this custom folder?</string>
     <string name="scan_status_idle">Tap to scan local music on this device</string>
     <string name="scan_status_permission_required">Audio permission is required</string>
     <string name="scan_status_scanning">Scanning local music…</string>
@@ -178,8 +198,20 @@
     <string name="scan_status_error">Scan failed: %1$s</string>
     <string name="scan_status_error_default">Scan failed. Try again.</string>
     <string name="playback_error">Unable to play this audio.</string>
-    <string name="lyrics_loading">Loading lyrics…</string>
-    <string name="lyrics_unavailable">No timestamped lyrics</string>
+    <string name="lyrics_unavailable">No lyrics</string>
+    <string name="lyrics_settings">Lyrics settings</string>
+    <string name="lyrics_settings_open">Open lyrics settings</string>
+    <string name="lyrics_translation">Lyrics translation</string>
+    <string name="lyrics_size">Lyrics size</string>
+    <string name="lyrics_size_value">%1$d%%</string>
+    <string name="lyrics_weight">Lyrics weight</string>
+    <string name="lyrics_weight_value">%1$d</string>
+    <string name="lyrics_force_word_by_word">Force word-by-word lyrics</string>
+    <string name="lyrics_force_word_by_word_summary">Display non-word-by-word lyrics with a linear gradient speed</string>
+    <string name="lyrics_blur">Lyric blur</string>
+    <string name="lyrics_blur_summary">Blur inactive lyric lines</string>
+    <string name="lyrics_center">Center lyrics</string>
+    <string name="lyrics_hide_controls">Hide controls on Lyrics</string>
 
     <string name="about_version">v%1$s</string>
     <string name="about_developer_title">Developer</string>

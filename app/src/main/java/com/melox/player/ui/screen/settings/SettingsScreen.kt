@@ -20,7 +20,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.DefaultHomePage
-import com.melox.player.model.ScanStatus
 import com.melox.player.ui.locale.AppLanguage
 import com.melox.player.ui.locale.currentAppLanguage
 import com.melox.player.ui.locale.setAppLanguage
@@ -34,17 +33,16 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
 fun SettingsScreen(
-    scanStatus: ScanStatus,
     defaultHomePage: DefaultHomePage,
+    trackCount: Int,
     onDefaultHomePageChange: (DefaultHomePage) -> Unit,
     onOpenThemeSettings: () -> Unit,
     onOpenAbout: () -> Unit,
-    onScanClick: () -> Unit,
+    onOpenScanSettings: () -> Unit,
     scrollBehavior: ScrollBehavior,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
-    val isScanning = scanStatus is ScanStatus.Scanning
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -78,9 +76,16 @@ fun SettingsScreen(
             SettingsCard {
                 ArrowPreference(
                     title = stringResource(R.string.settings_scan_local_music_title),
-                    summary = scanStatus.summary(),
-                    onClick = onScanClick,
-                    enabled = !isScanning,
+                    summary = if (trackCount > 0) {
+                        pluralStringResource(
+                            R.plurals.settings_scan_music_song_count,
+                            trackCount,
+                            trackCount,
+                        )
+                    } else {
+                        stringResource(R.string.settings_scan_music_empty_summary)
+                    },
+                    onClick = onOpenScanSettings,
                 )
             }
         }
@@ -160,19 +165,4 @@ private fun SettingsCard(content: @Composable () -> Unit) {
             .padding(bottom = 12.dp),
         content = { content() },
     )
-}
-
-@Composable
-private fun ScanStatus.summary(): String = when (this) {
-    ScanStatus.Idle -> stringResource(R.string.scan_status_idle)
-    ScanStatus.PermissionRequired -> stringResource(R.string.scan_status_permission_required)
-    ScanStatus.Scanning -> stringResource(R.string.scan_status_scanning)
-    is ScanStatus.Success -> pluralStringResource(
-        R.plurals.scan_status_success,
-        count,
-        count,
-    )
-    is ScanStatus.Error -> message.takeIf { it.isNotBlank() }
-        ?.let { stringResource(R.string.scan_status_error, it) }
-        ?: stringResource(R.string.scan_status_error_default)
 }

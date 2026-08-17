@@ -1,7 +1,6 @@
 package com.melox.player.ui.component.library
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -188,9 +187,7 @@ private fun LibrarySortPopup(
             onDismissRequest = { showPopup = false },
         ) {
             ListPopupColumn {
-                Column {
-                    content { showPopup = false }
-                }
+                content { showPopup = false }
             }
         }
         IconButton(

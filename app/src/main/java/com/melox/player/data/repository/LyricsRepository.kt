@@ -9,12 +9,12 @@ import android.provider.MediaStore
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.MetadataRetriever
 import androidx.media3.extractor.metadata.id3.BinaryFrame
 import androidx.media3.extractor.metadata.id3.CommentFrame
 import androidx.media3.extractor.metadata.id3.InternalFrame
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.vorbis.VorbisComment
+import androidx.media3.inspector.MetadataRetriever
 import com.melox.player.data.lyrics.LyricsParser
 import com.melox.player.model.LyricsDocument
 import com.melox.player.model.LyricsFormat
@@ -34,45 +34,45 @@ data class LyricsRequest(
     val contentUri: String,
     val fileName: String?,
     val folderPath: String?,
+    val durationMs: Long,
     val refreshRevision: Long = 0L,
 )
 
-/** Reads timestamped lyrics from local sidecars or audio metadata without network access. */
+/** Reads timestamped lyrics from local audio metadata and sidecars. */
 class LyricsRepository(context: Context) {
     private val applicationContext = context.applicationContext
     private val contentResolver = applicationContext.contentResolver
 
     suspend fun load(request: LyricsRequest): LyricsDocument? {
-        readSidecar(request)?.let { (text, format) ->
-            LyricsParser.parse(
-                raw = text,
-                source = LyricsSource.SIDECAR,
-                preferredFormat = format,
-            )?.let { return it }
-        }
-        return readEmbeddedCandidates(request.contentUri)
+        readEmbeddedCandidates(request.contentUri)
             .firstNotNullOfOrNull { candidate ->
                 LyricsParser.parse(
                     raw = candidate,
                     source = LyricsSource.EMBEDDED,
+                    durationMs = request.durationMs,
                 )
             }
+            ?.let { return it }
+        readSidecar(request)?.let { (text, format) ->
+            return LyricsParser.parse(
+                raw = text,
+                source = LyricsSource.SIDECAR,
+                preferredFormat = format,
+                durationMs = request.durationMs,
+            )
+        }
+        return null
     }
 
     private fun readSidecar(request: LyricsRequest): Pair<String, LyricsFormat>? {
-        val fileName = request.fileName ?: return null
-        val stem = fileName.substringBeforeLast('.', fileName).takeIf(String::isNotBlank)
-            ?: return null
-        val candidates = listOf(
-            "$stem.ttml" to LyricsFormat.TTML,
-            "$stem.lrc" to LyricsFormat.LRC,
-        )
+        val candidates = exactLyricsSidecarCandidates(request.fileName)
+        if (candidates.isEmpty()) return null
         readDirectSidecar(request.folderPath, candidates)?.let { return it }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val relativePath = request.folderPath.toRelativeMediaStorePath() ?: return null
         val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        val candidateByName = candidates.associateBy { it.first.lowercase(Locale.ROOT) }
-        val result = runCatching {
+        val candidateByName = candidates.associateBy { it.first }
+        return runCatching {
             contentResolver.query(
                 collection,
                 arrayOf(
@@ -84,18 +84,16 @@ class LyricsRepository(context: Context) {
                 null,
             )?.use { cursor ->
                 val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-                val nameColumn =
-                    cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
                 while (cursor.moveToNext()) {
                     val displayName = cursor.getString(nameColumn).orEmpty()
-                    val candidate = candidateByName[displayName.lowercase(Locale.ROOT)] ?: continue
+                    val candidate = candidateByName[displayName] ?: continue
                     val uri = ContentUris.withAppendedId(collection, cursor.getLong(idColumn))
                     readText(uri)?.let { return@use it to candidate.second }
                 }
                 null
             }
         }.getOrNull()
-        return result
     }
 
     @Suppress("DEPRECATION")
@@ -186,8 +184,7 @@ class LyricsRepository(context: Context) {
             val isDelimiter = if (delimiterLength == 1) {
                 data[delimiterStart].toInt() == 0
             } else {
-                data[delimiterStart].toInt() == 0 &&
-                    data[delimiterStart + 1].toInt() == 0
+                data[delimiterStart].toInt() == 0 && data[delimiterStart + 1].toInt() == 0
             }
             if (isDelimiter) break
             delimiterStart += delimiterLength
@@ -245,8 +242,7 @@ class LyricsRepository(context: Context) {
         var path = this?.replace('\\', '/')?.trim().orEmpty()
         if (path.isEmpty()) return null
         SHARED_STORAGE_ROOTS.firstOrNull { root ->
-            path.equals(root, ignoreCase = true) ||
-                path.startsWith("$root/", ignoreCase = true)
+            path.equals(root, ignoreCase = true) || path.startsWith("$root/", ignoreCase = true)
         }?.let { root ->
             path = path.substring(root.length)
         }
@@ -275,4 +271,16 @@ class LyricsRepository(context: Context) {
             "/sdcard",
         )
     }
+}
+
+internal fun exactLyricsSidecarCandidates(
+    audioFileName: String?,
+): List<Pair<String, LyricsFormat>> {
+    val fileName = audioFileName ?: return emptyList()
+    val stem = fileName.substringBeforeLast('.', fileName).takeIf(String::isNotBlank)
+        ?: return emptyList()
+    return listOf(
+        "$stem.ttml" to LyricsFormat.TTML,
+        "$stem.lrc" to LyricsFormat.LRC,
+    )
 }

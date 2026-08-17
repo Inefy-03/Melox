@@ -3,6 +3,7 @@ package com.melox.player.ui.screen.library
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,12 +52,14 @@ import com.melox.player.ui.component.library.PlaybackArtwork
 import com.melox.player.ui.component.library.TrackActionsOverlay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
+import top.yukonga.miuix.kmp.basic.TabRowDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -177,6 +180,7 @@ fun ArtistDetailScreen(
     val albums = remember(artist.tracks) { buildAlbumGroups(artist.tracks) }
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
+    val tabRowBackgroundColor = backdrop.miuixBarColor()
     var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
     Scaffold(
         topBar = {
@@ -202,8 +206,12 @@ fun ArtistDetailScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                                 insideMargin = PaddingValues(0.dp),
+                                colors = CardDefaults.defaultColors(
+                                    color = tabRowBackgroundColor,
+                                    contentColor = MiuixTheme.colorScheme.onSurface,
+                                ),
                             ) {
                                 TabRowWithContour(
                                     tabs = listOf(
@@ -214,6 +222,9 @@ fun ArtistDetailScreen(
                                     onTabSelected = { page ->
                                         scope.launch { pagerState.animateScrollToPage(page) }
                                     },
+                                    colors = TabRowDefaults.tabRowColors(
+                                        backgroundColor = tabRowBackgroundColor,
+                                    ),
                                 )
                             }
                         }
@@ -313,54 +324,57 @@ private fun AlbumDetailHeader(album: AlbumGroup) {
     val cover = album.coverTrack
     val albumArtist = displayArtistName(album.albumArtist)
         ?: stringResource(R.string.album_artist_unknown)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        PlaybackArtwork(
-            contentUri = cover?.contentUri.orEmpty(),
-            dateModifiedEpochSeconds = cover?.dateModifiedEpochSeconds ?: 0L,
-            fileSizeBytes = cover?.fileSizeBytes ?: 0L,
-            size = 112.dp,
-            cornerRadius = 10.dp,
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val coverSize = (maxWidth - 64.dp) / 3
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = album.name ?: stringResource(R.string.album_unknown),
-                style = MiuixTheme.textStyles.title2,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            PlaybackArtwork(
+                contentUri = cover?.contentUri.orEmpty(),
+                dateModifiedEpochSeconds = cover?.dateModifiedEpochSeconds ?: 0L,
+                fileSizeBytes = cover?.fileSizeBytes ?: 0L,
+                size = coverSize,
+                cornerRadius = 14.dp,
             )
-            Text(
-                text = albumArtist,
-                style = MiuixTheme.textStyles.body1,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            album.year?.takeIf { it > 0 }?.let { year ->
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
-                    text = stringResource(R.string.album_detail_year, year),
+                    text = album.name ?: stringResource(R.string.album_unknown),
+                    style = MiuixTheme.textStyles.title3,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = albumArtist,
+                    style = MiuixTheme.textStyles.body1,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                album.year?.takeIf { it > 0 }?.let { year ->
+                    Text(
+                        text = stringResource(R.string.album_detail_year, year),
+                        style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
+                        color = MiuixTheme.colorScheme.onSurface,
+                    )
+                }
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.album_song_count,
+                        album.tracks.size,
+                        album.tracks.size,
+                    ),
                     style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
                     color = MiuixTheme.colorScheme.onSurface,
                 )
             }
-            Text(
-                text = pluralStringResource(
-                    R.plurals.album_song_count,
-                    album.tracks.size,
-                    album.tracks.size,
-                ),
-                style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
-                color = MiuixTheme.colorScheme.onSurface,
-            )
         }
     }
 }
@@ -376,35 +390,36 @@ private fun ArtistDetailHeader(artist: ArtistGroup) {
     ) {
         ArtistArtwork(
             track = artist.coverTrack,
-            size = 112.dp,
+            size = 72.dp,
         )
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = artist.name ?: stringResource(R.string.artist_unknown),
-                style = MiuixTheme.textStyles.title2,
+                style = MiuixTheme.textStyles.title3,
                 fontWeight = FontWeight.Medium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = stringResource(
-                    R.string.artist_counts,
-                    pluralStringResource(
-                        R.plurals.artist_album_count,
-                        artist.albumCount,
-                        artist.albumCount,
-                    ),
-                    pluralStringResource(
-                        R.plurals.artist_song_count,
-                        artist.tracks.size,
-                        artist.tracks.size,
-                    ),
+                text = pluralStringResource(
+                    R.plurals.artist_song_count,
+                    artist.tracks.size,
+                    artist.tracks.size,
                 ),
-                style = MiuixTheme.textStyles.body1,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = pluralStringResource(
+                    R.plurals.artist_album_count,
+                    artist.albumCount,
+                    artist.albumCount,
+                ),
+                style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
+                color = MiuixTheme.colorScheme.onSurface,
             )
         }
     }

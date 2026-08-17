@@ -6,7 +6,7 @@
 - Namespace/application ID: `com.melox.player`.
 - `minSdk 28`, `compileSdk 37`, `targetSdk 36`.
 - Kotlin/Compose compiler `2.4.0`, AGP `9.2.1`, Gradle `9.4.1`.
-- Miuix `0.9.3`, Media3 `1.10.1`.
+- Miuix `0.9.3`, Media3 `1.11.0`.
 
 ## Layers
 
@@ -25,9 +25,10 @@
 - `SettingsRepository` exposes `Flow<AppSettings>` backed by Preferences DataStore.
 - `SettingsRepository` also persists the default root destination, selected
   Music-library tab, Songs and per-tab sort field/direction, and the Albums
-  2-column/3-column style, and the dynamic-color source. Dynamic color source
-  defaults to `DESKTOP`; the UI labels it as desktop wallpaper, and Miuix
-  resolves it from the system desktop-wallpaper Monet palette.
+  2-column/3-column style, dynamic-color source, scan-on-launch toggle,
+  sub-60-second exclusion toggle, and persisted custom-folder tree URIs.
+  Dynamic color source defaults to `PLAYBACK_ARTWORK`; the dropdown lists it
+  before `DESKTOP`, while missing artwork falls back to the system palette.
   `PLAYBACK_ARTWORK` is labeled as playing song artwork, uses the cached
   current-cover sample, and falls back to the platform palette when artwork is
   unavailable.
@@ -75,7 +76,7 @@
   Missing artwork uses fixed `#242424` as either endpoint. Opening and dismissing use a separate
   shared-player overlay that reuses the resolved current bitmap and interpolates
   the measured mini artwork bound and current visible full-artwork content
-  bound, including its playing, paused, or resume-overshoot scale and the
+  bound, including its animated playing/paused internal inset and the
   bitmap's fitted aspect ratio.
 - `LyricsRepository` performs bounded local reads on `Dispatchers.IO`. It
   inspects Media3 container metadata for embedded lyric text and queries or
@@ -107,6 +108,13 @@
 - Playback-mode changes serialize bulk playlist updates until the expected queue order
   is reported by Media3. This prevents repeated mode taps from interleaving
   queue mutations, while preserving the current media item and position.
+- Audio renderer selection follows the automatic decoder policy: the
+  platform Media3 audio renderer remains first, and a locally built Media3
+  FFmpeg extension renderer matched to the pinned Media3 version is enabled as
+  a fallback. Decoder fallback stays enabled for alternate platform decoders.
+  Playback errors remain available in `PlaybackUiState` for controller/system
+  diagnostics. A newly reported error shows the localized unsupported-audio
+  message once as a Toast; the full-player header renders no error text.
 
 ### UI
 
@@ -125,6 +133,15 @@
 - `ScanStatus.Idle`, `PermissionRequired`, and `Success(0)` all render the
   action-free `No music found` state on Home and Songs. Only `Scanning` renders
   progress; scan controls remain in Settings.
+- The root Scan music preference derives its summary from the current library:
+  zero tracks use `No songs`, while a populated library uses the localized song
+  count. The scan page uses a Miuix `TopAppBar` and connects its `MiuixScrollBehavior`
+  to the list so the title transitions between large and small states. Persisted
+  switches and custom-folder rows keep screen-local values for immediate Miuix
+  feedback, then write through `SettingsRepository`. The folder picker result
+  and delete confirmation update that local list before DataStore completes.
+  Each stored folder uses a Miuix `BasicComponent` row with the default 16 dp
+  card inset, a 24 dp file glyph, and a 16 dp visual gap before its text.
 - Root UI is one Miuix theme and a Home/Songs/Music-library/Settings pager.
   Home is index `0`; the root pager's `initialPage` is resolved from the
   synchronously loaded `DefaultHomePage` before the first composition. There is
@@ -136,10 +153,32 @@
   on each forward page change. The shared selector keeps the seeded artwork
   order and returns only each eligible track's first occurrence; when it has no
   unseen artwork track left, the pager's finite page count ends the carousel.
-  The pager uses fixed-width 256 dp cards and
+  The pager uses fixed-width 240 dp cards and
   applies 16 dp only as its outer start/end content padding. The metadata
-  surface uses a darkened shared artwork color and retains enough height for
-  both title and artist. The localized Random recommendations and Recently
+  presentation is selected directly from the persisted Blur setting. With Blur
+  disabled it retains the existing darkened shared-artwork-color bar. With Blur
+  enabled it requests the shared 512 px artwork, center-crops and reduces a copy
+  to 96 px, applies 1.5x saturation through a color matrix, draws a 5-by-5 mesh
+  deformation plus dark overlays, then calls the bundled RenderScript
+  replacement Toolkit blur once with radius 25. The derived bitmap uses a
+  versioned cache key containing the artwork URI, modified time, and file size,
+  and shares the bounded memory/disk cache with ordinary artwork without key
+  collisions. The 240 by 310 dp card draws the clear cover to 240 dp, vertically
+  mirrors and crops the derived bitmap below it, then uses a
+  transparent-to-opaque black gradient as a `DstIn` alpha mask from 160 to
+  240 dp. This progressively reveals the darkened reflection over the still
+  visible clear cover instead of painting an opaque blur band in the opposite
+  direction. Compose scrolling and recomposition perform only cached bitmap
+  composition; this path does not use the live
+  `BarBlurEffect`. With Blur enabled, the card stays absent until both the shared
+  artwork and cached reflection are available; it never renders the color-bar
+  fallback during reflection generation. With Blur disabled, it waits only for
+  artwork and uses the existing artwork-color bar. Both presentations share the
+  color bar's original 70 dp metadata height and bottom-anchored layout: 18 dp
+  from the card's left edge and 14 dp from its bottom edge. The pager allocates
+  the complete 240-by-310-dp card before applying its separate 14 dp section spacing. Both
+  presentations retain enough height for title and artist. The localized Random
+  recommendations and Recently
   added headers use `title4` at the default weight with a 28 dp start inset.
   Recommendation playback starts with the selected identity, then the other
   de-duplicated loaded recommendation identities in carousel order, followed by
@@ -147,9 +186,13 @@
   playback-mode change applies that mode to the entire queue and removes this
   temporary recommendation prefix. The root composition retains the random
   seed, resolved track IDs, request flag, completion flag, and recommendation
-  page index. While that index is greater than zero, root
-  pager user scrolling is disabled so continued horizontal recommendation
-  drags cannot switch root pages. Returning to page zero restores root swiping.
+  page index and whether the current pointer gesture began inside the
+  recommendation pager. Root user scrolling is disabled only for such a
+  gesture on an interior recommendation page. The first and final recommendation
+  pages leave root paging enabled, and gestures outside the recommendation
+  bounds never disable it. The recommendation pager disables its own overscroll
+  so unconsumed outward movement at the final card is handed to the root pager
+  instead of translating the complete Home page.
   These values remain retained even when the root pager disposes the Home page.
   Selection begins on the first
   Home activation, continues if the user leaves mid-load, and probes artwork in
@@ -192,7 +235,10 @@
   Its sort popup uses Miuix dropdown positioning and measures the option set as
   one complete column, keeping `Descending` visible without an initial scroll
   while still placing the popup above the action when the lower viewport is
-  too short for all choices.
+  too short for all choices. Pass every `DropdownImpl` directly to
+  `ListPopupColumn`; an intermediate wrap-content `Column` would shrink the
+  selectable area to the text and pull the selected `Ok` icon away from the
+  popup's trailing edge.
 - Albums, Artists, and Folders attach their lists to one
   `MiuixScrollBehavior`, giving the shared top bar one collapse state across
   pages. One index overlay is owned above the nested pager and dynamically
@@ -207,9 +253,12 @@
   matching text token, with a 32 dp file glyph, 30 dp start padding, and 20 dp
   gap between glyph and text.
 - The root pager disables Compose overscroll and applies Miuix horizontal edge
-  spring behavior. It retains one adjacent page on each side only while Blur is
-  disabled; the blurred path avoids recording an extra offscreen full-screen
-  backdrop. Pager-page synchronization observes `currentPage` through
+  spring behavior. The outer root Scaffold paints `MiuixTheme.colorScheme.surface`
+  behind that translated pager, preventing the Home and Settings edge springs
+  from exposing the transparent window as black in light mode. It retains one
+  adjacent page on each side only while Blur is disabled; the blurred path
+  avoids recording an extra offscreen full-screen backdrop. Pager-page
+  synchronization observes `currentPage` through
   `snapshotFlow` so intermediate page changes do not invalidate the complete
   application composition.
 - Theme settings, About, Album detail, and Artist detail use
@@ -218,8 +267,13 @@
   layer.
 - Album and Artist detail pages use `SmallTopAppBar` with an empty title; their
   fixed artwork and metadata own the visible album or artist identity inside
-  the app bar's `bottomContent`. The artist detail tab selector is hosted in the
-  same fixed top-bar surface. Album-detail song rows use artist-only
+  the app bar's `bottomContent`. Album Detail uses the root three-column cover
+  width and 14 dp corner radius with a `title3` album name. Artist Detail uses
+  a 72 dp cover with a `title3` artist name, then separate 12 sp song-count and
+  album-count rows in that order. Its contour tab selector is hosted in the
+  same fixed top-bar surface; its Card and unselected contour background are
+  transparent while Blur is available so the bar backdrop remains visible.
+  Album-detail song rows use artist-only
   descriptions, and artist-detail song rows use album-only descriptions.
   Artist-detail Albums uses the persisted Album grid style and its column count.
 - Full player is intentionally outside `NavDisplay`. The root remains composed
@@ -243,12 +297,14 @@
   the surface itself and retains only the bar content. The shared container
   re-applies the existing `miniPlayerSurface` with the current
   `MiniPlayerChrome` backdrop, blur-active, liquid-glass-active, dark/light,
-  highlight, outline, and fallback values at the interpolated container size.
+  outline, and fallback values at the interpolated container size. A highlight
+  is supplied only by the liquid-glass path; the ordinary floating blur path
+  passes `null` to the Miuix blur highlight parameter.
   This keeps Miuix's live backdrop sampling while the bar height changes.
   Content handoff reaches the full-player layer at `p = 0.25`, but the surface
-  remains active until the shared container is fully expanded, matching VMusic's
-  `isFullyExpanded` boundary. No VMusic blur or refraction parameters are
-  introduced. Floating highlight and shadow alpha reuse the mini-layer handoff
+  remains active until the shared container is fully expanded, matching the shared container's
+  `isFullyExpanded` boundary. No external blur or refraction parameters are
+  introduced. Liquid-glass highlight and floating shadow alpha reuse the mini-layer handoff
   curve, reaching zero at `p = 0.25`, while the backdrop continues drawing.
 - The shared artwork path uses uniform scale and translation only. Its opening
   direction is rightward and upward from the mini-player cover into the page
@@ -256,13 +312,48 @@
   narrow-top/wide-bottom deformation. Its `GraphicsLayer` reads the same shared
   progress used by the container so both pointer movement and the release spring
   update the cover continuously. The cover-page path remains fully visible.
-  Lyrics has no shared cover element: when the measured artwork target is
-  horizontally offscreen, the shared overlay is absent and applies no partial
-  visibility fade. The mini-layer keeps its own cover with the title and buttons
-  at their original local offsets from the mini-player's top edge; it does not
-  scale those elements with the expanding container and restores the complete
-  bar together during close.
-- Full-player background processing runs on `Dispatchers.Default` against the
+  Lyrics has no shared cover element: the selected pager page, not the pending
+  open/close target, disables the shared overlay for the complete downward drag
+  and spring settlement. The measured offscreen artwork bound remains a fallback
+  guard and applies no partial visibility fade. Below the `p = 0.25` handoff, the
+  mini-layer keeps its own cover with the title and buttons at their original
+  local offsets from the mini-player's top edge; it does not scale those elements
+  with the expanding container and restores the complete bar together during
+  close. The selected artwork/Lyrics page is retained by the outer player host
+  while the full-player composition is unmounted and while tracks change, but it
+  is not persisted across a new application process. Reopening on Lyrics reverses
+  this same complete-bar transition and never creates the independent shared-cover
+  trajectory.
+- `PlaybackBackgroundStyle` persists `BLURRED_ARTWORK` or `FLOWING_COLORS`, with
+  blurred artwork as the default. The Theme settings screen updates the value
+  immediately. The preference is hosted in its own card immediately below the
+  Appearance card without a second `SmallTitle`.
+- Blurred playback backgrounds load one 128 px center-cropped ARGB_8888 source. It is
+  processed before blur: saturation is
+  raised to `1.5f`, a `0x4D000000` black layer is drawn with `OVERLAY`, and a
+  second `0x4D000000` black layer is drawn normally. No additional uniform or
+  vertical-gradient black layer is composited by the Compose renderer. It is
+  blurred once off the main thread with a three-pass box approximation calibrated
+  to RenderScript's radius-25 sigma mapping and stored through the existing
+  bounded artwork derivative cache; the
+  playback path does not call the legacy native Toolkit AAR. The default renderer
+  applies one fitted frame before animation and interpolates between overscanned
+  random crop states over 12 seconds with AccelerateDecelerate timing. Animation
+  advances only while the settled player is resumed and playing, so pause keeps
+  the current frame and can never expose an identity-matrix top-left image. The
+  current item is prefetched before adjacent queue items, including its 128 px
+  source and cached blur derivative. Completed layers also enter a
+  bounded memory cache, allowing a prefetched blur to be selected synchronously
+  on the first composed frame. The ordinary blurred renderer never substitutes
+  its clear foreground artwork while a derivative resolves. Rapid track changes retain
+  the completed background until the next pair is ready, then crossfade without
+  exposing a placeholder. The foreground cover retains the shared mini/full
+  artwork overlay. At `p = 1`, the shared container uses the exact measured
+  full-player bounds for its surface, clip, and recorded content during the
+  screen-corner settlement phase, so the handoff cannot expose a 1 dp bottom gap
+  before the in-place layer takes over. Lyrics uses the same background
+  state and does not add another scale transform.
+- Flowing-color full-player processing runs on `Dispatchers.Default` against the
   already cached artwork bitmap. The bitmap is bilinearly reduced to 8 by 8;
   each pixel is converted through MaterialKolor HCT, keeps its source hue, caps
   realized chroma at 32, and fixes tone to 64 for light theme or 32 for dark
@@ -275,7 +366,7 @@
   then 24-second laps. Colors interpolate between each adjacent pixel center,
   and the two-lap timing pair repeats every 42 seconds. The bitmap is updated in
   place and wrapped once by a Compose `BitmapPainter` with `FilterQuality.Low`.
-  A standard `Image` draws it with `ContentScale.Crop`, matching VMusic's
+  A standard `Image` draws it with `ContentScale.Crop`, using
   Compose/Skia bilinear sampling instead of stretching it through a native
   Canvas destination rectangle. Continuous ARGB interpolation handles temporal
   transitions while painter filtering smooths adjacent output pixels. A separate
@@ -347,12 +438,27 @@
   12 dp spacing on every side of the artwork, and no trailing navigation icon,
   then navigate from the selected real group. Song-information rows copy their
   rendered trailing value to the platform
-  clipboard on click. Two Edit-icon actions before Song information launch the
-  selected MediaStore URI with read/write grants: `Intent.ACTION_VIEW` targeted
-  to `com.xjcheng.musictageditor`, and
-  `com.lonx.lyrico.action.EDIT_TAG` targeted to `com.lonx.lyrico`.
-  Their activity-result return triggers one targeted repository refresh and a
-  lyrics revision signal. Library and UI playback metadata are updated without
+  clipboard on click. Two Edit-icon actions before Song information use the
+  Halcyon-compatible external-editor contract. The More-sheet labels remain
+  visible, but the old Melox-specific candidate implementation is removed. For
+  local files, derive a FileProvider URI when the indexed file is readable and
+  otherwise use the MediaStore URI. Lyrico receives one
+  `com.lonx.lyrico.action.EDIT_TAG` intent targeted to `com.lonx.lyrico`, with
+  the selected URI as data and stream plus Halcyon's metadata aliases. Music Tag
+  Editor receives Halcyon's ordered candidates: explicit path-based
+  `ACTION_EDIT` to `com.xjcheng.musictageditor.SongDetailActivity`, then
+  explicit/package `ACTION_VIEW`, then package `ACTION_SEND`; the URI, path, and
+  displayed metadata extras match that implementation. Each candidate carries
+  read/write flags and `ClipData`. Before direct `Context.startActivity`, grant
+  both data and stream URIs to the resolved package and add Halcyon's
+  `NEW_TASK|EXCLUDE_FROM_RECENTS` flags. After returning to Melox, refresh the
+  selected track without rebuilding or interrupting playback.
+  Manifest package visibility covers both applications and the Lyrico action.
+  If no candidate resolves, Melox shows the application-specific localized
+  not-found Toast without dismissing the action sheet.
+  Resuming Melox after a successful external launch triggers one targeted
+  repository refresh and a lyrics revision signal. Library and UI playback
+  metadata are updated without
   replacing Media3 items, changing the queue, calling `prepare()`, or seeking.
   Song information uses a separate titled official `OverlayBottomSheet` with a
   leading Close action. Its identity
@@ -411,8 +517,10 @@
   inset preserves the resting title and artist position.
 - Floating navigation computes one shared pill width for both the 64 dp mini
   player and 64 dp navigation bar. Their gap is 8 dp. Both consume the exact
-  same backdrop, blur/lens parameters, gravity-following highlight object, and
-  shared Miuix-style shadow modifier;
+  same backdrop and shared Miuix-style shadow modifier. In ordinary floating
+  mode, `textureBlur` receives no highlight and Blur changes only the backdrop
+  treatment. Liquid glass additionally supplies the shared lens parameters and
+  gravity-following highlight object;
   the mini-player draw result is finally clipped to its larger pill shape so
   blur cannot square off its corners. The navigation container uses the local
   Miuix example's `dropShadow`: black, 10 dp radius, 20% alpha in dark mode and
@@ -425,19 +533,27 @@
   mini-player metadata swipes remain independent.
 - Full player has no visible top app bar. Its centered title/artist header sits
   at the safe status-bar inset plus 16 dp above a slightly smaller centered
-  artwork surface with a 12 dp corner radius and low shadow. The playing artwork
-  uses 100% of its layout bound and
-  the paused artwork uses 90%. Paused shrink and both paused-to-playing resume
-  segments use `LinearOutSlowInEasing`; resume still animates through 102%
-  before settling at 100%. The progress-layout width follows the playing bound.
+  artwork surface with a 12 dp Miuix squircle crop. Its black shadow
+  uses black at 20% alpha, Overlay blending, a 16 dp blur radius, a 90% shadow
+  shape, no horizontal offset, and a 10% vertical offset. The shared artwork
+  transition multiplies that shadow alpha by sheet progress, so it fades in on
+  expansion and fades out on collapse without changing artwork opacity. Its fixed outer frame
+  retains the existing position while the visible artwork is measured from
+  an outer container expanded by 12 dp in both dimensions and an animated
+  four-edge inset: 8 dp while playing and 32 dp while paused. Both
+  directions use `spring(dampingRatio = 0.6f, stiffness = 200f)`, allowing the
+  resumed artwork to rebound naturally around the playing inset. The progress-layout
+  width follows the fixed artwork bound.
   The Miuix
   `LinearProgressIndicator` uses the artwork width; an app-side pointer layer
   maps down/drag positions to duration, provides tap-to-seek, and retains
   accessible progress semantics. Press feedback remeasures the complete
   indicator to a slightly wider width and roughly double height instead of
   scaling only its rendered vertical axis; foreground, background, progress,
-  and rounded ends are redrawn together. The vertical gap to its timestamps is
-  slightly reduced.
+  and rounded ends are redrawn together. The 26 dp gesture target remains
+  centered on the indicator, but timestamp placement is calculated from the
+  idle 6 dp indicator's actual lower edge; the timestamp row begins 6 dp below
+  that edge instead of below the gesture target.
   Header metadata, lyrics, progress, timestamps, and both control rows use
   white in dark mode and a contrast-adjusted artwork accent in light mode.
   Light mode derives a second, 20%-deeper accent. Song title, current primary
@@ -449,10 +565,18 @@
   presentation and controller toggling follow `playWhenReady`, so a
   seek-induced buffering event cannot flash the Play icon while playback
   intent remains active.
-  Primary previous/play/next controls use explicit Miuix touch targets:
-  Play/Pause is 40 dp inside 64 by 64 dp, while Previous/Next is 32 dp inside
-  56 by 56 dp. Playback mode, queue, and track actions make the secondary row
-  with one shared icon size. Play/Pause uses the shared 180 ms in / 140 ms out
+  Primary previous/play/next controls retain explicit Miuix touch targets:
+  Play/Pause is a 42 dp glyph inside 80 by 80 dp, while Previous/Next are 26 dp
+  glyphs inside 64 by 64 dp. Playback mode, Lyrics settings, queue, and track
+  actions make the secondary row. In portrait, that row consumes the complete
+  available screen width and uses `Arrangement.SpaceEvenly`, making the four
+  inter-item/edge intervals equal. The idle progress indicator's actual lower
+  edge to the primary row is 32 dp, while the primary row to the secondary row
+  is 16 dp; the timestamp row is overlaid into the first interval and does
+  not increase it. The portrait control panel intentionally does not apply the system
+  navigation-bar bottom inset; its own 32 dp bottom padding and control height
+  provide separation while the background extends like the hidden-controls
+  Lyrics page. Play/Pause uses the shared 180 ms in / 140 ms out
   fade-scale motion, while playback-mode icons switch directly without a
   transition. Order and Repeat-one horizontally mirror only the shared Miuix
   loop glyph to make its direction clockwise; the independent Repeat-one `1`
@@ -464,20 +588,59 @@
   `ic_player_next_track` are Android VectorDrawable conversions of the supplied
   SVG paths. Miuix `Icon` loads them through `painterResource`, preserving
   semantic descriptions, tint, and `AnimatedContent` behavior.
-- The portrait full-player middle region is a two-page horizontal pager:
-  artwork is page zero and timestamped lyrics is page one. Its gesture viewport
-  spans the screen width while the artwork and progress retain their shared
-  narrower width. Only this bounded vertical region moves; a destination mask
-  fades lyric content at its top and bottom. The retained pager page is not
-  reset by a current-item change, so Lyrics remains visible across track
-  changes.
+- With Lyrics control hiding disabled, the portrait full-player middle region is
+  a two-page horizontal pager: artwork is page zero and timestamped lyrics is
+  page one, while one control panel remains outside and below the pager. Its
+  gesture viewport spans the screen width while the artwork and progress retain
+  their shared narrower width. Only this bounded vertical region moves. The
+  lyric viewport is inset 16 dp below the identity header and 16 dp above the
+  progress indicator, and uses equal 100 dp fade masks at both edges. With
+  Lyrics control hiding enabled, the same retained `PagerState` instead spans
+  the complete content region: page zero contains artwork plus the complete
+  control panel, and page one contains only Lyrics. The Lyrics page keeps its
+  16 dp top inset and top fade, reaches the bottom content edge, and disables the
+  bottom fade. Its active line uses the complete playback-page center rather
+  than the remaining viewport center below the identity header. Full-player
+  foreground content applies top and horizontal safe
+  drawing insets globally, then applies the bottom inset only to artwork and
+  control layouts. Hidden-controls Lyrics therefore continues through the
+  transparent, still-visible system navigation region to the physical screen
+  bottom without adding another navigation-bar background. No shared-panel translate,
+  fade, collapse, or lift animation is retained. Both portrait branches reuse one layout skeleton whose weighted
+  artwork viewport begins below the identity header and ends above the progress
+  indicator. Page-zero artwork is centered in that viewport, while controls
+  below the progress indicator cannot change its center. The pager page is not
+  reset by a current-item or setting change, so
+  Lyrics remains visible across track changes and layout-mode switches. The
+  identity title and artist use fixed single-line slots with explicit centered
+  32 sp and 24 sp line heights respectively, preventing Latin, Japanese, or
+  fallback font metrics from changing header height and shifting either text or
+  artwork. The artist uses 16 sp text within its 24 sp line-height slot. A
+  current-item
+  switch crossfades both identity rows together with a 140 ms fade out and
+  180 ms fade in. Artist metadata is normalized into names joined by ` / `, and
+  the slash alone uses thin font weight.
   The active line is found by binary search from `PlaybackUiState.positionMs`
-  and a retained `LazyListState` animates it toward the visual center after
-  track changes, playback ticks, or seeks.
+  and is scrolled to the measured center of the lyric viewport. A newly mounted
+  lyric document performs its first center placement with direct `scrollToItem`
+  and `scrollBy` calls while the list is hidden, then reveals the already
+  centered result without an upward entry animation. Later playback-driven
+  focus changes retain a spring-based coordinated visual transition.
+  A retained `LazyListState` performs one direct focus placement. Visible targets
+  use their measured center delta; off-screen targets resolve the requested index
+  and final measured correction without traversing intermediate rows. A root
+  `Animatable` graphics translation preserves the pre-placement visual position
+  and springs the complete lyric surface back to zero. Lyric rows have no
+  `LookaheadScope`, `ApproachLayoutModifierNode`, deferred offset animation, or
+  distance-sensitive placement spring. The LazyListState is not left inside a
+  programmatic scroll animation, so rows cannot move sequentially or lose clicks
+  while centering.
   Lyrics compute horizontal content padding from the same layout width as the
-  playing artwork and progress indicator. Primary lines use a slightly enlarged
-  Miuix text size. Additional newline-separated content at one timestamp is
-  rendered as translation text at 80% of that line's primary size.
+  playing artwork and progress indicator without a second line-level horizontal
+  inset. Additional newline-separated content at one timestamp is rendered with
+  the secondary lyric style. At scale `1f`, primary lyrics use `24.sp` /
+  `28.sp` line height and translation uses `16.sp` / `22.sp`; the persisted
+  percentage scale remains `0.7f..1.3f`, so primary text spans `16.8.sp..31.2.sp`.
 
 ## Core Models
 
@@ -486,6 +649,15 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColorEnabled: Boolean = false,
     val dynamicColorSource: DynamicColorSource = DynamicColorSource.DESKTOP,
+    val playbackBackgroundStyle: PlaybackBackgroundStyle =
+        PlaybackBackgroundStyle.BLURRED_ARTWORK,
+    val lyricFontScale: Float = 1.0f,
+    val lyricFontWeight: Int = 400,
+    val forceWordByWordLyrics: Boolean = false,
+    val lyricBlurEnabled: Boolean = false,
+    val centerLyrics: Boolean = false,
+    val hideControlsOnLyrics: Boolean = false,
+    val showLyricsTranslation: Boolean = true,
     val blurEnabled: Boolean = true,
     val floatingBottomBar: Boolean = false,
     val liquidGlass: Boolean = false,
@@ -525,7 +697,10 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
 
 ## Library Behavior
 
-- MediaStore selection: `IS_MUSIC != 0`.
+- MediaStore selection always includes `IS_MUSIC != 0` and conditionally adds
+  `DURATION >= 60000`. When custom folder tree URIs exist, normalized
+  `RELATIVE_PATH`/legacy data paths must match one selected folder or one of its
+  descendants; otherwise the scan covers all shared-storage music.
 - Missing canonical metadata remains null and is localized only in UI.
 - Search matches normalized title, artist, album, or file name.
 - Root Album, Artist, and Folder presentation searches match only their primary
@@ -560,7 +735,9 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   album artist, year, track/disc numbers, MIME type, bitrate, sample rate,
   channel count, platform-reported bit depth, and a completed-read marker. Startup waits for the small
   cached snapshot, publishes it, and reuses these properties when ID, modified
-  time, and file size are unchanged; an explicit Scan action refreshes them.
+  time, and file size are unchanged. Explicit and launch scans keep those
+  unchanged properties instead of re-reading the same song, while a single-file
+  external-edit refresh still forces that file's metadata read.
   Snapshot version 7 persists these additions while earlier snapshots decode
   unavailable tag/bit-depth fields as unread until the next scan.
 - Audio-quality classification is pure and deterministic. A recognized
@@ -593,32 +770,176 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   entry. Sort actions explicitly reset the owning state; screen composition
   does not run an initial sort-reset effect. Alphabet scroll jobs are cancelled
   when their map changes and validate the latest item count before scrolling.
-- Album detail keeps its artwork/name/artist/optional-year/count header outside
-  the song `LazyColumn`. A positive year appears directly above the song count;
-  both use 12 sp `onSurface` text, and a missing year adds no row. Artist detail
-  uses `TabRowWithContour` backed by a two-page
+- Album detail keeps its root-three-column-sized, 14 dp-cornered artwork plus
+  title3 name/artist/optional-year/count header outside the song `LazyColumn`.
+  A positive year appears directly above the song count; both use 12 sp
+  `onSurface` text, and a missing year adds no row. Artist detail uses a 72 dp
+  cover, title3 name, 12 sp song count, then 12 sp album count, plus
+  `TabRowWithContour` backed by a two-page
   `HorizontalPager`, matching the local Miuix/Lyrico interaction instead of a
   crossfade. Both detail screens use an empty-title Miuix `SmallTopAppBar`; its
   `bottomContent` owns the fixed metadata header, plus the Artist selector, so
-  the complete fixed region shares the outer Miuix blur/fallback surface. The
+  the complete fixed region shares the outer Miuix blur/fallback surface. With
+  Blur active, the selector Card and contour background stay transparent. The
   app bar itself stays transparent. Detail lists fill the page behind that
   surface and use top content padding, allowing scrolled rows to supply the
   backdrop without changing their initial placement.
 
 ## Lyrics
 
-- `TimedLyricLine` stores a non-negative start time, optional end time, and
-  normalized visible text. A document contains ordered, stable lines plus its
-  `LRC` or `TTML` source format.
+- The previous `TimedLyricLine` implementation is replaced by a local
+  local model. `LyricLine` stores agent, non-negative begin/end times, optional
+  plain text, timed `LyricWord` spans, translation, and optional paired lines.
+  A `LyricsDocument` contains ordered stable lines plus its local source and
+  `LRC` or `TTML` format.
 - LRC accepts multiple line timestamps, centisecond or millisecond fractions,
-  enhanced inline timestamps, and `[offset:]`. TTML accepts `<p>` begin/end/dur
-  clock values and nested spans while disabling external entity resolution.
+  enhanced inline timestamps, and `[offset:]`. Enhanced spans retain trailing
+  spacing and receive bounded end times. TTML accepts `<p>` begin/end/dur clock
+  values, `ttm:agent`, word-timed spans, translation roles, and background
+  paired lines while disabling external entity resolution.
 - Text decoding recognizes UTF-8/UTF-16 byte-order marks, validates UTF-8, and
   falls back to GB18030 for common legacy Chinese sidecars. Reads are capped at
   2 MiB and parsed output is capped at 10,000 timed lines.
 - Embedded candidates include Media3 `USLT`/lyrics text frames, Vorbis
   `LYRICS`/`SYNCEDLYRICS` comments, and equivalent MP4 lyric metadata. Only
-  embedded text that parses as timestamped LRC or TTML is displayed.
+  embedded text that parses as timestamped LRC or TTML is displayed. Embedded
+  local lyrics are attempted before same-name `.ttml` and `.lrc` sidecars.
+- The active line is resolved by binary search. Enhanced LRC lines use the last
+  timed word's end, including a 500 ms fallback for a final word with
+  no explicit end, instead of extending that line to the next lyric timestamp.
+  Parsing precomputes a stable `LyricTransition` before the first line or
+  between adjacent lines whenever the measured gap is at least 5000 ms. The
+  transition is inserted into the document's stable render-item sequence, and
+  transition lookup uses binary search rather than scanning every gap per
+  display frame. During a long gap the transition becomes the scroll target and
+  no lyric line remains focused; shorter gaps continue to target the next line
+  without falsely marking it as sung. True
+  word timing is rendered through measured Canvas glyphs. Every wrapped row owns
+  its own 100 px horizontal progress edge. Words at least 1000 ms long with more
+  than 200 ms per character use staggered character animation: start
+  times span the first 20% of the word, while the remaining 80% drives rise,
+  scale, and glow. Pure CJK plus Arabic/Devanagari content and faster words use
+  the 700 ms simple float with a maximum 4 px offset; the offset is pixels, not
+  density-independent pixels. While playback is active, a display-frame clock
+  advances from the latest Media3 position sample and snaps only for a real seek
+  or playback discontinuity, so both native and forced word-by-word progress are
+  continuous between the controller's 500 ms state publications. When Force
+  word-by-word lyrics is enabled, a line without spans uses its own begin/end
+  interval as one continuous soft linear reveal. Wrapped visual rows divide that
+  interval in reading order and complete one row before the next begins instead
+  of sharing one full-width mask. Disabling the option renders the ordinary
+  current line without synthetic progress. TTML span `end` or `dur` values are
+  retained rather than extending a word to the next span. Focus alpha/scale and
+  inactive-line blur animate through the same offscreen graphics layer. Automatic
+  line changes place the list target directly and animate one root translation,
+  preventing distance-dependent springs from causing lyric overlap or holding
+  the list's scroll mutex. The line-item vertical padding is reduced by 2 dp.
+- A transition renders three circles whose 11 dp base diameter
+  and 7 dp spacing scale with the 70%-130% lyric-size setting. A leading
+  transition uses 5 dp scaled vertical padding; a transition between two lyric
+  rows uses 10 dp scaled vertical padding so its distance to both neighbors
+  follows the ordinary lyric rhythm. The circles advance their alpha in three
+  equal progress segments.
+  The transition item remains part of the precomputed lazy-list structure even
+  when its content is not active, so playback never inserts or removes a row at
+  the gap boundary.
+- `LyricsUiState.Loading` has no visible loading label. The Lyrics host retains
+  the outgoing `LyricsDocument`, fades it to zero over 180 ms, replaces it only
+  after the new document is available, and fades the incoming document in over
+  240 ms. `LazyColumn` continues to compose only the visible lyric viewport and
+  its prefetch area; parsing and file reads remain on `Dispatchers.IO`.
+- Beginning a real `LazyColumn` drag enters a retained browsing state when a
+  parent pointer observer sees dominant vertical displacement greater than
+  `LocalViewConfiguration.current.touchSlop` in the final pointer pass. The
+  observer never consumes the event, so lyric-row clicks remain in the normal
+  chain. Taps, horizontal movement, and diagonal movement do not enter browsing.
+  Programmatic centering never starts a LazyList scroll animation. Inactive-line
+  blur remains disabled after drag or fling completion, and
+  automatic line centering remains suspended while the list is moving. When
+  playback is active, drag or fling completion starts a 5000 ms idle timeout;
+  another manual scroll cancels and restarts it. Expiry clears browsing state
+  and centers the current playback lyric. Progress seeks derive the off-screen
+  `scrollOffset` from both `viewportStartOffset` and `viewportEndOffset`, including
+  the large lyric content padding, then apply any measured-size correction
+  directly before the root translation animates to zero. Lyric rows keep
+  scale, alpha, and `BlurEffect` followed by the indication-free `clickable`
+  target in one full-width modifier chain, preserving the expected ordering. A
+  blurred inactive line therefore performs seek and centering on the first tap
+  without changing the blur state. Another row remains clickable while the
+  previous root translation is active and retargets it immediately. Pressing
+  Play also resumes following immediately, and no ripple is clipped into a
+  rounded rectangle.
+- Lyric font scale is clamped to `0.7f..1.3f` and applies to primary, inactive,
+  and translation styles. At 100%, primary text is 24 sp / 28 sp and translation
+  is 16 sp / 22 sp; primary text therefore spans 16.8 sp through 31.2 sp over the
+  percentage slider, which remains percentage-based rather than direct-sp. A legacy
+  stored value is divided by 0.8 and clamped during migration, so old 80% becomes
+  new 100%. The lyric content width equals the progress width; line renderers do
+  not add another horizontal 16 dp inset. Lyric blur leaves the current line
+  sharp and blurs inactive lines, with a readable non-blur fallback when off.
+- Lyrics use start alignment by default. The persisted `centerLyrics` setting
+  changes both primary and translation text to centered alignment without
+  rewriting parsed content. Forced word-by-word Canvas measurement fixes both
+  width constraints to the available lyric width so `TextAlign.Center` remains
+  effective before, during, and after the reveal.
+- A lyric tap seeks to the tapped row's start time and then uses the same
+  `LyricsDocument.currentLineIndex` and focus-time parsing as normal playback.
+  It does not retain a parallel requested-row focus state or suppress the
+  current-line transition while the seek is pending.
+- Full-player progress dragging publishes a transient lyric preview position on
+  every pointer update and commits one Media3 seek only on release; a progress
+  tap uses the same release path directly. Full-player seek callbacks publish a monotonically increasing request key and
+  requested position to the lyric renderer before forwarding the Media3 seek.
+  The display clock and list focus use that requested position immediately and
+  keep the request unapplied until the smooth clock is within 250 ms of the
+  target. Controller publications that remain closer to the pre-seek position
+  are rejected, so progress-bar seeks cannot first center earlier rows. After
+  the lyric document completes its first hidden placement, both progress-bar
+  seeks and lyric taps directly place the retained list using measured item and
+  viewport geometry, then spring one root visual translation to zero. An
+  off-screen target uses a viewport-derived initial offset, one measured
+  correction, and a viewport-edge directional translation with a non-bouncing
+  spring rather than an animated
+  list-entry traversal. A programmatic lyric tap remains outside manual-browsing
+  state while it centers, and another tap can retarget the active translation
+  immediately. The same root translation keeps `stiffness = 80` for ordinary
+  gaps and raises stiffness from the next timestamp interval for dense lyrics,
+  shortening the movement without discrete row jumps or changes to manual
+  browsing and blur behavior. The translated list and its fixed edge fade are
+  composed in one explicit offscreen container, so the top and bottom mask stays
+  at the viewport edge during the root translation. The smooth clock tracks whether
+  a seek request is new: pausing without a new seek preserves its current frame
+  position instead of reusing the last seek target, while a new paused seek uses
+  the new target. A current-item change creates a document-scoped clock and
+  resets the seek request, preventing old lyric or word-progress state reuse.
+- A row without a visible translation receives enlarged primary-only vertical
+  padding. This depends only on whether translation is rendered, so a document
+  with no translation and a document whose translation setting is disabled
+  have identical primary-line spacing for the same lyric renderer. Native
+  timed-word gradients and forced word-by-word base text use the same inactive
+  alpha as non-focused lyric rows for content not yet revealed.
+- `lyricFontWeight` is persisted as one of `100, 200, ..., 900`, defaults to
+  `400`, and is applied to both primary and translation styles. The renderer
+  disables synthesized weight; fonts without a usable real weight or variable
+  `wght` axis can therefore remain visually unchanged.
+- The full-player secondary row opens an owning-Scaffold `OverlayBottomSheet`
+  through the Miuix `ConvertFile` icon between playback mode and queue, using the
+  same icon size as the adjacent actions. The first
+  sheet item is an icon-free, description-free, default-on Lyrics translation
+  `SwitchPreference`; it changes only
+  translation visibility, not the parsed document or original lyric line. The
+  remaining controls appear exactly as Lyrics size, Lyrics weight, Center
+  lyrics, Lyric blur, Hide controls on Lyrics, and Force word-by-word lyrics.
+  The two official Miuix `SliderPreference`s persist size and the discrete
+  100–900 weight; the remaining `SwitchPreference`s persist centering, blur,
+  control hiding, and forced reveal. The control-hiding item has no summary.
+  When hiding is off,
+  player details remain one shared panel outside the bounded artwork/Lyrics
+  pager. When hiding is on, player details are composed only inside the artwork
+  page of the full-content pager, while the Lyrics page owns no controls.
+- Lyrics remain fully local. Do not add Lyricon, notification/MediaSession
+  lyric publishing, Lyric Getter, or Super Lyric code, permissions, queries,
+  services, receivers, or dependencies.
 
 ## Settings and Locale
 
@@ -640,10 +961,17 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   palette.
   Artwork source supplies the existing cached cover sample as `keyColor`; an
   unavailable cover leaves it unset and therefore falls back to the platform
-  palette. The controller is recreated when the effective mode, key color, or
-  dark appearance changes. Enabling the floating bottom bar persists liquid
-  glass as enabled by default, while unsupported devices still resolve to the
-  opaque floating fallback.
+  palette. During a track change, generate the new Monet palette once, retain
+  the currently displayed Miuix palette, and interpolate every color role over
+  600 ms with fast-out-slow-in timing. This avoids repeatedly remapping an
+  intermediate seed through Monet hue ranges and lets rapid changes retarget
+  from the currently displayed frame. The outer controller continues to
+  provide the Monet mode while a nested direct-colors theme supplies the
+  interpolated palette, preserving Miuix dynamic-color component styling.
+  Theme-mode and color-source changes still apply directly.
+  Changing the floating-bottom-bar preference persists liquid glass as disabled.
+  Liquid glass must be enabled separately after floating mode is active, while
+  unsupported devices still resolve to the opaque floating fallback.
 - Use the platform `LocaleManager` directly on API 33+ so the first language
   change follows the same in-place path as later changes. Use
   `AppCompatDelegate` and `LocaleListCompat` only on API 28-32.
@@ -698,9 +1026,8 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   retraceable production crashes, normalizes source-file names, and repackages
   obfuscated classes to reduce DEX name overhead; it does not disable shrinking,
   optimization, or obfuscation globally.
-- Package only default/English and Simplified Chinese resources. Release native
-  packaging retains `armeabi-v7a` and `arm64-v8a`; Debug keeps all available
-  ABIs so x86/x86_64 emulator workflows remain available.
+- Package only default/English and Simplified Chinese resources. Debug and
+  Release native packaging retain only `arm64-v8a`.
 - Each optimized delivery retains `mapping.txt`, checks that the manifest
   Activity and MediaSessionService implementations plus TagLib JNI bridge are
   present in the optimized DEX, and verifies APK signing, 16KB ZIP alignment,
@@ -713,7 +1040,14 @@ ExoPlayer uses repeat-all for Order/Random and repeat-one for Repeat one.
   launch the runtime request again without redirecting to app settings.
 - A scan failure retains the last successful rows; Settings remains the retry
   entry point.
-- Playback errors surface a localized message; unavailable restored items are removed.
+- An explicit scan compares the resulting immutable track list with the current
+  library. When they are equal, the full-width button keeps the `Start scan`
+  label and a one-shot UI event shows `No music file changes`; launch refreshes
+  do not emit this Toast.
+- Playback errors remain available through controller state and system
+  diagnostics. A newly reported error shows one localized Toast; the full-
+  player header does not show an unsupported-audio message. Unavailable
+  restored items are removed.
 - Corrupt or incompatible snapshots are ignored without deleting user audio or settings.
 
 ## Verification

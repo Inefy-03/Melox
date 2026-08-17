@@ -1,6 +1,6 @@
 # Melox Project Memory
 
-Last updated: 2026-08-06
+Last updated: 2026-08-10
 
 ## Stable Decisions
 
@@ -14,13 +14,11 @@ Last updated: 2026-08-06
 - The root `assembleRelease` task wraps `:app:assembleRelease` without forcing
   `:app:clean`; Gradle configuration-cache reuse remains enabled for incremental
   release builds.
-- Routine verification avoids emulator clicking, screen recording, and
-  screenshots. Prefer compilation, unit tests, Lint, and static inspection;
-  use the emulator only for a critical runtime behavior that cannot be
-  validated meaningfully another way.
+- Never run emulator interaction, screenshots, or recordings unless the
+  maintainer explicitly requests emulator testing in the current task. Prefer
+  compilation, unit tests, Lint, and static inspection by default.
 - Melox is an independent offline Android local-music player with application ID `com.melox.player`.
 - The baseline is Android 9+, `minSdk 28`, `compileSdk 37`, `targetSdk 36`, Miuix `0.9.3`, and Media3 `1.10.1`.
-- The project may directly reuse maintainer-owned UixPlayer music-library and playback code and maintainer-owned IconEditor settings/About behavior.
 - Visible UI stays within the Miuix component family. The full player is the only strongly atmospheric screen; the library and settings remain quiet and information-first.
 - The main destinations are Home, Songs, Library, and Settings. Library owns a
   Miuix `TabRow` and nested pager for Albums, Artists, and
@@ -31,12 +29,12 @@ Last updated: 2026-08-06
   the first root item/page and uses `首页` in Simplified Chinese. The persisted
   default initializes the root pager directly, so non-Home startup never first
   renders Home and then scrolls away.
-- Home follows Flamingo's local recommendation hierarchy without copying its
-  GPL implementation: a Miuix large-title page resolves five real-artwork
+- Home follows a local recommendation hierarchy: a Miuix large-title page
+  resolves five real-artwork
   tracks from one fresh random seed per application composition, then appends
   one previously unseen card after each forward pager swipe. When all eligible
   artwork tracks have been shown, the carousel ends without repeats. The
-  horizontal pager alone owns 16 dp start/end screen padding; 256 dp fixed-width
+  horizontal pager alone owns 16 dp start/end screen padding; 240 dp fixed-width
   cards retain the carousel geometry and render two-line metadata on a darkened
   artwork-derived surface with a white title and semi-transparent white artist.
   A card tap immediately plays the selected recommendation, keeps the other
@@ -73,7 +71,7 @@ Last updated: 2026-08-06
   background validation later removes
   unreadable items while preserving current item, position, playback state, and
   mode when the user has not mutated the queue. A concurrent queue mutation wins.
-- Settings include language, theme mode, dynamic colors, blur, floating navigation, liquid glass, predictive back, manual library scan, and About. Dynamic colors default to the complete Android system desktop-wallpaper Monet palette instead of reducing it to one framework accent resource; the persisted source can switch to the current playback artwork seed and falls back to the platform palette when no cover is loaded. Enabling floating navigation persists liquid glass enabled by default, while unsupported devices resolve to the opaque floating fallback.
+- Settings include language, theme mode, dynamic colors, blur, floating navigation, liquid glass, predictive back, a dedicated Scan music page, and About. The root Scan music summary is `No songs` for an unscanned or empty library and otherwise shows the localized song count. The scan page persists refresh-on-launch, sub-60-second exclusion, and Android folder-picker tree URIs; selected folders restrict later scans to those folders and descendants. Stored folders use Miuix `BasicComponent` spacing with a 24 dp file glyph and 16 dp visual text gap. Its full-width button always keeps the `Start scan` label, and an explicit unchanged scan shows a one-shot `No music file changes` Toast. Dynamic color source defaults to the current playback artwork seed and falls back to the complete Android system desktop-wallpaper Monet palette when no cover is loaded. Track changes generate the target palette once and interpolate every Miuix color role from the currently displayed palette over 600 ms with fast-out-slow-in timing, including continuous retargeting during rapid skips and transitions to or from the no-artwork desktop fallback. Enabling or disabling floating navigation persists liquid glass as disabled; liquid glass must be enabled separately while floating mode is active.
 - Missing audio access is requested once when the app enters. A grant from this
   startup request changes the library to an unscanned idle state without
   querying MediaStore; a grant triggered by the Settings scan preference scans
@@ -85,6 +83,8 @@ Last updated: 2026-08-06
   secondary pages may still use icons for navigation and actions.
 - Blur and predictive back default to enabled. Dynamic colors remain disabled
   by default and appear last in the theme page's Appearance group.
+- Playback background uses a separate card immediately below Appearance without
+  another section title.
 - Secondary pages keep one Miuix Navigation3 `NavDisplay`, scene state, and
   default transition-effects host. The setting switches between the official
   predictive `NavigationBackHandler` and ordinary back handling without
@@ -94,9 +94,11 @@ Last updated: 2026-08-06
   official example patterns for `NavDisplay`, `FloatingNavigationBar`,
   `layerBackdrop`, `textureBlur`, and Monet `ThemeController` modes.
 - Floating navigation always uses the Miuix example's iOS-like geometry and
-  moving selection pill. Blur uses the official backdrop-blur API, liquid glass
-  uses the official example's refractive path, and disabling both keeps the
-  same iOS-like geometry with an opaque Miuix surface.
+  moving selection pill. Ordinary floating Blur uses the official backdrop-blur
+  API without any container highlight; it only adds blur to the same opaque
+  floating style used when Blur is disabled. Liquid glass alone uses the
+  official example's refractive path and gravity-following highlight. Disabling
+  both keeps the same iOS-like geometry with an opaque Miuix surface.
 - `MainActivity` resolves and passes its Activity-owned `MeloxViewModel` before
   `setContent`. ViewModel initialization reads the first real DataStore settings
   value on `Dispatchers.IO`, so the first Compose frame uses the persisted
@@ -104,9 +106,14 @@ Last updated: 2026-08-06
   normal fallback. This small settings read is the only pre-Compose storage
   prerequisite; library, playback-snapshot, and artwork work remain
   asynchronous.
-- Theme-page switches and the theme-mode dropdown publish a screen-local value
-  before their DataStore write completes, so both the preference summary and
-  popup selected row update without waiting for persistence.
+- Settings controls that persist through DataStore publish a screen-local value
+  before the write completes, so switches, selected rows, and custom-folder
+  additions/removals update without reopening the page. This immediate state is
+  part of the Miuix interaction contract and must not rely on a later DataStore
+  collection to provide click feedback.
+- Secondary Settings pages use the collapsible Miuix `TopAppBar` by default and
+  connect its `MiuixScrollBehavior` to their scrolling content. Use a fixed
+  `SmallTopAppBar` only when the product requirement explicitly calls for it.
 - `MainActivity` handles `uiMode` together with locale/layout-direction changes.
   System light/dark changes therefore preserve the Compose hierarchy, expanded
   player state, mini-player click handling, and MediaController connection.
@@ -117,7 +124,7 @@ Last updated: 2026-08-06
   language preference keeps immediate local selection state so an override
   equal to the system locale does not appear stuck.
 - API 33+ language switching calls the platform `LocaleManager` directly,
-  matching IconEditor's in-place path and avoiding AppCompat's first-call
+  matching the direct in-place platform path and avoiding AppCompat's first-call
   locale synchronization flash. API 28-32 retain the AndroidX locale path.
   Locale application starts directly from the selection callback without a
   popup-dismiss delay, so all visible resource strings change in place.
@@ -142,12 +149,20 @@ Last updated: 2026-08-06
   to the screen-local Blur switch immediately; About follows the persisted app
   Blur setting.
 - Full player identity stays at the safe-area top without a visible back
-  control or "Now playing" label. Its slightly smaller artwork is centered
-  between that identity and the lower progress area, carries a restrained
-  shadow, uses 100% of its layout bound
-  while playing, and scales to 90% while paused. Pausing shrinks with
-  `LinearOutSlowInEasing`; resuming reaches 102% and then returns to 100% with
-  the same fast-to-slow easing. The Miuix
+  control or "Now playing" label. Its title uses bold Miuix `title3`; its artist
+  uses default-weight `body2` at 0.6 alpha. Current-item changes crossfade the
+  fixed title/artist slots with a 140 ms fade out and 180 ms fade in. Artist
+  metadata is normalized into names joined by ` / `, with only the slash using
+  thin weight. Its slightly smaller artwork is centered
+  between that identity and the lower progress area, uses a 12 dp Miuix
+  squircle crop plus a black 20% Overlay shadow with a 16 dp blur,
+  90% shape, no horizontal offset, and a 10% vertical offset. The shadow alpha
+  follows shared-player expansion progress so it fades in and out with the large
+  artwork, while the cover keeps one fixed outer layout position. Its outer container
+  expands by 6 dp in both dimensions, while the visible cover uses an animated
+  four-edge inset of 6 dp while playing and 24 dp while paused. Both
+  directions use `spring(dampingRatio = 0.6f, stiffness = 200f)`, so resume
+  naturally rebounds around the playing inset. The Miuix
   `LinearProgressIndicator` matches the artwork width, accepts taps and drags,
   and scales uniformly in both axes while pressed so its round ends and inner
   progress remain valid. Header metadata, lyrics, progress, timestamps, and
@@ -157,7 +172,23 @@ Last updated: 2026-08-06
   softened deep tier for artist and the normal tier for inactive lyrics,
   timestamps, and secondary controls.
   Lyrics match the playing-artwork/progress width; primary text is slightly
-  enlarged and same-timestamp translation lines use 80% of the primary size.
+  enlarged and same-timestamp translation lines use their own 16 sp baseline and
+  share the primary percentage scale. At the default 100% scale, primary lyrics
+  use 24 sp / 28 sp and translation uses 16 sp / 22 sp; the persisted percentage
+  setting remains 70%-130%, giving the
+  primary style a 16.8 sp-31.2 sp range rather than a direct-sp control.
+  Full-player Play/Pause uses a 42 dp glyph inside its retained 80 dp touch
+  target. Progress timestamps begin 6 dp below the actual lower edge of the idle
+  Miuix indicator rather than its 26 dp gesture target. The indicator-edge-to-primary
+  gap is 32 dp, while primary-to-secondary remains 16 dp; timestamp height is not
+  accumulated into the first gap. The portrait control panel does not consume the system
+  navigation-bar bottom inset and retains its own 32 dp bottom spacing, matching
+  the full-height background used by hidden-controls Lyrics. A newly mounted lyric
+  document is hidden while its active line is positioned directly at viewport
+  center, so opening Lyrics has no upward centering animation; later automatic
+  line changes keep the coordinated spring scroll. Primary-only rows receive
+  the same enlarged spacing whether translation is absent or disabled, and
+  unrevealed word-by-word text uses the same 40% strength as inactive lyrics.
   UI state and controller toggling follow `playWhenReady`, preventing seek
   buffering from flashing the Play icon. Opening and dismissing retain a dark
   underlay instead of exposing an unrelated page color. Mini/full Play and
@@ -175,6 +206,14 @@ Last updated: 2026-08-06
   Its bottom stays 12 dp above the mini player. The scroll-to-top action fades
   in only after collapse; dragging to the top still selects section `0` without
   expanding the title.
+- Home recommendation gestures disable root paging only when the pointer began
+  inside the recommendation region and the carousel is on an interior page.
+  Its first and last pages keep root paging available, gestures outside the
+  carousel always navigate the root pager, and recommendation overscroll is
+  disabled so an exhausted final card hands outward motion to the next root
+  page. The outer root Scaffold uses the Miuix surface color so Home/Settings
+  edge overscroll never exposes a black transparent-window background in light
+  mode.
 - Songs puts Search immediately before Sort. Music library provides one Search
   action and a tab-specific Sort action; the official Miuix `SearchBar` appears
   below its `TabRow`, remains open across tab switches, and swaps the query,
@@ -208,9 +247,14 @@ Last updated: 2026-08-06
   cover-to-label gap; 3-column uses 14 dp cover corners and a 6 dp start inset
   shared by its title and count. Both styles share `body2` title typography and
   explicit 12 sp count typography because Miuix has no matching text token.
+  The sort menu labels the two styles as small cover and large cover in the
+  current locale.
   The style is persisted, with legacy 2/3-column values and the removed large-2
   option migrated to the remaining 2-column/3-column styles.
   Artists expose name, song-count, and album-count sorting.
+  Album, Artist, and Folder sort popups place their `DropdownImpl` options
+  directly in `ListPopupColumn`, so every complete row is selectable and the
+  selected `Ok` indicator stays aligned to the trailing edge.
   Both have a right index; artist root and detail layouts retain Lyrico-aligned
   16 dp margins. Album membership follows
   Lyrico's normalized album-name plus explicit album-artist key; MediaStore
@@ -224,7 +268,14 @@ Last updated: 2026-08-06
   artwork and information share the outer Miuix blur/opaque fallback while the
   app bar itself stays transparent. Detail lists fill the page behind the bar
   with top content padding so scrolled content remains available to the blur
-  backdrop. Album-detail song rows show artist-only descriptions,
+  backdrop. The Album-detail cover matches the root three-column width with a
+  14 dp corner radius and its title uses `title3`; the Artist-detail header uses
+  a 72 dp cover, `title3` name, then separate 12 sp song-count and album-count
+  rows. Both detail headers begin 12 dp below the SmallTopAppBar; the Artist
+  header's 12 dp bottom padding is the only gap before its TabRow. When Blur is
+  active, the Artist contour selector Card and unselected contour background
+  stay transparent so the top-bar blur remains visible.
+  Album-detail song rows show artist-only descriptions,
   artist-detail song rows show album-only descriptions, and the artist-detail
   album tab follows the persisted root Album grid style.
 - Folders group songs by normalized direct-parent path, not only by folder
@@ -274,10 +325,18 @@ Last updated: 2026-08-06
   for unreadable bit depth; every information row copies its rendered trailing
   value when tapped. The untitled track-actions sheet adds Edit-icon entries for
   `com.xjcheng.musictageditor` and `com.lonx.lyrico` immediately before Song
-  information. Returning to Melox through either an activity result or Activity
-  resume triggers a targeted tag/audio-property and lyrics refresh for that
-  track. Playback UI overlays the refreshed library metadata without replacing
-  Media3 items, preparing, seeking, or interrupting the active song.
+  information. Their launch contracts follow Halcyon: Music Tag Editor prefers
+  explicit `ACTION_EDIT` to `SongDetailActivity` with path and metadata extras,
+  then tries View/Send fallbacks; Lyrico uses its packaged `EDIT_TAG` action with
+  data, stream, metadata aliases, `ClipData`, and URI read/write grants. Both
+  editors launch through direct `Context.startActivity` with external-task flags
+  after independently granting the data and stream URIs. Package visibility is
+  declared before resolution. A missing target leaves the sheet
+  open and shows `未发现 音乐标签 应用` or `未发现 Lyrico 应用`. Returning to Melox
+  on Activity resume triggers a targeted tag/audio-property and lyrics refresh
+  for that track. Playback UI overlays the
+  refreshed library metadata without replacing Media3 items, preparing,
+  seeking, or interrupting the active song.
   More and participating-artist sheets retain Miuix content overscroll while
   keeping nested-scroll dismissal enabled for downward sheet drags.
 - The playback queue sheet uses the official `OverlayBottomSheet` directly.
@@ -312,7 +371,8 @@ Last updated: 2026-08-06
   uses the same surface and blur treatment as the bar, with 6 dp horizontal
   margins, a 6 dp navigation gap, a subdued matching outline, and 10 dp artwork
   top/bottom/start padding. Floating mini and navigation pills share one width,
-  64 dp height, an 8 dp gap, captured backdrop, and gravity-following highlight.
+  64 dp height, an 8 dp gap, and captured backdrop. Ordinary floating mode has
+  no highlight; liquid glass alone adds the shared gravity-following highlight.
   The mini result is clipped to its larger pill radius. The navigation uses the
   official Miuix 10 dp black drop shadow (20% dark / 10% light), which the
   floating mini player also uses; the 44 dp
@@ -341,7 +401,7 @@ Last updated: 2026-08-06
   uniformly while moving right and upward into the full-player position;
   rotation, skew, and narrow-top/wide-bottom deformation are excluded. The
   recorded mini layer retains Melox's `MiniPlayerChrome` and `miniPlayerSurface`
-  Miuix blur/liquid-glass parameters rather than adopting VMusic's backdrop.
+  Miuix blur/liquid-glass parameters rather than adopting an external backdrop.
   Back and rejected gestures reverse the active path instead of jumping through
   the other endpoint.
 - The floating mini-player shadow is drawn outside the shared transition clip,
@@ -353,8 +413,29 @@ Last updated: 2026-08-06
   offset to rest using the same path as uncommitted swipes, crossfading old and
   new metadata during that return. Mini-player artwork uses the same 320 ms
   FastOutSlowIn track-artwork crossfade timing as the full player.
-- Full-player background reuses the cached artwork bitmap and builds an 8-by-8
-  HCT color field off the main thread. Pixel hue is retained, realized chroma is
+- Theme settings persist a full-player background choice. `BLURRED_ARTWORK` is
+  the default and `FLOWING_COLORS` is the alternative. The blurred path loads
+  one center-cropped 128 px derived image. It approximates
+  RenderScript radius 25 with three calibrated box passes off the main thread,
+  caches the derivative by artwork URI and file version, and never calls the
+  legacy native Toolkit AAR from playback. Its default renderer starts from a
+  fitted overscanned frame and moves between deterministic random Ken Burns
+  crops over 12 seconds with AccelerateDecelerate timing. It advances only while
+  the settled player is resumed and playing, so pause preserves the current
+  frame and the bitmap cannot appear shrunk at the upper-left origin. Enabling
+  the blurred style keeps this motion. The current item's complete blur layer is
+  prefetched before adjacent queue items and retained in a bounded memory cache,
+  so the ordinary blurred renderer can use the prepared blur on its first frame
+  without ever substituting the clear cover. The centered foreground cover keeps
+  the shared mini/full cover trajectory. The shared container uses the exact
+  measured target bounds during the final corner-settlement phase, preventing a
+  transient 1 dp bottom gap before the in-place page layer takes over. A Lyrics
+  swipe keeps the same blurred background and adds no separate enlarged-cover
+  transform. A prepared background remains
+  visible until the replacement pair is ready, then crossfades over 640 ms.
+  Missing artwork uses fixed `#242424` with no residual overlay.
+- The optional flowing-colors background reuses the cached artwork bitmap and
+  builds an 8-by-8 HCT color field off the main thread. Pixel hue is retained, realized chroma is
   capped at 32, and tone is fixed to 64 in light theme or 32 in dark theme. The
   field drives one bilinearly filtered 4-by-4 background seeded from the center
   4-by-4 source region. Matching pixels in its four 2-by-2 quadrants orbit
@@ -363,7 +444,7 @@ Last updated: 2026-08-06
   counterclockwise at 18 then 24 seconds. A separate 18-second phase rotates the
   complete 4-by-4 field through clockwise quarter-turn pixel mappings, including
   each pixel's local coordinate, so cardinal endpoints preserve adjacency rather
-  than forming a center cross. ARGB interpolation and the VMusic rendering path (`BitmapPainter` with
+  than forming a center cross. ARGB interpolation and the local rendering path (`BitmapPainter` with
   `FilterQuality.Low`, then `Image` with `ContentScale.Crop`) keep adjacent
   spatial and temporal color transitions smooth. The
   bitmap itself stays fixed and fills the viewport without geometric rotation,
@@ -412,7 +493,6 @@ Last updated: 2026-08-06
 - `/Users/bocchi/Downloads/AGENTS.md` and `/Users/bocchi/Downloads/CLAUDE.md` were unavailable during planning; `/Users/bocchi/Code/AGENTS.md` and `/Users/bocchi/Code/CLAUDE.md` are the accepted substitutes.
 - `https://github.com/Inefy-03/Melox` was not publicly accessible during planning, so the first About page must not expose a dead source link.
 - The Miuix blur artifact declares an Android 13 baseline. Supporting Android 9 requires manifest override plus strict runtime gating and an actual API 28 validation pass.
-- Preserve Apache-2.0 headers and attribution in migrated custom liquid-glass code. Do not migrate GPL-only IconEditor navigation code.
 - After changing the application ID to `com.melox.player`, Android Studio run state must not retain the old `com.inefy.melox` package. If Run `app` starts
   `{com.inefy.melox/com.melox.player.MainActivity}`, refresh `.idea/workspace.xml`
   package-state entries, Sync Gradle, and reinstall the app.
@@ -739,7 +819,7 @@ Last updated: 2026-08-06
   order. The focused recommendation test and Debug production/test Kotlin
   compilation passed; no emulator, runtime screenshot, full suite, or APK build
   ran.
-- On 2026-07-30, full-player drag release adopted Flamingo's velocity-direction
+- On 2026-07-30, full-player drag release adopted a velocity-direction
   destination rule above Android's scaled minimum fling threshold. Slow and
   near-zero releases retain Melox's last-direction fallback. Debug Kotlin
   compilation, focused and complete Debug unit tests, and Android Lint passed.
@@ -871,7 +951,7 @@ Last updated: 2026-08-06
   options read as lighter item surfaces instead of the sheet's plain card
   surface. The Add-to-queue action uses the maintainer-supplied
   `ic_add_list` tintable vector resource.
-- On 2026-08-01, mini/full playback was replaced with a Flamingo-style player
+- On 2026-08-01, mini/full playback was replaced with a direct shared player
   sheet: one direct drag progress drives a bottom-origin 93%-to-full sheet and
   settles with `spring(stiffness = 400f, dampingRatio = 1f)`. Artwork now uses
   a direct `FastOutSlowInEasing` shared-element path, and title/artist expand
@@ -882,13 +962,13 @@ Last updated: 2026-08-06
   compilation, all Debug unit tests, and Debug Lint passed. Per the requested
   scope, no emulator was started and no runtime visual claim was recorded.
 - On 2026-08-05, the full-player background replaced the former experimental
-  backdrop implementation with the requested VMusic-style
+  backdrop implementation with the requested
   8-by-8 HCT field with hue retention, realized chroma capped at 32, tone
   64/32, cropped full-screen presentation, fixed `#242424` missing-artwork fallback,
   and a single center-seeded 4-by-4 field. Matching pixels in its four 2-by-2
   quadrants use the clockwise/counterclockwise 24/18-second orbit pairs, while
   the complete grid rotates through quarter-turn pixel mappings every 18
-  seconds without rotating the bitmap geometry. The VMusic `BitmapPainter` /
+  seconds without rotating the bitmap geometry. The `BitmapPainter` /
   `FilterQuality.Low` / `ContentScale.Crop` path provides bilinear spatial
   filtering, while continuous
   ARGB interpolation prevents temporal hard cuts or cardinal-angle center
@@ -959,6 +1039,16 @@ Last updated: 2026-08-06
   newer existing tracks, and retains every detected addition above 20. The
   localized recommendation heading is Random recommendations / 随机推荐; both
   Home section headings use `title4` at default weight with a 28 dp start inset.
+  Recommendation artwork has two setting-controlled presentations: Blur off
+  retains the darkened artwork-color metadata bar; Blur on uses a URI/file-version
+  cached offline reflection derived from the shared 512 px cover through a 96 px
+  center crop, 1.5x saturation, 5-by-5 mesh deformation, dark overlays, and
+  RenderScript replacement Toolkit radius-25 blur. The card draws a 240 dp clear
+  cover, a vertically mirrored/cropped extension, and a transparent-to-deep-black
+  gradient beginning at 160 dp. This is selected by `settings.blurEnabled` but
+  never calls the live `BarBlurEffect`; list scrolling and recomposition only
+  composite the cached bitmap. Generation failure falls back to the original
+  color bar.
   Recently added uses Lyrico's two-column square-cover Album-grid geometry with
   16 dp outer padding and 12 dp gaps, while its labels retain the Melox Albums
   three-column scales and positions; its current track title also stays
@@ -1060,7 +1150,7 @@ Last updated: 2026-08-06
   signature/archive checks, and a fresh-signature cold start on the API 37
   16 KB Pixel 10 Pro image passed; the Melox process remained alive with an
   empty crash buffer and the Home UI tree was present.
-- On 2026-08-04, the mini/full transition adopted VMusic's bounded shared
+- On 2026-08-04, the mini/full transition adopted a bounded shared
   progress structure: vertical distance updates progress directly, release
   direction selects the endpoint, and normalized release velocity feeds the
   existing critically damped `spring(dampingRatio = 1f, stiffness = 300f)`.
@@ -1082,7 +1172,7 @@ Last updated: 2026-08-06
   center-scaled bound to the shared transition instead of leaving the target at
   the unscaled layout bound. Opening and dismissing therefore reach the 90%
   paused cover, the 100% playing cover, and the existing 102% resume peak
-  without changing the pause/resume animation or the VMusic container/layer
+  without changing the pause/resume animation or the existing container/layer
   structure. Melox's mini-player Miuix blur, liquid-glass, highlight, and
   fallback parameters remain unchanged. The focused regression test, complete
   Debug unit-test task, Debug Lint, Debug assembly, ZIP/v2-signature/16 KB
@@ -1115,15 +1205,15 @@ Last updated: 2026-08-06
   APK archive validation passed without emulator, screenshot, or recording use.
   The verified `artifacts/Melox-debug.apk` has SHA-256
   `04679030636050e1d8e83fcd2b8b21b6b466f74b2f349c02a42c3d8972ae7abe`.
-- On 2026-08-05, the shared artwork path was tuned to match the requested VMusic
+- On 2026-08-05, the shared artwork path was tuned to match the requested
   visual trajectory: horizontal center movement remains front-loaded with
   `EaseOutCubic`. Vertical center movement is one continuous blend of 35%
   linear progress and 65% `EaseInCubic`; the linear contribution gives the
   curve a non-zero initial upward velocity, while the cubic contribution makes
   the latter half vertically dominant. This is not a two-stage or six-stage
   animation. Source and target coordinates still come from Melox's measured
-  mini/full artwork bounds, so VMusic's cover height and bottom-bar location are
-  not copied. The cover moves right and up from the first frame, remains
+  mini/full artwork bounds, so no external cover height or bottom-bar location is
+  copied. The cover moves right and up from the first frame, remains
   uniformly scaled, and reaches the measured full-player endpoint exactly;
   rectangular-cover fitting, Miuix blur/liquid-glass parameters, and the
   no-rotation/no-skew constraint are unchanged. The staged-axis trajectory
@@ -1281,3 +1371,554 @@ Last updated: 2026-08-06
   Per maintainer direction, no emulator, screenshot, or recording verification
   ran. The verified `artifacts/Melox-debug.apk` has SHA-256
   `3bc4ce74dce5eae6fedfdf6db968470cc6d6eaf620d728e15a9964ac26706bd3`.
+- On 2026-08-07, the Music Tag Editor and Lyrico actions adopted Halcyon's
+  external-editor contracts. Music Tag Editor now prefers explicit
+  `ACTION_EDIT` to `SongDetailActivity` with path and metadata extras, then
+  falls back through explicit/package View and package Send. Lyrico retains its
+  packaged `EDIT_TAG` action with data, stream, metadata aliases, `ClipData`,
+  and URI read/write access. A follow-up launch fix replaced the activity-result
+  launcher with Halcyon's direct `Context.startActivity` path, added its external
+  task flags, and grants data and stream URIs independently before launch.
+  Manifest package visibility makes pre-launch
+  resolution reliable on Android 11+, and missing applications show their
+  specific localized Toast while the More sheet remains open. Debug Kotlin
+  compilation, 121 unit tests, Debug Lint, Debug assembly, merged-manifest
+  inspection, APK archive validation, v2 signature verification, 16 KB ZIP
+  alignment, and `git diff --check` passed. A connected-device package check
+  found neither target editor installed, so no live launch interaction could
+  run. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `e92d3bd328791bd76c4234aee0941bdc050799f3c5b7041dbc2a72d85c2f9584`.
+- On 2026-08-10, the external-editor implementation was rebuilt from the local
+  Halcyon `TagEditorLauncher` contract. The old inline activity-result and
+  candidate code was removed while the More-sheet labels remain unchanged. A
+  readable indexed file now uses Melox's FileProvider URI, with a MediaStore URI
+  fallback; Lyrico receives its packaged `EDIT_TAG` action, and Music Tag Editor
+  tries explicit path `ACTION_EDIT`, explicit/package `ACTION_VIEW`, then package
+  `ACTION_SEND`. Data and stream URIs are granted independently before direct
+  `Context.startActivity`. On emulator `emulator-5554`, both installed targets
+  launched successfully for the `Burning` track: Lyrico opened `MainActivity`
+  with the real tags, and Music Tag Editor opened `SongDetailActivity` with the
+  correct title, artist, album, and year. Returning to Melox restored its task;
+  the crash buffer contained no exception. Debug compilation, 121 unit tests,
+  Lint, and Debug assembly passed. This supersedes the 2026-08-07 note that the
+  target packages were unavailable for live testing.
+- On 2026-08-07, Home recommendation cards adopted a cached reflection
+  composition when Blur is enabled: one shared 512 px cover produces a cached
+  96 px, 1.5x-saturated, 5-by-5-mesh, darkened Toolkit radius-25 blur. Card
+  drawing uses a 240 by 310 dp geometry: a 240 dp clear cover plus the previous
+  color bar's effective 70 dp height,
+  reflection layer bounds from 120 dp, vertical mirroring around the derived
+  pivot, a 60 dp crop offset, and a transparent-to-opaque `DstIn` alpha mask
+  from 160 to 240 dp. The mask progressively reveals the reflected layer over
+  the clear cover; it is not an opaque black gradient drawn above the blur.
+  This path never calls `BarBlurEffect`; disabling Blur retains the
+  previous artwork-color metadata bar. Both presentations use that original
+  bar's bottom-anchored text position: 18 dp from the card's left edge and 14 dp
+  from its bottom edge. The pager reserves the full 240-by-310-dp card before
+  its separate 14 dp section spacing. With Blur enabled, a card remains hidden
+  until its clear artwork and cached reflection are both available, preventing
+  a temporary color-bar frame before the reflection finishes; with Blur
+  disabled, it waits only for the clear artwork. The Toolkit AAR was rebuilt from
+  official commit `344be3f6bf03fb6b63a80b36f08f8dccac59d784` with NDK 29
+  flexible-page-size support. Focused and complete Debug unit tests (103),
+  Debug Lint, Debug assembly, APK archive/v2-signature/16 KB ZIP alignment, and
+  every packaged 64-bit ELF `PT_LOAD` alignment passed. API 37 screenshots and
+  UI trees verified both setting states at 240 by 310 dp, identical metadata
+  bounds, the 18 dp left and 14 dp bottom text offsets, correct downward
+  reflection progression, persisted Blur after restart, a live process, and an
+  empty crash buffer. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `bddf79c9237e1d1242a3006b3f3764d278a875b410b5de5f106cf4f9946e8f1c`.
+- On 2026-08-07, Theme settings added a persisted full-player background choice:
+  `Blurred artwork` is the default, `Flowing colors` retains the existing HCT
+  implementation. Playback blur uses a cached 128 px center crop with a radius-25
+  three-pass box approximation calibrated to RenderScript's sigma mapping; it
+  does not call the existing native Toolkit AAR. The default blurred view uses
+  a fitted, paused-aware 12-second Ken Burns transition. Track changes
+  retain the completed background until the replacement pair is ready and then
+  crossfade over 640 ms. Missing artwork remains fixed `#242424`, and Lyrics
+  adds no separate background enlargement. HCT prefetch now runs only when the
+  flowing-colors mode is selected. Debug Kotlin compilation, 103 unit tests,
+  Debug Lint, Debug assembly, ZIP validation, v2 signature verification, 16 KB
+  ZIP alignment, and `git diff --check` passed. Per maintainer direction, no
+  emulator, screenshot, or interaction test ran. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `d5f5c351547bd0ad2cb03c88ac66840b5cc8c1b7b943014a5019da474bb8333e`.
+- On 2026-08-07, ordinary floating navigation and its floating mini player were
+  corrected to never draw a glass highlight. With Blur enabled they retain the
+  same opaque iOS-like Miuix surface and add only backdrop blur; lens refraction
+  and the shared gravity-following highlight remain exclusive to liquid glass.
+  Kotlin compilation, 103 Debug unit tests, Debug Lint, Debug assembly, APK ZIP
+  validation, v2 signature verification, 16 KB ZIP alignment, and
+  `git diff --check` passed. Per maintainer direction, no emulator, screenshot,
+  recording, or interaction test ran. The verified `artifacts/Melox-debug.apk`
+  has SHA-256
+  `b0fd4eb934619d9bb794cc2e82e88abcce8e068265c6bd55cf65be19a64c477a`.
+- On 2026-08-07, changing the floating-bottom-bar switch was corrected to reset
+  liquid glass to off in both the immediate Theme-screen state and the atomic
+  DataStore edit. Entering floating mode therefore starts with the ordinary
+  Miuix floating style and requires a separate liquid-glass opt-in. Playback
+  background moved into one separate card directly below Appearance without
+  another section title.
+  Kotlin compilation, 103 Debug unit tests, Debug Lint, Debug assembly, APK ZIP
+  validation, v2 signature verification, 16 KB ZIP alignment, and
+  `git diff --check` passed. Per maintainer direction, no emulator, screenshot,
+  recording, or interaction test ran. The verified `artifacts/Melox-debug.apk`
+  has SHA-256
+  `bddf79c9237e1d1242a3006b3f3764d278a875b410b5de5f106cf4f9946e8f1c`.
+- On 2026-08-07, Home recommendation/root paging arbitration became
+  gesture-local. A pointer inside an interior recommendation page temporarily
+  disables root paging; the first and final cards, every gesture outside the
+  recommendation bounds, and all non-Home pages keep root paging enabled. The
+  recommendation pager disables its own overscroll so an exhausted final card
+  hands outward movement to the next root page instead of stretching Home. The
+  outer root Scaffold now paints the current Miuix surface, preventing Home and
+  Settings edge springs from revealing a black transparent-window background
+  in light mode. The focused arbitration test, Kotlin compilation, 103 Debug
+  unit tests, Debug Lint, Debug assembly, APK ZIP validation, v2 signature
+  verification, 16 KB ZIP alignment, and `git diff --check` passed. Per
+  maintainer direction, no emulator, screenshot, recording, or interaction test
+  ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `b64b67e54bef2e2abca93db552b6a7d3ad1270280615ddbd7f12b9698bf37adb`.
+- On 2026-08-07, blurred playback backgrounds began prefetching the current
+  track's complete main/128 px/blur pair before adjacent queue items. The first
+  available retained artwork layer initializes synchronously and crossfades to
+  the completed blur, removing the asynchronous black mount frame. Full-screen
+  artwork now removes the centered foreground cover, disables the independent
+  mini/full shared-cover trajectory, and expands or collapses through the same
+  complete recorded-player-layer handoff used by Lyrics. The shared container
+  overscans all target edges by 1 dp while its `p = 1` screen corners settle,
+  preventing the brief edge reveal. Lyrics still adds no cover enlargement or
+  brightening. Debug Kotlin compilation, 105 unit tests, Debug Lint, Debug
+  assembly, APK archive validation, v2 signature verification, 16 KB ZIP
+  alignment, every packaged arm64/x86_64 ELF `PT_LOAD` alignment, and
+  `git diff --check` passed. Per maintainer direction, no emulator, screenshot,
+  recording, or interaction test ran. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `5632165ed58937a7143c9fad6bc6aad326721f4d52ac6369340ad39f55aa9748`.
+- On 2026-08-07, the previous lyrics implementation was replaced with a fully
+  local pipeline for enhanced LRC and TTML, including
+  translation lines, timed words, and linear reveal for untimed words when
+  Force word-by-word lyrics is enabled. The full-player secondary row places a
+  Miuix `ConvertFile` lyrics-settings action between playback mode and queue,
+  using the same size as the adjacent actions. Its
+  bottom sheet starts with a title-only Lyrics translation switch that defaults
+  to on, followed by the 70%-130% Miuix `SliderPreference` and
+  `SwitchPreference` items for Force word-by-word lyrics, Lyric blur, Center
+  lyrics, and Hide controls on Lyrics. The Hide controls item has no summary. Lyrics align
+  to the start edge by default, while centering applies to both primary and
+  translation text. The initial FlowRow/Text approximation was removed after it
+  did not meet the visual requirements. Timed lyrics now use measured Canvas glyphs and an
+  independent 100 px soft reveal per wrapped row. Eligible slow words stagger
+  character starts across the first 20% and use the remaining 80% for rise,
+  scale, and glow; CJK, Arabic, Devanagari, and fast words use the exact 700 ms,
+  4 px simple float instead of an incorrect density-scaled bounce. Primary text
+  uses 30.5 sp / 39 sp at scale 1, and translation uses 19 sp / 27.5 sp.
+  Focus alpha/scale and distance blur share the offscreen layer, while visible
+  line handoff uses the source Lookahead `ApproachLayoutModifierNode` with a
+  dynamic damping-0.95 spring rather than tweened scrolling or `animateItem`.
+  TTML span `end`/`dur` timing is retained. Hiding controls keeps the panel measured and
+  moves/fades it continuously with pager progress, so the artwork page already
+  has its controls instead of waiting for a settled-page re-entry. Translation
+  visibility is independent from the source lyric text. Lyrics
+  remain offline and do not publish to Lyricon, notifications, or MediaSession,
+  and do not use Lyric Getter or Super Lyric APIs. Kotlin compilation, 111 Debug
+  unit tests, Debug Lint, Debug assembly, APK archive validation, v2 signature
+  verification, 16 KB ZIP alignment, and `git diff --check` passed. Per
+  maintainer direction, no emulator, screenshot, recording, or interaction test
+  ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `a9f8f7d8b87262597a0ed9b878bc0e87f3feafdbcab27e4c41e85fde838492e3`.
+- On 2026-08-07, playback background settings were reduced to only `Blurred
+  artwork` and `Flowing colors`. The obsolete alternate static-cover setting,
+  stored flag, high-resolution background image, static composition, geometry
+  helpers, clear-image fallback, shared-artwork exception, strings, tests, and
+  documentation were removed. The blurred path now loads only its 128 px source
+  and retains the existing cached radius-25 blur, paused-aware Ken Burns motion,
+  crossfade, centered foreground cover, and shared mini/full artwork trajectory.
+  Kotlin compilation, 111 Debug unit tests, Debug assembly, APK archive
+  validation, v2 signature verification, 16 KB ZIP alignment, and
+  `git diff --check` passed. Debug Lint did not complete because Android Lint
+  crashed internally while indexing the concurrently added `Syllable`
+  model with `Unexpected owner function: null`; it reported no project finding.
+  Per maintainer direction, no emulator, screenshot, recording, or interaction
+  test ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `c23670970cf40ec81fa69789d7847d7ed5dff785084db5f824905d944debb45c`.
+- On 2026-08-07, lyrics removed their redundant per-line 16 dp horizontal
+  padding, so primary and translation cutoff edges now use exactly the same
+  width as the idle progress indicator. Native and forced word-by-word drawing
+  read a display-frame playback clock that advances continuously between the
+  controller's 500 ms publications and snaps for real seeks, removing the
+  stepped reveal. Forced word-by-word lyrics measure wrapped rows and reveal
+  them sequentially at one constant pixel speed; a row completes before the
+  next begins. Timed rows retain their actual word timing order. Automatic line
+  changes animate the LazyColumn as one coordinated surface while the
+  Lookahead item placement snaps during scrolling, preventing distance-based
+  line speeds from producing overlap. Timed and plain line-item vertical
+  padding were each reduced by 2 dp. The new lyric-size range is 70%-130%, and
+  the new 100% base equals the previous 80% rendering: primary text is 24.4 sp
+  / 31.2 sp and translation is 15.2 sp / 22 sp. Settings use a versioned scale
+  key and migrate the legacy value by dividing by 0.8, so old 80% becomes new
+  100%. The blurred-artwork background was slightly brightened by reducing the
+  uniform black overlay from 0.38 to 0.34 and its top/bottom gradient from
+  0.28/0.48 to 0.24/0.44. Debug Kotlin compilation, 113 unit tests, Debug Lint,
+  Debug assembly, APK archive validation, v2 signature verification, 16 KB ZIP
+  alignment, all packaged arm64/x86_64 ELF `LOAD` alignments, and
+  `git diff --check` passed. Per maintainer direction, no emulator, screenshot,
+  recording, or interaction test ran. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `813647b68e63b2b1988c864212c028c231d8a13b19822a01adf847b9ea90c739`.
+- On 2026-08-07, the blurred-artwork player background adopted the requested
+  cover-page color treatment before the existing radius-25 blur: `1.5f`
+  saturation, one `0x4D000000` black `OVERLAY` pass, and one normal
+  `0x4D000000` black pass. The Compose-side uniform black layer and vertical
+  black gradient were removed, and the derivative cache schema advanced to 2.
+  Lyrics now begin 16 dp below the natural-height identity header. With controls
+  visible they end 16 dp above progress and use matching 100 dp top/bottom
+  fades. With Hide controls on Lyrics enabled, one retained pager spans the
+  complete content region: artwork plus the complete control panel is page zero,
+  while Lyrics alone is page one, reaches the bottom content edge, and has no
+  bottom fade. The previous shared-panel collapse, lift, translation, fade, and
+  continuous pager-progress logic were removed. Debug Kotlin compilation, 113
+  unit tests, Debug Lint, Debug assembly, APK archive validation, v2 signature
+  verification, 16 KB ZIP alignment, all packaged arm64/x86_64 ELF `LOAD`
+  alignments, and `git diff --check` passed. Per maintainer direction, no
+  emulator, screenshot, recording, or interaction test ran. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `785e62f04c69c344e325b0d411bdb10f4f1caa457b7c91e98547d6654e423586`.
+- On 2026-08-07, lyric row taps stopped drawing the clipped rounded-rectangle
+  indication while retaining the complete click target. A manual lyric drag now
+  enters a persistent browsing state: inactive-line blur and automatic following
+  stay disabled after release or fling, then resume only when a lyric is tapped
+  or the full-player Play action is pressed. Automatic following centers the
+  measured active row in the lyric viewport. Lookahead placement reads live list
+  scroll state during layout so the playing row snaps with the first drag frame
+  instead of lagging behind the list. Full-player foreground content now applies
+  explicit safe-drawing padding, keeping the hidden-controls lyric page above a
+  visible system navigation bar. Debug Kotlin compilation, 117 unit tests,
+  Debug Lint, Debug assembly, APK archive validation, v2 signature verification,
+  16 KB ZIP alignment, all packaged arm64/x86_64 ELF `LOAD` alignments, and
+  `git diff --check` passed. Per maintainer direction, no emulator, screenshot,
+  recording, or interaction test ran. The verified `artifacts/Melox-debug.apk`
+  has SHA-256
+  `308f5ac822a6d65d1a20a2ba4c1549a5747d4871bc780d3a6313192bc42b7f0a`.
+- On 2026-08-08, the lyric browsing rule was updated for correct gesture
+  handling. A blurred inactive lyric now seeks and centers on the first tap.
+  During active playback, manual lyric scrolling keeps the browsed list sharp;
+  after drag or fling movement stops, five seconds without another manual
+  scroll restores inactive-line blur and recenters the currently playing lyric.
+  Another manual scroll resets the idle timeout, while pressing Play still
+  resumes following immediately.
+- On 2026-08-07, the maintainer clarified that hidden-controls Lyrics should not
+  reserve another system-navigation background. Full-player foreground now
+  applies bottom safe inset only to artwork and control layouts. The Lyrics page
+  continues to the physical screen bottom beneath the transparent, still-visible
+  system navigation controls, using a non-immersive presentation.
+  Debug Kotlin compilation, 119 unit tests, Debug Lint, Debug assembly, APK
+  archive validation, v2 signature verification, 16 KB ZIP alignment, all
+  packaged arm64/x86_64 ELF `LOAD` alignments, and `git diff --check` passed.
+  Per maintainer direction, no emulator, ADB, screenshot, recording, or
+  interaction test ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `8aa67c1b70897d51f17b19e7b401cbb0d89b23bfcb83ffaf3456be46f972412f`.
+- On 2026-08-07, full-player Play/Pause was reduced to 42 dp while preserving
+  its 80 dp touch target. The progress indicator and timestamps now use a real
+  vertical layout, keeping current and total time below the track. Lyrics use
+  enlarged primary-only padding whenever no translation is rendered, with the
+  same result for absent and settings-hidden translations. Native timed and
+  forced word-by-word unrevealed text now matches the 40% inactive-line
+  strength. Initial lyric centering uses direct hidden placement and reveals
+  only the centered list, while subsequent playback focus changes retain their
+  spring scroll. Debug Kotlin compilation, 119 unit tests, Debug Lint, Debug
+  assembly, APK archive validation, v2 signature verification, 16 KB ZIP
+  alignment, and `git diff --check` passed. Per maintainer direction, no
+  emulator, ADB, screenshot, recording, or interaction test ran. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `f3901ea6e789f269bc7db809f16ef0e1621c18355823affc7fcf119de286ee65`.
+- On 2026-08-07, hidden-controls Lyrics now targets the complete playback-page
+  center by compensating for the safe top inset, fixed identity header, and the
+  header-to-content gap; the ordinary Lyrics viewport center remains unchanged.
+  Player title and artist use fixed single-line slots with explicit centered
+  line heights, preventing Latin, Japanese, and fallback font metrics from
+  moving the text or the centered cover. Debug Kotlin compilation, 119 unit
+  tests, Debug Lint, Debug assembly, APK archive validation, v2 signature
+  verification, 16 KB ZIP alignment, and `git diff --check` passed. Per
+  maintainer direction, no emulator, ADB, screenshot, recording, or interaction
+  test ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `9c490bfdf27a5ffcb9c7bad67106e3b69038cb60fba353dbbfc7dab6185159d3`.
+- On 2026-08-07, long lyric gaps became precomputed document items. Enhanced
+  LRC now ends its final timed word with a 500 ms
+  fallback instead of extending it to the next line. A gap of at least 5000 ms
+  creates one stable `LyricTransition`; binary-search focus moves to its three
+  circles so the completed lyric releases its enlarged/bright state. The
+  circles use 11 dp base diameter, 7 dp spacing, and 5 dp vertical padding, all
+  scaled by the configured lyric size. Track changes no longer show a loading
+  label: the outgoing document fades out over 180 ms, remains retained while
+  loading, and the available incoming document fades in over 240 ms. The lazy
+  list composes visible rows first and never inserts or removes a gap row at
+  playback time. Forced Kotlin recompilation, 121 Debug unit tests, Debug
+  assembly, APK archive validation, v2 signature verification, and 16 KB ZIP
+  alignment passed. Debug Lint remained blocked by the pre-existing
+  `MeloxApp.kt:230` `LocalContextGetResourceValueCall` error outside this lyric
+  change. Per maintainer direction, no emulator, ADB, screenshot, recording, or
+  interaction test ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `013b3748a876af45cd679e23e0ddf7ac3179e4af90e38eae4f1de0b0c2675003`.
+- On 2026-08-08, middle three-dot lyric transitions changed from 5 dp to 10 dp
+  scaled vertical padding while the document-leading transition retains 5 dp,
+  keeping the dots in the same vertical rhythm as surrounding lyric rows.
+  Forced word-by-word text now measures at the complete available width so
+  centered lyrics remain centered throughout the Canvas reveal. A tapped lyric
+  target no longer substitutes for the real current-line index, preventing the
+  inactive row from flashing white before playback reaches it. Full-player
+  seeks now carry an explicit request key and target time into the lyric display
+  clock: stale controller positions near the old time are ignored, and the lazy
+  list directly centers the target item instead of first animating through older
+  rows. A follow-up audit replaced the visible-row seek snap's estimated
+  `scrollToItem` offset with a direct measured `scrollBy`, which respects the
+  lyric list's large before/after content padding and keeps a tapped line at the
+  true viewport center. Current-item changes now reset the lyric seek request
+  key before adopting the new playback position, so pausing and switching songs
+  starts the incoming lyric state from the new track instead of the previous
+  seek. Full Debug Kotlin compilation, the focused lyric regression tests, and
+  the complete Debug unit test task passed. Debug APK assembly was not run
+  because the earlier approval service rejected the Gradle build request with a
+  502 error; the previous APK was not replaced. No emulator, ADB, screenshot,
+  recording, or interaction test ran. A subsequent audit restored the original
+  animated centering specifically for tapped lyric rows while keeping progress-
+  bar seeks immediate; the new distinction has a dedicated unit regression
+  test.
+- On 2026-08-08, all post-mount lyric seeks now retain smooth
+  coordinated centering: progress-bar taps/drags and lyric-row taps use the
+  spring `animateScrollBy` path, while only the first hidden placement of a new
+  document uses direct positioning. Programmatic lyric selection is excluded
+  from manual-browsing detection, so tapping a blurred inactive line centers it
+  on the first tap without a temporary blur cancellation. Debug Kotlin
+  compilation and the complete Debug unit test task passed; no APK rebuild or
+  emulator/ADB interaction test ran.
+- On 2026-08-08, the remaining blurred-lyric tap race was removed by retaining
+  the requested lyric row until its programmatic centering animation completes.
+  The focus-tracking effect no longer clears that target mid-animation, and a
+  requested target explicitly prevents manual-browsing blur cancellation.
+  Progress-bar seeks still clear browsing state and use the same smooth center
+  path. Debug Kotlin compilation and the complete Debug unit test task passed;
+  no APK rebuild or emulator/ADB interaction test ran.
+- On 2026-08-09, lyric-row lookahead placement animation was removed permanently:
+  `LookaheadScope`, `ApproachLayoutModifierNode`, `DeferredTargetAnimation`, and
+  distance-sensitive per-row springs no longer exist. All lyric movement is now
+  owned by the retained `LazyListState` as one list-level scroll. A real vertical
+  drag beyond touch slop cancels any lyric-tap programmatic target immediately
+  and disables inactive-line blur, even directly after a tap seek. The lyric
+  clock now distinguishes new seek requests from play/pause changes, freezes its
+  current smooth frame when paused, and keeps a progress-seek target authoritative
+  until the smooth clock reaches it, preventing previous-line rollback and
+  intermediate earlier-row centering. Debug Kotlin compilation and the complete
+  Debug unit test task passed serially; no APK rebuild or emulator/ADB interaction
+  test ran.
+- On 2026-08-09, progress-seek centering was corrected for the lyric list's large
+  before/after content padding. Off-screen targets now calculate their initial
+  `scrollOffset` from the actual viewport start and end offsets, then snap only
+  the measured-size correction, eliminating the visible earlier-row animation
+  before the requested lyric centers. Lyric taps no longer create a parallel
+  requested-focus state, and the list no longer installs an initial-pass pointer
+  observer that can classify a tap as browsing. Each row owns the full clickable
+  parent while blur, scale, and alpha render in a child graphics layer, keeping
+  blur strictly visual and allowing a blurred line to seek on the first tap.
+- On 2026-08-09, a runtime review found that the remaining
+  blurred-row tap race came from treating `LazyListState.isScrollInProgress` as
+  a user gesture and from splitting the row's graphics and click modifiers.
+  Lyric rows now use full-width modifier ordering: scale, alpha,
+  and `BlurEffect` are followed by the same indication-free `clickable` target.
+  Manual browsing starts only after a pointer observer sees a real vertical
+  displacement beyond touch slop, so a tap or programmatic centering cannot
+  clear blur.
+  A tapped line remains the single list focus target until its spring centering
+  completes and the requested seek is applied; a real drag cancels that target.
+- On 2026-08-09, a follow-up device report exposed one final programmatic-scroll
+  tail race: after centering completed, `scrollInCode` could clear one frame
+  before `LazyListState.isScrollInProgress`, temporarily classifying the spring
+  tail as manual scrolling and making every inactive lyric sharp. Inactive-line
+  blur is now disabled only by the drag-owned `isUserBrowsingLyrics` state.
+  `isManualScrolling` remains limited to waiting for fling completion and
+  starting the five-second follow-resume timer, so programmatic centering cannot
+  affect blur even after its requested target clears. The implementation
+  confirms that a tap changes the selected target and seeks without toggling the
+  global lyric-blur setting; only the selected target row becomes sharp. The
+  focused regression, complete Debug unit test task, Debug installation, Debug
+  assembly, APK archive validation, v2 signature verification, and 16 KB ZIP
+  alignment passed. The installed Android 16 device was securely locked before
+  the final tap capture, so post-fix interaction evidence remains unverified.
+  The verified `artifacts/Melox-debug.apk` has SHA-256
+  `13948735ab00023784907ddbb29a415a817d741a690b9574ce938834ec9d397e`.
+- On 2026-08-09, a second-tap report showed that `DragInteraction.Start` could
+  still be emitted when a tap interrupted an in-flight list animation, even
+  without meaningful finger movement. That signal was removed from lyric
+  browsing detection. The parent `LazyColumn` now observes the final pointer
+  pass without consuming it and enters browsing only for a vertical displacement
+  greater than `LocalViewConfiguration.current.touchSlop`; taps, diagonal or
+  horizontal movement, and animation-interrupting clicks keep global lyric blur
+  enabled. Dedicated unit tests cover those cases. Focused and complete Debug
+  unit tests, Debug installation, Debug assembly, APK archive validation, v2
+  signature verification, and 16 KB ZIP alignment passed. The installed Android
+  16 device remained securely locked, so post-fix interaction capture remains
+  unverified. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `352221448058426f3d4e683dbf9ef049b7e6b09fe61aa0688e08ecf0342a36e2`.
+- On 2026-08-09, the maintainer clarified that the first lyric tap works, but a
+  second tap during the first tap's remaining centering animation could be
+  swallowed and require another tap. The lyric row uses a
+  same-chain `CombinedClickable` and does not install an extra parent gesture
+  detector; its scroll container lets pointer-down user input preempt an active
+  programmatic scroll without consuming the row click. Melox now mirrors that
+  event ownership: pointer down launches an empty `MutatePriority.UserInput`
+  list mutation to cancel any active centering animation, while the untouched
+  pointer event continues to the row `clickable`. Actual vertical displacement
+  beyond touch slop remains the only action that enters browsing and disables
+  inactive-line blur. Focused and complete Debug unit tests, Debug assembly,
+  APK archive validation, v2 signature verification, 16 KB ZIP alignment, and
+  `git diff --check` passed. Per the maintainer's explicit rule, no emulator
+  interaction is part of final verification unless requested. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `7c15d98a710352997117f318e701be19215692bd4b98a3fa5fe65f470a6b5cca`.
+- On 2026-08-09, the authoritative lyric navigation replaced the
+  earlier parent `pointerInput`, touch-slop, `MutatePriority`, and animated
+  `LazyListState` interception attempts. A target change now places the retained
+  lazy list at the requested centered position immediately, then animates one
+  root visual translation back to zero. The programmatic transition therefore
+  never keeps `LazyListState` busy and every lyric row retains its own same-chain
+  blur, scale, alpha, and indication-free click target throughout consecutive
+  taps. A new tap retargets the existing visual translation without waiting for
+  the previous transition. Only a real `DragInteraction.Start` cancels the
+  target animation, enters lyric browsing, and disables inactive-line blur.
+  Focused and complete Debug unit tests, Debug assembly, APK archive validation,
+  v2 signature verification, and 16 KB ZIP alignment passed. Per maintainer
+  direction, no emulator, ADB, screenshot, recording, or interaction test ran.
+  The verified `artifacts/Melox-debug.apk` has SHA-256
+  `857260eee83b92cef081508cf2bbf715be62f138eee73dbe2051c7daf08241b9`.
+- On 2026-08-09, the root translation retained a fixed edge fade
+  by moving the `DstIn` mask inside its own outer offscreen layer while keeping
+  the translated list beneath that mask. This prevents word-by-word row blend
+  modes from rendering black text in the top and bottom gradients. During a
+  pending lyric-row seek to a different line, neither the previous playback row
+  nor the requested row receives current-line scale or brightness; the requested
+  row becomes current only when the lyric clock reaches it, removing the old-row
+  white flash without reintroducing premature target highlighting.
+  Off-screen progress and lyric-row seeks now begin beyond the viewport edge
+  after their direct centered placement and use a critically damped root
+  translation, preventing the target from flashing near center and eliminating
+  the final spring rebound that looked like a second vertical correction.
+  Focused and complete Debug unit tests, Debug assembly, APK archive validation,
+  v2 signature verification, 16 KB ZIP alignment, and `git diff --check` passed.
+  Per maintainer direction, no emulator, ADB, screenshot, recording, or
+  interaction test ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `7ced6795fc07107225702a5256d9032de2a63fa4aecf9b91b0d80c087b86b23b`.
+- On 2026-08-09, the full-player progress bar adopted a two-callback
+  contract: pointer movement updates a transient lyric preview position without
+  issuing repeated Media3 seeks, while release commits one seek and the normal
+  smooth lyric centering path. Cancelling the gesture clears the preview and
+  restores the controller position. No emulator, ADB, screenshot, recording,
+  or interaction test ran.
+  Focused and complete Debug unit tests, Debug Kotlin compilation, Debug
+  assembly, APK archive validation, v2 signature verification, 16 KB ZIP
+  alignment, and `git diff --check` passed. The verified
+  `artifacts/Melox-debug.apk` has SHA-256
+  `e9dbaba308f98df0083fd00d8363f19f04f32d33641827a0ef3bfc6d975ed6b0`.
+- On 2026-08-09, the progress-bar contract was corrected after runtime feedback.
+  A tap no longer creates a preview on pointer down; it commits one seek on
+  release and therefore starts only one smooth lyric-centering transition from
+  the current viewport. Horizontal movement must exceed touch slop before a
+  drag preview begins. During that preview, the transient position directly
+  owns the lyric clock, including while paused, and line changes are centered
+  immediately so lyrics follow the finger instead of being corrected through
+  the playback clock. Releasing the drag preserves that same target while one
+  Media3 seek is committed, without starting a second lyric transition. Any
+  pending tapped-lyric focus is cleared when progress preview begins.
+  The edge fade now owns a separate offscreen parent layer and lyric rows no
+  longer use additive blending, preventing timed-word content from turning
+  black at the top or bottom mask. A line losing focus snaps immediately to its
+  inactive alpha, preventing its newly completed timed words from flashing
+  white while a seek changes the lyric clock. Complete Debug unit tests, Debug
+  Kotlin compilation, forced Debug assembly, APK archive validation, v2
+  signature verification, 16 KB ZIP alignment, and `git diff --check` passed.
+  Per maintainer direction, no emulator, ADB, screenshot, recording, or
+  interaction test ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `e9b3d3dc81c9f05b199eaea299288de4fde8ce5216aeee7cc8e17fad6e17d200`.
+- On 2026-08-09, full-player artwork insets changed to 4 dp while playing and
+  28 dp while paused. The shared-container production path stopped applying
+  endpoint overscan at `p = 1`; its measured target bounds now remain exact
+  through screen-corner settlement, removing the transient 1 dp bottom gap
+  before the in-place full-player layer takes over.
+- Later on 2026-08-09, full-player artwork insets were revised to 6 dp while
+  playing and 24 dp while paused, with the outer container expanded by 4 dp in
+  both dimensions. The portrait control panel bottom spacing is 32 dp. Progress
+  keeps a 26 dp gesture target, but its time labels begin 6 dp below the idle
+  indicator's actual lower edge, and the primary-control row begins 32 dp below
+  that edge; timestamp height no longer enlarges the first control gap. Debug
+  Kotlin compilation, focused Debug unit tests, and `git diff --check` passed.
+  No emulator, ADB, screenshot, recording, or interaction test ran.
+- Later on 2026-08-09, the lyric-size default was revised to 20 sp primary text
+  and 16 sp translation text. The setting remains a 70%-130% scale slider rather
+  than direct sp, yielding a 14 sp-26 sp primary-text range. Primary line height
+  is 28 sp at 100%, while translation retains 22 sp. The unavailable-lyrics
+  fallback shares the primary typography.
+- Later on 2026-08-09, the lyric-size baseline changed again to 24 sp primary
+  and 16 sp translation text, retaining the existing 28 sp/22 sp line heights
+  and the 70%-130% persisted slider range.
+- Later on 2026-08-09, dense lyric timestamps exposed that retaining a tapped
+  row until its centering spring completed could hide short intermediate lines.
+  The original lyric focus, manual-drag browsing, and blur-cancellation paths
+  remain unchanged. Only the root centering spring stiffness is increased for
+  short next-timestamp intervals, preserving the same continuous trajectory
+  while allowing dense lines to settle faster. Focused Debug unit tests cover
+  the interval-to-stiffness mapping and dense LRC line timestamps. No emulator,
+  ADB, screenshot, recording, or interaction test ran.
+- On 2026-08-10, the dense-lyrics rollback audit found that the retained
+  `DragInteraction.Start` signal was not a reliable manual-browsing entry point.
+  Lyric browsing now observes the final pointer pass without consuming it and
+  enters only for dominant vertical movement beyond touch slop; clicks,
+  horizontal movement, diagonal movement, and programmatic centering keep blur
+  enabled. The translated list and fixed edge fade now share an explicit
+  offscreen container, preventing the upper boundary from appearing at the
+  center during centering. The dense-interval stiffness-only behavior remains.
+  Debug Kotlin compilation and complete Debug unit tests passed. No emulator,
+  ADB, screenshot, recording, or interaction test ran.
+- Later on 2026-08-10, a tapped lyric target is released after centering and
+  seek application when playback reaches or passes that line. This prevents a
+  short line from permanently retaining list focus when it finishes before the
+  centering spring, while preserving the existing seek, manual-browsing, blur,
+  edge-fade, and dense-interval animation paths. Focused and complete Debug unit
+  tests, Debug Kotlin compilation, Debug assembly, APK archive validation, and
+  `git diff --check` passed. No emulator, ADB, screenshot, recording, or
+  interaction test ran. The verified `artifacts/Melox-debug.apk` has SHA-256
+  `a3ebacbd779a1bac5df32378eb1e5cc36c1ec6c60419b8dd077c1fe16606c848`.
+- On 2026-08-10, Flamingo comparison superseded the retained tapped-row focus
+  behavior. Lyric taps now only seek to the line start; current-line emphasis
+  and list centering are both driven by the same playback-time interval parser,
+  so dense lines transition in order at their real timestamps without a
+  requested-focus release race. Seek confirmation timing, manual-browsing blur
+  cancellation, and the dense-interval centering spring stiffness optimization
+  remain unchanged. Debug unit tests and Debug Kotlin compilation passed. No
+  emulator, ADB, screenshot, recording, or interaction test ran.
+- On 2026-08-10, full-player artwork keeps the 6 dp playing inset and changes
+  the paused inset to 26 dp. Its outer container now expands by 8 dp in both
+  dimensions, keeping the artwork centered while preserving the existing
+  spring motion. No emulator, ADB, screenshot, recording, or interaction test
+  ran.
+- Later on 2026-08-10, the full-player artwork geometry was restored to a 6 dp
+  playing inset, a 24 dp paused inset, and a 4 dp expansion of the outer
+  container in both dimensions. The spring parameters remain unchanged. No
+  emulator, ADB, screenshot, recording, or interaction test ran.
+- Later on 2026-08-10, full-player artwork changed to an 8 dp playing inset,
+  a 32 dp paused inset, and a 12 dp expansion of the outer container in both
+  dimensions. The artwork remains centered and the spring parameters remain
+  unchanged. No emulator, ADB, screenshot, recording, or interaction test ran.
+- Later on 2026-08-10, the portrait full-player spacing between the primary
+  transport row and the secondary action row changed from 16 dp to 20 dp. The
+  progress-edge-to-primary-row spacing remains 32 dp. No emulator, ADB,
+  screenshot, recording, or interaction test ran.
+- Later on 2026-08-10, the full-player title and artist rows use fixed 32 sp and
+  24 sp line heights respectively, with matching fixed layout slots. The title
+  keeps title3 with bold weight, while the artist keeps body2 with default
+  weight, 16 sp text, and the existing color. Language-specific font metrics
+  therefore cannot move the artwork.
+  No emulator, ADB, screenshot, recording, or interaction test ran.
+- Later on 2026-08-10, the portrait gap between the primary transport row and
+  the secondary action row was restored from 20 dp to 16 dp. The
+  progress-edge-to-primary-row spacing remains 32 dp. No emulator, ADB,
+  screenshot, recording, or interaction test ran.

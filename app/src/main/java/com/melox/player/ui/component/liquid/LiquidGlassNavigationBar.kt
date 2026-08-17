@@ -343,17 +343,13 @@ fun LiquidGlassNavigationBar(
     }
 
     val baseHighlight = containerHighlight ?: rememberFloatingBarHighlight(
-        active = blurActive || liquidGlassActive,
+        active = liquidGlassActive,
     )
     val pillHighlight = if (liquidGlassActive) {
         rememberGravityRotatedHighlight(iosIndicatorSpecular, extraDegrees = 90f)
     } else {
         null
     }
-    val blurHighlight = baseHighlight ?: remember(isDark) {
-        if (isDark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight
-    }
-
     // The indicator samples both the page and a hidden accent-colored copy of the tab contents.
     val combinedBackdrop = if (
         liquidGlassBackdrop != null &&
@@ -479,7 +475,7 @@ fun LiquidGlassNavigationBar(
                                                 ),
                                             ),
                                         ),
-                                        highlight = blurHighlight,
+                                        highlight = null,
                                     )
 
                                     else -> Modifier.background(containerColor, pillShape)

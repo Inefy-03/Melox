@@ -45,6 +45,7 @@ import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.MusicTrack
 import com.melox.player.model.LyricsUiState
 import com.melox.player.model.PlaybackUiState
+import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.ScanStatus
 import com.melox.player.model.ThemeMode
 import com.melox.player.model.withTrackMetadata
@@ -53,9 +54,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
@@ -158,6 +162,8 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     private val scanStatus = MutableStateFlow<ScanStatus>(
         if (hasInitialAudioPermission) ScanStatus.Scanning else ScanStatus.PermissionRequired,
     )
+    private val mutableScanNoChangesEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val scanNoChangesEvents: SharedFlow<Unit> = mutableScanNoChangesEvents.asSharedFlow()
     private val recentlyAddedTrackIds = MutableStateFlow<Set<Long>>(emptySet())
     private val lyricsRefreshRevision = MutableStateFlow(0L)
     val playbackState: StateFlow<PlaybackUiState> = playbackController.state
@@ -215,6 +221,7 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
             contentUri = item.contentUri,
             fileName = track?.fileName,
             folderPath = track?.folderPath,
+            durationMs = playback.durationMs,
             refreshRevision = refreshRevision,
         )
     }
@@ -394,7 +401,10 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Startup scanning never triggers a permission dialog; the Activity owns that UI flow.
         if (hasInitialAudioPermission) {
-            startMusicScan(restoreCachedTracks = true)
+            startMusicScan(
+                restoreCachedTracks = true,
+                refreshAfterRestore = initialSettings.refreshLibraryOnStart,
+            )
         }
     }
 
@@ -413,6 +423,54 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     fun setDynamicColorSource(source: DynamicColorSource) {
         viewModelScope.launch {
             settingsRepository.setDynamicColorSource(source)
+        }
+    }
+
+    fun setPlaybackBackgroundStyle(style: PlaybackBackgroundStyle) {
+        viewModelScope.launch {
+            settingsRepository.setPlaybackBackgroundStyle(style)
+        }
+    }
+
+    fun setLyricFontScale(scale: Float) {
+        viewModelScope.launch {
+            settingsRepository.setLyricFontScale(scale)
+        }
+    }
+
+    fun setLyricFontWeight(weight: Int) {
+        viewModelScope.launch {
+            settingsRepository.setLyricFontWeight(weight)
+        }
+    }
+
+    fun setForceWordByWordLyrics(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setForceWordByWordLyrics(enabled)
+        }
+    }
+
+    fun setLyricBlurEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setLyricBlurEnabled(enabled)
+        }
+    }
+
+    fun setCenterLyrics(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setCenterLyrics(enabled)
+        }
+    }
+
+    fun setHideControlsOnLyrics(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHideControlsOnLyrics(enabled)
+        }
+    }
+
+    fun setShowLyricsTranslation(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowLyricsTranslation(enabled)
         }
     }
 
@@ -443,6 +501,33 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     fun setPredictiveBackEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setPredictiveBackEnabled(enabled)
+        }
+    }
+
+    fun setRefreshLibraryOnStart(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setRefreshLibraryOnStart(enabled)
+        }
+    }
+
+    fun setSkipShortAudio(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setSkipShortAudio(enabled)
+        }
+    }
+
+    fun addCustomFolderUri(uri: Uri) {
+        val uriString = uri.toString()
+        viewModelScope.launch {
+            settingsRepository.addCustomFolderUri(uriString)
+            musicRepository.clearCachedMusic()
+        }
+    }
+
+    fun removeCustomFolderUri(uriString: String) {
+        viewModelScope.launch {
+            settingsRepository.removeCustomFolderUri(uriString)
+            musicRepository.clearCachedMusic()
         }
     }
 
@@ -585,10 +670,18 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
             markPermissionRequired()
             return
         }
-        startMusicScan(restoreCachedTracks = false)
+        startMusicScan(
+            restoreCachedTracks = false,
+            refreshAfterRestore = true,
+            notifyIfUnchanged = true,
+        )
     }
 
-    private fun startMusicScan(restoreCachedTracks: Boolean) {
+    private fun startMusicScan(
+        restoreCachedTracks: Boolean,
+        refreshAfterRestore: Boolean,
+        notifyIfUnchanged: Boolean = false,
+    ) {
         // The UI invokes commands on the main thread, so this debounces repeated scan taps.
         if (scanJob?.isActive == true) return
 
@@ -611,14 +704,21 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
                 // become usable while the library tabs are prepared off the UI thread.
                 library.value = LibraryProjection(tracks = cachedTracks)
                 library.value = createLibraryProjection(cachedTracks)
+                if (!refreshAfterRestore) {
+                    scanStatus.value = ScanStatus.Success(cachedTracks.size)
+                    return@launch
+                }
             }
 
             try {
+                val settings = loadedSettings.value.value
                 val previousTracks = cachedTracks ?: library.value.tracks
                 val previousTrackIds = previousTracks.mapTo(mutableSetOf(), MusicTrack::id)
                 val scannedTracks = musicRepository.scanMusic(
                     previousTracks = previousTracks,
-                    refreshAudioProperties = !restoreCachedTracks,
+                    refreshAudioProperties = false,
+                    customFolderUris = settings.customFolderUris,
+                    skipShortAudio = settings.skipShortAudio,
                 )
                 recentlyAddedTrackIds.value = if (previousTracks.isEmpty()) {
                     emptySet()
@@ -629,12 +729,16 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
                         .filterNot(previousTrackIds::contains)
                         .toSet()
                 }
-                if (scannedTracks != previousTracks) {
+                val libraryChanged = scannedTracks != previousTracks
+                if (libraryChanged) {
                     library.value = LibraryProjection(tracks = scannedTracks)
                     library.value = createLibraryProjection(scannedTracks)
                     musicRepository.cacheMusic(scannedTracks)
                 }
                 scanStatus.value = ScanStatus.Success(scannedTracks.size)
+                if (shouldEmitScanNoChanges(libraryChanged, notifyIfUnchanged)) {
+                    mutableScanNoChangesEvents.emit(Unit)
+                }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (exception: Exception) {
@@ -683,3 +787,8 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
     }
 }
+
+internal fun shouldEmitScanNoChanges(
+    libraryChanged: Boolean,
+    notifyIfUnchanged: Boolean,
+): Boolean = !libraryChanged && notifyIfUnchanged

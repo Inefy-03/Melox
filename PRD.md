@@ -17,15 +17,21 @@ Melox lets Android users find and play music already stored on their device thro
 - On entry, ask for only the platform audio permission required for the current
   Android version when it is missing. Granting this startup request does not
   start a scan.
-- The Settings `Scan local music` preference starts `MediaStore.Audio`
-  scanning. If permission is missing, it requests permission in place and
-  scans immediately after that manual request succeeds; denial only dismisses
-  the system dialog and never redirects to app settings.
+- The Settings `Scan music` preference shows `No songs` when the library is
+  unscanned or empty, otherwise the current localized song count, and opens a
+  dedicated scan page. That page uses the default collapsible Miuix large-title
+  bar and controls refresh-on-launch, excluding audio shorter than 60 seconds,
+  persisted custom folders selected through Android's folder picker, and the
+  explicit full-width scan action. Switches and folder additions/removals update
+  visually before persistence completes. The scan button keeps its `Start scan`
+  label while disabled during a scan; an explicit scan with no library changes
+  shows a localized `No music file changes` Toast. If permission is missing,
+  the explicit scan requests it in place and continues immediately after grant.
 - Cache the last successful result and keep cached rows visible during refresh.
 - The four root destinations are Home, Songs, Library, and Settings. Home is
   labeled `首页` in Simplified Chinese and is always the first navigation item
   and first root page.
-- Home follows the Flamingo-style information hierarchy with a Miuix large
+- Home follows the local information hierarchy with a Miuix large
   title and a horizontally paged Random recommendations section built from local
   tracks that have real artwork. Each application opening chooses a fresh
   random set while retaining that set during the session. It prioritizes and
@@ -34,17 +40,34 @@ Melox lets Android users find and play music already stored on their device thro
   swipe. When no further local tracks with artwork remain, the carousel ends
   without repeating a song. The horizontal list alone keeps 16 dp start/end
   screen padding;
-  fixed-width 256 dp recommendation cards retain carousel spacing rather than
+  fixed-width 240-by-310-dp recommendation cards retain carousel spacing rather than
   receiving their own 16 dp margins. A recommendation tap starts the selected
   song, follows it with the other distinct loaded recommendation cards in their
   carousel order, and then appends the remaining scanned songs in the current
   playback-mode order. A later playback-mode change reorders the complete queue
   for that mode and does not retain the recommendation prefix.
-  Once the carousel has moved past its first card, its horizontal gesture owns
-  the drag until it returns to the first card, so the root Home pager does not
-  steal a continued recommendation swipe.
-  The metadata area has enough height for its white title and semi-transparent
-  white artist without clipping. Both Home section headers use `title4` at the
+  A gesture beginning inside the carousel temporarily owns root paging only on
+  an interior recommendation page. At either carousel end, an outward swipe is
+  handed to the root pager; gestures beginning outside the carousel always
+  retain root-page navigation. Recommendation overscroll is disabled so a
+  finite carousel cannot stretch the complete Home page at its last card.
+  When the Blur setting is enabled, each recommendation card draws a 240 dp
+  clear cover above a cached, vertically mirrored artwork extension. The
+  extension is generated once per artwork URI and file version from a 512 px
+  cover: a centered 96 px sample receives 1.5x saturation, a 5-by-5 mesh
+  deformation, dark overlays, and a radius-25 offline blur. From two-thirds of
+  the clear-cover height, a transparent-to-opaque gradient alpha-masks the
+  reflected layer so it progressively replaces the clear cover and remains
+  dark beneath the white title and semi-transparent white artist. Scrolling and
+  recomposition draw only the cached bitmap and gradient; they never run a live
+  backdrop or `BarBlurEffect`. The card remains hidden until the clear artwork
+  and, when Blur is enabled, the cached reflection are both ready, so it never
+  flashes the color-bar presentation while blur processing finishes. When Blur
+  is disabled, the card waits only for the clear artwork and retains its existing
+  darkened artwork-color metadata bar. Both paths use that original color-bar
+  70 dp metadata-bar height and text position: 18 dp from the card's left edge
+  and 14 dp from its bottom edge. Both paths avoid clipping. Both Home
+  section headers use `title4` at the
   default weight with a 28 dp left inset. Recommendation seed, resolved track IDs, and
   completion state belong to the retained root UI rather than the disposable
   Home page, so switching away and back cannot reload or rerandomize the
@@ -123,7 +146,7 @@ Melox lets Android users find and play music already stored on their device thro
   as dependent theme settings and leaves 6 dp below the field. Every search
   field has 16 dp of outer horizontal spacing and uses the generic Search / 搜索
   hint.
-- Albums expose 2-column and 3-column grid styles and sort by album name,
+- Albums expose small-cover (2-column) and large-cover (3-column) grid styles and sort by album name,
   album artist, song count, or year. The 2-column style uses a rounded
   horizontal card with a square cover at the left and two text lines at the
   right. The 3-column style has no outer card: its rounded square cover, album
@@ -140,7 +163,9 @@ Melox lets Android users find and play music already stored on their device thro
   different album IDs or their track artists differ.
   The Album sort popup uses Miuix dropdown positioning, measures the complete
   option column so `Descending` is visible without initial scrolling, and
-  flips above the action when the lower viewport cannot show all options.
+  flips above the action when the lower viewport cannot show all options. Each
+  official dropdown option occupies the complete popup width, making the whole
+  row selectable and keeping the selected `Ok` indicator at the trailing edge.
 - Folders group tracks by their direct parent directory. Each row follows the
   song-row information hierarchy, uses the folder name as its title, and shows
   a localized song count followed by the shared-storage-relative path. For
@@ -154,15 +179,21 @@ Melox lets Android users find and play music already stored on their device thro
   Opening a folder shows only tracks directly in that folder and reuses the
   Songs page's rows, search, sorting, index, queue creation, and track actions.
 - Album and artist detail pages use 16 dp horizontal margins and the same song
-  rows and actions as the Songs page. Album artwork, album name, album artist,
-  and song count stay fixed above the album song list. A missing album-artist
-  tag displays `Unknown album artist`; it never falls back to a track artist.
-  Artist summaries use the
-  localized `album count - song count` order on both root and detail pages.
+  rows and actions as the Songs page. The Album-detail cover matches the root
+  three-column grid width and 14 dp corner radius, and its album title uses
+  `title3`; album name, album artist, and song count stay fixed above the album
+  song list. A missing album-artist tag displays `Unknown album artist`; it
+  never falls back to a track artist. The Artist-detail header uses a 72 dp
+  cover and `title3` artist name, followed by separate song-count then
+  album-count rows using the Album-detail year/count 12 sp styling. Artist
+  summaries on the root page retain the localized `album count - song count`
+  order.
   Album and artist detail top bars keep an empty small title because their
   fixed metadata already shows identity. The artwork and metadata are hosted
   in the top bar's Miuix `bottomContent`, and the artist tab selector joins that
-  same fixed blurred or opaque-fallback surface. Album-detail song rows omit the
+  same fixed blurred or opaque-fallback surface: when Blur is active, its Card
+  and contour background are transparent so the outer bar blur remains visible.
+  Album-detail song rows omit the
   current album suffix, while artist-detail song rows omit the current artist
   prefix. The artist-detail album tab uses the same 2-column or 3-column Album
   grid style selected for the root Albums page.
@@ -206,6 +237,11 @@ Melox lets Android users find and play music already stored on their device thro
   loop glyph horizontally so its arrows read clockwise; the separate Repeat-one
   `1` badge remains unmirrored.
   Previous and Next always switch directly to adjacent queue items.
+- Audio playback automatically tries the system Media3 decoder first and a
+  locally built FFmpeg audio decoder extension second, while retaining Media3
+  decoder fallback. Unsupported-audio errors remain available to playback state
+  and system controls, show the localized message once as a Toast, and render
+  no error text in the full-player title area.
 - Continue in the background and expose metadata and controls to Android.
 - Restore the complete queue and position after leaving and reopening the app
   or after process restart, without autoplay.
@@ -217,10 +253,25 @@ Melox lets Android users find and play music already stored on their device thro
 - Read timestamped LRC and TTML from an embedded audio tag when present, then
   fall back to same-name external `.lrc` or `.ttml` files beside the audio.
   Missing, unreadable, or untimed lyrics do not interrupt playback.
+- Replace the previous lyric model, parser, and renderer with the local-only
+  timestamped lyric behavior: retain line, translation, agent, and word timing
+  data; render true word timing when available; and optionally reveal ordinary
+  timed lines at a linear speed. Do not integrate Lyricon, notification or
+  MediaSession lyric publishing, Lyric Getter, or Super Lyric APIs.
+- Precompute a stable three-dot transition item while parsing whenever the
+  measured gap from one lyric ending to the next lyric beginning is at least
+  5000 ms. The finished lyric must release focus during that gap instead of
+  remaining enlarged and bright. Dot size and spacing scale together with the
+  configured lyric size. A transition between two lyric lines keeps the same
+  vertical rhythm as ordinary rows; only the leading transition retains its
+  compact top-of-document spacing, and no trailing transition is created.
+- Switching tracks shows no lyric-loading message. The previous document fades
+  out, the incoming document fades in only after it is available, and the lazy
+  lyric list composes the visible viewport before off-screen rows.
 
 ### UI
 
-- Keep the UixPlayer library design.
+- Keep the existing library design.
 - The trailing More icon in every song row keeps its 36 dp button hit area but
   has no pressed overlay. Its action sheet has no leading Close action and
   retains the selected song until the Miuix bottom-sheet exit animation fully
@@ -228,9 +279,15 @@ Melox lets Android users find and play music already stored on their device thro
   summary card with the same option background and 56 dp artwork has 12 dp
   left/top/bottom artwork-side padding and is followed by one preference-style
   action card for Play next, Add to queue, Album, Artist, and Song information.
-  Immediately before Song information, Edit with Music Tag Editor opens the
-  selected audio URI in `com.xjcheng.musictageditor`, and Edit with Lyrico
-  opens it in `com.lonx.lyrico`; both actions use the Miuix Edit icon.
+  Immediately before Song information, Edit with Music Tag Editor follows the
+  Halcyon-compatible launch order: explicit `ACTION_EDIT` to
+  `com.xjcheng.musictageditor.SongDetailActivity` with the file path and track
+  metadata, followed by explicit/package `ACTION_VIEW` and package
+  `ACTION_SEND` fallbacks using the selected MediaStore URI. Edit with Lyrico
+  uses `com.lonx.lyrico.action.EDIT_TAG` with the URI, audio MIME type, stream,
+  and track metadata. Both actions use the Miuix Edit icon and grant temporary
+  URI read/write access. If the target application is unavailable, the sheet
+  stays open and shows its localized application-specific not-found message.
   Add to queue uses a 20 dp icon shifted 1 dp right with 2 dp more text gap.
   Album and Artist action labels clamp to one line with an ellipsis. A single
   artist opens its matching library detail page; multiple artists open a
@@ -292,17 +349,20 @@ Melox lets Android users find and play music already stored on their device thro
   expands between their measured screen bounds, while one artwork overlay
   travels between the measured cover bounds. The cover grows, moves right,
   and moves upward into the full-player artwork; it keeps a uniform scale and
-  rounded rectangle with no rotation, skew, or narrow-top/wide-bottom
+  reaches the full player's 12 dp continuous-corner crop with no rotation,
+  skew, or narrow-top/wide-bottom
   deformation. Bar content fades out as page content fades in on the same
   reversible progress.
 - During shared expansion, the recorded mini-player layer contains only bar
   content. The shared container redraws the existing Miuix blur or liquid-glass
-  surface at its current interpolated size using the same backdrop, highlight,
-  dark/light, outline, and opaque-fallback parameters. Content handoff reaches
+  surface at its current interpolated size using the same backdrop, dark/light,
+  outline, and opaque-fallback parameters. Ordinary floating blur adds only the
+  blur treatment and never draws a highlight; the shared highlight is retained
+  only while liquid glass is active. Content handoff reaches
   the full-player layer at `p = 0.25`, while the glass surface remains active
-  until the shared container is fully expanded, matching VMusic's
-  `isFullyExpanded` boundary. The VMusic backdrop implementation and its fixed
-  blur/refraction values are not migrated. The floating highlight and
+  until the shared container is fully expanded, matching the shared container's
+  `isFullyExpanded` boundary. The previous backdrop implementation and its fixed
+  blur/refraction values are not migrated. The liquid-glass highlight and
   navigation-matched shadow fade from full strength at expansion start to zero
   at the content handoff. One observable progress drives both pointer movement
   and spring settlement, so the shared cover cannot remain at the release frame
@@ -317,7 +377,7 @@ Melox lets Android users find and play music already stored on their device thro
 - The full-player background reuses the cached artwork bitmap and rebuilds it as
   an 8-by-8 HCT color field off the main thread. Every pixel retains its hue,
   caps realized chroma at 32, and uses tone 64 in light theme or 32 in dark
-  theme. The center 4-by-4 pixels seed one VMusic-style background bitmap. Its
+  theme. The center 4-by-4 pixels seed one background bitmap. Its
   four 2-by-2 output quadrants then interpolate through matching pixel positions
   in the center, horizontal side, outer corner, and vertical side regions:
   top-left and bottom-right move clockwise with 24-second then 18-second laps,
@@ -326,7 +386,7 @@ Melox lets Android users find and play music already stored on their device thro
   clockwise through quarter-turn pixel mappings every 18 seconds. Each endpoint
   rotates the local pixel coordinates with the grid, and adjacent quarter-turn
   states interpolate continuously, preventing a cross-shaped center boundary.
-  The output uses the VMusic rendering path: one remembered `BitmapPainter`
+  The output uses the local bitmap rendering path: one remembered `BitmapPainter`
   with `FilterQuality.Low`, displayed by `Image` with `ContentScale.Crop`.
   Compose/Skia bilinear sampling and continuous ARGB interpolation blend
   adjacent samples without hard boundaries. The bitmap stays fixed and has no
@@ -338,19 +398,29 @@ Melox lets Android users find and play music already stored on their device thro
 - Provide a full player with a safe artwork-derived color field. Song title and
   artist are stacked at the top without a visible back button or "Now
   playing" label. The slightly smaller, less-rounded artwork has a restrained
-  shadow that fades in only after shared expansion has finished and is centered
-  between that identity and the lower Miuix progress indicator. Playing uses
-  100% of its layout bound and pausing reduces the visible artwork to 90%.
-  Pausing shrinks with a fast-to-slow non-linear curve. Resuming briefly grows
-  the artwork to 102%, then rebounds to 100%; both resume segments use the same
-  fast-to-slow curve. The indicator's idle width follows the playing artwork size. It
+  shadow that fades in and out with shared expansion and is centered
+  between that identity and the lower Miuix progress indicator. Its fixed outer
+  layout position does not move: its container is 12 dp larger in both dimensions,
+  while the visible cover uses an 8 dp internal inset during playing and a 32 dp
+  inset while paused. Both directions use one spring with damping ratio 0.6 and
+  stiffness 200, so playback resume naturally rebounds around the 6 dp target.
+  The indicator's idle width follows the artwork layout bound. It
   supports tap-to-seek and drag-to-seek and scales uniformly
   in both axes while pressed, preserving its foreground progress and rounded
-  ends. Its normal width matches the artwork and the time labels sit slightly
-  closer to it. Previous,
-  play/pause, and next form the first control row; playback mode, queue, and
-  track actions form the second row with one consistent icon size. Previous,
-  play/pause, and next retain their intentionally distinct primary sizes.
+  ends. Its normal width matches the artwork and the time-label row begins 6 dp
+  below the actual lower edge of the idle indicator rather than its larger
+  gesture target. Previous,
+  play/pause, and next form the first control row; playback mode, Lyrics
+  settings, queue, and track actions form the second row. The four secondary
+  actions are distributed across the complete portrait row so every adjacent
+  gap and both screen-edge gaps are equal. The actual idle progress-indicator
+  edge to the primary-control row is 32 dp, while the primary-to-secondary-controls
+  gap is 16 dp; timestamp height is not added to the first gap. The portrait control panel
+  does not consume the navigation-bar bottom inset, matching the full-height
+  hidden-controls Lyrics page while retaining 32 dp of its own bottom spacing.
+  Play/Pause uses a 42 dp glyph inside
+  its retained 80 dp touch target, while Previous/Next use 26 dp glyphs inside
+  retained 64 dp touch targets.
   Song title, Previous, Play/Pause, and Next use solid white in both themes.
   Artist, remaining actions, progress, and time labels use 80% white; none of
   these foreground colors are derived from artwork.
@@ -372,12 +442,117 @@ Melox lets Android users find and play music already stored on their device thro
 - The pressed progress indicator is scaled as one complete Miuix component.
   Foreground, background, progress fraction, width, height, and rounded ends
   keep the same proportions; no individual axis or internal track is distorted.
+  Current time and total duration remain in a dedicated row below the indicator
+  and never share its layout layer or overlap it.
 - The artwork/lyrics pager accepts a horizontal gesture from the full screen
   edges rather than only from the artwork bounds. Changing tracks while Lyrics
   is selected keeps Lyrics selected and updates only the track-dependent
   background, metadata, and lyric document. Lyrics match the progress and
-  playing-artwork width. Primary lyric text is slightly larger, and additional
-  same-timestamp translation lines render at 80% of their primary lyric size.
+  playing-artwork width without another per-line horizontal inset, so the lyric
+  cutoff edges and progress-bar edges align. With controls visible, the lyric
+  viewport begins 16 dp below the identity header and ends 16 dp above the
+  progress indicator. Its top and bottom use the same fade treatment. The
+  playing line is centered vertically in that viewport. Dragging the lyric list
+  immediately moves every line as one surface, removes inactive-line blur, and
+  keeps the manually browsed list sharp after release. While playback remains
+  active, five seconds without another manual lyric scroll restores blur and
+  automatically centers the currently playing lyric. Progress-bar seeks use one
+  uninterrupted smooth movement to the target lyric without first centering an
+  earlier row. Tapping any lyric, including a blurred inactive line, seeks and
+  centers on the first tap. Blur remains a visual-only graphics-layer effect on
+  the same full-width row modifier as its indication-free clickable target, so
+  it cannot remove or shrink the pointer hit area; pressing Play also resumes
+  following immediately. Lyric taps retain their full hit target without drawing
+  a rounded pressed surface.
+  The first layout of a newly mounted Lyrics page positions the active line at
+  the viewport center without a scroll animation; later playback-driven line
+  changes retain the coordinated automatic scroll. When no translation is
+  visible, whether the file has no translation or translation is disabled in
+  settings, primary lyric rows use the same enlarged inter-line spacing. In
+  word-by-word lyrics, unrevealed text uses the same color strength as other
+  inactive lyric lines.
+  With Hide controls on Lyrics enabled, the artwork and its complete control
+  panel become page zero while Lyrics becomes a full-height page one; the lyrics
+  extend to the physical screen bottom with no bottom fade. Its active lyric is
+  centered against the complete playback page rather than the reduced region
+  below the identity header. The visible system
+  navigation controls overlay the playback background without an independent
+  navigation-bar surface, while page-zero artwork and controls still consume
+  the bottom system inset. The page switch never collapses, lifts, translates, or
+  fades a shared control panel. Both control-hiding modes
+  use the same portrait page skeleton: the artwork viewport occupies the region
+  between the identity header and progress indicator, and the cover is centered
+  inside that viewport. Toggling the setting therefore cannot move or resize
+  the cover on page zero. The identity title and artist use fixed single-line
+  layout slots with explicit centered line heights of 32 sp for the title and
+  24 sp for the artist, so Latin, Japanese, and
+  fallback font metrics cannot change the header height or move the title and
+  cover between tracks. The artist uses 16 sp text within its 24 sp line-height
+  slot. Current-item changes crossfade the complete identity
+  header with a 140 ms fade out and 180 ms fade in. Artist metadata is
+  normalized into names joined by ` / `, with the slash rendered at thin weight.
+  The 100% lyric size uses 24 sp primary text with 28 sp line height and 16 sp
+  translation text with 22 sp line height. The lyric-size setting remains a
+  percentage scale rather than a direct sp control: 70% through 130% maps the
+  primary text from 16.8 sp through 31.2 sp, and scales both styles together.
+- The secondary control row places a Miuix `ConvertFile` lyric-settings action
+  between playback mode and queue. The settings bottom sheet starts with a
+  default-on, icon-free Lyrics translation toggle with no description, followed
+  in this exact order by Lyrics size, Lyrics weight, Center lyrics, Lyric blur,
+  Hide controls on Lyrics, and Force word-by-word lyrics. Lyrics size remains a
+  `0.7–1.3` `SliderPreference` with percentage labels, not a direct-sp control.
+  Lyrics weight defaults to 400 and exposes the
+  discrete values 100 through 900 in steps of 100; synthesized weight is
+  disabled, so a font without a usable weight face or variation axis may show
+  no visual change.
+  The Hide controls item has no description. Lyrics align to the start edge by default;
+  Center lyrics affects primary and translation text together. The force option
+  describes that non-word-timed lyrics are displayed with a linear gradient
+  speed. A previous stored 80% scale migrates to the new 100% value. Playback
+  time is interpolated on display frames while playing so native and forced
+  word-by-word animation does not advance in 500 ms steps. Timed lyrics use
+  a Canvas glyph layout and an independent 100 px soft progress edge
+  for every wrapped row. Forced word-by-word lyrics also reveal wrapped rows in
+  reading order, completing one row before starting the next instead of moving
+  every row at once. Centered forced word-by-word text remains centered for the
+  entire reveal instead of switching alignment while active. CJK, Arabic,
+  Devanagari, and
+  fast words use the 700 ms simple 4 px float; only eligible slower words use
+  the staggered character rise, scale, and glow path. The previous per-row
+  lookahead/placement animation is removed permanently. Lyric rows never animate
+  their vertical offsets independently. Playback changes, lyric taps, and
+  progress seeks place the retained LazyColumn at the requested target once,
+  then animate one root visual translation back to zero so every row moves as
+  one coordinated surface. The LazyListState is not left in a programmatic
+  scroll animation, allowing another lyric row to receive a click immediately.
+  Per-line vertical padding is slightly reduced.
+- A tapped lyric seeks to its timestamp and then follows the same playback-time
+  parsing path as ordinary lyric progression; it does not create a parallel
+  visual focus target or suppress the current-line transition while the seek is
+  being applied. Progress-bar seeks still use the requested playback position
+  to prevent stale controller positions from centering earlier rows. The target
+  then centers with the coordinated root-translation animation. The centering
+  spring keeps its existing stiffness for ordinary timestamp gaps and increases
+  stiffness for dense gaps according to the next timestamp interval, so the same
+  continuous movement settles faster without discretely jumping between lyric
+  rows or changing manual-browsing behavior. Progress-bar dragging continuously previews the
+  dragged timestamp in Lyrics without committing repeated player seeks; release
+  commits one seek through the same callback as a progress-bar tap. A tapped visible row uses its measured viewport
+  offset and height for that operation, so large lyric content padding cannot
+  place it below center. An off-screen target is placed directly outside the
+  visible viewport and enters with one non-bouncing directional animation
+  instead of flashing near center or scrolling through intermediate rows.
+  Only the first placement of a newly mounted document is direct and hidden. A
+  second lyric tap during an unfinished centering animation retargets that same
+  visual animation on the first tap. A programmatic lyric tap, including a
+  blurred inactive line, retains blur while centering, but a parent observer only
+  enters browsing after dominant vertical movement exceeds touch slop in the final
+  pointer pass; it does not consume the event, so normal lyric clicks remain intact.
+  The translated list uses a fixed edge fade layer, so the top and bottom boundary
+  do not move into the viewport during centering. Pausing freezes the current smooth lyric clock, so pausing as a
+  new line starts cannot return the display to the previous line. Changing
+  tracks clears the previous track's seek request before the next lyric document
+  is shown and initializes the new document from its own playback position.
 - A host that remains composed in both mini and full-player states warms the
   current, previous, and next artwork through the shared bounded cache.
   Switching songs retains the previous rendered cover and atmosphere until the
@@ -409,9 +584,12 @@ Melox lets Android users find and play music already stored on their device thro
   farther left without moving the resting title or artist. The navigation
   divider is visually reduced.
 - In floating navigation, the mini player matches the navigation pill's width,
-  64 dp height, blur/lens treatment, and gravity-following highlight with an
-  8 dp gap. Its final blurred layer is clipped to the same larger pill corner
-  radius. The navigation pill and mini player share one Miuix-style 10 dp black
+  64 dp height, and optional blur treatment with an 8 dp gap. Ordinary floating
+  mode has no highlight whether Blur is enabled or disabled; enabling Blur only
+  adds backdrop blur to the existing opaque floating style. Liquid glass alone
+  adds the lens and gravity-following highlight. The final blurred layer is
+  clipped to the same larger pill corner radius. The navigation pill and mini
+  player share one Miuix-style 10 dp black
   drop-shadow implementation (20% dark / 10% light). The mini artwork is
   44 dp, remains shifted inward,
   and the two trailing controls use matching compact geometry with reduced
@@ -439,25 +617,34 @@ Melox lets Android users find and play music already stored on their device thro
   projections, artwork extraction, and the full library snapshot remain
   asynchronous.
 - Keep normal screens visually restrained. If artwork or shader support is unavailable, use Miuix theme surfaces without losing information.
+- The root pager's outer overscroll reveals the current Miuix surface rather
+  than the transparent window, including the Home and Settings edge pages in
+  light mode.
 
 ### Settings
 
-- Main settings: Language, default Home page, Theme settings, Scan local music,
+- Main settings: Language, default Home page, Theme settings, Scan music,
   About.
 - Theme settings: System/Light/Dark, blur, floating bottom bar, liquid glass,
   predictive back, and dynamic colors at the end of the Appearance group.
-  Dynamic colors default to the complete system desktop-wallpaper Monet palette.
+  Playback background lives in a separate card immediately below Appearance
+  without another section title.
+  Dynamic color source defaults to Playing song artwork and falls back to the
+  complete system desktop-wallpaper Monet palette when no cover is available.
   When enabled, a dependent Miuix dropdown titled `Color source` / `颜色来源`
-  lets the user switch between `Desktop wallpaper` / `桌面壁纸` and
-  `Playing song artwork` / `播放歌曲封面`; the artwork choice falls back to the
-  desktop-wallpaper color until a cover is available.
+  lists `Playing song artwork` / `播放歌曲封面` before
+  `Desktop wallpaper` / `桌面壁纸`; the artwork choice falls back to the
+  desktop-wallpaper color until a cover is available. When playback changes,
+  the complete application palette interpolates from its currently displayed
+  colors to the new artwork palette instead of switching instantly, including
+  changes to and from the desktop-wallpaper fallback when artwork is missing.
 - System light/dark changes update the active composition in place. An expanded
   player remains expanded, the mini-player remains immediately clickable, and
   the artwork field reuses its sampled source pixels so only the HCT tone target
   changes.
 - Liquid glass appears only with floating navigation and is disabled with an explanation when unsupported.
-  Enabling floating navigation turns liquid glass on by default; disabling
-  floating navigation turns it off.
+  Enabling or disabling floating navigation resets liquid glass to off; the
+  user must enable liquid glass separately after entering floating mode.
 - The liquid-glass preference enters and exits with the official Miuix
   dependent-preference `AnimatedVisibility` motion when floating navigation is
   toggled.
@@ -475,7 +662,7 @@ Melox lets Android users find and play music already stored on their device thro
   TagLib JNI bridges, Media3 playback/session behavior, Miuix/Compose runtime
   metadata, English and Simplified Chinese resources, and versioned snapshot
   restoration. Direct Release APKs retain 32-bit and 64-bit ARM support while
-  excluding emulator-only x86 ABIs; Debug keeps all dependency-provided ABIs.
+  excluding emulator-only x86 ABIs; Debug and Release keep only `arm64-v8a`.
 - A deliverable R8 Release includes a non-empty mapping file for crash
   retracing. It must pass Release compilation, vital lint, archive validation,
   signing validation, and 16KB alignment checks for APK entries and every
@@ -533,8 +720,10 @@ store publishing.
   measured mini/full endpoints without a geometry jump. Release direction picks
   the spring destination; a cancelled drag returns to its origin instead of
   crossing through the opposite endpoint.
-- The floating mini player and navigation pill share the same captured backdrop
-  and gravity-following highlight. The mini blur is clipped to its larger pill
+- The floating mini player and navigation pill share the same captured backdrop.
+  Ordinary floating mode never draws a highlight; Blur only adds backdrop blur.
+  When liquid glass is active, both surfaces additionally share the
+  gravity-following highlight. The mini blur is clipped to its larger pill
   radius, and the navigation shadow matches the official Miuix 10 dp treatment.
 - Mini and full-player artwork are independently requested at their layout
   sizes. A current cover remains visible while the next track cover loads, then
@@ -550,15 +739,27 @@ store publishing.
   their existing crop presentation.
 - Full-player background and controls follow the shared-player progress while
   the artwork overlay is in flight; the settled page uses the normal final
-  layout and the settled mini player uses the normal bar layout.
-  The artwork-derived full-player background uses the cached 8-by-8 HCT color
-  field with realized chroma capped at 32 and tone fixed to 64 or 32. Its
-  animated center-seeded 4-by-4 output follows the quadrant orbit timing above,
-  while its complete color grid rotates through pixel mappings every 18 seconds
-  during active playback. The bitmap geometry does not rotate. It uses
-  a fixed `#242424` fallback when artwork is unavailable and adds no local AAR.
-  The playback artwork frame retains its original `secondaryContainer` color
-  but has no centered Music icon.
+  layout and the settled mini player uses the normal bar layout. Theme settings
+  provide a persisted `Playback background` choice with `Blurred artwork` as the
+  default and `Flowing colors` as the alternative. The blurred mode precomputes
+  one center-cropped 128 px radius-25 background per artwork without using the
+  legacy native Toolkit AAR. Its presentation applies a paused-aware 12-second
+  Ken Burns crop transition. The current and adjacent blurred background layers
+  are prefetched with the current item first and their complete
+  layers are retained in a bounded memory cache, so opening the player can draw
+  the prepared blur on its first frame without flashing the clear cover. The
+  centered page cover retains its shared mini-player trajectory. The shared container
+  uses the exact measured full-player bounds while its final screen corners
+  settle, avoiding a transient 1 dp bottom gap before the in-place page layer
+  takes over. Lyrics does not apply a separate enlarged background transform.
+  The flowing-colors mode retains the cached 8-by-8 HCT field with realized
+  chroma capped at 32 and tone fixed to 64 or 32. Its animated center-seeded
+  4-by-4 output follows the quadrant orbit timing above, while its complete
+  color grid rotates through pixel mappings every 18 seconds during active
+  playback. The bitmap geometry does not rotate. Both modes use a fixed
+  `#242424` fallback when artwork is unavailable. The playback artwork frame
+  retains its original `secondaryContainer` color but has no centered Music
+  icon.
 - Secondary and tertiary page backgrounds remain visible and blur correctly
   from the mini-player top through the screen bottom while their last
   interactive item remains reachable above the mini player.
@@ -610,6 +811,13 @@ store publishing.
 - Timestamped embedded and external LRC/TTML samples load without network
   access, switch through the full-player horizontal gesture, and track a seek
   or playback-position change without escaping the lyric viewport.
+- Lyric size, 100–900 lyric weight, forced linear word-by-word reveal,
+  inactive-line blur, start/center alignment, and Lyrics control hiding update
+  the open player immediately and persist across restart. The first icon-free
+  lyric-settings switch independently
+  shows or hides parsed translation text and also persists. No Lyricon,
+  notification/MediaSession lyric, Lyric
+  Getter, or Super Lyric integration is present in the application code or manifest.
 - Every theme-mode selection updates both the preference value and popup
   selection immediately before persistence completes, and predictive back can
   be toggled repeatedly from Theme settings without an app restart or crash.

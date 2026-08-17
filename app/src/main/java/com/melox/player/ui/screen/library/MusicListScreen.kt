@@ -70,7 +70,7 @@ fun MusicListScreen(
         start = contentPadding.calculateStartPadding(layoutDirection),
         top = contentPadding.calculateTopPadding() + 12.dp,
         end = contentPadding.calculateEndPadding(layoutDirection),
-        bottom = contentPadding.calculateBottomPadding(),
+        bottom = contentPadding.calculateBottomPadding() + 12.dp,
     )
     val showScrollTop by remember {
         derivedStateOf { scrollBehavior.state.collapsedFraction > 0.01f }

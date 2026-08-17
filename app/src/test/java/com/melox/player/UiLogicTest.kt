@@ -1,8 +1,10 @@
 package com.melox.player
 
 import android.Manifest
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.materialkolor.hct.Hct
 import com.melox.player.data.library.AlbumGridStyle
@@ -38,6 +40,8 @@ import com.melox.player.data.library.splitArtistNames
 import com.melox.player.data.playback.PlaybackSnapshotCodec
 import com.melox.player.data.playback.retainReadableItems
 import com.melox.player.data.playback.toStartupPlaybackPreview
+import com.melox.player.data.repository.migrateLegacyLyricFontScale
+import com.melox.player.data.repository.normalizeLyricFontWeight
 import com.melox.player.data.repository.resolveAlbumGridStyleOrdinal
 import com.melox.player.model.AppSettings
 import com.melox.player.model.AudioQuality
@@ -45,6 +49,7 @@ import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.MusicTrack
 import com.melox.player.model.PlaybackMode
+import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackSnapshot
 import com.melox.player.model.PlaybackUiState
@@ -65,6 +70,7 @@ import com.melox.player.playback.toInitialPlaybackState
 import com.melox.player.ui.component.library.findAlphabetTargetIndex
 import com.melox.player.ui.component.library.fitArtworkDimensions
 import com.melox.player.ui.component.library.formatDuration
+import com.melox.player.ui.component.library.playbackArtworkShadowBounds
 import com.melox.player.ui.component.library.artworkCacheFileStem
 import com.melox.player.ui.component.library.createArtworkCacheKey
 import com.melox.player.ui.component.library.AlphabetSections
@@ -74,7 +80,10 @@ import com.melox.player.ui.component.library.participatingArtistGroups
 import com.melox.player.ui.component.library.playbackArtworkCornerRadius
 import com.melox.player.ui.component.library.snapshotArtworkDiskCacheEntries
 import com.melox.player.ui.component.playback.hasDifferentMetadataSwipeTarget
+import com.melox.player.ui.component.playback.KenBurnsFrame
+import com.melox.player.ui.component.playback.createRenderScriptBlurBoxSizes
 import com.melox.player.ui.component.playback.interpolateArtworkBackgroundField
+import com.melox.player.ui.component.playback.interpolateKenBurnsFrame
 import com.melox.player.ui.component.playback.miniMetadataSwipeThresholdDirection
 import com.melox.player.ui.component.playback.shouldTriggerMiniMetadataSwipeThresholdHaptic
 import com.melox.player.ui.shouldClearSearchFocusAfterImeDismissed
@@ -93,11 +102,13 @@ import com.melox.player.ui.component.playback.resolveArtworkBackgroundColorRotat
 import com.melox.player.ui.component.playback.resolveArtworkOrbitColors
 import com.melox.player.ui.component.playback.resolveArtworkOrbitProgress
 import com.melox.player.ui.component.playback.fittedArtworkRect
-import com.melox.player.ui.component.playback.scaledRectAroundCenter
+import com.melox.player.ui.component.playback.artworkInsetRect
 import com.melox.player.ui.component.playback.sharedArtworkRect
 import com.melox.player.ui.component.playback.sharedArtworkTargetIsOnscreen
+import com.melox.player.ui.component.playback.sharedContainerContentOffset
 import com.melox.player.ui.component.playback.sharedContainerCornerRadius
 import com.melox.player.ui.component.playback.sharedContainerRect
+import com.melox.player.ui.component.playback.sharedContainerRenderRect
 import com.melox.player.ui.component.playback.PlayerSheetTransitionState
 import com.melox.player.ui.navigation.predictiveBackHandlerEnabled
 import com.melox.player.ui.requiredAudioPermission
@@ -108,7 +119,41 @@ import com.melox.player.ui.screen.home.selectHomeRecommendations
 import com.melox.player.ui.screen.library.MusicLibraryPlaceholder
 import com.melox.player.ui.screen.library.resolveMusicPlaybackSelection
 import com.melox.player.ui.screen.library.toMusicLibraryPlaceholder
+import com.melox.player.ui.screen.playback.LYRIC_INACTIVE_TEXT_ALPHA
+import com.melox.player.ui.screen.playback.LYRIC_CENTERING_BASE_STIFFNESS
+import com.melox.player.ui.screen.playback.LYRIC_CENTERING_MAX_STIFFNESS
+import com.melox.player.ui.screen.playback.LYRIC_PRIMARY_FONT_SIZE_SP
+import com.melox.player.ui.screen.playback.LYRIC_PRIMARY_LINE_HEIGHT_SP
+import com.melox.player.ui.screen.playback.LYRIC_TRANSLATION_FONT_SIZE_SP
+import com.melox.player.ui.screen.playback.LYRIC_TRANSLATION_LINE_HEIGHT_SP
+import com.melox.player.ui.screen.playback.LYRICS_MANUAL_FOLLOW_RESUME_DELAY_MS
+import com.melox.player.ui.screen.playback.characterMotion
+import com.melox.player.ui.screen.playback.characterProgress
+import com.melox.player.ui.screen.playback.shouldUseWordAnimation
+import com.melox.player.ui.screen.playback.simpleFloatOffset
+import com.melox.player.ui.screen.playback.wordMotion
+import com.melox.player.ui.screen.playback.forcedLyricRowProgress
+import com.melox.player.ui.screen.playback.lyricBlurRadiusTarget
+import com.melox.player.ui.screen.playback.lyricBlurShouldDisableForBrowsing
+import com.melox.player.ui.screen.playback.lyricCenterScrollDelta
+import com.melox.player.ui.screen.playback.lyricClockStartPosition
+import com.melox.player.ui.screen.playback.lyricDisplayedPositionMs
+import com.melox.player.ui.screen.playback.lyricEdgeFadeHeights
+import com.melox.player.ui.screen.playback.lyricIntervalProgress
+import com.melox.player.ui.screen.playback.lyricLineVerticalPaddingDp
+import com.melox.player.ui.screen.playback.lyricOffscreenTranslationDistance
+import com.melox.player.ui.screen.playback.lyricProgrammaticTranslationStart
+import com.melox.player.ui.screen.playback.lyricCenteringSpringStiffness
+import com.melox.player.ui.screen.playback.lyricScrollIsManual
+import com.melox.player.ui.screen.playback.lyricSeekUsesAnimatedCentering
+import com.melox.player.ui.screen.playback.lyricSeekPositionIsApplied
+import com.melox.player.ui.screen.playback.lyricTargetScrollOffset
+import com.melox.player.ui.screen.playback.lyricTransitionVerticalPaddingDp
+import com.melox.player.ui.screen.playback.lyricVerticalDragExceedsTouchSlop
+import com.melox.player.ui.screen.playback.progressGestureIsDrag
+import com.melox.player.ui.screen.playback.playerHeaderArtistText
 import com.melox.player.ui.screen.playback.queueListHeight
+import com.melox.player.ui.screen.playback.shouldAcceptPublishedLyricPosition
 import com.melox.player.ui.theme.toColorSchemeMode
 import com.melox.player.ui.theme.resolveDynamicColorSeed
 import java.io.ByteArrayInputStream
@@ -266,10 +311,47 @@ class UiLogicTest {
     }
 
     @Test
-    fun rootPagerYieldsHorizontalGestureToRecommendationsAfterFirstCard() {
-        assertTrue(rootPagerUserScrollEnabled(selectedPage = 0, homeRecommendationPage = 0))
-        assertFalse(rootPagerUserScrollEnabled(selectedPage = 0, homeRecommendationPage = 1))
-        assertTrue(rootPagerUserScrollEnabled(selectedPage = 1, homeRecommendationPage = 1))
+    fun rootPagerOnlyYieldsAnActiveRecommendationGestureOnInteriorPages() {
+        assertTrue(
+            rootPagerUserScrollEnabled(
+                selectedPage = 0,
+                homeRecommendationPage = 0,
+                homeRecommendationPageCount = 4,
+                homeRecommendationGestureActive = true,
+            ),
+        )
+        assertFalse(
+            rootPagerUserScrollEnabled(
+                selectedPage = 0,
+                homeRecommendationPage = 1,
+                homeRecommendationPageCount = 4,
+                homeRecommendationGestureActive = true,
+            ),
+        )
+        assertTrue(
+            rootPagerUserScrollEnabled(
+                selectedPage = 0,
+                homeRecommendationPage = 3,
+                homeRecommendationPageCount = 4,
+                homeRecommendationGestureActive = true,
+            ),
+        )
+        assertTrue(
+            rootPagerUserScrollEnabled(
+                selectedPage = 0,
+                homeRecommendationPage = 1,
+                homeRecommendationPageCount = 4,
+                homeRecommendationGestureActive = false,
+            ),
+        )
+        assertTrue(
+            rootPagerUserScrollEnabled(
+                selectedPage = 1,
+                homeRecommendationPage = 1,
+                homeRecommendationPageCount = 4,
+                homeRecommendationGestureActive = true,
+            ),
+        )
     }
 
     @Test
@@ -278,10 +360,667 @@ class UiLogicTest {
 
         assertEquals(ThemeMode.SYSTEM, settings.themeMode)
         assertFalse(settings.dynamicColorEnabled)
-        assertEquals(DynamicColorSource.DESKTOP, settings.dynamicColorSource)
+        assertEquals(DynamicColorSource.PLAYBACK_ARTWORK, settings.dynamicColorSource)
+        assertEquals(
+            PlaybackBackgroundStyle.BLURRED_ARTWORK,
+            settings.playbackBackgroundStyle,
+        )
+        assertEquals(400, settings.lyricFontWeight)
+        assertFalse(settings.centerLyrics)
+        assertTrue(settings.showLyricsTranslation)
         assertEquals(true, settings.blurEnabled)
         assertEquals(true, settings.predictiveBackEnabled)
         assertEquals(BottomBarStyle.NORMAL, settings.bottomBarStyle)
+    }
+
+    @Test
+    fun playbackBlurUsesThreeOddRenderScriptCalibratedBoxes() {
+        val boxSizes = createRenderScriptBlurBoxSizes(radius = 25)
+
+        assertEquals(3, boxSizes.size)
+        assertTrue(boxSizes.all { size -> size > 0 && size % 2 == 1 })
+        assertArrayEquals(intArrayOf(21, 21, 21), boxSizes)
+    }
+
+    @Test
+    fun visibleLyricsControlsUseMatchingTopAndBottomEdgeFades() {
+        assertEquals(100f to 100f, lyricEdgeFadeHeights(showBottomFade = true))
+    }
+
+    @Test
+    fun hiddenLyricsControlsRemoveOnlyTheBottomEdgeFade() {
+        assertEquals(100f to 0f, lyricEdgeFadeHeights(showBottomFade = false))
+    }
+
+    @Test
+    fun activeLyricScrollTargetUsesTheViewportCenter() {
+        assertEquals(
+            0f,
+            lyricCenterScrollDelta(
+                itemOffset = 380,
+                itemSize = 40,
+                viewportStartOffset = 0,
+                viewportEndOffset = 800,
+            ),
+            0f,
+        )
+        assertEquals(
+            120f,
+            lyricCenterScrollDelta(
+                itemOffset = 500,
+                itemSize = 40,
+                viewportStartOffset = 0,
+                viewportEndOffset = 800,
+            ),
+            0f,
+        )
+        assertEquals(
+            50f,
+            lyricCenterScrollDelta(
+                itemOffset = 380,
+                itemSize = 40,
+                viewportStartOffset = 0,
+                viewportEndOffset = 800,
+                centerOffsetPx = -50f,
+            ),
+            0f,
+        )
+        assertEquals(
+            80f,
+            lyricCenterScrollDelta(
+                itemOffset = 60,
+                itemSize = 40,
+                viewportStartOffset = -500,
+                viewportEndOffset = 500,
+            ),
+            0f,
+        )
+        assertEquals(
+            120,
+            lyricTargetScrollOffset(
+                itemSize = 40,
+                viewportStartOffset = -500,
+                viewportEndOffset = 300,
+            ),
+        )
+    }
+
+    @Test
+    fun manualLyricBrowsingKeepsBlurDisabledUntilFollowResumes() {
+        assertEquals(5_000L, LYRICS_MANUAL_FOLLOW_RESUME_DELAY_MS)
+        assertEquals(
+            0f,
+            lyricBlurRadiusTarget(
+                lyricBlurEnabled = true,
+                distanceFromFocus = 3,
+                isUserBrowsingLyrics = true,
+            ),
+            0f,
+        )
+        assertEquals(
+            9f,
+            lyricBlurRadiusTarget(
+                lyricBlurEnabled = true,
+                distanceFromFocus = 3,
+                isUserBrowsingLyrics = false,
+            ),
+            0f,
+        )
+    }
+
+    @Test
+    fun lyricIntervalProgressPreservesTimingEndpoints() {
+        assertEquals(0f, lyricIntervalProgress(900L, 1_000L, 2_000L), 0f)
+        assertEquals(0.5f, lyricIntervalProgress(1_500L, 1_000L, 2_000L), 0f)
+        assertEquals(1f, lyricIntervalProgress(2_100L, 1_000L, 2_000L), 0f)
+        assertEquals(0f, lyricIntervalProgress(999L, 1_000L, 1_000L), 0f)
+        assertEquals(1f, lyricIntervalProgress(1_000L, 1_000L, 1_000L), 0f)
+    }
+
+    @Test
+    fun primaryOnlyLyricSpacingMatchesHiddenTranslationSpacing() {
+        assertEquals(
+            10f,
+            lyricLineVerticalPaddingDp(
+                hasTimedWords = true,
+                hasTranslation = false,
+                showLyricsTranslation = true,
+            ),
+            0f,
+        )
+        assertEquals(
+            10f,
+            lyricLineVerticalPaddingDp(
+                hasTimedWords = true,
+                hasTranslation = true,
+                showLyricsTranslation = false,
+            ),
+            0f,
+        )
+        assertEquals(
+            14f,
+            lyricLineVerticalPaddingDp(
+                hasTimedWords = false,
+                hasTranslation = false,
+                showLyricsTranslation = true,
+            ),
+            0f,
+        )
+        assertEquals(
+            14f,
+            lyricLineVerticalPaddingDp(
+                hasTimedWords = false,
+                hasTranslation = true,
+                showLyricsTranslation = false,
+            ),
+            0f,
+        )
+    }
+
+    @Test
+    fun unrevealedWordByWordTextMatchesInactiveLyricStrength() {
+        assertEquals(0.4f, LYRIC_INACTIVE_TEXT_ALPHA, 0f)
+    }
+
+    @Test
+    fun middleLyricCountdownUsesNormalLineSpacing() {
+        assertEquals(5f, lyricTransitionVerticalPaddingDp(-1), 0f)
+        assertEquals(10f, lyricTransitionVerticalPaddingDp(0), 0f)
+        assertEquals(10f, lyricTransitionVerticalPaddingDp(8), 0f)
+    }
+
+    @Test
+    fun lyricSeekIgnoresOldPositionUpdatesUntilPlayerReachesTarget() {
+        assertFalse(
+            shouldAcceptPublishedLyricPosition(
+                publishedPositionMs = 10_200L,
+                seekPositionMs = 50_000L,
+                positionAtSeekRequestMs = 10_000L,
+            ),
+        )
+        assertTrue(
+            shouldAcceptPublishedLyricPosition(
+                publishedPositionMs = 49_900L,
+                seekPositionMs = 50_000L,
+                positionAtSeekRequestMs = 10_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun lyricSeekTargetStaysActiveUntilTheSmoothClockReachesIt() {
+        assertFalse(
+            lyricSeekPositionIsApplied(
+                currentPositionMs = 10_000L,
+                seekPositionMs = 50_000L,
+            ),
+        )
+        assertTrue(
+            lyricSeekPositionIsApplied(
+                currentPositionMs = 49_800L,
+                seekPositionMs = 50_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun pausingAfterPlaybackAdvancesKeepsTheSmoothCurrentPosition() {
+        assertEquals(
+            20_100L,
+            lyricClockStartPosition(
+                currentSmoothPositionMs = 20_100L,
+                publishedPositionMs = 20_100L,
+                seekPositionMs = 10_000L,
+                seekRequestKey = 3,
+                seekRequestChanged = false,
+                isPlaying = false,
+            ),
+        )
+        assertEquals(
+            50_000L,
+            lyricClockStartPosition(
+                currentSmoothPositionMs = 10_000L,
+                publishedPositionMs = 10_000L,
+                seekPositionMs = 50_000L,
+                seekRequestKey = 4,
+                seekRequestChanged = true,
+                isPlaying = false,
+            ),
+        )
+        assertEquals(
+            3_000L,
+            lyricClockStartPosition(
+                currentSmoothPositionMs = 80_000L,
+                publishedPositionMs = 3_000L,
+                seekPositionMs = 80_000L,
+                seekRequestKey = 0,
+                seekRequestChanged = true,
+                isPlaying = false,
+            ),
+        )
+    }
+
+    @Test
+    fun lyricTapAndProgressSeekKeepAnimatedCenteringAfterInitialPlacement() {
+        assertTrue(lyricSeekUsesAnimatedCentering(true, centerOffsetUnchanged = true))
+        assertFalse(lyricSeekUsesAnimatedCentering(true, centerOffsetUnchanged = false))
+        assertFalse(lyricSeekUsesAnimatedCentering(false, centerOffsetUnchanged = true))
+        assertFalse(
+            lyricSeekUsesAnimatedCentering(
+                hasPositionedInitialFocus = true,
+                centerOffsetUnchanged = true,
+                isPreviewing = true,
+            ),
+        )
+    }
+
+    @Test
+    fun progressPreviewDirectlyOwnsTheDisplayedLyricPosition() {
+        assertEquals(
+            42_000L,
+            lyricDisplayedPositionMs(
+                previewPositionMs = 42_000L,
+                seekRequestPending = true,
+                seekPositionMs = 30_000L,
+                smoothPositionMs = 10_000L,
+            ),
+        )
+        assertEquals(
+            30_000L,
+            lyricDisplayedPositionMs(
+                previewPositionMs = null,
+                seekRequestPending = true,
+                seekPositionMs = 30_000L,
+                smoothPositionMs = 10_000L,
+            ),
+        )
+        assertEquals(
+            10_000L,
+            lyricDisplayedPositionMs(
+                previewPositionMs = null,
+                seekRequestPending = false,
+                seekPositionMs = 30_000L,
+                smoothPositionMs = 10_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun progressTapDoesNotStartALyricPreviewSession() {
+        assertFalse(progressGestureIsDrag(horizontalDistancePx = 7f, touchSlopPx = 8f))
+        assertTrue(progressGestureIsDrag(horizontalDistancePx = 8f, touchSlopPx = 8f))
+        assertTrue(progressGestureIsDrag(horizontalDistancePx = -12f, touchSlopPx = 8f))
+    }
+
+    @Test
+    fun onlyUserOwnedListScrollingStartsManualLyricBrowsing() {
+        assertTrue(
+            lyricScrollIsManual(
+                listIsScrolling = true,
+                scrollInCode = false,
+            ),
+        )
+        assertFalse(
+            lyricScrollIsManual(
+                listIsScrolling = true,
+                scrollInCode = true,
+            ),
+        )
+        assertFalse(
+            lyricScrollIsManual(
+                listIsScrolling = false,
+                scrollInCode = false,
+            ),
+        )
+    }
+
+    @Test
+    fun onlyDominantVerticalLyricMovementDisablesBlur() {
+        assertTrue(
+            lyricVerticalDragExceedsTouchSlop(
+                horizontalDeltaPx = 0f,
+                verticalDeltaPx = 9f,
+                touchSlopPx = 8f,
+            ),
+        )
+        assertFalse(
+            lyricVerticalDragExceedsTouchSlop(
+                horizontalDeltaPx = 7f,
+                verticalDeltaPx = 7f,
+                touchSlopPx = 8f,
+            ),
+        )
+        assertFalse(
+            lyricVerticalDragExceedsTouchSlop(
+                horizontalDeltaPx = 12f,
+                verticalDeltaPx = 5f,
+                touchSlopPx = 8f,
+            ),
+        )
+        assertFalse(
+            lyricVerticalDragExceedsTouchSlop(
+                horizontalDeltaPx = 0f,
+                verticalDeltaPx = 8f,
+                touchSlopPx = 8f,
+            ),
+        )
+    }
+
+    @Test
+    fun visibleLyricTargetKeepsVisualContinuityAfterTheListSnaps() {
+        assertEquals(
+            72f,
+            lyricProgrammaticTranslationStart(
+                currentTranslationY = 12f,
+                measuredScrollDelta = 60f,
+                targetRenderIndex = 8,
+                previousRenderIndex = 6,
+                offscreenTravelPx = 96f,
+            ),
+            0f,
+        )
+        assertEquals(
+            -20f,
+            lyricProgrammaticTranslationStart(
+                currentTranslationY = 10f,
+                measuredScrollDelta = -30f,
+                targetRenderIndex = 4,
+                previousRenderIndex = 6,
+                offscreenTravelPx = 96f,
+            ),
+            0f,
+        )
+    }
+
+    @Test
+    fun offscreenAndRepeatedLyricTargetsRetargetTheVisualAnimation() {
+        assertEquals(
+            96f,
+            lyricProgrammaticTranslationStart(
+                currentTranslationY = 0f,
+                measuredScrollDelta = null,
+                targetRenderIndex = 8,
+                previousRenderIndex = 2,
+                offscreenTravelPx = 96f,
+            ),
+            0f,
+        )
+        assertEquals(
+            -72f,
+            lyricProgrammaticTranslationStart(
+                currentTranslationY = 24f,
+                measuredScrollDelta = null,
+                targetRenderIndex = 1,
+                previousRenderIndex = 8,
+                offscreenTravelPx = 96f,
+            ),
+            0f,
+        )
+        assertEquals(
+            24f,
+            lyricProgrammaticTranslationStart(
+                currentTranslationY = 24f,
+                measuredScrollDelta = null,
+                targetRenderIndex = 8,
+                previousRenderIndex = 8,
+                offscreenTravelPx = 96f,
+            ),
+            0f,
+        )
+    }
+
+    @Test
+    fun offscreenLyricTargetBeginsOutsideTheViewportBeforeCentering() {
+        assertEquals(
+            420f,
+            lyricOffscreenTranslationDistance(
+                viewportStartOffset = 0,
+                viewportEndOffset = 800,
+                itemSize = 40,
+            ),
+            0f,
+        )
+        assertEquals(
+            370f,
+            lyricOffscreenTranslationDistance(
+                viewportStartOffset = -100,
+                viewportEndOffset = 600,
+                itemSize = 40,
+            ),
+            0f,
+        )
+    }
+
+    @Test
+    fun blurIsDisabledOnlyAfterARealUserDragStartsBrowsing() {
+        assertFalse(
+            lyricBlurShouldDisableForBrowsing(
+                isUserBrowsingLyrics = false,
+                isManualScrolling = false,
+            ),
+        )
+        assertFalse(
+            lyricBlurShouldDisableForBrowsing(
+                isUserBrowsingLyrics = false,
+                isManualScrolling = true,
+            ),
+        )
+        assertTrue(
+            lyricBlurShouldDisableForBrowsing(
+                isUserBrowsingLyrics = true,
+                isManualScrolling = false,
+            ),
+        )
+        assertTrue(
+            lyricBlurShouldDisableForBrowsing(
+                isUserBrowsingLyrics = true,
+                isManualScrolling = true,
+            ),
+        )
+    }
+
+    @Test
+    fun denseLyricIntervalsOnlyIncreaseCenteringSpeed() {
+        assertEquals(
+            LYRIC_CENTERING_BASE_STIFFNESS,
+            lyricCenteringSpringStiffness(null),
+            0f,
+        )
+        assertEquals(
+            LYRIC_CENTERING_BASE_STIFFNESS,
+            lyricCenteringSpringStiffness(1_000L),
+            0f,
+        )
+        assertEquals(
+            LYRIC_CENTERING_BASE_STIFFNESS,
+            lyricCenteringSpringStiffness(2_000L),
+            0f,
+        )
+        assertTrue(lyricCenteringSpringStiffness(540L) > LYRIC_CENTERING_BASE_STIFFNESS)
+        assertTrue(lyricCenteringSpringStiffness(210L) > lyricCenteringSpringStiffness(540L))
+        assertEquals(
+            LYRIC_CENTERING_MAX_STIFFNESS,
+            lyricCenteringSpringStiffness(210L),
+            0f,
+        )
+    }
+
+    @Test
+    fun forcedWordByWordLyricsFinishWrappedRowsInOrder() {
+        val equalRows = listOf(100f, 100f, 100f)
+        assertEquals(0.75f, forcedLyricRowProgress(0.25f, 0, equalRows), 0f)
+        assertEquals(0f, forcedLyricRowProgress(0.25f, 1, equalRows), 0f)
+        assertEquals(1f, forcedLyricRowProgress(0.5f, 0, equalRows), 0f)
+        assertEquals(0.5f, forcedLyricRowProgress(0.5f, 1, equalRows), 0f)
+        assertEquals(0f, forcedLyricRowProgress(0.5f, 2, equalRows), 0f)
+        assertEquals(1f, forcedLyricRowProgress(1f, 2, equalRows), 0f)
+
+        val shorterLastRow = listOf(100f, 100f, 50f)
+        assertEquals(1f, forcedLyricRowProgress(0.5f, 0, shorterLastRow), 0f)
+        assertEquals(0.25f, forcedLyricRowProgress(0.5f, 1, shorterLastRow), 0f)
+        assertEquals(0f, forcedLyricRowProgress(0.5f, 2, shorterLastRow), 0f)
+    }
+
+    @Test
+    fun legacyLyricFontScaleMapsOldEightyPercentToNewHundredPercent() {
+        assertEquals(1f, migrateLegacyLyricFontScale(0.8f), 0f)
+        assertEquals(1.25f, migrateLegacyLyricFontScale(1f), 0f)
+        assertEquals(0.7f, migrateLegacyLyricFontScale(0.4f), 0f)
+        assertEquals(1.3f, migrateLegacyLyricFontScale(1.2f), 0f)
+    }
+
+    @Test
+    fun lyricFontWeightUsesHundredPointStepsWithinSupportedRange() {
+        assertEquals(100, normalizeLyricFontWeight(50))
+        assertEquals(100, normalizeLyricFontWeight(149))
+        assertEquals(200, normalizeLyricFontWeight(150))
+        assertEquals(400, normalizeLyricFontWeight(400))
+        assertEquals(900, normalizeLyricFontWeight(950))
+    }
+
+    @Test
+    fun lyricFontScaleKeepsPercentageRangeForRequestedSpSizes() {
+        assertEquals(24f, LYRIC_PRIMARY_FONT_SIZE_SP, 0f)
+        assertEquals(28f, LYRIC_PRIMARY_LINE_HEIGHT_SP, 0f)
+        assertEquals(16f, LYRIC_TRANSLATION_FONT_SIZE_SP, 0f)
+        assertEquals(22f, LYRIC_TRANSLATION_LINE_HEIGHT_SP, 0f)
+        assertEquals(16.8f, LYRIC_PRIMARY_FONT_SIZE_SP * 0.7f, 0.0001f)
+        assertEquals(24f, LYRIC_PRIMARY_FONT_SIZE_SP, 0.0001f)
+        assertEquals(31.2f, LYRIC_PRIMARY_FONT_SIZE_SP * 1.3f, 0.0001f)
+    }
+
+    @Test
+    fun playerHeaderArtistsUseThinSlashSeparators() {
+        val text = playerHeaderArtistText("Ada / Ben / Cyd")
+
+        assertEquals("Ada / Ben / Cyd", text.text)
+        assertEquals(
+            listOf("/", "/"),
+            text.spanStyles
+                .filter { it.item.fontWeight == FontWeight.Thin }
+                .map { text.text.substring(it.start, it.end) },
+        )
+    }
+
+    @Test
+    fun wordMotionReturnsToRestAtBothEndpoints() {
+        val start = wordMotion(
+            progress = 0f,
+            durationMs = 2_000L,
+            characterCount = 4,
+        )
+        val middle = wordMotion(
+            progress = 0.5f,
+            durationMs = 2_000L,
+            characterCount = 4,
+        )
+        val end = wordMotion(
+            progress = 1f,
+            durationMs = 2_000L,
+            characterCount = 4,
+        )
+
+        assertEquals(1f, start.scale, 0f)
+        assertEquals(4f, start.offsetYPx, 0f)
+        assertEquals(0f, start.glowRadius, 0f)
+        assertTrue(middle.scale > 1f)
+        assertTrue(middle.offsetYPx < 0f)
+        assertTrue(middle.glowRadius > 0f)
+        assertEquals(1f, end.scale, 0.000001f)
+        assertEquals(0f, end.offsetYPx, 0.000001f)
+        assertEquals(0f, end.glowRadius, 0.000001f)
+    }
+
+    @Test
+    fun charactersStartAcrossTheFirstTwentyPercentOfAWord() {
+        assertEquals(
+            0.125f,
+            characterProgress(
+                positionMs = 1_100L,
+                wordStartTimeMs = 1_000L,
+                wordEndTimeMs = 2_000L,
+                characterIndex = 0,
+                characterCount = 3,
+            ),
+            0.000001f,
+        )
+        assertEquals(
+            0f,
+            characterProgress(
+                positionMs = 1_100L,
+                wordStartTimeMs = 1_000L,
+                wordEndTimeMs = 2_000L,
+                characterIndex = 1,
+                characterCount = 3,
+            ),
+            0f,
+        )
+        assertEquals(
+            0f,
+            characterProgress(
+                positionMs = 1_100L,
+                wordStartTimeMs = 1_000L,
+                wordEndTimeMs = 2_000L,
+                characterIndex = 2,
+                characterCount = 3,
+            ),
+            0f,
+        )
+        val finalMotion = characterMotion(
+            positionMs = 2_000L,
+            wordStartTimeMs = 1_000L,
+            wordEndTimeMs = 2_000L,
+            characterIndex = 2,
+            characterCount = 3,
+        )
+        assertEquals(1f, finalMotion.scale, 0.000001f)
+        assertEquals(0f, finalMotion.offsetYPx, 0.000001f)
+        assertEquals(0f, finalMotion.glowRadius, 0.000001f)
+    }
+
+    @Test
+    fun simpleFloatIsUsedForCjkAndFastWords() {
+        assertFalse(
+            shouldUseWordAnimation(
+                content = "中文",
+                durationMs = 2_000L,
+            ),
+        )
+        assertFalse(
+            shouldUseWordAnimation(
+                content = "hello",
+                durationMs = 900L,
+            ),
+        )
+        assertTrue(
+            shouldUseWordAnimation(
+                content = "word",
+                durationMs = 2_000L,
+            ),
+        )
+        assertEquals(4f, simpleFloatOffset(1_000L, 1_000L), 0f)
+        assertEquals(0f, simpleFloatOffset(1_700L, 1_000L), 0.000001f)
+    }
+
+    @Test
+    fun kenBurnsFrameInterpolationPreservesEndpoints() {
+        val start = KenBurnsFrame(
+            scale = 1.08f,
+            horizontalBias = -1f,
+            verticalBias = 0.5f,
+        )
+        val end = KenBurnsFrame(
+            scale = 1.2f,
+            horizontalBias = 1f,
+            verticalBias = -0.5f,
+        )
+
+        assertEquals(start, interpolateKenBurnsFrame(start, end, 0f))
+        assertEquals(end, interpolateKenBurnsFrame(start, end, 1f))
+        val midpoint = interpolateKenBurnsFrame(start, end, 0.5f)
+        assertEquals(1.14f, midpoint.scale, 0.000001f)
+        assertEquals(0f, midpoint.horizontalBias, 0.000001f)
+        assertEquals(0f, midpoint.verticalBias, 0.000001f)
     }
 
     @Test
@@ -405,6 +1144,56 @@ class UiLogicTest {
     }
 
     @Test
+    fun settledPlayerContainerOverscansWithoutMovingPageContent() {
+        val miniPlayer = Rect(16f, 700f, 384f, 768f)
+        val fullPlayer = Rect(0f, 0f, 400f, 800f)
+        val rendered = sharedContainerRenderRect(
+            source = miniPlayer,
+            target = fullPlayer,
+            progress = 1f,
+            endpointOverscanPx = 3f,
+        )
+
+        assertEquals(Rect(-3f, -3f, 403f, 803f), rendered)
+        assertEquals(
+            Offset(3f, 3f),
+            sharedContainerContentOffset(
+                renderBounds = rendered,
+                contentBounds = fullPlayer,
+            ),
+        )
+        assertEquals(
+            sharedContainerRect(miniPlayer, fullPlayer, 0.99f),
+            sharedContainerRenderRect(
+                source = miniPlayer,
+                target = fullPlayer,
+                progress = 0.99f,
+                endpointOverscanPx = 3f,
+            ),
+        )
+    }
+
+    @Test
+    fun settledPlayerContainerUsesExactTargetBoundsWithoutProductionOverscan() {
+        val miniPlayer = Rect(16f, 700f, 384f, 768f)
+        val fullPlayer = Rect(0f, 0f, 400f, 800f)
+        val rendered = sharedContainerRenderRect(
+            source = miniPlayer,
+            target = fullPlayer,
+            progress = 1f,
+        )
+
+        assertEquals(fullPlayer, rendered)
+        assertEquals(
+            Offset.Zero,
+            sharedContainerContentOffset(
+                renderBounds = rendered,
+                contentBounds = fullPlayer,
+            ),
+        )
+    }
+
+    @Test
     fun sharedPlayerContainerTargetsTheAvailableScreenCornerRadius() {
         assertEquals(18f, sharedContainerCornerRadius(18f, 46f, 0f, 0f), 0f)
         assertEquals(46f, sharedContainerCornerRadius(18f, 46f, 1f, 0f), 0f)
@@ -518,24 +1307,59 @@ class UiLogicTest {
     }
 
     @Test
-    fun sharedArtworkTargetMatchesVisiblePlaybackScale() {
-        val layoutBounds = Rect(28f, 120f, 372f, 464f)
+    fun lyricsPageKeepsSharedArtworkDisabledAcrossCloseAndReopen() {
+        val state = PlayerSheetTransitionState()
 
-        assertEquals(layoutBounds, scaledRectAroundCenter(layoutBounds, 1f))
+        state.open()
+        state.updateFullPlayerArtworkPageSelected(false)
+        state.beginFullPlayerDrag()
 
-        val pausedBounds = scaledRectAroundCenter(layoutBounds, 0.9f)
-        assertEquals(45.2f, pausedBounds.left, 0.0001f)
-        assertEquals(137.2f, pausedBounds.top, 0.0001f)
-        assertEquals(354.8f, pausedBounds.right, 0.0001f)
-        assertEquals(446.8f, pausedBounds.bottom, 0.0001f)
-        assertEquals(layoutBounds.center.x, pausedBounds.center.x, 0.0001f)
-        assertEquals(layoutBounds.center.y, pausedBounds.center.y, 0.0001f)
-        assertEquals(layoutBounds.width / layoutBounds.height, pausedBounds.width / pausedBounds.height, 0.0001f)
+        assertTrue(state.targetOpen)
+        assertFalse(state.sharedArtworkEnabled)
 
-        val resumePeakBounds = scaledRectAroundCenter(layoutBounds, 1.02f)
-        assertEquals(layoutBounds.center.x, resumePeakBounds.center.x, 0.0001f)
-        assertEquals(layoutBounds.center.y, resumePeakBounds.center.y, 0.0001f)
-        assertEquals(layoutBounds.width * 1.02f, resumePeakBounds.width, 0.0001f)
+        state.close()
+        state.open()
+
+        assertTrue(state.targetOpen)
+        assertFalse(state.fullPlayerArtworkPageSelected)
+        assertFalse(state.sharedArtworkEnabled)
+    }
+
+    @Test
+    fun sharedArtworkTargetMatchesVisiblePlaybackInsets() {
+        val expandedContainerBounds = Rect(22f, 114f, 378f, 470f)
+
+        val playingBounds = artworkInsetRect(expandedContainerBounds, 8f)
+        assertEquals(30f, playingBounds.left, 0.0001f)
+        assertEquals(122f, playingBounds.top, 0.0001f)
+        assertEquals(370f, playingBounds.right, 0.0001f)
+        assertEquals(462f, playingBounds.bottom, 0.0001f)
+
+        val pausedBounds = artworkInsetRect(expandedContainerBounds, 32f)
+        assertEquals(54f, pausedBounds.left, 0.0001f)
+        assertEquals(146f, pausedBounds.top, 0.0001f)
+        assertEquals(346f, pausedBounds.right, 0.0001f)
+        assertEquals(438f, pausedBounds.bottom, 0.0001f)
+        assertEquals(expandedContainerBounds.center.x, pausedBounds.center.x, 0.0001f)
+        assertEquals(expandedContainerBounds.center.y, pausedBounds.center.y, 0.0001f)
+        assertEquals(
+            expandedContainerBounds.width / expandedContainerBounds.height,
+            pausedBounds.width / pausedBounds.height,
+            0.0001f,
+        )
+    }
+
+    @Test
+    fun playbackArtworkShadowUsesRequestedSizeAndLowerOffset() {
+        val shadowBounds = playbackArtworkShadowBounds(
+            width = 300f,
+            height = 200f,
+        )
+
+        assertEquals(0f, shadowBounds.left, 0.0001f)
+        assertEquals(20f, shadowBounds.top, 0.0001f)
+        assertEquals(270f, shadowBounds.right, 0.0001f)
+        assertEquals(200f, shadowBounds.bottom, 0.0001f)
     }
 
     @Test

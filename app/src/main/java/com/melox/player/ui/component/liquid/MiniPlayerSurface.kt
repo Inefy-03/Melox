@@ -72,17 +72,7 @@ internal fun Modifier.miniPlayerSurface(
                         ),
                     ),
                 ),
-                highlight = (if (followsNavigationBar) {
-                    null
-                } else if (floatingHighlight != null) {
-                    floatingHighlight
-                } else if (isDark) {
-                    Highlight.GlassStrokeMiddleDark
-                } else {
-                    Highlight.GlassStrokeMiddleLight
-                })?.let { highlight ->
-                    highlight.copy(alpha = highlight.alpha * resolvedHighlightAlpha)
-                },
+                highlight = null,
             )
 
             else -> Modifier.background(surfaceColor, shape)

@@ -13,6 +13,12 @@ enum class DynamicColorSource {
     PLAYBACK_ARTWORK,
 }
 
+/** Selects the artwork-derived background rendered behind the full player. */
+enum class PlaybackBackgroundStyle {
+    BLURRED_ARTWORK,
+    FLOWING_COLORS,
+}
+
 /**
  * Selects the navigation bar presentation.
  *
@@ -35,11 +41,23 @@ enum class DefaultHomePage {
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColorEnabled: Boolean = false,
-    val dynamicColorSource: DynamicColorSource = DynamicColorSource.DESKTOP,
+    val dynamicColorSource: DynamicColorSource = DynamicColorSource.PLAYBACK_ARTWORK,
+    val playbackBackgroundStyle: PlaybackBackgroundStyle =
+        PlaybackBackgroundStyle.BLURRED_ARTWORK,
+    val lyricFontScale: Float = 1f,
+    val lyricFontWeight: Int = 400,
+    val forceWordByWordLyrics: Boolean = false,
+    val lyricBlurEnabled: Boolean = false,
+    val centerLyrics: Boolean = false,
+    val hideControlsOnLyrics: Boolean = false,
+    val showLyricsTranslation: Boolean = true,
     val blurEnabled: Boolean = true,
     val floatingBottomBar: Boolean = false,
     val liquidGlass: Boolean = false,
     val predictiveBackEnabled: Boolean = true,
+    val refreshLibraryOnStart: Boolean = false,
+    val skipShortAudio: Boolean = false,
+    val customFolderUris: List<String> = emptyList(),
     val libraryTabIndex: Int = 0,
     val musicSortFieldOrdinal: Int = 0,
     val musicSortDescending: Boolean = false,

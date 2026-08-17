@@ -79,6 +79,10 @@ android {
         versionCode = 1
         versionName = appVersionName
 
+        ndk {
+            abiFilters += setOf("arm64-v8a")
+        }
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -97,9 +101,6 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            ndk {
-                abiFilters += setOf("armeabi-v7a", "arm64-v8a")
-            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
             )
@@ -166,6 +167,8 @@ tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
 }
 
 dependencies {
+    implementation(files("libs/renderscript-intrinsics-replacement-toolkit-344be3f-16k.aar"))
+    implementation(files("libs/media3-decoder-ffmpeg-1.11.0-ffmpeg9.0-arm64-v8a.aar"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
@@ -173,6 +176,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.inspector)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.material.color.utilities)

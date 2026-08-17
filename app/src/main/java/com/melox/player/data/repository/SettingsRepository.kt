@@ -6,8 +6,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.melox.player.data.library.AlbumSortConfig
 import com.melox.player.data.library.AlbumSortField
@@ -22,6 +24,7 @@ import com.melox.player.model.AppSettings
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DefaultHomePage
 import com.melox.player.model.DynamicColorSource
+import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.ThemeMode
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
@@ -61,9 +64,30 @@ class SettingsRepository(context: Context) {
                 dynamicColorEnabled = preferences[Keys.DynamicColorEnabled] ?: false,
                 dynamicColorSource = preferences[Keys.DynamicColorSource]
                     ?.let { storedValue ->
-                        enumValueOrDefault(storedValue, DynamicColorSource.DESKTOP)
+                        enumValueOrDefault(storedValue, DynamicColorSource.PLAYBACK_ARTWORK)
                     }
-                    ?: DynamicColorSource.DESKTOP,
+                    ?: DynamicColorSource.PLAYBACK_ARTWORK,
+                playbackBackgroundStyle = preferences[Keys.PlaybackBackgroundStyle]
+                    ?.let { storedValue ->
+                        enumValueOrDefault(
+                            storedValue,
+                            PlaybackBackgroundStyle.BLURRED_ARTWORK,
+                        )
+                    }
+                    ?: PlaybackBackgroundStyle.BLURRED_ARTWORK,
+                lyricFontScale = preferences[Keys.LyricFontScale]
+                    ?.coerceIn(MIN_LYRIC_FONT_SCALE, MAX_LYRIC_FONT_SCALE)
+                    ?: preferences[Keys.LegacyLyricFontScale]
+                        ?.let(::migrateLegacyLyricFontScale)
+                    ?: DEFAULT_LYRIC_FONT_SCALE,
+                lyricFontWeight = preferences[Keys.LyricFontWeight]
+                    ?.let(::normalizeLyricFontWeight)
+                    ?: DEFAULT_LYRIC_FONT_WEIGHT,
+                forceWordByWordLyrics = preferences[Keys.ForceWordByWordLyrics] ?: false,
+                lyricBlurEnabled = preferences[Keys.LyricBlurEnabled] ?: false,
+                centerLyrics = preferences[Keys.CenterLyrics] ?: false,
+                hideControlsOnLyrics = preferences[Keys.HideControlsOnLyrics] ?: false,
+                showLyricsTranslation = preferences[Keys.ShowLyricsTranslation] ?: true,
                 blurEnabled = preferences[Keys.BlurEnabled] ?: true,
                 floatingBottomBar = preferences[Keys.FloatingBottomBar]
                     ?: (preferences[Keys.BottomBarStyle] != null &&
@@ -71,6 +95,12 @@ class SettingsRepository(context: Context) {
                 liquidGlass = preferences[Keys.LiquidGlass]
                     ?: (preferences[Keys.BottomBarStyle] == BottomBarStyle.LIQUID_GLASS.name),
                 predictiveBackEnabled = preferences[Keys.PredictiveBackEnabled] ?: true,
+                refreshLibraryOnStart = preferences[Keys.RefreshLibraryOnStart] ?: false,
+                skipShortAudio = preferences[Keys.SkipShortAudio] ?: false,
+                customFolderUris = preferences[Keys.CustomFolderUris]
+                    ?.toList()
+                    ?.sorted()
+                    ?: emptyList(),
                 libraryTabIndex = preferences[Keys.LibraryTabIndex]
                     ?.coerceIn(0, LIBRARY_TAB_COUNT - 1)
                     ?: 0,
@@ -122,6 +152,57 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    suspend fun setPlaybackBackgroundStyle(style: PlaybackBackgroundStyle) {
+        dataStore.edit { preferences ->
+            preferences[Keys.PlaybackBackgroundStyle] = style.name
+        }
+    }
+
+    suspend fun setLyricFontScale(scale: Float) {
+        dataStore.edit { preferences ->
+            preferences[Keys.LyricFontScale] = scale.coerceIn(
+                MIN_LYRIC_FONT_SCALE,
+                MAX_LYRIC_FONT_SCALE,
+            )
+        }
+    }
+
+    suspend fun setLyricFontWeight(weight: Int) {
+        dataStore.edit { preferences ->
+            preferences[Keys.LyricFontWeight] = normalizeLyricFontWeight(weight)
+        }
+    }
+
+    suspend fun setForceWordByWordLyrics(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ForceWordByWordLyrics] = enabled
+        }
+    }
+
+    suspend fun setLyricBlurEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.LyricBlurEnabled] = enabled
+        }
+    }
+
+    suspend fun setCenterLyrics(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.CenterLyrics] = enabled
+        }
+    }
+
+    suspend fun setHideControlsOnLyrics(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.HideControlsOnLyrics] = enabled
+        }
+    }
+
+    suspend fun setShowLyricsTranslation(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ShowLyricsTranslation] = enabled
+        }
+    }
+
     suspend fun setBottomBarStyle(bottomBarStyle: BottomBarStyle) {
         dataStore.edit { preferences ->
             preferences[Keys.FloatingBottomBar] = bottomBarStyle != BottomBarStyle.NORMAL
@@ -138,7 +219,7 @@ class SettingsRepository(context: Context) {
     suspend fun setFloatingBottomBar(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.FloatingBottomBar] = enabled
-            preferences[Keys.LiquidGlass] = enabled
+            preferences[Keys.LiquidGlass] = false
         }
     }
 
@@ -151,6 +232,32 @@ class SettingsRepository(context: Context) {
     suspend fun setPredictiveBackEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.PredictiveBackEnabled] = enabled
+        }
+    }
+
+    suspend fun setRefreshLibraryOnStart(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.RefreshLibraryOnStart] = enabled
+        }
+    }
+
+    suspend fun setSkipShortAudio(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SkipShortAudio] = enabled
+        }
+    }
+
+    suspend fun addCustomFolderUri(uri: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.CustomFolderUris] =
+                preferences[Keys.CustomFolderUris].orEmpty() + uri
+        }
+    }
+
+    suspend fun removeCustomFolderUri(uri: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.CustomFolderUris] =
+                preferences[Keys.CustomFolderUris].orEmpty() - uri
         }
     }
 
@@ -200,11 +307,23 @@ class SettingsRepository(context: Context) {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DynamicColorEnabled = booleanPreferencesKey("dynamic_color_enabled")
         val DynamicColorSource = stringPreferencesKey("dynamic_color_source")
+        val PlaybackBackgroundStyle = stringPreferencesKey("playback_background_style")
+        val LyricFontScale = floatPreferencesKey("lyric_font_scale_v2")
+        val LegacyLyricFontScale = floatPreferencesKey("lyric_font_scale")
+        val LyricFontWeight = intPreferencesKey("lyric_font_weight")
+        val ForceWordByWordLyrics = booleanPreferencesKey("force_word_by_word_lyrics")
+        val LyricBlurEnabled = booleanPreferencesKey("lyric_blur_enabled")
+        val CenterLyrics = booleanPreferencesKey("center_lyrics")
+        val HideControlsOnLyrics = booleanPreferencesKey("hide_controls_on_lyrics")
+        val ShowLyricsTranslation = booleanPreferencesKey("show_lyrics_translation")
         val BottomBarStyle = stringPreferencesKey("bottom_bar_style")
         val BlurEnabled = booleanPreferencesKey("blur_enabled")
         val FloatingBottomBar = booleanPreferencesKey("floating_bottom_bar")
         val LiquidGlass = booleanPreferencesKey("liquid_glass")
         val PredictiveBackEnabled = booleanPreferencesKey("predictive_back_enabled")
+        val RefreshLibraryOnStart = booleanPreferencesKey("refresh_library_on_start")
+        val SkipShortAudio = booleanPreferencesKey("skip_short_audio")
+        val CustomFolderUris = stringSetPreferencesKey("custom_folder_uris")
         val DefaultHomePage = stringPreferencesKey("default_home_page")
         val LibraryTabIndex = intPreferencesKey("library_tab_index")
         val MusicSortField = intPreferencesKey("music_sort_field")
@@ -233,5 +352,23 @@ internal fun resolveAlbumGridStyleOrdinal(
     else -> AlbumGridStyle.TWO_SMALL.ordinal
 }
 
+internal fun migrateLegacyLyricFontScale(storedScale: Float): Float =
+    (storedScale / LEGACY_LYRIC_FONT_BASE_SCALE).coerceIn(
+        MIN_LYRIC_FONT_SCALE,
+        MAX_LYRIC_FONT_SCALE,
+    )
+
+internal fun normalizeLyricFontWeight(weight: Int): Int =
+    ((weight.coerceIn(MIN_LYRIC_FONT_WEIGHT, MAX_LYRIC_FONT_WEIGHT) +
+        LYRICS_FONT_WEIGHT_STEP / 2) / LYRICS_FONT_WEIGHT_STEP) * LYRICS_FONT_WEIGHT_STEP
+
 private const val LIBRARY_TAB_COUNT = 3
 private const val LEGACY_ALBUM_GRID_THREE_ORDINAL = 2
+private const val LEGACY_LYRIC_FONT_BASE_SCALE = 0.8f
+private const val MIN_LYRIC_FONT_SCALE = 0.7f
+private const val MAX_LYRIC_FONT_SCALE = 1.3f
+private const val DEFAULT_LYRIC_FONT_SCALE = 1f
+private const val MIN_LYRIC_FONT_WEIGHT = 100
+private const val MAX_LYRIC_FONT_WEIGHT = 900
+private const val DEFAULT_LYRIC_FONT_WEIGHT = 400
+private const val LYRICS_FONT_WEIGHT_STEP = 100

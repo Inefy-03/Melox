@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.AppSettings
 import com.melox.player.model.DynamicColorSource
+import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.ThemeMode
 import com.melox.player.ui.component.MiuixBlurredBar
 import com.melox.player.ui.component.miuixBarColor
@@ -52,6 +53,7 @@ fun ThemeSettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onDynamicColorChange: (Boolean) -> Unit,
     onDynamicColorSourceChange: (DynamicColorSource) -> Unit,
+    onPlaybackBackgroundStyleChange: (PlaybackBackgroundStyle) -> Unit,
     onBlurChange: (Boolean) -> Unit,
     onFloatingBottomBarChange: (Boolean) -> Unit,
     onLiquidGlassChange: (Boolean) -> Unit,
@@ -74,6 +76,9 @@ fun ThemeSettingsScreen(
     var dynamicColorSource by remember(settings.dynamicColorSource) {
         mutableStateOf(settings.dynamicColorSource)
     }
+    var playbackBackgroundStyle by remember(settings.playbackBackgroundStyle) {
+        mutableStateOf(settings.playbackBackgroundStyle)
+    }
     var predictiveBackChecked by remember(settings.predictiveBackEnabled) {
         mutableStateOf(settings.predictiveBackEnabled)
     }
@@ -84,6 +89,12 @@ fun ThemeSettingsScreen(
         ThemeMode.SYSTEM to stringResource(R.string.theme_mode_system),
         ThemeMode.LIGHT to stringResource(R.string.theme_mode_light),
         ThemeMode.DARK to stringResource(R.string.theme_mode_dark),
+    )
+    val playbackBackgroundStyles = listOf(
+        PlaybackBackgroundStyle.BLURRED_ARTWORK to
+            stringResource(R.string.settings_playback_background_blurred_artwork),
+        PlaybackBackgroundStyle.FLOWING_COLORS to
+            stringResource(R.string.settings_playback_background_flowing_colors),
     )
     val topBarBackdrop = rememberMiuixBlurBackdrop(
         enabled = blurChecked && blurSupported,
@@ -167,7 +178,7 @@ fun ThemeSettingsScreen(
                             checked = floatingBottomBarChecked,
                             onCheckedChange = { checked ->
                                 floatingBottomBarChecked = checked
-                                liquidGlassChecked = checked
+                                liquidGlassChecked = false
                                 onFloatingBottomBarChange(checked)
                             },
                             title = stringResource(R.string.settings_floating_bottom_bar_title),
@@ -223,10 +234,10 @@ fun ThemeSettingsScreen(
                             label = "dynamicColorSourceVisibility",
                         ) {
                             val sources = listOf(
-                                DynamicColorSource.DESKTOP to
-                                    stringResource(R.string.settings_dynamic_color_source_desktop),
                                 DynamicColorSource.PLAYBACK_ARTWORK to
                                     stringResource(R.string.settings_dynamic_color_source_artwork),
+                                DynamicColorSource.DESKTOP to
+                                    stringResource(R.string.settings_dynamic_color_source_desktop),
                             )
                             OverlayDropdownPreference(
                                 items = sources.map { it.second },
@@ -242,6 +253,25 @@ fun ThemeSettingsScreen(
                                 },
                             )
                         }
+                    }
+                }
+                item {
+                    ThemeCard {
+                        OverlayDropdownPreference(
+                            items = playbackBackgroundStyles.map { it.second },
+                            selectedIndex = playbackBackgroundStyles.indexOfFirst {
+                                it.first == playbackBackgroundStyle
+                            }.coerceAtLeast(0),
+                            title = stringResource(R.string.settings_playback_background_title),
+                            onSelectedIndexChange = { index ->
+                                playbackBackgroundStyles.getOrNull(index)?.first?.let { style ->
+                                    if (style != playbackBackgroundStyle) {
+                                        playbackBackgroundStyle = style
+                                        onPlaybackBackgroundStyleChange(style)
+                                    }
+                                }
+                            },
+                        )
                     }
                 }
                 item {

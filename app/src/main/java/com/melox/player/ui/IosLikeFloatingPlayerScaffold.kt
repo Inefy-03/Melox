@@ -49,7 +49,9 @@ internal fun IosLikeFloatingPlayerScaffold(
 ) {
     val surfaceColor = MiuixTheme.colorScheme.surface
     val effectsActive = effectsSupported && (blurEnabled || liquidGlassEnabled)
-    val floatingHighlight = rememberFloatingBarHighlight(active = effectsActive)
+    val floatingHighlight = rememberFloatingBarHighlight(
+        active = effectsSupported && liquidGlassEnabled,
+    )
     val backdrop = if (effectsActive) {
         rememberLayerBackdrop {
             drawRect(surfaceColor)

@@ -2,8 +2,10 @@ package com.melox.player.data.repository
 
 import android.content.ContentUris
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.provider.DocumentsContract
 import android.util.AtomicFile
 import android.util.Log
 import com.melox.player.data.library.AudioPropertiesReader
@@ -47,9 +49,18 @@ class MusicRepository(context: Context) {
         previousTracks: List<MusicTrack> = emptyList(),
         refreshAudioProperties: Boolean = false,
         onlyTrackId: Long? = null,
+        customFolderUris: List<String> = emptyList(),
+        skipShortAudio: Boolean = false,
     ): List<MusicTrack> = withContext(Dispatchers.IO) {
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val previousTracksById = previousTracks.associateBy(MusicTrack::id)
+        val customFolderPrefixes = customFolderUris
+            .asSequence()
+            .mapNotNull(::customFolderPrefix)
+            .toSet()
+        if (customFolderUris.isNotEmpty() && customFolderPrefixes.isEmpty()) {
+            return@withContext emptyList()
+        }
         val albumArtistColumn = MediaStore.Audio.AudioColumns.ALBUM_ARTIST
             .takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.R }
         val folderColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -77,11 +88,17 @@ class MusicRepository(context: Context) {
         }.toTypedArray()
         val selection = buildString {
             append("${MediaStore.Audio.Media.IS_MUSIC} != 0")
+            if (skipShortAudio) {
+                append(" AND ${MediaStore.Audio.Media.DURATION} >= ?")
+            }
             if (onlyTrackId != null) {
                 append(" AND ${MediaStore.Audio.Media._ID} = ?")
             }
         }
-        val selectionArgs = onlyTrackId?.let { arrayOf(it.toString()) }
+        val selectionArgs = buildList {
+            if (skipShortAudio) add(MIN_AUDIO_DURATION_MS.toString())
+            onlyTrackId?.let { add(it.toString()) }
+        }.takeIf(List<String>::isNotEmpty)?.toTypedArray()
 
         contentResolver.query(
             collection,
@@ -108,6 +125,7 @@ class MusicRepository(context: Context) {
             val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE)
 
             buildList {
+                val seenContentUris = HashSet<String>()
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idColumn)
                     val dateModifiedEpochSeconds = cursor
@@ -115,6 +133,17 @@ class MusicRepository(context: Context) {
                         .coerceAtLeast(0L)
                     val fileSizeBytes = cursor.getLong(fileSizeColumn).coerceAtLeast(0L)
                     val contentUri = ContentUris.withAppendedId(collection, id).toString()
+                    if (!seenContentUris.add(contentUri)) continue
+                    val rawFolderPath = cursor.getString(folderColumnIndex)
+                    if (customFolderPrefixes.isNotEmpty() &&
+                        customFolderPrefixes.none { prefix ->
+                            folderMatchesPrefix(
+                                rawPath = rawFolderPath,
+                                includesFileName = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q,
+                                prefix = prefix,
+                            )
+                        }
+                    ) continue
                     val reusableTrack = previousTracksById[id]?.takeIf { previousTrack ->
                         !refreshAudioProperties &&
                             previousTrack.hasReusableAudioProperties(
@@ -171,7 +200,7 @@ class MusicRepository(context: Context) {
                             dateModifiedEpochSeconds = dateModifiedEpochSeconds,
                             fileName = cursor.getString(fileNameColumn).metadataOrNull(),
                             folderPath = normalizeMusicFolderPath(
-                                rawPath = cursor.getString(folderColumnIndex),
+                                rawPath = rawFolderPath,
                                 includesFileName =
                                     Build.VERSION.SDK_INT < Build.VERSION_CODES.Q,
                             ),
@@ -223,12 +252,57 @@ class MusicRepository(context: Context) {
         }
     }
 
+    suspend fun clearCachedMusic() = withContext(Dispatchers.IO) {
+        snapshotFile.delete()
+    }
+
     private companion object {
         private const val TAG = "MusicRepository"
         private const val SNAPSHOT_FILE_NAME = "music_library_snapshot.bin"
         private const val MAX_SNAPSHOT_BYTES = 64L * 1024L * 1024L
         private const val MEDIASTORE_DISC_FACTOR = 1_000
+        private const val MIN_AUDIO_DURATION_MS = 60_000L
     }
+}
+
+private fun customFolderPrefix(uriString: String): String? {
+    val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return null
+    val documentId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull()
+        ?: return null
+    return customFolderPrefixForDocumentId(documentId, Build.VERSION.SDK_INT)
+}
+
+internal fun customFolderPrefixForDocumentId(
+    documentId: String,
+    sdkInt: Int,
+): String? {
+    val separator = documentId.indexOf(':')
+    if (separator <= 0) return null
+    val volume = documentId.substring(0, separator)
+    val path = documentId.substring(separator + 1).trim('/')
+    return if (volume.equals("primary", ignoreCase = true)) {
+        if (sdkInt >= Build.VERSION_CODES.Q) {
+            "/${path.takeIf(String::isNotEmpty).orEmpty()}".trimEnd('/').ifEmpty { "/" }
+        } else {
+            "/storage/emulated/0/${path.takeIf(String::isNotEmpty).orEmpty()}"
+                .trimEnd('/')
+                .ifEmpty { "/storage/emulated/0" }
+        }
+    } else {
+        null
+    }
+}
+
+internal fun folderMatchesPrefix(
+    rawPath: String?,
+    includesFileName: Boolean,
+    prefix: String,
+): Boolean {
+    val normalized = normalizeMusicFolderPath(rawPath, includesFileName) ?: return false
+    val normalizedPrefix = prefix.trimEnd('/').ifEmpty { "/" }
+    return normalized == normalizedPrefix ||
+        normalized.startsWith("$normalizedPrefix/") ||
+        normalizedPrefix == "/"
 }
 
 /** Treats MediaStore's canonical `<unknown>` marker like missing metadata for the UI to localize. */

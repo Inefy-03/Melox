@@ -2,10 +2,7 @@ package com.melox.player.ui.component.library
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Intent
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
@@ -36,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -69,10 +65,6 @@ private val TrackActionIconSize = 22.dp
 private val TrackActionAddToQueueIconSize = 20.dp
 private val TrackActionSummaryArtworkSize = 56.dp
 private val TrackActionSummaryArtworkCornerRadius = 8.dp
-internal const val MusicTagEditorPackage = "com.xjcheng.musictageditor"
-internal const val LyricoPackage = "com.lonx.lyrico"
-internal const val LyricoEditTagAction = "com.lonx.lyrico.action.EDIT_TAG"
-
 @Composable
 fun TrackActionsOverlay(
     track: MusicTrack?,
@@ -89,6 +81,9 @@ fun TrackActionsOverlay(
     val latestOnExternalEditReturned by rememberUpdatedState(onExternalEditReturned)
     val externalEditorUnavailableMessage =
         stringResource(R.string.music_external_editor_unavailable)
+    val musicTagEditorNotFoundMessage =
+        stringResource(R.string.music_tag_editor_not_found)
+    val lyricoNotFoundMessage = stringResource(R.string.lyrico_not_found)
     var retainedTrack by remember { mutableStateOf(track) }
     var songInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var retainedSongInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
@@ -101,11 +96,6 @@ fun TrackActionsOverlay(
             latestOnExternalEditReturned(trackId)
         }
     }
-    val externalEditorLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) {
-        finishExternalEdit()
-    }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -117,23 +107,26 @@ fun TrackActionsOverlay(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-    val launchExternalEditor: (MusicTrack, String, String) -> Unit =
-        { selectedTrack, packageName, action ->
-            pendingExternalEditTrackId = selectedTrack.id
-            runCatching {
-                externalEditorLauncher.launch(
-                    selectedTrack.externalEditorIntent(
-                        packageName = packageName,
-                        action = action,
-                    ),
+    val openExternalEditor: (MusicTrack, ExternalEditorKind, String) -> Unit =
+        { selectedTrack, editorKind, notFoundMessage ->
+            val launched = runCatching {
+                launchExternalEditor(
+                    context = context,
+                    track = selectedTrack,
+                    kind = editorKind,
                 )
-            }.onSuccess {
+            }.getOrDefault(false)
+            if (launched) {
+                pendingExternalEditTrackId = selectedTrack.id
                 onDismiss()
-            }.onFailure {
-                pendingExternalEditTrackId = null
+            } else {
                 Toast.makeText(
                     context,
-                    externalEditorUnavailableMessage,
+                    if (context.hasExternalEditor(editorKind)) {
+                        externalEditorUnavailableMessage
+                    } else {
+                        notFoundMessage
+                    },
                     Toast.LENGTH_SHORT,
                 ).show()
             }
@@ -266,10 +259,10 @@ fun TrackActionsOverlay(
                         icon = MiuixIcons.Edit,
                         text = stringResource(R.string.music_edit_with_music_tag_editor),
                         onClick = {
-                            launchExternalEditor(
+                            openExternalEditor(
                                 selectedTrack,
-                                MusicTagEditorPackage,
-                                Intent.ACTION_VIEW,
+                                ExternalEditorKind.MusicTagEditor,
+                                musicTagEditorNotFoundMessage,
                             )
                         },
                     )
@@ -277,10 +270,10 @@ fun TrackActionsOverlay(
                         icon = MiuixIcons.Edit,
                         text = stringResource(R.string.music_edit_with_lyrico),
                         onClick = {
-                            launchExternalEditor(
+                            openExternalEditor(
                                 selectedTrack,
-                                LyricoPackage,
-                                LyricoEditTagAction,
+                                ExternalEditorKind.Lyrico,
+                                lyricoNotFoundMessage,
                             )
                         },
                     )
@@ -548,25 +541,6 @@ private fun SongInfoRow(label: String, value: String?) {
             )
         },
     )
-}
-
-internal fun MusicTrack.externalEditorIntent(
-    packageName: String,
-    action: String,
-): Intent {
-    val uri = contentUri.toUri()
-    return Intent(action).apply {
-        setDataAndType(
-            uri,
-            mimeType?.takeIf { it.startsWith("audio/", ignoreCase = true) } ?: "audio/*",
-        )
-        setPackage(packageName)
-        clipData = ClipData.newRawUri("audio", uri)
-        addFlags(
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-        )
-    }
 }
 
 internal fun participatingArtistGroups(

@@ -55,6 +55,7 @@ class PlaybackService : MediaSessionService() {
         val renderersFactory = DefaultRenderersFactory(this)
             .setEnableAudioFloatOutput(true)
             .setEnableDecoderFallback(true)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
         val player = ExoPlayer.Builder(this, renderersFactory)
             .setAudioAttributes(
                 AudioAttributes.Builder()

@@ -58,7 +58,7 @@ Melox 是一款基于 Jetpack Compose、Miuix 和 AndroidX Media3 构建的 Andr
 
 ## 下载与安装
 
-- 正式版从 [Releases](https://github.com/Inefy-03/Melox/releases) 下载适用于设备的 APK。
+- 正式版从 [Releases](https://github.com/Inefy-03/Melox/releases) 下载
 
 - 测试版请关注[Telegram 频道](https://t.me/MeloxPlayer)
 

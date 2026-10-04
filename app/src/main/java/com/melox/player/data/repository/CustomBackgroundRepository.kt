@@ -7,6 +7,7 @@ import android.graphics.ColorSpace
 import android.net.Uri
 import androidx.core.graphics.scale
 import com.google.android.renderscript.Toolkit
+import com.melox.player.model.AppSettings
 import com.melox.player.model.normalizeCustomBackgroundBlurPercent
 import java.io.File
 import java.util.UUID
@@ -14,11 +15,52 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.withContext
+
+/** Published bitmaps are read-only and remain valid while the UI retains them. */
+data class LoadedCustomBackground(
+    val id: String,
+    val blurPercent: Int,
+    val source: Bitmap,
+    val rendered: Bitmap,
+)
 
 class CustomBackgroundRepository(context: Context) {
     private val appContext = context.applicationContext
     private val directory = File(appContext.filesDir, "custom_backgrounds")
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun observeImages(settings: Flow<AppSettings>): Flow<LoadedCustomBackground?> = flow {
+        var sourceId: String? = null
+        var source: Bitmap? = null
+        emitAll(
+            settings.map { it.customBackgroundId to normalizeCustomBackgroundBlurPercent(it.customBackgroundBlurPercent) }
+                .distinctUntilChanged()
+                .mapLatest { (id, percent) ->
+                    if (id == null) {
+                        sourceId = null
+                        source = null
+                        return@mapLatest null
+                    }
+                    if (sourceId != id) {
+                        source = loadSourceImage(id)
+                        sourceId = id
+                    }
+                    val currentSource = source ?: return@mapLatest null
+                    val rendered = if (percent == 0) currentSource else blurImage(currentSource, percent)
+                    currentCoroutineContext().ensureActive()
+                    rendered?.let { LoadedCustomBackground(id, percent, currentSource, it) }
+                },
+        )
+    }.flowOn(Dispatchers.Default)
 
     suspend fun importImage(uri: Uri): String? = withContext(Dispatchers.IO) {
         var bitmap: Bitmap? = null

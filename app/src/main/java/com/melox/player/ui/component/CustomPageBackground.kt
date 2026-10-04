@@ -1,6 +1,5 @@
 package com.melox.player.ui.component
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -29,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.melox.player.data.repository.CustomBackgroundRepository
+import com.melox.player.data.repository.LoadedCustomBackground
 import com.melox.player.model.AppSettings
 import com.melox.player.model.normalizeCustomBackgroundBlurPercent
 import kotlin.math.roundToInt
@@ -93,26 +93,28 @@ private fun Modifier.fixedWallpaperRegion(background: FixedPageBackground): Modi
     }
 }
 
-private data class PageBackgroundSource(
-    val id: String?,
-    val bitmap: Bitmap?,
-)
-
 @Composable
-internal fun rememberCustomPageBackground(settings: AppSettings, blurPercentOverride: Int? = null): ImageBitmap? {
+internal fun rememberCustomPageBackground(
+    settings: AppSettings,
+    prepared: LoadedCustomBackground?,
+    blurPercentOverride: Int? = null,
+): ImageBitmap? {
+    val id = settings.customBackgroundId ?: return null
+    val percent = normalizeCustomBackgroundBlurPercent(blurPercentOverride ?: settings.customBackgroundBlurPercent)
+    val preparedImage = remember(prepared?.rendered) { prepared?.rendered?.asImageBitmap() }
+    // A prepared startup image is usable immediately, without another composition cycle.
+    if (prepared?.id == id && prepared.blurPercent == percent) return preparedImage
     val context = LocalContext.current.applicationContext
     val repository = remember(context) { CustomBackgroundRepository(context) }
-    val id = settings.customBackgroundId
-    if (id == null) return null
-    val source = produceState<PageBackgroundSource?>(null, id) {
-        value = PageBackgroundSource(id, repository.loadSourceImage(id))
-    }.value
-    val percent = normalizeCustomBackgroundBlurPercent(blurPercentOverride ?: settings.customBackgroundBlurPercent)
-    return produceState<ImageBitmap?>(null, source, percent, id) {
-        // Retain the last rendered image while a new image or decode size is loading.
-        if (source == null || source.id != id) return@produceState
-        value = source.bitmap?.let {
-            if (percent == 0) it.asImageBitmap() else repository.blurImage(it, percent)?.asImageBitmap()
+    return produceState<ImageBitmap?>(preparedImage, prepared, percent, id) {
+        if (prepared == null) {
+            value = null
+        } else if (prepared.id == id) {
+            value = if (prepared.blurPercent == percent) {
+                preparedImage
+            } else {
+                repository.blurImage(prepared.source, percent)?.asImageBitmap()
+            }
         }
     }.value
 }

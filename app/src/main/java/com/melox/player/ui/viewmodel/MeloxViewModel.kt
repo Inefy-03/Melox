@@ -35,6 +35,7 @@ import com.melox.player.data.library.sortArtists
 import com.melox.player.data.library.sortFolders
 import com.melox.player.data.library.sortMusicTracks
 import com.melox.player.data.repository.MusicRepository
+import com.melox.player.data.repository.CustomBackgroundRepository
 import com.melox.player.data.repository.LyricsRepository
 import com.melox.player.data.repository.LyricsRequest
 import com.melox.player.data.repository.PlaylistRepository
@@ -79,6 +80,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -238,6 +240,10 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     private val initialSettings = runBlocking(Dispatchers.IO) {
         settingsRepository.loadSettings()
     }
+    // Decode alongside feature initialization, before the first page composition.
+    val customBackground = CustomBackgroundRepository(application)
+        .observeImages(settingsRepository.settings.onStart { emit(initialSettings) })
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private val musicRepository = MusicRepository(application)
     private val playlistRepository = PlaylistRepository(application)
     private val lyricsRepository = LyricsRepository(application)

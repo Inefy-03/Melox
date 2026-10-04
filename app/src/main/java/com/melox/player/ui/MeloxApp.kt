@@ -318,6 +318,7 @@ fun MeloxApp(
     viewModel: MeloxViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val loadedCustomBackground by viewModel.customBackground.collectAsStateWithLifecycle()
     val compactPlayback by viewModel.compactPlaybackState.collectAsStateWithLifecycle()
     val currentTrackId by viewModel.currentTrackId.collectAsStateWithLifecycle()
     val hasCurrentItem by viewModel.hasCurrentItem.collectAsStateWithLifecycle()
@@ -1555,7 +1556,9 @@ fun MeloxApp(
                 customBackgroundBlurPreview = null
             }
         }
-        val customPageBackground = rememberCustomPageBackground(settings, customBackgroundBlurPreview)
+        val customPageBackground = rememberCustomPageBackground(
+            settings, loadedCustomBackground, customBackgroundBlurPreview,
+        )
         var customBackgroundDimPreview by remember(settings.customBackgroundId) { mutableStateOf<Int?>(null) }
         LaunchedEffect(settings.customBackgroundDimPercent, customBackgroundDimPreview) {
             if (customBackgroundDimPreview == settings.customBackgroundDimPercent) customBackgroundDimPreview = null

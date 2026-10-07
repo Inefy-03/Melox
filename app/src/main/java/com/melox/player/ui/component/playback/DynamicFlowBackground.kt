@@ -9,6 +9,8 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas as ComposeCanvas
@@ -52,6 +54,7 @@ import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
 
 private const val DYNAMIC_FLOW_FRAME_INTERVAL_NANOS = 1_000_000_000L / 30
 internal const val DYNAMIC_FLOW_DEFAULT_SPEED_TENTHS = 10
@@ -135,6 +138,33 @@ internal class DynamicFlowBackgroundState {
         draw(displayedFrame, currentPaint)
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    internal fun drawDitheredTo(
+        canvas: Canvas,
+        width: Float,
+        height: Float,
+        painter: DynamicFlowDitherPainter,
+    ): Boolean {
+        val current = displayedFrame ?: return false
+        val currentShader = currentPaint?.shader as? BitmapShader ?: return false
+        // RuntimeShader inputs do not inherit Paint's bitmap filtering flag.
+        currentShader.setFilterMode(BitmapShader.FILTER_MODE_LINEAR)
+        shaderMatrix.setScale(width / current.width, height / current.height)
+        currentShader.setLocalMatrix(shaderMatrix)
+        val previous = previousFrame
+        val previousShader = previousPaint?.shader as? BitmapShader
+        if (previous != null && previousShader != null) {
+            previousShader.setFilterMode(BitmapShader.FILTER_MODE_LINEAR)
+            shaderMatrix.setScale(width / previous.width, height / previous.height)
+            previousShader.setLocalMatrix(shaderMatrix)
+        }
+        painter.draw(
+            canvas, width, height, currentShader, previousShader ?: currentShader,
+            (currentPaint?.alpha ?: 255) / 255f,
+        )
+        return true
+    }
+
     private fun shaderPaint(frame: Bitmap) = Paint(Paint.FILTER_BITMAP_FLAG).apply {
         shader = BitmapShader(frame, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
     }
@@ -164,6 +194,18 @@ internal fun DynamicFlowBackground(
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     val currentDensityDpi by rememberUpdatedState(densityDpi)
     val frameBufferPool = remember { DynamicFlowFrameBufferPool() }
+    val ditherPainter = remember {
+        if (isRuntimeShaderSupported()) DynamicFlowDitherPainter() else null
+    }
+    val scrim = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Black.copy(alpha = 0.18f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.30f),
+            ),
+        )
+    }
 
     LaunchedEffect(artwork, artworkLoading, backgroundColor) {
         if (artworkLoading) return@LaunchedEffect
@@ -274,21 +316,14 @@ internal fun DynamicFlowBackground(
             // Snapshot observation stays in the draw phase, so frame publication
             // invalidates only this background node.
             state.frameRevision
-            state.drawTo(drawContext.canvas.nativeCanvas, size.width, size.height)
+            val canvas = drawContext.canvas.nativeCanvas
+            val dithered = isRuntimeShaderSupported() && ditherPainter != null && canvas.isHardwareAccelerated &&
+                state.drawDitheredTo(canvas, size.width, size.height, ditherPainter)
+            if (!dithered) {
+                state.drawTo(canvas, size.width, size.height)
+                drawRect(scrim)
+            }
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.18f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.30f),
-                        ),
-                    ),
-                ),
-        )
     }
 }
 

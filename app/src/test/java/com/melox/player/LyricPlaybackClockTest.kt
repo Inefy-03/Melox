@@ -30,6 +30,19 @@ class LyricPlaybackClockTest {
     }
 
     @Test
+    fun conflatedRoundTripToTheSameTrackStartsANewClockInterval() {
+        val clock = LyricPlaybackClock(90_000, 10)
+        // Two media transitions occurred before the UI collected the latest snapshot.
+        assertTrue(clock.resetForIteration(12, 0))
+        assertEquals(0.0, clock.positionMs.doubleValue, 0.0)
+        assertFalse(clock.resetForIteration(12, 0))
+        clock.positionMs.doubleValue = stabilizedLyricPlaybackPositionMs(
+            clock.positionMs.doubleValue, 17, 16_666_667, 1f,
+        )
+        assertEquals(17.0, clock.positionMs.doubleValue, 0.0)
+    }
+
+    @Test
     fun ordinaryBackwardSamplesNeverResetTheClock() {
         val clock = LyricPlaybackClock(9_900, 2)
         assertFalse(clock.resetForIteration(2, 20))
@@ -37,6 +50,19 @@ class LyricPlaybackClockTest {
             clock.positionMs.doubleValue, 20, 16_666_667, 1f,
         )
         assertTrue(clock.positionMs.doubleValue > 9_900)
+    }
+
+    @Test
+    fun suspendedFramesReanchorToPlaybackInsteadOfAddingBackgroundTime() {
+        assertEquals(12_000.0, stabilizedLyricPlaybackPositionMs(
+            10_000.0, 12_000, 30_000_000_000L, 1f,
+        ), 0.0)
+        assertEquals(2_000.0, stabilizedLyricPlaybackPositionMs(
+            10_000.0, 2_000, 30_000_000_000L, 1f,
+        ), 0.0)
+        assertEquals(32_000.0, stabilizedLyricPlaybackPositionMs(
+            10_000.0, 32_000, 30_000_000_000L, 1f,
+        ), 0.0)
     }
 
     @Test

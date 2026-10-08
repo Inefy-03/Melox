@@ -57,6 +57,33 @@ class LyricRowMotionTest {
     }
 
     @Test
+    fun distantSeeksStartWithoutWaitingForDisposedVisibleRowsInEitherDirection() = runBlocking(clock) {
+        for ((indices, shift) in listOf((90..92) to 800f, (0..2) to -800f)) {
+            val motion = LyricRowMotion()
+            motion.place(emptyMap(), indices.associateWith { it * 80 }, shift, 0f, true)
+            val animation = launch { motion.settle(220f, listOf(40, 41, 42), cascade = true) }
+            repeat(3) { frame() }
+            for (index in indices) {
+                assertTrue("Seek stalled at row $index", abs(motion.offset(index)) < abs(shift))
+            }
+            finish(animation)
+            for (index in indices) assertEquals(0f, motion.offset(index), 0f)
+        }
+    }
+
+    @Test
+    fun partialRetentionStartsAtTheFirstSurvivingVisibleRow() = runBlocking(clock) {
+        val motion = LyricRowMotion()
+        motion.place(emptyMap(), mapOf(42 to 0, 43 to 80, 44 to 160), 160f, 0f, true)
+        val animation = launch { motion.settle(220f, listOf(40, 41, 42, 43), cascade = true) }
+        repeat(3) { frame() }
+        assertTrue("Disposed upper rows delayed the surviving row", motion.offset(42) < 160f)
+        assertEquals("Visible lower row lost its cascade", 160f, motion.offset(43), 0f)
+        assertEquals("Incoming lower row lost its cascade", 160f, motion.offset(44), 0f)
+        finish(animation)
+    }
+
+    @Test
     fun centeringEventDistinguishesNewTapsFromPlaybackAcknowledgements() {
         val tap = LyricCenteringEvent(5, 5_000L, 1, false, false, listOf(600, 800))
         // The pending request flag is absent from the production key.

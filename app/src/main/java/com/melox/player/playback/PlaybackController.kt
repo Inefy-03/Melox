@@ -96,7 +96,8 @@ class PlaybackController(context: Context) {
                     cancelSleepTimer(interrupted = true)
                 }
             }
-            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) playbackIteration += 1L
+            // Preserve playback identity even when collectors conflate a rapid A/B/A transition.
+            playbackIteration += 1L
             val previous = mutableState.value
             val requestedDirection = pendingTrackSkip
                 ?.takeIf {

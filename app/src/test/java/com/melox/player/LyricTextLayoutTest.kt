@@ -10,6 +10,27 @@ import org.junit.Test
 
 class LyricTextLayoutTest {
     @Test
+    fun explicitLineBreaksRemainSeparateWhenTheWholeSpanFits() {
+        val text = "Swimming\nthrough a\nholy soil"
+        val chunks = lyricTextChunks(text, 1_000f) { it.length.toFloat() }
+            .map { text.substring(it) }
+        assertEquals(listOf("Swimming", "\n", "through a", "\n", "holy soil"), chunks)
+        assertEquals(text, chunks.joinToString(""))
+        assertEquals(listOf(0..1, 2..3, 4..4), lyricWrapRanges(chunks, List(chunks.size) { 10f }, 1_000f))
+    }
+
+    @Test
+    fun repeatedHardBreaksPreserveBlankRowsAndGraphemeChunks() {
+        val text = "e\u0301😀\n\nfgjpqy"
+        val chunks = lyricTextChunks(text, 20f) { it.codePointCount(0, it.length) * 10f }
+            .map { text.substring(it) }
+        assertEquals(text, chunks.joinToString(""))
+        assertTrue(chunks.none { it.first().isLowSurrogate() || it.first() == '\u0301' })
+        val ranges = lyricWrapRanges(chunks, List(chunks.size) { 10f }, 1_000f)
+        assertEquals(listOf("e\u0301😀\n", "\n", "fgjpqy"), ranges.map { chunks.slice(it).joinToString("") })
+    }
+
+    @Test
     fun wrappingFillsTheCurrentLineInsteadOfBalancingTheParagraph() {
         val parts = listOf("one ", "two ", "three ", "four ")
         assertEquals(listOf(0..2, 3..3), lyricWrapRanges(parts, List(4) { 30f }, 100f))

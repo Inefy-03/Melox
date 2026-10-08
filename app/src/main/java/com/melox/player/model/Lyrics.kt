@@ -30,6 +30,10 @@ data class LyricLine(
             word.text + if (word.hasTrailingSpace) " " else ""
         }.trimEnd()
 
+    fun animationWords(): List<LyricWord> = words.ifEmpty {
+        listOf(LyricWord(startTimeMs, endTimeMs, displayText, hasTrailingSpace = false))
+    }
+
     fun revealProgress(positionMs: Long, forceWordByWord: Boolean): Float {
         if (positionMs < startTimeMs) return 0f
         if (words.isEmpty()) {

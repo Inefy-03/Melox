@@ -176,7 +176,6 @@ import com.melox.player.ui.screen.playback.characterMotion
 import com.melox.player.ui.screen.playback.characterProgress
 import com.melox.player.ui.screen.playback.shouldUseWordAnimation
 import com.melox.player.ui.screen.playback.wordMotion
-import com.melox.player.ui.screen.playback.forcedLyricRowProgress
 import com.melox.player.ui.screen.playback.lyricBlurRadiusTarget
 import com.melox.player.ui.screen.playback.lyricBlurShouldDisableForBrowsing
 import com.melox.player.ui.screen.playback.lyricCenterScrollDelta
@@ -557,9 +556,9 @@ class UiLogicTest {
     }
 
     @Test
-    fun lyricsUseTwelveDpSpacingWhenTranslationIsVisible() {
+    fun lyricsUseTenDpSpacingWithTranslationAndTwelveDpWithoutIt() {
         assertEquals(
-            12f,
+            10f,
             lyricLineVerticalPaddingDp(
                 hasTimedWords = true,
                 hasTranslation = true,
@@ -568,7 +567,7 @@ class UiLogicTest {
             0f,
         )
         assertEquals(
-            12f,
+            10f,
             lyricLineVerticalPaddingDp(
                 hasTimedWords = false,
                 hasTranslation = true,
@@ -577,7 +576,7 @@ class UiLogicTest {
             0f,
         )
         assertEquals(
-            16f,
+            12f,
             lyricLineVerticalPaddingDp(
                 hasTimedWords = true,
                 hasTranslation = false,
@@ -586,7 +585,7 @@ class UiLogicTest {
             0f,
         )
         assertEquals(
-            16f,
+            12f,
             lyricLineVerticalPaddingDp(
                 hasTimedWords = true,
                 hasTranslation = true,
@@ -595,7 +594,7 @@ class UiLogicTest {
             0f,
         )
         assertEquals(
-            16f,
+            12f,
             lyricLineVerticalPaddingDp(
                 hasTimedWords = false,
                 hasTranslation = false,
@@ -604,7 +603,7 @@ class UiLogicTest {
             0f,
         )
         assertEquals(
-            16f,
+            12f,
             lyricLineVerticalPaddingDp(
                 hasTimedWords = false,
                 hasTranslation = true,
@@ -1132,21 +1131,6 @@ class UiLogicTest {
         )
     }
 
-    @Test
-    fun forcedWordByWordLyricsFinishWrappedRowsInOrder() {
-        val equalRows = listOf(100f, 100f, 100f)
-        assertEquals(0.75f, forcedLyricRowProgress(0.25f, 0, equalRows), 0f)
-        assertEquals(0f, forcedLyricRowProgress(0.25f, 1, equalRows), 0f)
-        assertEquals(1f, forcedLyricRowProgress(0.5f, 0, equalRows), 0f)
-        assertEquals(0.5f, forcedLyricRowProgress(0.5f, 1, equalRows), 0f)
-        assertEquals(0f, forcedLyricRowProgress(0.5f, 2, equalRows), 0f)
-        assertEquals(1f, forcedLyricRowProgress(1f, 2, equalRows), 0f)
-
-        val shorterLastRow = listOf(100f, 100f, 50f)
-        assertEquals(1f, forcedLyricRowProgress(0.5f, 0, shorterLastRow), 0f)
-        assertEquals(0.25f, forcedLyricRowProgress(0.5f, 1, shorterLastRow), 0f)
-        assertEquals(0f, forcedLyricRowProgress(0.5f, 2, shorterLastRow), 0f)
-    }
 
     @Test
     fun legacyLyricFontScaleMapsOldEightyPercentToNewHundredPercent() {
@@ -1291,8 +1275,8 @@ class UiLogicTest {
     }
 
     @Test
-    fun wordAnimationEligibilityDistinguishesCjkAndFastWords() {
-        assertFalse(
+    fun wordAnimationEligibilityIncludesCjkButExcludesFastWords() {
+        assertTrue(
             shouldUseWordAnimation(
                 content = "中文",
                 durationMs = 2_000L,

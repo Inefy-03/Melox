@@ -102,6 +102,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.melox.player.model.LyricAnimationMode
 import com.melox.player.R
 import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.MusicSortConfig
@@ -1835,8 +1836,8 @@ fun MeloxApp(
                                                                 viewModel::setLyricFontWeight,
                                                             onLyricBlurEnabledChange =
                                                                 viewModel::setLyricBlurEnabled,
-                                                            onForceWordByWordLyricsChange =
-                                                                viewModel::setForceWordByWordLyrics,
+                                                            onLyricAnimationModeChange =
+                                                                viewModel::setLyricAnimationMode,
                                                             onHideControlsOnLyricsChange =
                                                                 viewModel::setHideControlsOnLyrics,
                                                         )
@@ -2175,7 +2176,7 @@ fun MeloxApp(
                             dynamicFlowBackgroundState = dynamicFlowBackgroundState,
                             lyricFontScale = settings.lyricFontScale,
                             lyricFontWeight = settings.lyricFontWeight,
-                            forceWordByWordLyrics = settings.forceWordByWordLyrics,
+                            lyricAnimationMode = settings.lyricAnimationMode,
                             lyricBlurEnabled = settings.lyricBlurEnabled,
                             centerLyrics = settings.centerLyrics,
                             leftAlignPlayerTitle = settings.leftAlignPlayerTitle,
@@ -2378,7 +2379,7 @@ private fun FullPlayerHost(
     dynamicFlowBackgroundState: DynamicFlowBackgroundState,
     lyricFontScale: Float,
     lyricFontWeight: Int,
-    forceWordByWordLyrics: Boolean,
+    lyricAnimationMode: LyricAnimationMode,
     lyricBlurEnabled: Boolean,
     centerLyrics: Boolean,
     leftAlignPlayerTitle: Boolean,
@@ -2431,7 +2432,7 @@ private fun FullPlayerHost(
         dynamicFlowBackgroundState = dynamicFlowBackgroundState,
         lyricFontScale = lyricFontScale,
         lyricFontWeight = lyricFontWeight,
-        forceWordByWordLyrics = forceWordByWordLyrics,
+        lyricAnimationMode = lyricAnimationMode,
         lyricBlurEnabled = lyricBlurEnabled,
         centerLyrics = centerLyrics,
         leftAlignPlayerTitle = leftAlignPlayerTitle,
@@ -2439,7 +2440,7 @@ private fun FullPlayerHost(
         showLyricsTranslation = showLyricsTranslation,
         onLyricFontScaleChange = viewModel::setLyricFontScale,
         onLyricFontWeightChange = viewModel::setLyricFontWeight,
-        onForceWordByWordLyricsChange = viewModel::setForceWordByWordLyrics,
+        onLyricAnimationModeChange = viewModel::setLyricAnimationMode,
         onLyricBlurEnabledChange = viewModel::setLyricBlurEnabled,
         onCenterLyricsChange = viewModel::setCenterLyrics,
         onLeftAlignPlayerTitleChange = viewModel::setLeftAlignPlayerTitle,

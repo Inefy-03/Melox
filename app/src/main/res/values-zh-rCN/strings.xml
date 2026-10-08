@@ -291,8 +291,8 @@
     <string name="scan_status_error_default">扫描失败，请重试</string>
     <string name="playback_error">无法播放此音频</string>
     <string name="lyrics_unavailable">暂无歌词</string>
-    <string name="player_settings">播放页设置</string>
-    <string name="player_settings_open">打开播放页设置</string>
+    <string name="player_settings">歌词设置</string>
+    <string name="player_settings_open">打开歌词设置</string>
     <string name="playback_options_open">播放倍速与定时</string>
     <string name="playback_sleep_timer">定时</string>
     <string name="playback_sleep_timer_start">开始</string>
@@ -316,8 +316,11 @@
     <string name="lyrics_size_value">%1$dsp</string>
     <string name="lyrics_weight">歌词字重</string>
     <string name="lyrics_weight_value">%1$d</string>
-    <string name="lyrics_force_word_by_word">强制逐字歌词</string>
-    <string name="lyrics_force_word_by_word_summary">为逐行歌词应用逐字高亮</string>
+    <string name="lyrics_word_animation">逐字歌词动画</string>
+    <string name="lyrics_animation_current_line">仅当前行</string>
+    <string name="lyrics_animation_extend_to_all">扩展至全部</string>
+    <string name="lyrics_animation_always">始终</string>
+    <string name="lyrics_animation_never">从不</string>
     <string name="lyrics_blur">歌词模糊</string>
     <string name="lyrics_blur_summary">模糊非当前歌词</string>
     <string name="lyrics_center">歌词居中</string>

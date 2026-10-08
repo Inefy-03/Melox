@@ -149,10 +149,25 @@ class LyricTranslationMotionTest {
     @Test
     fun rowsWithoutTranslationKeepTheirSpacingAndTranslatedRowsInterpolate() {
         for (expansion in listOf(0f, 0.5f, 1f)) {
-            assertEquals(16f, lyricTranslationPaddingDp(false, expansion), 0f)
+            assertEquals(12f, lyricTranslationPaddingDp(false, expansion), 0f)
         }
-        assertEquals(16f, lyricTranslationPaddingDp(true, 0f), 0f)
-        assertEquals(14f, lyricTranslationPaddingDp(true, 0.5f), 0f)
-        assertEquals(12f, lyricTranslationPaddingDp(true, 1f), 0f)
+        assertEquals(12f, lyricTranslationPaddingDp(true, 0f), 0f)
+        assertEquals(11f, lyricTranslationPaddingDp(true, 0.5f), 0f)
+        assertEquals(10f, lyricTranslationPaddingDp(true, 1f), 0f)
+    }
+
+    @Test
+    fun fontSizeChangesSpacingGentlyAndKeepsTranslationInterpolationContinuous() {
+        for ((fontScale, hidden, shown) in listOf(
+            Triple(2f / 3f, 11f, 55f / 6f),
+            Triple(1f, 12f, 10f),
+            Triple(2f, 15f, 12.5f),
+        )) {
+            for (expansion in listOf(0f, 0.25f, 0.5f, 0.75f, 1f)) {
+                assertEquals(hidden, lyricTranslationPaddingDp(false, expansion, fontScale), 0.0001f)
+                assertEquals(hidden + (shown - hidden) * expansion,
+                    lyricTranslationPaddingDp(true, expansion, fontScale), 0.0001f)
+            }
+        }
     }
 }

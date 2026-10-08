@@ -55,6 +55,32 @@ enum class LyricsSidecarFormatPriority {
     TTML,
 }
 
+enum class LyricAnimationMode {
+    CURRENT_LINE,
+    EXTEND_TO_ALL,
+    ALWAYS,
+    NEVER,
+    ;
+
+    fun usesWordAnimation(lineHasTimedWords: Boolean, documentHasTimedWords: Boolean): Boolean =
+        when (this) {
+            CURRENT_LINE -> lineHasTimedWords
+            EXTEND_TO_ALL -> documentHasTimedWords
+            ALWAYS -> true
+            NEVER -> false
+        }
+}
+
+fun resolveLyricAnimationMode(storedValue: String?, legacyForceWordByWord: Boolean?): LyricAnimationMode =
+    if (storedValue != null) {
+        LyricAnimationMode.entries.firstOrNull { it.name == storedValue }
+            ?: LyricAnimationMode.CURRENT_LINE
+    } else if (legacyForceWordByWord == true) {
+        LyricAnimationMode.ALWAYS
+    } else {
+        LyricAnimationMode.CURRENT_LINE
+    }
+
 val PLAYBACK_SPEED_VALUES = listOf(
     0.25f, 0.50f, 0.75f, 0.90f, 0.95f, 1.00f, 1.05f,
     1.10f, 1.25f, 1.50f, 1.75f, 2.00f, 2.50f, 3.00f,
@@ -103,7 +129,7 @@ data class AppSettings(
     val playbackPauseFade: Boolean = false,
     val lyricFontScale: Float = 1f,
     val lyricFontWeight: Int = 400,
-    val forceWordByWordLyrics: Boolean = false,
+    val lyricAnimationMode: LyricAnimationMode = LyricAnimationMode.CURRENT_LINE,
     val lyricBlurEnabled: Boolean = false,
     val centerLyrics: Boolean = false,
     val leftAlignPlayerTitle: Boolean = false,

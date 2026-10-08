@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.melox.player.model.LyricAnimationMode
 import com.melox.player.R
 import com.melox.player.model.AppSettings
 import com.melox.player.model.LyricsSidecarFormatPriority
@@ -182,7 +183,7 @@ internal fun LyricsInterfaceSettingsScreen(
     onLyricFontScaleChange: (Float) -> Unit,
     onLyricFontWeightChange: (Int) -> Unit,
     onLyricBlurEnabledChange: (Boolean) -> Unit,
-    onForceWordByWordLyricsChange: (Boolean) -> Unit,
+    onLyricAnimationModeChange: (LyricAnimationMode) -> Unit,
     onHideControlsOnLyricsChange: (Boolean) -> Unit,
 ) {
     var leftAlignTitle by remember(settings.leftAlignPlayerTitle) {
@@ -195,8 +196,8 @@ internal fun LyricsInterfaceSettingsScreen(
     var fontScale by remember(settings.lyricFontScale) { mutableFloatStateOf(settings.lyricFontScale) }
     var fontWeight by remember(settings.lyricFontWeight) { mutableIntStateOf(settings.lyricFontWeight) }
     var blur by remember(settings.lyricBlurEnabled) { mutableStateOf(settings.lyricBlurEnabled) }
-    var forceWordByWord by remember(settings.forceWordByWordLyrics) {
-        mutableStateOf(settings.forceWordByWordLyrics)
+    var animationMode by remember(settings.lyricAnimationMode) {
+        mutableStateOf(settings.lyricAnimationMode)
     }
     var hideControls by remember(settings.hideControlsOnLyrics) {
         mutableStateOf(settings.hideControlsOnLyrics)
@@ -216,7 +217,7 @@ internal fun LyricsInterfaceSettingsScreen(
                 lyricFontScale = fontScale,
                 lyricFontWeight = fontWeight,
                 lyricBlurEnabled = blur,
-                forceWordByWordLyrics = forceWordByWord,
+                lyricAnimationMode = animationMode,
                 hideControlsOnLyrics = hideControls,
                 onLeftAlignPlayerTitleChange = {
                     leftAlignTitle = it
@@ -238,9 +239,9 @@ internal fun LyricsInterfaceSettingsScreen(
                     blur = it
                     onLyricBlurEnabledChange(it)
                 },
-                onForceWordByWordLyricsChange = {
-                    forceWordByWord = it
-                    onForceWordByWordLyricsChange(it)
+                onLyricAnimationModeChange = {
+                    animationMode = it
+                    onLyricAnimationModeChange(it)
                 },
                 onHideControlsOnLyricsChange = {
                     hideControls = it

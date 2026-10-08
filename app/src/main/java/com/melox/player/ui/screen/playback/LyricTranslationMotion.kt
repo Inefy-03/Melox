@@ -39,8 +39,12 @@ internal class LyricTranslationMotion(initiallyVisible: Boolean) {
     }
 }
 
-internal fun lyricTranslationPaddingDp(hasTranslation: Boolean, expansion: Float): Float {
-    val hidden = lyricLineVerticalPaddingDp(false, hasTranslation, false)
-    val shown = lyricLineVerticalPaddingDp(false, hasTranslation, true)
+internal fun lyricTranslationPaddingDp(
+    hasTranslation: Boolean,
+    expansion: Float,
+    lyricFontScale: Float = 1f,
+): Float {
+    val hidden = lyricLineVerticalPaddingDp(false, hasTranslation, false, lyricFontScale)
+    val shown = lyricLineVerticalPaddingDp(false, hasTranslation, true, lyricFontScale)
     return hidden + (shown - hidden) * expansion.coerceIn(0f, 1f)
 }

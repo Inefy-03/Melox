@@ -1,6 +1,7 @@
 package com.melox.player.ui.screen.playback
 
 import android.graphics.Bitmap
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
@@ -75,6 +76,8 @@ import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -99,6 +102,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Rect
+import com.melox.player.model.LyricAnimationMode
 import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.displayArtistName
@@ -170,7 +174,7 @@ internal fun FullPlayerScreen(
     dynamicFlowBackgroundState: DynamicFlowBackgroundState,
     lyricFontScale: Float,
     lyricFontWeight: Int,
-    forceWordByWordLyrics: Boolean,
+    lyricAnimationMode: LyricAnimationMode,
     lyricBlurEnabled: Boolean,
     centerLyrics: Boolean,
     leftAlignPlayerTitle: Boolean,
@@ -178,7 +182,7 @@ internal fun FullPlayerScreen(
     showLyricsTranslation: Boolean,
     onLyricFontScaleChange: (Float) -> Unit,
     onLyricFontWeightChange: (Int) -> Unit,
-    onForceWordByWordLyricsChange: (Boolean) -> Unit,
+    onLyricAnimationModeChange: (LyricAnimationMode) -> Unit,
     onLyricBlurEnabledChange: (Boolean) -> Unit,
     onCenterLyricsChange: (Boolean) -> Unit,
     onLeftAlignPlayerTitleChange: (Boolean) -> Unit,
@@ -285,8 +289,8 @@ internal fun FullPlayerScreen(
     }
     var displayedLyricFontScale by remember { mutableFloatStateOf(lyricFontScale) }
     var displayedLyricFontWeight by remember { mutableIntStateOf(lyricFontWeight) }
-    var displayedForceWordByWordLyrics by remember {
-        mutableStateOf(forceWordByWordLyrics)
+    var displayedLyricAnimationMode by remember {
+        mutableStateOf(lyricAnimationMode)
     }
     var displayedLyricBlurEnabled by remember { mutableStateOf(lyricBlurEnabled) }
     var displayedCenterLyrics by remember { mutableStateOf(centerLyrics) }
@@ -381,8 +385,8 @@ internal fun FullPlayerScreen(
     LaunchedEffect(lyricFontWeight) {
         displayedLyricFontWeight = lyricFontWeight
     }
-    LaunchedEffect(forceWordByWordLyrics) {
-        displayedForceWordByWordLyrics = forceWordByWordLyrics
+    LaunchedEffect(lyricAnimationMode) {
+        displayedLyricAnimationMode = lyricAnimationMode
     }
     LaunchedEffect(lyricBlurEnabled) {
         displayedLyricBlurEnabled = lyricBlurEnabled
@@ -659,7 +663,7 @@ internal fun FullPlayerScreen(
                                         emphasisControlColor = emphasisControlColor,
                                         lyricFontScale = displayedLyricFontScale,
                                         lyricFontWeight = displayedLyricFontWeight,
-                                        forceWordByWordLyrics = displayedForceWordByWordLyrics,
+                                        lyricAnimationMode = displayedLyricAnimationMode,
                                         lyricBlurEnabled = displayedLyricBlurEnabled,
                                         centerLyrics = displayedCenterLyrics,
                                         lyricCenterOffsetY = 0.dp,
@@ -710,7 +714,7 @@ internal fun FullPlayerScreen(
                                             emphasisControlColor = emphasisControlColor,
                                             lyricFontScale = displayedLyricFontScale,
                                             lyricFontWeight = displayedLyricFontWeight,
-                                            forceWordByWordLyrics = displayedForceWordByWordLyrics,
+                                            lyricAnimationMode = displayedLyricAnimationMode,
                                             lyricBlurEnabled = displayedLyricBlurEnabled,
                                             centerLyrics = displayedCenterLyrics,
                                             lyricCenterOffsetY = 0.dp,
@@ -809,7 +813,7 @@ internal fun FullPlayerScreen(
                                     lyricsPagingEnabled = lyricsPagingEnabled,
                                     lyricFontScale = displayedLyricFontScale,
                                     lyricFontWeight = displayedLyricFontWeight,
-                                    forceWordByWordLyrics = displayedForceWordByWordLyrics,
+                                    lyricAnimationMode = displayedLyricAnimationMode,
                                     lyricBlurEnabled = displayedLyricBlurEnabled,
                                     centerLyrics = displayedCenterLyrics,
                                     lyricCenterOffsetY = lyricsCenterOffsetY,
@@ -890,8 +894,8 @@ internal fun FullPlayerScreen(
                                             lyricsPagingEnabled = lyricsPagingEnabled,
                                             lyricFontScale = displayedLyricFontScale,
                                             lyricFontWeight = displayedLyricFontWeight,
-                                            forceWordByWordLyrics =
-                                                displayedForceWordByWordLyrics,
+                                            lyricAnimationMode =
+                                                displayedLyricAnimationMode,
                                             lyricBlurEnabled = displayedLyricBlurEnabled,
                                             centerLyrics = displayedCenterLyrics,
                                             lyricCenterOffsetY = lyricsCenterOffsetY,
@@ -971,7 +975,7 @@ internal fun FullPlayerScreen(
                     leftAlignPlayerTitle = displayedLeftAlignPlayerTitle,
                     lyricFontScale = displayedLyricFontScale,
                     lyricFontWeight = displayedLyricFontWeight,
-                    forceWordByWordLyrics = displayedForceWordByWordLyrics,
+                    lyricAnimationMode = displayedLyricAnimationMode,
                     lyricBlurEnabled = displayedLyricBlurEnabled,
                     centerLyrics = displayedCenterLyrics,
                     hideControlsOnLyrics = displayedHideControlsOnLyrics,
@@ -989,9 +993,9 @@ internal fun FullPlayerScreen(
                     onLyricFontWeightCommit = {
                         onLyricFontWeightChange(displayedLyricFontWeight)
                     },
-                    onForceWordByWordLyricsChange = {
-                        displayedForceWordByWordLyrics = it
-                        onForceWordByWordLyricsChange(it)
+                    onLyricAnimationModeChange = {
+                        displayedLyricAnimationMode = it
+                        onLyricAnimationModeChange(it)
                     },
                     onLyricBlurEnabledChange = {
                         displayedLyricBlurEnabled = it
@@ -1058,7 +1062,7 @@ private fun PlayerSettingsSheet(
     leftAlignPlayerTitle: Boolean,
     lyricFontScale: Float,
     lyricFontWeight: Int,
-    forceWordByWordLyrics: Boolean,
+    lyricAnimationMode: LyricAnimationMode,
     lyricBlurEnabled: Boolean,
     centerLyrics: Boolean,
     hideControlsOnLyrics: Boolean,
@@ -1069,13 +1073,21 @@ private fun PlayerSettingsSheet(
     onLyricFontScaleCommit: () -> Unit,
     onLyricFontWeightPreview: (Int) -> Unit,
     onLyricFontWeightCommit: () -> Unit,
-    onForceWordByWordLyricsChange: (Boolean) -> Unit,
+    onLyricAnimationModeChange: (LyricAnimationMode) -> Unit,
     onLyricBlurEnabledChange: (Boolean) -> Unit,
     onCenterLyricsChange: (Boolean) -> Unit,
     onHideControlsOnLyricsChange: (Boolean) -> Unit,
     onShowLyricsTranslationChange: (Boolean) -> Unit,
 ) {
     val wideLayout = usesMiuixSmallTopAppBar()
+    val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    val density = LocalDensity.current
+    var firstCardHeightPx by remember { mutableIntStateOf(0) }
+    val contentMaxHeight = if (isPortrait && firstCardHeightPx > 0) {
+        with(density) { firstCardHeightPx.toDp() } + 32.dp
+    } else {
+        Dp.Infinity
+    }
     val bottomPadding = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding()
@@ -1095,7 +1107,7 @@ private fun PlayerSettingsSheet(
             lyricFontScale = lyricFontScale,
             lyricFontWeight = lyricFontWeight,
             lyricBlurEnabled = lyricBlurEnabled,
-            forceWordByWordLyrics = forceWordByWordLyrics,
+            lyricAnimationMode = lyricAnimationMode,
             hideControlsOnLyrics = hideControlsOnLyrics,
             onLeftAlignPlayerTitleChange = onLeftAlignPlayerTitleChange,
             onCenterLyricsChange = onCenterLyricsChange,
@@ -1105,10 +1117,11 @@ private fun PlayerSettingsSheet(
             onLyricFontWeightPreview = onLyricFontWeightPreview,
             onLyricFontWeightCommit = onLyricFontWeightCommit,
             onLyricBlurEnabledChange = onLyricBlurEnabledChange,
-            onForceWordByWordLyricsChange = onForceWordByWordLyricsChange,
+            onLyricAnimationModeChange = onLyricAnimationModeChange,
             onHideControlsOnLyricsChange = onHideControlsOnLyricsChange,
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = contentMaxHeight)
                 .overScrollVertical(
                     nestedScrollToParent = false,
                     isEnabled = { scrollState.maxValue > 0 },
@@ -1117,6 +1130,7 @@ private fun PlayerSettingsSheet(
                 .padding(bottom = bottomPadding + 12.dp),
             cardColor = bottomSheetCardColor(),
             showHideControls = !wideLayout,
+            firstCardModifier = Modifier.onSizeChanged { firstCardHeightPx = it.height },
         )
     }
 }

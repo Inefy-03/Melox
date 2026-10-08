@@ -304,8 +304,8 @@
     <string name="scan_status_error_default">Scan failed. Try again.</string>
     <string name="playback_error">Unable to play this audio.</string>
     <string name="lyrics_unavailable">No lyrics</string>
-    <string name="player_settings">Player settings</string>
-    <string name="player_settings_open">Open player settings</string>
+    <string name="player_settings">Lyrics settings</string>
+    <string name="player_settings_open">Open lyrics settings</string>
     <string name="playback_options_open">Playback speed and sleep timer</string>
     <string name="playback_sleep_timer">Timer</string>
     <string name="playback_sleep_timer_start">Start</string>
@@ -329,8 +329,11 @@
     <string name="lyrics_size_value">%1$dsp</string>
     <string name="lyrics_weight">Lyrics weight</string>
     <string name="lyrics_weight_value">%1$d</string>
-    <string name="lyrics_force_word_by_word">Force word-by-word lyrics</string>
-    <string name="lyrics_force_word_by_word_summary">Apply word-by-word highlighting to line-synced lyrics</string>
+    <string name="lyrics_word_animation">Word-by-word lyric animation</string>
+    <string name="lyrics_animation_current_line">Timed lines only</string>
+    <string name="lyrics_animation_extend_to_all">Extend to all</string>
+    <string name="lyrics_animation_always">Always</string>
+    <string name="lyrics_animation_never">Never</string>
     <string name="lyrics_blur">Lyrics blur</string>
     <string name="lyrics_blur_summary">Blur inactive lyrics</string>
     <string name="lyrics_center">Center lyrics</string>

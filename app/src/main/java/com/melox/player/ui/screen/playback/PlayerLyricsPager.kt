@@ -96,6 +96,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Rect
+import com.melox.player.model.LyricAnimationMode
 import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.displayArtistName
@@ -167,7 +168,7 @@ internal fun PlayerContentPager(
     lyricsPagingEnabled: Boolean,
     lyricFontScale: Float,
     lyricFontWeight: Int,
-    forceWordByWordLyrics: Boolean,
+    lyricAnimationMode: LyricAnimationMode,
     lyricBlurEnabled: Boolean,
     centerLyrics: Boolean,
     lyricCenterOffsetY: Dp,
@@ -209,7 +210,7 @@ internal fun PlayerContentPager(
                     emphasisControlColor = emphasisControlColor,
                     lyricFontScale = lyricFontScale,
                     lyricFontWeight = lyricFontWeight,
-                    forceWordByWordLyrics = forceWordByWordLyrics,
+                    lyricAnimationMode = lyricAnimationMode,
                     lyricBlurEnabled = lyricBlurEnabled,
                     centerLyrics = centerLyrics,
                     lyricCenterOffsetY = lyricCenterOffsetY,
@@ -240,7 +241,7 @@ internal fun SyncedLyrics(
     emphasisControlColor: Color,
     lyricFontScale: Float,
     lyricFontWeight: Int,
-    forceWordByWordLyrics: Boolean,
+    lyricAnimationMode: LyricAnimationMode,
     lyricBlurEnabled: Boolean,
     centerLyrics: Boolean,
     lyricCenterOffsetY: Dp,
@@ -324,7 +325,7 @@ internal fun SyncedLyrics(
                         contentWidth = contentWidth,
                         lyricFontScale = lyricFontScale,
                         lyricFontWeight = lyricFontWeight,
-                        forceWordByWordLyrics = forceWordByWordLyrics,
+                        lyricAnimationMode = lyricAnimationMode,
                         lyricBlurEnabled = lyricBlurEnabled,
                         centerLyrics = centerLyrics,
                         centerOffsetY = lyricCenterOffsetY,

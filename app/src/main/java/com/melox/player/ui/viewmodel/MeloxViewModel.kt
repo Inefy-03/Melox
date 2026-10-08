@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.melox.player.model.LyricAnimationMode
 import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.AlbumSortConfig
 import com.melox.player.data.library.AlbumSortField
@@ -614,9 +615,9 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setForceWordByWordLyrics(enabled: Boolean) {
+    fun setLyricAnimationMode(mode: LyricAnimationMode) {
         viewModelScope.launch {
-            settingsRepository.setForceWordByWordLyrics(enabled)
+            settingsRepository.setLyricAnimationMode(mode)
         }
     }
 

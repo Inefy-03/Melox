@@ -12,6 +12,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.melox.player.model.LyricAnimationMode
+import com.melox.player.model.resolveLyricAnimationMode
 import com.melox.player.data.library.AlbumSortConfig
 import com.melox.player.data.library.AlbumSortField
 import com.melox.player.data.library.AlbumGridStyle
@@ -120,7 +122,10 @@ class SettingsRepository(context: Context) {
                 lyricFontWeight = preferences[Keys.LyricFontWeight]
                     ?.let(::normalizeLyricFontWeight)
                     ?: DEFAULT_LYRIC_FONT_WEIGHT,
-                forceWordByWordLyrics = preferences[Keys.ForceWordByWordLyrics] ?: false,
+                lyricAnimationMode = resolveLyricAnimationMode(
+                    preferences[Keys.LyricAnimationMode],
+                    preferences[Keys.LegacyForceWordByWordLyrics],
+                ),
                 lyricBlurEnabled = preferences[Keys.LyricBlurEnabled] ?: false,
                 centerLyrics = preferences[Keys.CenterLyrics] ?: false,
                 leftAlignPlayerTitle = preferences[Keys.LeftAlignPlayerTitle] ?: false,
@@ -318,9 +323,10 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    suspend fun setForceWordByWordLyrics(enabled: Boolean) {
+    suspend fun setLyricAnimationMode(mode: LyricAnimationMode) {
         dataStore.edit { preferences ->
-            preferences[Keys.ForceWordByWordLyrics] = enabled
+            preferences[Keys.LyricAnimationMode] = mode.name
+            preferences.remove(Keys.LegacyForceWordByWordLyrics)
         }
     }
 
@@ -533,7 +539,8 @@ class SettingsRepository(context: Context) {
         val LyricFontScale = floatPreferencesKey("lyric_font_scale_v2")
         val LegacyLyricFontScale = floatPreferencesKey("lyric_font_scale")
         val LyricFontWeight = intPreferencesKey("lyric_font_weight")
-        val ForceWordByWordLyrics = booleanPreferencesKey("force_word_by_word_lyrics")
+        val LyricAnimationMode = stringPreferencesKey("lyric_animation_mode")
+        val LegacyForceWordByWordLyrics = booleanPreferencesKey("force_word_by_word_lyrics")
         val LyricBlurEnabled = booleanPreferencesKey("lyric_blur_enabled")
         val CenterLyrics = booleanPreferencesKey("center_lyrics")
         val LeftAlignPlayerTitle = booleanPreferencesKey("left_align_player_title")

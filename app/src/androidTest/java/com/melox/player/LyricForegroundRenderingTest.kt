@@ -35,26 +35,28 @@ class LyricForegroundRenderingTest {
             defaultDensity = density,
             defaultLayoutDirection = LayoutDirection.Ltr,
         )
-        val glyph = measurer.measure("W", TextStyle(fontSize = 40.sp))
-        val position = Offset(64f, 48f)
-        for (alpha in listOf(0.4f, 0.7f, 1f)) {
-            val color = Color.White.copy(alpha = alpha)
-            val expected = render(density) {
-                drawLyricForeground(glyph, color, position)
+        for (text in listOf("W", "fgjpqy")) {
+            val glyph = measurer.measure(text, TextStyle(fontSize = 40.sp))
+            val position = Offset(64f, 48f)
+            for (alpha in listOf(0.4f, 0.7f, 1f)) {
+                val color = Color.White.copy(alpha = alpha)
+                val expected = render(density) {
+                    drawLyricForeground(glyph, color, position)
+                }
+                // Recording a glow changes the same paragraph paint reused by foreground draws.
+                render(density) {
+                    drawText(
+                        glyph,
+                        color = Color.White,
+                        topLeft = position,
+                        shadow = Shadow(Color.White, Offset.Zero, 12f),
+                    )
+                }
+                val actual = render(density) {
+                    drawLyricForeground(glyph, color, position)
+                }
+                assertArrayEquals("Foreground retained a glow for $text at alpha=$alpha", expected, actual)
             }
-            // Recording a glow changes the same paragraph paint reused by foreground draws.
-            render(density) {
-                drawText(
-                    glyph,
-                    color = Color.White,
-                    topLeft = position,
-                    shadow = Shadow(Color.White, Offset.Zero, 12f),
-                )
-            }
-            val actual = render(density) {
-                drawLyricForeground(glyph, color, position)
-            }
-            assertArrayEquals("Foreground retained a glow at alpha=$alpha", expected, actual)
         }
     }
 

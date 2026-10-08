@@ -237,6 +237,8 @@
     <string name="settings_liquid_glass_title">液态玻璃</string>
     <string name="settings_liquid_glass_summary">为悬浮底栏启用折射玻璃效果</string>
     <string name="settings_hide_bottom_bar_title">隐藏底栏</string>
+    <string name="settings_hide_status_bar_title">隐藏状态栏</string>
+    <string name="settings_hide_status_bar_summary">在播放页隐藏系统状态栏，增强沉浸感</string>
     <string name="settings_predictive_back_title">预测性返回手势</string>
     <string name="settings_navigation_transition_style_title">过渡风格</string>
     <string name="settings_navigation_transition_style_miuix">Miuix</string>

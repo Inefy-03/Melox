@@ -246,6 +246,8 @@
     <string name="settings_liquid_glass_title">Liquid glass</string>
     <string name="settings_liquid_glass_summary">Use refractive glass for the floating bottom bar</string>
     <string name="settings_hide_bottom_bar_title">Hide bottom bar</string>
+    <string name="settings_hide_status_bar_title">Hide status bar</string>
+    <string name="settings_hide_status_bar_summary">Hide the system status bar while the player is open for extra immersion</string>
     <string name="settings_predictive_back_title">Predictive back gesture</string>
     <string name="settings_navigation_transition_style_title">Transition style</string>
     <string name="settings_navigation_transition_style_miuix">Miuix</string>

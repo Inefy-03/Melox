@@ -720,6 +720,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setHideStatusBar(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setHideStatusBar(enabled)
+        }
+    }
+
     fun setFloatingBottomBar(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setFloatingBottomBar(enabled)

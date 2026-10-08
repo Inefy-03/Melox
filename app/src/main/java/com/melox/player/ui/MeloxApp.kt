@@ -16,6 +16,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -534,6 +537,19 @@ fun MeloxApp(
 
     LaunchedEffect(currentTrackId, isDark) {
         playerStatusBarBackgroundIsDark = isDark
+    }
+    val hideStatusBarForPlayer = settings.hideStatusBar &&
+        playerSheetUsesFullPlayerStatusBar(progress = playerTransition.progress)
+    LaunchedEffect(hideStatusBarForPlayer) {
+        val window = activity?.window ?: return@LaunchedEffect
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        if (hideStatusBarForPlayer) {
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.statusBars())
+        } else {
+            controller.show(WindowInsetsCompat.Type.statusBars())
+        }
     }
     LaunchedEffect(uiState.settingsLoaded) {
         if (uiState.settingsLoaded && !libraryPreferencesHydrated) {
@@ -2177,6 +2193,7 @@ fun MeloxApp(
                             centerLyrics = settings.centerLyrics,
                             leftAlignPlayerTitle = settings.leftAlignPlayerTitle,
                             hideControlsOnLyrics = settings.hideControlsOnLyrics,
+                            hideStatusBar = settings.hideStatusBar,
                             showLyricsTranslation = settings.showLyricsTranslation,
                             showMusicTagEditor = settings.showMusicTagEditor,
                             showLyricoEditor = settings.showLyricoEditor,
@@ -2380,6 +2397,7 @@ private fun FullPlayerHost(
     centerLyrics: Boolean,
     leftAlignPlayerTitle: Boolean,
     hideControlsOnLyrics: Boolean,
+    hideStatusBar: Boolean,
     showLyricsTranslation: Boolean,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
@@ -2433,6 +2451,7 @@ private fun FullPlayerHost(
         centerLyrics = centerLyrics,
         leftAlignPlayerTitle = leftAlignPlayerTitle,
         hideControlsOnLyrics = hideControlsOnLyrics,
+        hideStatusBar = hideStatusBar,
         showLyricsTranslation = showLyricsTranslation,
         onLyricFontScaleChange = viewModel::setLyricFontScale,
         onLyricFontWeightChange = viewModel::setLyricFontWeight,
@@ -2441,6 +2460,7 @@ private fun FullPlayerHost(
         onCenterLyricsChange = viewModel::setCenterLyrics,
         onLeftAlignPlayerTitleChange = viewModel::setLeftAlignPlayerTitle,
         onHideControlsOnLyricsChange = viewModel::setHideControlsOnLyrics,
+        onHideStatusBarChange = viewModel::setHideStatusBar,
         onShowLyricsTranslationChange = viewModel::setShowLyricsTranslation,
         onDismiss = onDismiss,
         onTogglePlayPause = viewModel::togglePlayPause,

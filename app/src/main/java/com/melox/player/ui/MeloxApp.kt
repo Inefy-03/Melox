@@ -17,6 +17,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateTo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -40,7 +42,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.selection.selectable
@@ -769,8 +770,8 @@ fun MeloxApp(
         val useSmallTopAppBar = landscape
         val rootIndexBottomSpacing = if (miniPlayerUsesNormalChrome) 12.dp else 6.dp
         val homeScrollBehavior = MiuixScrollBehavior()
-        val songsScrollBehavior = MiuixScrollBehavior()
-        val libraryScrollBehavior = MiuixScrollBehavior()
+        val songsScrollBehavior = rememberSearchTopBarScrollBehavior(songSearchVisible)
+        val libraryScrollBehavior = rememberSearchTopBarScrollBehavior(librarySearchVisible)
         val settingsScrollBehavior = MiuixScrollBehavior()
         val themeSettingsScrollBehavior = MiuixScrollBehavior()
         val mainBackgroundScrollBehavior = MiuixScrollBehavior()
@@ -890,7 +891,8 @@ fun MeloxApp(
                 state = pagerState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .overScrollHorizontal(),
+                    .overScrollHorizontal()
+                    .trackFixedWallpaperMotion(),
                 userScrollEnabled = rootPagerUserScrollEnabled(
                     selectedPage = playerPagerState.selectedPage,
                     homeRecommendationPage = homeRecommendationPage,
@@ -1011,6 +1013,7 @@ fun MeloxApp(
                                 defaultActions = {
                                     LibrarySearchButton(
                                     visible = songSearchVisible,
+                                    scrollBehavior = songsScrollBehavior,
                                     onClick = {
                                         if (songSearchVisible) {
                                             songSearchVisible = false
@@ -1084,7 +1087,6 @@ fun MeloxApp(
                             indexTopPadding = indexTopPadding,
                             listState = songsListState,
                             contentPadding = contentPadding,
-                            indexBottomSpacing = rootIndexBottomSpacing,
                             selectionMode = songsSelectionMode,
                             selectedTrackUris = selectedSongUris,
                             onSelectionChange = { selectedSongUris = it },
@@ -1100,6 +1102,7 @@ fun MeloxApp(
                         actions = {
                             LibrarySearchButton(
                                 visible = librarySearchVisible,
+                                scrollBehavior = libraryScrollBehavior,
                                 contentDescription = when (libraryPagerState.currentPage) {
                                     LIBRARY_ARTISTS_TAB_INDEX ->
                                         stringResource(R.string.artist_search_hint)
@@ -1198,15 +1201,10 @@ fun MeloxApp(
                         },
                     ) { contentPadding, _, indexTopPadding ->
                         val layoutDirection = LocalLayoutDirection.current
-                        val showLibraryScrollTop by remember {
-                            derivedStateOf {
-                                libraryScrollBehavior.state.collapsedFraction > 0.01f
-                            }
-                        }
                         val onLibraryIndexTargetChanged: (Int, Boolean) -> Unit =
                             { _, restoreLargeTitle ->
                                 val state = libraryScrollBehavior.state
-                                if (restoreLargeTitle) {
+                                if (restoreLargeTitle && !libraryScrollBehavior.isPinned) {
                                     state.heightOffset = 0f
                                     state.contentOffset = 0f
                                 } else if (state.heightOffsetLimit != -Float.MAX_VALUE) {
@@ -1220,8 +1218,7 @@ fun MeloxApp(
                                 .padding(
                                     top = indexTopPadding + 4.dp,
                                     end = contentPadding.calculateEndPadding(layoutDirection),
-                                    bottom = contentPadding.calculateBottomPadding() +
-                                        rootIndexBottomSpacing,
+                                    bottom = LocalAlphabetIndexBottomPadding.current,
                                 )
                                 .fillMaxHeight()
                             HorizontalPager(
@@ -1320,7 +1317,6 @@ fun MeloxApp(
                                         } else {
                                             AlphabetSections
                                         },
-                                        showScrollTop = showLibraryScrollTop,
                                         onTargetIndexChanged = onLibraryIndexTargetChanged,
                                         modifier = libraryIndexModifier,
                                     )
@@ -1345,7 +1341,6 @@ fun MeloxApp(
                                         } else {
                                             AlphabetSections
                                         },
-                                        showScrollTop = showLibraryScrollTop,
                                         onTargetIndexChanged = onLibraryIndexTargetChanged,
                                         modifier = libraryIndexModifier,
                                     )
@@ -1370,7 +1365,6 @@ fun MeloxApp(
                                         } else {
                                             AlphabetSections
                                         },
-                                        showScrollTop = showLibraryScrollTop,
                                         onTargetIndexChanged = onLibraryIndexTargetChanged,
                                         modifier = libraryIndexModifier,
                                     )
@@ -2707,11 +2701,39 @@ private fun QueueSheetHost(
 @Composable
 internal fun LibrarySearchButton(
     visible: Boolean,
+    scrollBehavior: ScrollBehavior,
     contentDescription: String = stringResource(R.string.music_search_hint),
     onClick: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    val currentOnClick by rememberUpdatedState(onClick)
+    var collapsing by remember { mutableStateOf(false) }
     IconButton(
-        onClick = onClick,
+        onClick = {
+            collapsing = true
+            scope.launch {
+                try {
+                    val state = scrollBehavior.state
+                    val limit = state.heightOffsetLimit
+                    if (limit != -Float.MAX_VALUE && limit < 0f) {
+                        if (state.heightOffset > limit) {
+                            AnimationState(initialValue = state.heightOffset).animateTo(
+                                targetValue = limit,
+                                animationSpec = scrollBehavior.snapAnimationSpec ?: tween(200),
+                            ) {
+                                state.heightOffset = value
+                            }
+                        }
+                        state.heightOffset = limit
+                        state.contentOffset = limit
+                    }
+                    currentOnClick()
+                } finally {
+                    collapsing = false
+                }
+            }
+        },
+        enabled = !collapsing,
         holdDownState = visible,
     ) {
         Icon(
@@ -2756,8 +2778,8 @@ private fun LibraryTabRow(
                     .fillMaxHeight()
                     .then(
                         if (selected) {
-                            Modifier.pageSurfaceBlur(12.dp).squircleBackground(
-                                color = if (pageSurfaceBlurActive) androidx.compose.ui.graphics.Color.Transparent else tabSelectedContainerColor(
+                            Modifier.squircleBackground(
+                                color = tabSelectedContainerColor(
                                     hasWallpaper, progressiveBlurActive, MiuixTheme.colorScheme.surfaceContainer,
                                 ),
                                 cornerRadius = 12.dp,
@@ -2861,15 +2883,9 @@ internal fun LibrarySearchBar(
         SearchBar(
             inputField = {
                 InputField(
-                    modifier = pageSurfaceBackdrop?.let {
-                        Modifier.pageTextureBlur(
-                            backdrop = it,
-                            shape = RoundedCornerShape(percent = 50),
-                        )
-                    } ?: Modifier,
                     query = query,
                     onQueryChange = { newQuery ->
-                        // Miuix clears its query when `expanded` becomes false.
+                        // Miuix clears its query when input focus is dismissed.
                         // A visible search field may deliberately remain unfocused
                         // while another root page is selected, so retain its query.
                         if (focused || newQuery.isNotEmpty() || query.isEmpty()) {
@@ -2877,11 +2893,11 @@ internal fun LibrarySearchBar(
                         }
                     },
                     onSearch = onQueryChange,
-                    expanded = visible,
-                    onExpandedChange = handleExpandedChange,
+                    expanded = visible && focused,
+                    onExpandedChange = onFocusedChange,
                     label = label,
-                    color = if (pageSurfaceBackdrop != null) androidx.compose.ui.graphics.Color.Transparent else MiuixTheme.colorScheme.surfaceContainerHigh.copy(
-                        alpha = if (progressiveBlurActive) 0.8f else 1f,
+                    color = MiuixTheme.colorScheme.surfaceContainerHigh.copy(
+                        alpha = if (hasWallpaper || progressiveBlurActive) 0.8f else 1f,
                     ),
                     trailingIcon = {
                         AnimatedVisibility(
@@ -2940,15 +2956,8 @@ private fun PlayerPage(
     content: @Composable (PaddingValues, ScrollBehavior, indexTopPadding: androidx.compose.ui.unit.Dp) -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
-    val density = LocalDensity.current
-    val windowSize = LocalWindowInfo.current.containerSize
     var topBarCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarCaptureCoordinates })
-    var bottomContentHeightPx by remember { mutableIntStateOf(0) }
-    var bottomContentMeasured by remember { mutableStateOf(false) }
-    var fixedExpandedBarPadding by remember(scrollBehavior, density, windowSize, useSmallTopAppBar) {
-        mutableStateOf<Dp?>(null)
-    }
 
     PageScaffold(
             topBar = {
@@ -2957,16 +2966,6 @@ private fun PlayerPage(
                 blurEnabled = topBarBackdrop != null,
                 scrollBehavior = scrollBehavior,
             ) {
-                val measuredBottomContent: @Composable () -> Unit = {
-                    Box(
-                        modifier = Modifier.onSizeChanged {
-                            bottomContentHeightPx = it.height
-                            bottomContentMeasured = true
-                        },
-                    ) {
-                        bottomContent()
-                    }
-                }
                 if (useSmallTopAppBar) {
                     SmallTopAppBar(
                         title = title,
@@ -2974,7 +2973,7 @@ private fun PlayerPage(
                         navigationIcon = navigationIcon,
                         actions = actions,
                         scrollBehavior = scrollBehavior,
-                        bottomContent = measuredBottomContent,
+                        bottomContent = bottomContent,
                     )
                 } else {
                     TopAppBar(
@@ -2983,31 +2982,13 @@ private fun PlayerPage(
                         navigationIcon = navigationIcon,
                         actions = actions,
                         scrollBehavior = scrollBehavior,
-                        bottomContent = measuredBottomContent,
+                        bottomContent = bottomContent,
                     )
                 }
             }
         },
         ) { innerPadding ->
-        val bottomContentHeight = with(density) { bottomContentHeightPx.toDp() }
-        val currentBarPadding =
-            (innerPadding.calculateTopPadding() - bottomContentHeight).coerceAtLeast(0.dp)
-        val heightOffset = with(density) {
-            scrollBehavior.state.heightOffset.toDp()
-        }
-        val measuredExpandedBarPadding =
-            (currentBarPadding - heightOffset).coerceAtLeast(currentBarPadding)
-        SideEffect {
-            if (
-                bottomContentMeasured &&
-                fixedExpandedBarPadding == null &&
-                scrollBehavior.state.heightOffsetLimit != -Float.MAX_VALUE
-            ) {
-                fixedExpandedBarPadding = measuredExpandedBarPadding
-            }
-        }
-        val indexTopPadding =
-            (fixedExpandedBarPadding ?: measuredExpandedBarPadding) + bottomContentHeight
+        val indexTopPadding = fixedAlphabetIndexTopPadding()
         // The page bar owns top/system insets; the outer scaffold owns bottom-bar clearance.
         Box(
             modifier = Modifier

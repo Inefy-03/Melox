@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
 import androidx.compose.foundation.layout.Box
@@ -19,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,7 +95,6 @@ fun MusicListScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     showIndex: Boolean = true,
-    indexBottomSpacing: Dp = 12.dp,
     selectionMode: Boolean = false,
     selectedTrackUris: Set<String> = emptySet(),
     onSelectionChange: ((Set<String>) -> Unit)? = null,
@@ -138,9 +137,6 @@ fun MusicListScreen(
         end = contentPadding.calculateEndPadding(layoutDirection),
         bottom = maxOf(contentPadding.calculateBottomPadding(), locateBottomPadding) + 12.dp,
     )
-    val showScrollTop by remember {
-        derivedStateOf { scrollBehavior.state.collapsedFraction > 0.01f }
-    }
     val sections = remember(sortConfig.descending) {
         if (sortConfig.descending) AlphabetSections.asReversed() else AlphabetSections
     }
@@ -236,10 +232,9 @@ fun MusicListScreen(
                 },
                 scrollToItem = listState::scrollToItem,
                 sections = sections,
-                showScrollTop = showScrollTop,
                 onTargetIndexChanged = { targetIndex, restoreLargeTitle ->
                     val topBarState = scrollBehavior.state
-                    if (restoreLargeTitle) {
+                    if (restoreLargeTitle && !scrollBehavior.isPinned) {
                         topBarState.heightOffset = 0f
                         topBarState.contentOffset = 0f
                     } else if (topBarState.heightOffsetLimit != -Float.MAX_VALUE) {
@@ -252,8 +247,7 @@ fun MusicListScreen(
                     .padding(
                         top = indexTopPadding + 4.dp,
                         end = contentPadding.calculateEndPadding(layoutDirection),
-                        bottom = contentPadding.calculateBottomPadding() +
-                            indexBottomSpacing,
+                        bottom = LocalAlphabetIndexBottomPadding.current,
                     )
                     .fillMaxHeight()
             )

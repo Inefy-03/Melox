@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -19,8 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -39,6 +36,8 @@ import com.melox.player.ui.LibrarySearchBar
 import com.melox.player.ui.LibrarySearchButton
 import com.melox.player.ui.component.AdaptiveTopAppBar
 import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
+import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
 import com.melox.player.ui.component.library.MusicSortButton
 import com.melox.player.ui.component.library.ShufflePlayButton
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
@@ -50,7 +49,7 @@ import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.melox.player.ui.component.PageScaffold
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -94,15 +93,10 @@ fun FolderDetailScreen(
         },
         descending = sortDescending,
     )
-    val scrollBehavior = MiuixScrollBehavior()
+    val scrollBehavior = rememberSearchTopBarScrollBehavior(searchVisible)
     val listState = rememberLazyListState()
     val backdrop = rememberBlurBackdrop()
     val layoutDirection = LocalLayoutDirection.current
-    val density = LocalDensity.current
-    var bottomContentHeightPx by remember { mutableIntStateOf(0) }
-    var fixedExpandedBarPadding by remember(folder.key, density) {
-        mutableStateOf<Dp?>(null)
-    }
     val displayedTracks = remember(folder.tracks, query, sortConfig) {
         sortMusicTracks(filterMusicTracks(folder.tracks, query), sortConfig)
     }
@@ -209,6 +203,7 @@ fun FolderDetailScreen(
                             },
                             defaultActions = {
                                 FolderDetailActions(
+                                scrollBehavior = scrollBehavior,
                                 searchVisible = searchVisible,
                                 sortConfig = sortConfig,
                                 onSearchVisibleChange = { visible ->
@@ -225,50 +220,27 @@ fun FolderDetailScreen(
                         )
                     },
                     bottomContent = {
-                        Box(
-                            modifier = Modifier.onSizeChanged {
-                                bottomContentHeightPx = it.height
+                        LibrarySearchBar(
+                            visible = searchVisible,
+                            focused = searchFocused,
+                            query = query,
+                            label = stringResource(R.string.search_hint),
+                            onQueryChange = { query = it },
+                            onFocusedChange = { searchFocused = it },
+                            onVisibleChange = { visible ->
+                                searchVisible = visible
+                                if (!visible) {
+                                    searchFocused = false
+                                    query = ""
+                                }
                             },
-                        ) {
-                            LibrarySearchBar(
-                                visible = searchVisible,
-                                focused = searchFocused,
-                                query = query,
-                                label = stringResource(R.string.search_hint),
-                                onQueryChange = { query = it },
-                                onFocusedChange = { searchFocused = it },
-                                onVisibleChange = { visible ->
-                                    searchVisible = visible
-                                    if (!visible) {
-                                        searchFocused = false
-                                        query = ""
-                                    }
-                                },
-                            )
-                        }
+                        )
                     },
                 )
             }
         },
         ) { padding ->
-        val bottomContentHeight = with(density) { bottomContentHeightPx.toDp() }
-        val currentBarPadding =
-            (padding.calculateTopPadding() - bottomContentHeight).coerceAtLeast(0.dp)
-        val heightOffset = with(density) {
-            scrollBehavior.state.heightOffset.toDp()
-        }
-        val measuredExpandedBarPadding =
-            (currentBarPadding - heightOffset).coerceAtLeast(currentBarPadding)
-        SideEffect {
-            if (
-                fixedExpandedBarPadding == null &&
-                scrollBehavior.state.heightOffsetLimit != -Float.MAX_VALUE
-            ) {
-                fixedExpandedBarPadding = measuredExpandedBarPadding
-            }
-        }
-        val indexTopPadding =
-            (fixedExpandedBarPadding ?: measuredExpandedBarPadding) + bottomContentHeight
+        val indexTopPadding = fixedAlphabetIndexTopPadding()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -314,6 +286,7 @@ fun FolderDetailScreen(
 
 @Composable
 private fun RowScope.FolderDetailActions(
+    scrollBehavior: ScrollBehavior,
     searchVisible: Boolean,
     sortConfig: MusicSortConfig,
     onSearchVisibleChange: (Boolean) -> Unit,
@@ -321,6 +294,7 @@ private fun RowScope.FolderDetailActions(
 ) {
     LibrarySearchButton(
         visible = searchVisible,
+        scrollBehavior = scrollBehavior,
         onClick = { onSearchVisibleChange(!searchVisible) },
     )
     MusicSortButton(

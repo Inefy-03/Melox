@@ -9,15 +9,20 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -25,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,19 +42,28 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.ChevronBackward
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+internal val LocalAlphabetIndexBottomPadding = staticCompositionLocalOf { 12.dp }
+
+@Composable
+internal fun fixedAlphabetIndexTopPadding(): Dp =
+    WindowInsets.systemBars.asPaddingValues().calculateTopPadding() +
+        TopAppBarDefaults.CollapsedHeight
 
 internal val AlphabetSections =
     listOf("0") + ('A'..'Z').map(Char::toString) + listOf("#")
@@ -67,13 +82,17 @@ fun AlphabetSideBar(
     scrollToItem: suspend (Int) -> Unit,
     modifier: Modifier = Modifier,
     sections: List<String> = AlphabetSections,
-    showScrollTop: Boolean = true,
     onTargetIndexChanged: (targetIndex: Int, restoreLargeTitle: Boolean) -> Unit,
 ) {
     val view = LocalView.current
     val density = LocalDensity.current
     val touchSlop = LocalViewConfiguration.current.touchSlop
     val scope = rememberCoroutineScope()
+    val textMeasurer = rememberTextMeasurer()
+    val letterStyle = MiuixTheme.textStyles.footnote2
+    val cellSize = with(density) {
+        textMeasurer.measure("A", style = letterStyle).size.height.toDp()
+    }
     val items = remember(sections) {
         listOf<AlphabetSideBarItem>(AlphabetSideBarItem.ScrollTop) +
             sections.map(AlphabetSideBarItem::Section)
@@ -86,8 +105,11 @@ fun AlphabetSideBar(
     val currentItemCount by rememberUpdatedState(itemCount)
     val currentSectionIndexMap by rememberUpdatedState(sectionIndexMap)
     val currentSections by rememberUpdatedState(sections)
-    val currentShowScrollTop by rememberUpdatedState(showScrollTop)
     val currentIsAtTarget by rememberUpdatedState(isAtTarget)
+    val scrollTopVisible by remember {
+        derivedStateOf { currentItemCount > 0 && !currentIsAtTarget(0) }
+    }
+    val currentShowScrollTop by rememberUpdatedState(scrollTopVisible)
     val currentScrollToItem by rememberUpdatedState(scrollToItem)
     val currentOnTargetIndexChanged by rememberUpdatedState(onTargetIndexChanged)
 
@@ -153,14 +175,8 @@ fun AlphabetSideBar(
         lastSelectedIndex = -1
     }
 
-    BoxWithConstraints(modifier = modifier) {
-        val itemCount = items.size
-        if (itemCount == 0 || maxHeight <= 0.dp) return@BoxWithConstraints
-
-        // Fill the complete space between the top bar and mini player. This keeps the
-        // first and last hit targets anchored while their spacing adapts to the window.
-        val cellSize = maxHeight / itemCount.toFloat()
-        val barHeight = cellSize * itemCount
+    Box(modifier = modifier) {
+        val barHeight = cellSize * items.size
         val cellHeightPx = with(density) { cellSize.toPx() }
 
         fun itemIndexAt(y: Float): Int =
@@ -168,8 +184,10 @@ fun AlphabetSideBar(
 
         Row(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .height(maxHeight),
+                .align(Alignment.TopEnd)
+                .offset(y = 54.dp)
+                .wrapContentHeight(align = Alignment.Top, unbounded = true)
+                .height(barHeight),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -180,7 +198,7 @@ fun AlphabetSideBar(
             Box(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier
-                    .width(cellSize)
+                    .width(20.dp)
                     .height(barHeight)
                     .pointerInput(items, cellHeightPx, sectionIndexMap) {
                         awaitEachGesture {
@@ -232,14 +250,14 @@ fun AlphabetSideBar(
                         }
                     },
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 items.forEach { item ->
                     AlphabetCell(
                         item = item,
                         selected = selectedItem == item,
                         size = cellSize,
-                        showScrollTop = showScrollTop,
+                        showScrollTop = scrollTopVisible,
                     )
                 }
             }
@@ -261,7 +279,7 @@ private fun AlphabetIndicator(
             modifier = Modifier
                 .size(50.dp)
                 .squircleBackground(
-                    color = MiuixTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
+                    color = CardDefaults.defaultColors().color.copy(alpha = 0.8f),
                     cornerRadius = 25.dp,
                 ),
             contentAlignment = Alignment.Center,
@@ -298,12 +316,6 @@ private fun AlphabetCell(
     size: Dp,
     showScrollTop: Boolean,
 ) {
-    val fontSize = when {
-        size < 8.dp -> 4.sp
-        size < 12.dp -> 6.sp
-        size < 16.dp -> 8.sp
-        else -> 9.sp
-    }
     val selectedColor = if (MiuixTheme.colorScheme.surface.luminance() > 0.5f) {
         Color.Black
     } else {
@@ -316,7 +328,7 @@ private fun AlphabetCell(
     }
 
     Box(
-        modifier = Modifier.size(size),
+        modifier = Modifier.width(20.dp).height(size),
         contentAlignment = Alignment.Center,
     ) {
         when (item) {
@@ -329,7 +341,7 @@ private fun AlphabetCell(
                     imageVector = MiuixIcons.ChevronBackward,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(size * 0.68f)
+                        .size(12.dp)
                         .rotate(90f),
                     tint = cellColor,
                 )
@@ -337,9 +349,8 @@ private fun AlphabetCell(
 
             is AlphabetSideBarItem.Section -> Text(
                 text = item.value,
-                style = MiuixTheme.textStyles.body2.copy(fontSize = fontSize),
+                style = MiuixTheme.textStyles.footnote2,
                 color = cellColor,
-                fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
             )

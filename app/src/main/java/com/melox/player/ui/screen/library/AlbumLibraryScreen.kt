@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -71,7 +71,6 @@ fun AlbumLibraryScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     showIndex: Boolean = true,
-    indexBottomSpacing: Dp = 12.dp,
     landscape: Boolean = false,
     navigationRailExpanded: Boolean = false,
 ) {
@@ -92,9 +91,6 @@ fun AlbumLibraryScreen(
         sortConfig.field == AlbumSortField.ALBUM_ARTIST
     val sections = remember(sortConfig.descending) {
         if (sortConfig.descending) AlphabetSections.asReversed() else AlphabetSections
-    }
-    val showScrollTop by remember {
-        derivedStateOf { scrollBehavior.state.collapsedFraction > 0.01f }
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
@@ -175,10 +171,9 @@ fun AlbumLibraryScreen(
                 },
                 scrollToItem = gridState::scrollToItem,
                 sections = sections,
-                showScrollTop = showScrollTop,
                 onTargetIndexChanged = { _, restoreLargeTitle ->
                     val state = scrollBehavior.state
-                    if (restoreLargeTitle) {
+                    if (restoreLargeTitle && !scrollBehavior.isPinned) {
                         state.heightOffset = 0f
                         state.contentOffset = 0f
                     } else if (state.heightOffsetLimit != -Float.MAX_VALUE) {
@@ -191,8 +186,7 @@ fun AlbumLibraryScreen(
                     .padding(
                         top = indexTopPadding + 4.dp,
                         end = contentPadding.calculateEndPadding(layoutDirection),
-                        bottom = contentPadding.calculateBottomPadding() +
-                            indexBottomSpacing,
+                        bottom = LocalAlphabetIndexBottomPadding.current,
                     )
                     .fillMaxHeight(),
             )
@@ -236,7 +230,7 @@ internal fun AlbumGridItem(
     when (gridStyle) {
         AlbumGridStyle.TWO_SMALL -> Card(
             modifier = modifier.fillMaxWidth(),
-            cornerRadius = 14.dp,
+            cornerRadius = 16.dp,
             insideMargin = PaddingValues(
                 start = 6.dp,
                 top = 6.dp,
@@ -256,7 +250,7 @@ internal fun AlbumGridItem(
                     dateModifiedEpochSeconds = cover?.dateModifiedEpochSeconds ?: 0L,
                     fileSizeBytes = cover?.fileSizeBytes ?: 0L,
                     size = 54.dp,
-                    cornerRadius = 8.dp,
+                    cornerRadius = 10.dp,
                 )
                 AlbumGridLabels(
                     album = album,

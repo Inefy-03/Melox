@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,7 +48,9 @@ import java.util.Locale
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.CheckboxDefaults
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButtonDefaults
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.squircle.squircleClip
@@ -100,7 +104,7 @@ fun MusicTrackRow(
             .padding(
                 start = 16.dp,
                 top = 8.dp,
-                end = 16.dp,
+                end = TopAppBarDefaults.ActionIconPadding,
                 bottom = 8.dp,
             ),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -121,14 +125,17 @@ fun MusicTrackRow(
         ) {
             Text(
                 text = formatDuration(track.durationMs),
+                modifier = Modifier.width(IconButtonDefaults.MinWidth),
                 style = MiuixTheme.textStyles.footnote2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                textAlign = TextAlign.End,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
 
             if (selectionMode) {
                 Box(
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(IconButtonDefaults.MinWidth),
                     contentAlignment = Alignment.Center,
                 ) {
                     Checkbox(
@@ -151,7 +158,7 @@ fun MusicTrackRow(
             } else if (onMoreClick != null) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(IconButtonDefaults.MinWidth)
                         .clickable(
                             enabled = moreActionEnabled,
                             interactionSource = remember { MutableInteractionSource() },

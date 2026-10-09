@@ -62,6 +62,7 @@ import com.melox.player.ui.component.AdaptiveTopAppBar
 import com.melox.player.ui.component.BlurredBar
 import com.melox.player.ui.component.library.AlphabetSections
 import com.melox.player.ui.component.library.AlphabetSideBar
+import com.melox.player.ui.component.library.ShufflePlayButton
 import com.melox.player.ui.component.library.MusicTrackRow
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
@@ -110,6 +111,7 @@ fun PlaylistDetailScreen(
     selectionExitRequest: Int,
     onSelectionModeChange: (Boolean) -> Unit,
     onTrackClick: (List<MusicTrack>, Int) -> Unit,
+    onShufflePlay: (List<MusicTrack>) -> Unit,
     onPlayNext: (MusicTrack) -> Unit,
     onAppendToQueue: (MusicTrack) -> Unit,
     onAddToPlaylist: (MusicTrack) -> Unit,
@@ -326,10 +328,21 @@ fun PlaylistDetailScreen(
                                 }
                             },
                             defaultNavigationIcon = {
-                                IconButton(onClick = onBack) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Back,
-                                        contentDescription = stringResource(R.string.back),
+                                Row {
+                                    IconButton(onClick = onBack) {
+                                        Icon(
+                                            imageVector = MiuixIcons.Back,
+                                            contentDescription = stringResource(R.string.back),
+                                        )
+                                    }
+                                    ShufflePlayButton(
+                                        enabled = displayedTracks.any { item -> item.available } && !isDragging,
+                                        onClick = {
+                                            onShufflePlay(
+                                                displayedTracks.filter { item -> item.available }
+                                                    .map { item -> item.track },
+                                            )
+                                        },
                                     )
                                 }
                             },

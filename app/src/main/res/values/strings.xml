@@ -209,6 +209,7 @@
     <string name="remove_from_queue">Remove from queue</string>
     <string name="move_after_current">Play next</string>
     <string name="locate_current_track">Locate current song</string>
+    <string name="shuffle_play">Shuffle play</string>
     <string name="back">Back</string>
     <string name="close">Close</string>
 

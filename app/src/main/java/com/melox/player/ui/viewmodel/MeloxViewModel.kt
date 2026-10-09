@@ -61,6 +61,7 @@ import com.melox.player.model.LyricsSidecarFormatPriority
 import com.melox.player.model.LyricsSource
 import com.melox.player.model.LyricsSourcePriority
 import com.melox.player.model.MusicTrack
+import com.melox.player.model.PlaybackMode
 import com.melox.player.model.NavigationTransitionStyle
 import com.melox.player.model.LyricsUiState
 import com.melox.player.model.PlaybackUiState
@@ -1087,6 +1088,15 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         startIndex: Int,
     ) {
         playbackController.playQueue(tracks, startIndex)
+    }
+
+    fun shuffleTracks(tracks: List<MusicTrack>) {
+        if (tracks.isEmpty()) return
+        playbackController.playQueue(
+            tracks = tracks,
+            startIndex = tracks.indices.random(),
+            requestedMode = PlaybackMode.RANDOM,
+        )
     }
 
     fun refreshTrackAfterExternalEdit(trackId: Long) {

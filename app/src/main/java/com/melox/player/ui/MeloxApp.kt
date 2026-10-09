@@ -150,6 +150,8 @@ import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.library.MusicSortButton
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
 import com.melox.player.ui.component.library.SelectionNavigationIconAnimatedContent
+import com.melox.player.ui.component.library.ShufflePlayButton
+import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
 import com.melox.player.ui.component.library.TrackSelectionActions
 import com.melox.player.ui.component.library.extractArtworkColor
 import com.melox.player.ui.component.library.rememberArtworkBitmap
@@ -962,6 +964,12 @@ fun MeloxApp(
                                 onCloseSelection = {
                                     selectedSongUris = emptySet()
                                     songsSelectionMode = false
+                                },
+                                defaultNavigationIcon = {
+                                    ShufflePlayButton(
+                                        enabled = musicPresentation.items.isNotEmpty(),
+                                        onClick = { viewModel.shuffleTracks(musicPresentation.items) },
+                                    )
                                 },
                             )
                         },
@@ -2025,6 +2033,7 @@ fun MeloxApp(
                                                         }
                                                         folder?.let {
                                                             FolderDetailScreen(
+                                                                onShufflePlay = viewModel::shuffleTracks,
                                                                 folder = it,
                                                                 artistGroups = uiState.artists,
                                                                 currentTrackId = currentTrackId,
@@ -2103,6 +2112,7 @@ fun MeloxApp(
                                                         }
                                                         playlist?.let {
                                                             PlaylistDetailScreen(
+                                                                onShufflePlay = viewModel::shuffleTracks,
                                                                 playlist = it,
                                                                 libraryTracks = uiState.tracks,
                                                                 readableContentUris =

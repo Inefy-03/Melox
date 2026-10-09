@@ -163,7 +163,11 @@ class PlaybackController(context: Context) {
     }
 
     /** Replaces playback with the visible result set and starts at [startIndex]. */
-    fun playQueue(tracks: List<MusicTrack>, startIndex: Int) {
+    fun playQueue(
+        tracks: List<MusicTrack>,
+        startIndex: Int,
+        requestedMode: PlaybackMode? = null,
+    ) {
         if (startIndex !in tracks.indices) return
         val sourceItems = tracks.mapIndexed { index, track ->
             track.toPlaybackQueueItem(
@@ -173,7 +177,12 @@ class PlaybackController(context: Context) {
             )
         }
         withController { controller ->
-            val playbackMode = controller.currentPlaybackMode()
+            val playbackMode = requestedMode ?: controller.currentPlaybackMode()
+            if (requestedMode != null) {
+                finishPlaybackModeChange()
+                PlaybackModeMemory.set(playbackMode)
+                mutableState.value = mutableState.value.copy(playbackMode = playbackMode)
+            }
             val reordered = reorderQueueForPlaybackMode(
                 queue = sourceItems.map { it.copy(playbackMode = playbackMode) },
                 currentIndex = startIndex,

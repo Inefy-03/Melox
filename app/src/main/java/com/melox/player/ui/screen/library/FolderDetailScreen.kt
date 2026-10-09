@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +40,7 @@ import com.melox.player.ui.LibrarySearchButton
 import com.melox.player.ui.component.AdaptiveTopAppBar
 import com.melox.player.ui.component.BlurredBar
 import com.melox.player.ui.component.library.MusicSortButton
+import com.melox.player.ui.component.library.ShufflePlayButton
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
 import com.melox.player.ui.component.library.SelectionNavigationIconAnimatedContent
 import com.melox.player.ui.component.library.TrackSelectionActions
@@ -63,6 +65,7 @@ fun FolderDetailScreen(
     selectionExitRequest: Int,
     onSelectionModeChange: (Boolean) -> Unit,
     onTrackClick: (List<MusicTrack>, Int) -> Unit,
+    onShufflePlay: (List<MusicTrack>) -> Unit,
     onPlayNext: (MusicTrack) -> Unit,
     onAppendToQueue: (MusicTrack) -> Unit,
     onAddToPlaylist: (MusicTrack) -> Unit,
@@ -160,10 +163,16 @@ fun FolderDetailScreen(
                                 selectionMode = false
                             },
                             defaultNavigationIcon = {
-                                IconButton(onClick = onBack) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Back,
-                                        contentDescription = stringResource(R.string.back),
+                                Row {
+                                    IconButton(onClick = onBack) {
+                                        Icon(
+                                            imageVector = MiuixIcons.Back,
+                                            contentDescription = stringResource(R.string.back),
+                                        )
+                                    }
+                                    ShufflePlayButton(
+                                        enabled = displayedTracks.isNotEmpty(),
+                                        onClick = { onShufflePlay(displayedTracks) },
                                     )
                                 }
                             },

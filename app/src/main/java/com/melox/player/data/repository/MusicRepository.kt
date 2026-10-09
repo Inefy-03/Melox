@@ -63,15 +63,11 @@ class MusicRepository(context: Context) {
         refreshAudioProperties: Boolean = false,
         onlyTrackId: Long? = null,
         customFolderUris: List<String> = emptyList(),
-        blockedFolderPaths: List<String> = emptyList(),
         skipShortAudio: Boolean = false,
         onInitialTracks: suspend (List<MusicTrack>) -> Unit = {},
     ): List<MusicTrack> = withContext(Dispatchers.IO) {
         val previousTracksByUri = previousTracks.associateBy(MusicTrack::contentUri)
         val customFolderScopes = customFolderUris.mapNotNull(::customFolderScope)
-        val blockedPrefixes = blockedFolderPaths
-            .map { it.trim().replace('\\', '/').trimEnd('/').ifEmpty { "/" } }
-            .distinctBy { it.lowercase() }
         val collections = externalAudioCollections()
         var indexedTracks = queryIndexedTracks(
             collections = collections,
@@ -80,7 +76,6 @@ class MusicRepository(context: Context) {
             onlyTrackId = onlyTrackId,
             customFolderUrisPresent = customFolderUris.isNotEmpty(),
             customFolderScopes = customFolderScopes,
-            blockedPrefixes = blockedPrefixes,
             skipShortAudio = skipShortAudio,
         )
 
@@ -110,7 +105,6 @@ class MusicRepository(context: Context) {
                     onlyTrackId = onlyTrackId,
                     customFolderUrisPresent = true,
                     customFolderScopes = customFolderScopes,
-                    blockedPrefixes = blockedPrefixes,
                     skipShortAudio = skipShortAudio,
                 )
             }
@@ -122,9 +116,6 @@ class MusicRepository(context: Context) {
             .asSequence()
             .filterNot { it.audioFileIdentity() in indexedKeys }
             .map(::createDocumentTrack)
-            .filterNot { track ->
-                blockedPrefixes.any { prefix -> pathMatchesPrefix(track.folderPath, prefix) }
-            }
             .filter { track -> !skipShortAudio || track.durationMs >= MIN_AUDIO_DURATION_MS }
             .toList()
         (enrichedIndexedTracks + directDocumentTracks)
@@ -139,7 +130,6 @@ class MusicRepository(context: Context) {
         onlyTrackId: Long?,
         customFolderUrisPresent: Boolean,
         customFolderScopes: List<CustomFolderScope>,
-        blockedPrefixes: List<String>,
         skipShortAudio: Boolean,
     ): List<MusicTrack> {
         val albumArtistColumn = MediaStore.Audio.AudioColumns.ALBUM_ARTIST
@@ -233,9 +223,6 @@ class MusicRepository(context: Context) {
                         rawPath = rawFolderPath,
                         includesFileName = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q,
                     )
-                    if (blockedPrefixes.any { prefix ->
-                            pathMatchesPrefix(normalizedFolderPath, prefix)
-                        }) continue
                     val reusableTrack = previousTracksByUri[contentUri]?.takeIf { previousTrack ->
                         !refreshAudioProperties &&
                             previousTrack.hasReusableAudioProperties(
@@ -474,12 +461,6 @@ internal fun stableMediaStoreTrackId(volumeName: String, mediaStoreId: Long): Lo
     val hash = stableDocumentTrackId("$volumeName:$mediaStoreId") and SECONDARY_ID_HASH_MASK
     return SECONDARY_ID_MARKER or hash
 }
-
-private fun pathMatchesPrefix(path: String?, prefix: String): Boolean = path != null && (
-    path.equals(prefix, ignoreCase = true) ||
-        path.startsWith("$prefix/", ignoreCase = true) ||
-        prefix == "/"
-    )
 
 private fun customFolderScope(uriString: String): CustomFolderScope? {
     val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return null

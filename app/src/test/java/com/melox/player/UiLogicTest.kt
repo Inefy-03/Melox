@@ -75,7 +75,6 @@ import com.melox.player.playback.isValidQueueMove
 import com.melox.player.playback.nextPlaybackMode
 import com.melox.player.playback.nextQueueInsertionIndex
 import com.melox.player.playback.playbackQueueReplacement
-import com.melox.player.playback.queueRemovalIndicesForContentUris
 import com.melox.player.playback.reorderQueueForPlaybackMode
 import com.melox.player.playback.reconcileValidatedPlaybackSnapshot
 import com.melox.player.playback.sourceOrderForPlayNext
@@ -3841,28 +3840,6 @@ class UiLogicTest {
         assertFalse(isValidQueueMove(fromIndex = 1, toIndex = 1, itemCount = 3))
         assertFalse(isValidQueueMove(fromIndex = -1, toIndex = 1, itemCount = 3))
         assertFalse(isValidQueueMove(fromIndex = 1, toIndex = 3, itemCount = 3))
-    }
-
-    @Test
-    fun blockedContentUrisRemoveEveryMatchingQueueSlotFromTheEnd() {
-        val queue = listOf(
-            playbackQueueItem("keep"),
-            playbackQueueItem("blocked"),
-            playbackQueueItem("blocked"),
-            playbackQueueItem("tail"),
-        )
-
-        assertEquals(
-            listOf(2, 1),
-            queueRemovalIndicesForContentUris(
-                queue = queue,
-                contentUris = setOf("content://music/blocked"),
-            ),
-        )
-        assertEquals(
-            emptyList<Int>(),
-            queueRemovalIndicesForContentUris(queue, emptySet()),
-        )
     }
 
     @Test

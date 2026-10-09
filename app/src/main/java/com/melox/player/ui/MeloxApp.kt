@@ -115,6 +115,7 @@ import com.melox.player.data.library.ArtistSortConfig
 import com.melox.player.data.library.ArtistSortField
 import com.melox.player.data.library.FolderSortConfig
 import com.melox.player.data.library.FolderSortField
+import com.melox.player.ui.viewmodel.withHiddenFolders
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.normalizeCustomBackgroundDimPercent
 import com.melox.player.model.DefaultHomePage
@@ -326,7 +327,12 @@ fun MeloxApp(
     val musicPresentation by viewModel.musicPresentation.collectAsStateWithLifecycle()
     val albumPresentation by viewModel.albumPresentation.collectAsStateWithLifecycle()
     val artistPresentation by viewModel.artistPresentation.collectAsStateWithLifecycle()
-    val folderPresentation by viewModel.folderPresentation.collectAsStateWithLifecycle()
+    val preparedFolderPresentation by viewModel.folderPresentation.collectAsStateWithLifecycle()
+    val hiddenFolderPaths by viewModel.hiddenFolderPaths.collectAsStateWithLifecycle()
+    val hiddenFolderAddresses by viewModel.hiddenFolderAddresses.collectAsStateWithLifecycle()
+    val folderPresentation = remember(preparedFolderPresentation, hiddenFolderPaths) {
+        preparedFolderPresentation.withHiddenFolders(hiddenFolderPaths)
+    }
     val playlistState by viewModel.playlistState.collectAsStateWithLifecycle()
     val settings = uiState.settings
     val context = LocalContext.current
@@ -334,6 +340,12 @@ fun MeloxApp(
     val windowSize = LocalWindowInfo.current.containerSize
     val playbackErrorText = stringResource(R.string.playback_error)
     val scanNoChangesText = stringResource(R.string.scan_no_changes)
+    val hiddenFolderSaveErrorText = stringResource(R.string.hidden_folder_save_error)
+    LaunchedEffect(viewModel, hiddenFolderSaveErrorText) {
+        viewModel.hiddenFolderSaveFailures.collectLatest {
+            Toast.makeText(context, hiddenFolderSaveErrorText, Toast.LENGTH_SHORT).show()
+        }
+    }
     LaunchedEffect(compactPlayback.errorMessage) {
         if (compactPlayback.errorMessage != null) {
             Toast.makeText(
@@ -1867,7 +1879,8 @@ fun MeloxApp(
 
                                                     AppRoute.BLOCKED_FOLDERS ->
                                                         BlockedFoldersScreen(
-                                                            paths = settings.blockedFolderPaths,
+                                                            paths = hiddenFolderPaths,
+                                                            displayPaths = hiddenFolderAddresses,
                                                             bottomContentPadding = routeBottomPadding,
                                                             onBack = navigateBack,
                                                             onUnblock = viewModel::removeBlockedFolderPath,

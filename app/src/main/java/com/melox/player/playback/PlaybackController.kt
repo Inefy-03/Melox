@@ -539,16 +539,6 @@ class PlaybackController(context: Context) {
         }
     }
 
-    fun removeContentUris(contentUris: Set<String>) {
-        if (contentUris.isEmpty()) return
-        withController { controller ->
-            queueRemovalIndicesForContentUris(
-                queue = controller.currentPlaybackQueue(),
-                contentUris = contentUris,
-            ).forEach(controller::removeMediaItem)
-        }
-    }
-
     fun clear() {
         queueClearPending = true
         mutableState.value = PlaybackUiState(playbackMode = mutableState.value.playbackMode)
@@ -725,13 +715,6 @@ internal fun isValidQueueMove(fromIndex: Int, toIndex: Int, itemCount: Int): Boo
     fromIndex != toIndex &&
         isValidQueueIndex(fromIndex, itemCount) &&
         isValidQueueIndex(toIndex, itemCount)
-
-internal fun queueRemovalIndicesForContentUris(
-    queue: List<PlaybackQueueItem>,
-    contentUris: Set<String>,
-): List<Int> = queue.indices
-    .filter { index -> queue[index].contentUri in contentUris }
-    .asReversed()
 
 internal fun Player.currentPlaybackQueue(): List<PlaybackQueueItem> =
     List(mediaItemCount) { index ->

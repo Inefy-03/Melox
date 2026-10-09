@@ -186,7 +186,10 @@ fun FolderLibraryScreen(
     OverlayDialog(
         show = pendingBlockFolder != null,
         title = stringResource(R.string.folder_block_title),
-        summary = stringResource(R.string.folder_block_message),
+        summary = stringResource(
+            R.string.folder_block_message,
+            pendingBlockFolder?.path.orEmpty(),
+        ),
         enableWindowDim = true,
         onDismissRequest = { pendingBlockFolder = null },
     ) {
@@ -203,8 +206,9 @@ fun FolderLibraryScreen(
             TextButton(
                 text = stringResource(R.string.clear_queue_confirm_confirm),
                 onClick = {
-                    pendingBlockFolder?.path?.let(onBlockFolder)
+                    val path = pendingBlockFolder?.path
                     pendingBlockFolder = null
+                    path?.let(onBlockFolder)
                 },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.textButtonColorsPrimary(),
@@ -251,11 +255,7 @@ internal fun FolderListItem(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = stringResource(
-                    R.string.folder_description,
-                    songCount,
-                    folder.displayPath,
-                ),
+                text = songCount,
                 style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 maxLines = 1,

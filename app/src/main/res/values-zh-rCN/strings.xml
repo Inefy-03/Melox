@@ -167,11 +167,11 @@
     <string name="folder_empty">未发现音乐文件夹</string>
     <string name="folder_no_search_results">没有匹配的文件夹</string>
     <string name="folder_unknown">未知文件夹</string>
-    <string name="folder_description">%1$s - %2$s</string>
-    <string name="folder_block_title">屏蔽</string>
-    <string name="folder_block_message">是否屏蔽该文件夹？</string>
+    <string name="folder_block_title">隐藏</string>
+    <string name="folder_block_message">是否要隐藏文件夹 %1$s 的所有歌曲</string>
+    <string name="hidden_folder_save_error">无法保存隐藏文件夹设置</string>
     <plurals name="folder_song_count">
-        <item quantity="other">%1$d 首歌曲</item>
+        <item quantity="other">%1$d首</item>
     </plurals>
 
     <string name="no_track_selected">未选择歌曲</string>
@@ -267,10 +267,10 @@
     <string name="scan_skip_short_audio">不扫描60s以下音频</string>
     <string name="scan_custom_folder_title">自定义文件夹</string>
     <string name="scan_add_custom_folder">添加自定义文件夹</string>
-    <string name="scan_blocked_folder_title">被屏蔽的文件夹</string>
-    <string name="scan_blocked_folder_empty">暂无被屏蔽的文件夹</string>
-    <string name="scan_remove_blocked_folder_title">移出</string>
-    <string name="scan_remove_blocked_folder_message">是否将 %1$s 文件夹移出屏蔽？</string>
+    <string name="scan_blocked_folder_title">被隐藏的文件夹</string>
+    <string name="scan_blocked_folder_empty">暂无被隐藏的文件夹</string>
+    <string name="scan_remove_blocked_folder_title">取消隐藏</string>
+    <string name="scan_remove_blocked_folder_message">是否取消隐藏文件夹 %1$s 的所有歌曲？</string>
     <string name="scan_start">开始扫描</string>
     <string name="scan_clear_library">清空音乐库</string>
     <string name="scan_clear_library_confirm_title">清空音乐库</string>

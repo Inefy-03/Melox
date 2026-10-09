@@ -461,20 +461,9 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    suspend fun addBlockedFolderPath(path: String) {
-        val normalized = path.trim().replace('\\', '/').trimEnd('/').ifEmpty { "/" }
+    suspend fun setBlockedFolderPaths(paths: List<String>) {
         dataStore.edit { preferences ->
-            preferences[Keys.BlockedFolderPaths] =
-                preferences[Keys.BlockedFolderPaths].orEmpty() + normalized
-        }
-    }
-
-    suspend fun removeBlockedFolderPath(path: String) {
-        dataStore.edit { preferences ->
-            preferences[Keys.BlockedFolderPaths] = preferences[Keys.BlockedFolderPaths]
-                .orEmpty()
-                .filterNot { it.equals(path, ignoreCase = true) }
-                .toSet()
+            preferences[Keys.BlockedFolderPaths] = paths.toSet()
         }
     }
 

@@ -174,9 +174,9 @@
     <string name="folder_empty">No music folders found</string>
     <string name="folder_no_search_results">No matching folders</string>
     <string name="folder_unknown">Unknown folder</string>
-    <string name="folder_description">%1$s - %2$s</string>
-    <string name="folder_block_title">Block</string>
-    <string name="folder_block_message">Block this folder?</string>
+    <string name="folder_block_title">Hide</string>
+    <string name="folder_block_message">Hide all songs in folder %1$s?</string>
+    <string name="hidden_folder_save_error">Could not save hidden folders</string>
     <plurals name="folder_song_count">
         <item quantity="one">%1$d song</item>
         <item quantity="other">%1$d songs</item>
@@ -278,10 +278,10 @@
     <string name="scan_skip_short_audio">Skip audio shorter than 60s</string>
     <string name="scan_custom_folder_title">Custom folders</string>
     <string name="scan_add_custom_folder">Add custom folder</string>
-    <string name="scan_blocked_folder_title">Blocked folders</string>
-    <string name="scan_blocked_folder_empty">No blocked folders</string>
-    <string name="scan_remove_blocked_folder_title">Remove</string>
-    <string name="scan_remove_blocked_folder_message">Remove the %1$s folder from blocked folders?</string>
+    <string name="scan_blocked_folder_title">Hidden folders</string>
+    <string name="scan_blocked_folder_empty">No hidden folders</string>
+    <string name="scan_remove_blocked_folder_title">Unhide</string>
+    <string name="scan_remove_blocked_folder_message">Unhide all songs in folder %1$s?</string>
     <string name="scan_start">Start scan</string>
     <string name="scan_clear_library">Clear music library</string>
     <string name="scan_clear_library_confirm_title">Clear music library</string>

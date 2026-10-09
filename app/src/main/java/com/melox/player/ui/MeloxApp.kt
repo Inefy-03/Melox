@@ -147,6 +147,8 @@ import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.TopBarBlurSettings
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
+import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
+import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
 import com.melox.player.ui.component.library.MusicSortButton
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
 import com.melox.player.ui.component.library.SelectionNavigationIconAnimatedContent
@@ -475,6 +477,7 @@ fun MeloxApp(
     var pendingAlbumGridReset by remember { mutableStateOf<AlbumGridStyle?>(null) }
     var showQueue by rememberSaveable { mutableStateOf(false) }
     val playerTransition = rememberPlayerSheetTransitionState()
+    var playerContentBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     val sharedPlayerArtworkEnabled = playerTransition.fullPlayerArtworkPageSelected
     val miniPlayerLayer = rememberGraphicsLayer()
     val miniPlayerContentLayer = rememberGraphicsLayer()
@@ -1053,6 +1056,10 @@ fun MeloxApp(
                         },
                     ) { contentPadding, scrollBehavior, indexTopPadding ->
                         MusicListScreen(
+                            showLocateAction = true,
+                            currentTrackContentUri = compactPlayback.currentItem?.contentUri,
+                            miniPlayerBounds = playerTransition.miniPlayerBounds,
+                            playerContentBounds = playerContentBounds,
                             onTrackClick = viewModel::playTracks,
                             displayedTracks = musicPresentation.items,
                             queueTracks = musicPresentation.queueItems,
@@ -1723,7 +1730,37 @@ fun MeloxApp(
                                 bottom = retainedRootBottomPadding,
                             )
                             val currentRootPadding by rememberUpdatedState(rootPadding)
-                            Box(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize().onGloballyPositioned {
+                                    playerContentBounds = it.boundsInRoot()
+                                },
+                            ) {
+                                val songsIndexBottomPadding = maxOf(
+                                    retainedRootBottomPadding + rootIndexBottomSpacing,
+                                    if (playerTransition.miniPlayerBounds.width > 0f && playerContentBounds.width > 0f) {
+                                        with(density) {
+                                            (playerContentBounds.bottom - playerTransition.miniPlayerBounds.top)
+                                                .coerceAtLeast(0f).toDp()
+                                        } + 24.dp + top.yukonga.miuix.kmp.basic.ButtonDefaults.MinHeight
+                                    } else {
+                                        0.dp
+                                    },
+                                )
+                                var retainedSongsIndexBottomPadding by remember(
+                                    windowSize, density, miniPlayerUsesNormalChrome,
+                                ) { mutableStateOf(songsIndexBottomPadding) }
+                                if (currentRoute == AppRoute.ROOT) {
+                                    SideEffect {
+                                        retainedSongsIndexBottomPadding = songsIndexBottomPadding
+                                    }
+                                }
+                                CompositionLocalProvider(
+                                    LocalAlphabetIndexBottomPadding provides if (currentRoute == AppRoute.ROOT) {
+                                        songsIndexBottomPadding
+                                    } else {
+                                        retainedSongsIndexBottomPadding
+                                    },
+                                ) {
                                 PredictiveNavDisplay(
                                     backStack = navBackStack,
                                     predictiveBackEnabled =
@@ -2181,6 +2218,7 @@ fun MeloxApp(
                                             }
                                         }
                                     }
+                                }
                                 }
                         }
                     BackHandler(enabled = playerTransition.isMounted) {

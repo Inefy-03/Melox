@@ -1,21 +1,24 @@
 # Bundled Android Libraries
 
-## RenderScript Intrinsics Replacement Toolkit
+## RenderScript Intrinsics Replacement Toolkit (Blur Only)
 
-- File: `renderscript-intrinsics-replacement-toolkit-344be3f-16k.aar`
-- Source: Android Open Source Project `android/renderscript-intrinsics-replacement-toolkit`
+- File: `renderscript-toolkit-blur-344be3f-arm64-16k.aar`
+- Source: [AOSP Toolkit](https://github.com/android/renderscript-intrinsics-replacement-toolkit/tree/344be3f6bf03fb6b63a80b36f08f8dccac59d784)
 - Source commit: `344be3f6bf03fb6b63a80b36f08f8dccac59d784`
-- License: Apache License 2.0
-- SHA-256: `2d4c4f44bcfad3502c2aaca8473376912db256b2e66e7bda7208a9c1e6380a61`
+- License: Apache License 2.0; upstream copyright notices are retained.
+- Source archive SHA-256: `1243a1cb118cbeb3de596f8c03aacba52b98758bd9c7ed57c87f215bc8ef8044`
+- AAR SHA-256: `6e463cee1f427f711ef6aecde508133de39240297f5809dd2f775b8d19669e7d`
 
-The AAR was rebuilt with Android Gradle Plugin 9.2.1, compile SDK 37, NDK
-29.0.14206865, CMake 3.22.1, and flexible page sizes enabled. The only source
-compatibility adjustment wraps `Bitmap.config` in `requireNotNull` after the
-upstream bitmap validation, preserving behavior while compiling against the
-newer nullable Android API declaration.
+This subset contains only Bitmap/ByteArray `Toolkit.blur`, `Range2d` and the
+native create/destroy/blur entry points. The blur kernel, arm64 NEON assembly,
+validation, worker pool and bitmap access are unchanged. The sole Kotlin API
+compatibility adjustment is `requireNotNull(Bitmap.config)` after validation.
+Blend, color matrix, convolve, histogram, LUT, resize and YUV conversion are
+excluded from both the Kotlin API and native build.
 
-The bundled 64-bit native libraries use 16 KB (`0x4000`) ELF load-segment
-alignment.
+The checked-in AAR is consumed directly by the app's Gradle build. The repository
+does not include a script to regenerate it. APK native libraries stay
+uncompressed and page-aligned.
 
 ## Media3 FFmpeg audio decoder
 

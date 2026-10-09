@@ -27,6 +27,7 @@ local.properties
 # Native build output
 .externalNativeBuild/
 .cxx/
+scripts/
 
 # Generated packages and reports
 artifacts/

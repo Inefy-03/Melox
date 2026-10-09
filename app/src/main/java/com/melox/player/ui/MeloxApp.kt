@@ -82,9 +82,9 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.Role
@@ -130,7 +130,6 @@ import com.melox.player.ui.component.LocalBottomSheetBlurBackdrop
 import com.melox.player.ui.component.LocalTopBarBlurSettings
 import com.melox.player.ui.component.LocalCustomPageBackground
 import com.melox.player.ui.component.LocalCustomBackgroundDimAlpha
-import com.melox.player.ui.component.LocalPageSurfaceBackdrop
 import com.melox.player.ui.component.LocalPageCardBlurRadius
 import com.melox.player.ui.component.pageCardBlurRadius
 import com.melox.player.ui.component.LocalPageCardSurfaceAlpha
@@ -138,9 +137,8 @@ import com.melox.player.ui.component.pageCardSurfaceAlpha
 import com.melox.player.ui.component.topBarContainerColor
 import com.melox.player.ui.component.tabSelectedContainerColor
 import com.melox.player.ui.component.FixedPageBackgroundHost
-import com.melox.player.ui.component.pageTextureBlur
+import com.melox.player.ui.component.trackFixedWallpaperMotion
 import com.melox.player.ui.component.refreshFixedWallpaperSample
-import com.melox.player.ui.component.pageSurfaceBlur
 import com.melox.player.ui.component.rememberCustomPageBackground
 import com.melox.player.ui.component.customPageBackground
 import com.melox.player.ui.component.customPageContainerColor
@@ -1939,6 +1937,7 @@ fun MeloxApp(
 
                                                     AppRoute.ABOUT -> AboutScreen(
                                                         bottomContentPadding = routeBottomPadding,
+                                                        customBackgroundSelected = settings.customBackgroundId != null,
                                                         onBack = navigateBack,
                                                         onOpenSponsor = {
                                                             currentRoute = AppRoute.SPONSOR
@@ -2756,7 +2755,6 @@ private fun LibraryTabRow(
     modifier: Modifier = Modifier,
     blurred: Boolean = false,
 ) {
-    val pageSurfaceBlurActive = LocalPageSurfaceBackdrop.current != null
     val hasWallpaper = LocalCustomPageBackground.current != null
     val progressiveBlurActive = blurred &&
         LocalTopBarBlurSettings.current.progressiveEnabled &&
@@ -2846,7 +2844,7 @@ internal fun LibrarySearchBar(
     onFocusedChange: (Boolean) -> Unit,
     onVisibleChange: (Boolean) -> Unit,
 ) {
-    val pageSurfaceBackdrop = LocalPageSurfaceBackdrop.current
+    val hasWallpaper = LocalCustomPageBackground.current != null
     val topBarBlurSettings = LocalTopBarBlurSettings.current
     val progressiveBlurActive = topBarBlurSettings.blurEnabled &&
         topBarBlurSettings.progressiveEnabled &&

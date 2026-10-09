@@ -46,14 +46,22 @@ import kotlin.math.sin
 internal fun AboutEffectBackground(
     modifier: Modifier = Modifier,
     backgroundModifier: Modifier = Modifier,
+    useCustomBackground: Boolean = false,
     alpha: () -> Float = { 1f },
     content: @Composable BoxScope.() -> Unit,
 ) {
-    if (LocalCustomPageBackground.current != null) {
-        Box(
-            modifier = modifier.then(backgroundModifier).customPageBackground(),
-            content = content,
-        )
+    if (useCustomBackground || LocalCustomPageBackground.current != null) {
+        Box(modifier = modifier) {
+            // Record only the wallpaper; header blur consumers must stay outside this layer.
+            Spacer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(backgroundModifier)
+                    .background(MiuixTheme.colorScheme.surface)
+                    .customPageBackground(),
+            )
+            content()
+        }
         return
     }
     val shaderSupported = remember { isRuntimeShaderSupported() }

@@ -46,8 +46,8 @@ import com.melox.player.ui.component.BlurredBar
 import com.melox.player.ui.component.effect.AboutEffectBackground
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.PageCard as Card
-import com.melox.player.ui.component.LocalCustomPageBackground
 import com.melox.player.ui.component.LocalTopBarWallpaperVisible
+import com.melox.player.ui.component.LocalCustomPageBackground
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -72,6 +72,7 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 @Composable
 fun AboutScreen(
     bottomContentPadding: Dp,
+    customBackgroundSelected: Boolean,
     onBack: () -> Unit,
     onOpenSponsor: () -> Unit,
 ) {
@@ -98,7 +99,8 @@ fun AboutScreen(
         derivedStateOf { scrollProgress == 1f }
     }
     val topBarBackdrop = rememberBlurBackdrop()
-    val barBackdrop = if (collapsed) topBarBackdrop else null
+    val hasCustomBackground = customBackgroundSelected || LocalCustomPageBackground.current != null
+    val barBackdrop = if (collapsed || hasCustomBackground) topBarBackdrop else null
     val barColor = if (collapsed && barBackdrop == null) {
         MiuixTheme.colorScheme.surface
     } else {
@@ -142,6 +144,7 @@ fun AboutScreen(
                 scrollBehavior = scrollBehavior,
                 scrollProgress = { scrollProgress },
                 bottomContentPadding = bottomContentPadding,
+                customBackgroundSelected = customBackgroundSelected,
                 onOpenSponsor = onOpenSponsor,
             )
         }
@@ -155,6 +158,7 @@ private fun AboutContent(
     scrollBehavior: top.yukonga.miuix.kmp.basic.ScrollBehavior,
     scrollProgress: () -> Float,
     bottomContentPadding: Dp,
+    customBackgroundSelected: Boolean,
     onOpenSponsor: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -196,6 +200,7 @@ private fun AboutContent(
 
     AboutEffectBackground(
         modifier = Modifier.fillMaxSize(),
+        useCustomBackground = customBackgroundSelected,
         backgroundModifier =
             contentBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier,
         alpha = { 1f - scrollProgress() },
@@ -219,7 +224,8 @@ private fun AboutContent(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(
                 start = padding.calculateStartPadding(layoutDirection),
-                top = padding.calculateTopPadding(),
+                top = padding.calculateTopPadding() +
+                    if (customBackgroundSelected || customBackgroundVisible) 12.dp else 0.dp,
                 end = padding.calculateEndPadding(layoutDirection),
                 bottom = maxOf(
                     padding.calculateBottomPadding(),

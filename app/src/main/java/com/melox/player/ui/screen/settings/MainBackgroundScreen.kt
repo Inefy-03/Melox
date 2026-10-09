@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.AppSettings
+import com.melox.player.model.MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT
 import com.melox.player.model.MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT
 import com.melox.player.model.MAX_CUSTOM_BACKGROUND_DIM_PERCENT
 import com.melox.player.model.normalizeCustomBackgroundBlurPercent
@@ -92,7 +93,7 @@ internal fun MainBackgroundScreen(
     var blurPercent by remember(settings.customBackgroundId) { mutableIntStateOf(settings.customBackgroundBlurPercent) }
     var dimPercent by remember(settings.customBackgroundId) { mutableIntStateOf(settings.customBackgroundDimPercent) }
     var cardBlurPercent by remember(settings.customBackgroundId) { mutableIntStateOf(settings.customBackgroundCardBlurPercent) }
-    var cardOpacityPercent by remember(settings.customBackgroundId) { mutableIntStateOf(settings.customBackgroundCardOpacityPercent) }
+    var cardOpacityPercent by remember(settings.customBackgroundId) { mutableIntStateOf(normalizeCustomBackgroundCardOpacityPercent(settings.customBackgroundCardOpacityPercent)) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             scope.launch {
@@ -212,8 +213,8 @@ internal fun MainBackgroundScreen(
                                 title = stringResource(R.string.settings_background_card_opacity),
                                 value = cardOpacityPercent.toFloat(),
                                 valueText = stringResource(R.string.settings_percent_value, cardOpacityPercent),
-                                valueRange = 0f..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT.toFloat(),
-                                steps = MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT - 1,
+                                valueRange = MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT.toFloat()..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT.toFloat(),
+                                steps = MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT - MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT - 1,
                                 onValueChange = { value ->
                                     val percent = normalizeCustomBackgroundCardOpacityPercent(value.roundToInt())
                                     if (percent != cardOpacityPercent) {

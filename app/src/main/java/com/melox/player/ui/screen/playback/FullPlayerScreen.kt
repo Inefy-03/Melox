@@ -1133,6 +1133,7 @@ private fun PlayerSettingsSheet(
                 .verticalScroll(scrollState, overscrollEffect = null)
                 .padding(bottom = bottomPadding + 12.dp),
             cardColor = bottomSheetCardColor(),
+            usePageMaterial = false,
             showHideControls = !wideLayout,
             firstCardModifier = Modifier.onSizeChanged { firstCardHeightPx = it.height },
         )

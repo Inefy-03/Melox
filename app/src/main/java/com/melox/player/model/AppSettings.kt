@@ -94,6 +94,7 @@ fun normalizePlaybackSpeed(speed: Float): Float =
 const val DEFAULT_CUSTOM_BACKGROUND_BLUR_PERCENT = 0
 const val DEFAULT_CUSTOM_BACKGROUND_CARD_BLUR_PERCENT = 50
 const val DEFAULT_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT = 80
+const val MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT = 10
 const val MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT = 80
 const val MAX_CUSTOM_BACKGROUND_DIM_PERCENT = 90
 
@@ -110,7 +111,8 @@ fun normalizeCustomBackgroundDimPercent(percent: Int): Int = percent.coerceIn(0,
 
 fun normalizeCustomBackgroundCardBlurPercent(percent: Int): Int = percent.coerceIn(0, 100)
 
-fun normalizeCustomBackgroundCardOpacityPercent(percent: Int): Int = percent.coerceIn(0, MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT)
+fun normalizeCustomBackgroundCardOpacityPercent(percent: Int): Int =
+    percent.coerceIn(MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT, MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT)
 
 /** User-controlled preferences stored by the settings repository. */
 data class AppSettings(

@@ -9,6 +9,7 @@ import com.melox.player.data.repository.customBackgroundBlurInputMaxEdge
 import com.melox.player.data.repository.fitCustomBackgroundDimensions
 import com.melox.player.data.repository.isCustomBackgroundId
 import com.melox.player.model.AppSettings
+import com.melox.player.model.MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT
 import com.melox.player.model.MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT
 import com.melox.player.model.MAX_CUSTOM_BACKGROUND_DIM_PERCENT
 import com.melox.player.model.normalizeCustomBackgroundBlurPercent
@@ -41,28 +42,33 @@ class CustomBackgroundTest {
 
     @Test
     fun cardOpacityUsesTheOfficialAlphaDirectionAndClampsBounds() {
-        assertEquals(0, normalizeCustomBackgroundCardOpacityPercent(Int.MIN_VALUE))
+        assertEquals(10, normalizeCustomBackgroundCardOpacityPercent(Int.MIN_VALUE))
+        assertEquals(10, normalizeCustomBackgroundCardOpacityPercent(0))
+        assertEquals(10, normalizeCustomBackgroundCardOpacityPercent(9))
+        assertEquals(10, normalizeCustomBackgroundCardOpacityPercent(10))
         assertEquals(80, normalizeCustomBackgroundCardOpacityPercent(Int.MAX_VALUE))
         assertEquals(80, normalizeCustomBackgroundCardOpacityPercent(81))
         assertEquals(80, normalizeCustomBackgroundCardOpacityPercent(100))
-        assertEquals(0f, pageCardSurfaceAlpha(Int.MIN_VALUE), 0f)
+        assertEquals(0.1f, pageCardSurfaceAlpha(Int.MIN_VALUE), 0f)
         assertEquals(0.8f, pageCardSurfaceAlpha(Int.MAX_VALUE), 0f)
-        for (percent in 0..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT) {
+        for (percent in MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT) {
             assertEquals(percent / 100f, pageCardSurfaceAlpha(percent), 0f)
         }
-        val alphas = (0..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT).map(::pageCardSurfaceAlpha)
+        val alphas = (MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT).map(::pageCardSurfaceAlpha)
         assertTrue(alphas.zipWithNext().all { (first, next) -> first < next })
     }
 
     @Test
     fun cardOpacitySliderSupportsTapsAtEveryPercentAndRtlDirection() {
-        for (percent in 0..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT) {
+        for (percent in MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT) {
             for (rtl in listOf(false, true)) {
+                val minimum = MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT
                 val maximum = MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT
-                val position = 10f + (if (rtl) maximum - percent else percent) * 2f
+                val rangeLength = maximum - minimum
+                val position = 10f + (if (rtl) maximum - percent else percent - minimum) * 2f
                 assertEquals(
                     percent.toFloat(),
-                    sliderValueAtPosition(position, maximum * 2 + 20, 20, 0f..maximum.toFloat(), maximum - 1, null, 0.02f, rtl),
+                    sliderValueAtPosition(position, rangeLength * 2 + 20, 20, minimum.toFloat()..maximum.toFloat(), rangeLength - 1, null, 0.02f, rtl),
                     0.001f,
                 )
             }
@@ -74,7 +80,7 @@ class CustomBackgroundTest {
         val base = Color(0xFF7457AA)
         for (percent in 0..100) {
             val result = pageCardBackgroundColor(base, true, false, pageCardSurfaceAlpha(percent))
-            assertEquals(percent.coerceAtMost(80) / 100f, result.alpha, 0.005f)
+            assertEquals(percent.coerceIn(10, 80) / 100f, result.alpha, 0.005f)
             assertEquals(base.red, result.red, 0f)
             assertEquals(base.green, result.green, 0f)
             assertEquals(base.blue, result.blue, 0f)

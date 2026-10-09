@@ -47,6 +47,7 @@ internal fun LyricsInterfacePreferences(
     onHideControlsOnLyricsChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     cardColor: Color = MiuixTheme.colorScheme.surfaceContainer,
+    usePageMaterial: Boolean = true,
     showHideControls: Boolean = true,
     firstCardModifier: Modifier = Modifier,
 ) {
@@ -57,6 +58,7 @@ internal fun LyricsInterfacePreferences(
         Card(
             modifier = Modifier.fillMaxWidth().then(firstCardModifier),
             colors = CardDefaults.defaultColors(color = cardColor),
+            usePageMaterial = usePageMaterial,
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 SwitchPreference(
@@ -109,6 +111,7 @@ internal fun LyricsInterfacePreferences(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.defaultColors(color = cardColor),
+            usePageMaterial = usePageMaterial,
         ) {
             val modes = LyricAnimationMode.entries
             OverlayDropdownPreference(
@@ -124,6 +127,7 @@ internal fun LyricsInterfacePreferences(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.defaultColors(color = cardColor),
+                usePageMaterial = usePageMaterial,
             ) {
                 SwitchPreference(
                     title = stringResource(R.string.lyrics_hide_controls),

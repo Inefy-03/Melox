@@ -201,6 +201,10 @@ fun ThemeSettingsScreen(
                 }
                 item {
                     ThemeCard {
+                        ArrowPreference(
+                            title = stringResource(R.string.settings_custom_background_title),
+                            onClick = onOpenMainBackground,
+                        )
                         SwitchPreference(
                             checked = blurChecked && blurSupported,
                             onCheckedChange = { checked ->
@@ -348,14 +352,6 @@ fun ThemeSettingsScreen(
                                     }
                                 }
                             },
-                        )
-                    }
-                }
-                item(key = "custom_background") {
-                    ThemeCard {
-                        ArrowPreference(
-                            title = stringResource(R.string.settings_custom_background_title),
-                            onClick = onOpenMainBackground,
                         )
                     }
                 }

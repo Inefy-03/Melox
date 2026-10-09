@@ -53,6 +53,7 @@ import com.melox.player.data.library.displayArtistName
 import com.melox.player.model.MusicTrack
 import com.melox.player.ui.component.BlurredBar
 import com.melox.player.ui.component.LocalCustomPageBackground
+import com.melox.player.ui.component.LocalTopBarBlurSettings
 import com.melox.player.ui.component.topBarContainerColor
 import com.melox.player.ui.component.tabSelectedContainerColor
 import com.melox.player.ui.component.miuixBarColor
@@ -116,7 +117,11 @@ fun AlbumDetailScreen(
     val scope = rememberCoroutineScope()
     val hasWallpaper = LocalCustomPageBackground.current != null
     val tabRowBackgroundColor = topBarContainerColor(hasWallpaper, backdrop != null, MiuixTheme.colorScheme.surface)
-    val tabSelectedColor = tabSelectedContainerColor(hasWallpaper, false, MiuixTheme.colorScheme.surfaceContainer)
+    val tabSelectedColor = tabSelectedContainerColor(
+        hasWallpaper = hasWallpaper,
+        progressiveBlurActive = backdrop != null && LocalTopBarBlurSettings.current.progressiveEnabled,
+        fallbackColor = MiuixTheme.colorScheme.surfaceContainer,
+    )
     val trackSections = remember(album.tracks) { buildAlbumDiscSections(album.tracks) }
     val orderedTracks = remember(trackSections) { trackSections.flatMap(AlbumDiscSection::tracks) }
     val orderedTrackIndices = remember(orderedTracks) {
@@ -452,7 +457,11 @@ fun ArtistDetailScreen(
     val scope = rememberCoroutineScope()
     val hasWallpaper = LocalCustomPageBackground.current != null
     val tabRowBackgroundColor = topBarContainerColor(hasWallpaper, backdrop != null, MiuixTheme.colorScheme.surface)
-    val tabSelectedColor = tabSelectedContainerColor(hasWallpaper, false, MiuixTheme.colorScheme.surfaceContainer)
+    val tabSelectedColor = tabSelectedContainerColor(
+        hasWallpaper = hasWallpaper,
+        progressiveBlurActive = backdrop != null && LocalTopBarBlurSettings.current.progressiveEnabled,
+        fallbackColor = MiuixTheme.colorScheme.surfaceContainer,
+    )
     var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var selectedTrackUris by remember(artist.key) {
         mutableStateOf<Set<String>>(emptySet())

@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -45,8 +46,21 @@ internal val LocalFixedPageBackground = compositionLocalOf<FixedPageBackground?>
 
 internal class FixedPageBackground(
     val backdrop: LayerBackdrop,
-    val refreshSignal: () -> Float,
-)
+    refreshSignal: () -> Float,
+) {
+    var motionPosition by mutableStateOf(IntOffset.Zero)
+    val refreshSignal: () -> Float = {
+        refreshSignal() + motionPosition.x + motionPosition.y
+    }
+}
+
+@Composable
+internal fun Modifier.trackFixedWallpaperMotion(): Modifier {
+    val background = LocalFixedPageBackground.current ?: return this
+    return onLayoutRectChanged(throttleMillis = 0, debounceMillis = 0) {
+        background.motionPosition = it.positionInRoot
+    }
+}
 
 @Composable
 internal fun FixedPageBackgroundHost(

@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Card as MiuixCard
 import top.yukonga.miuix.kmp.basic.CardColors
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 @Composable
@@ -22,6 +21,7 @@ internal fun PageCard(
     cornerRadius: Dp = CardDefaults.CornerRadius,
     insideMargin: PaddingValues = CardDefaults.InsideMargin,
     colors: CardColors = CardDefaults.defaultColors(),
+    usePageMaterial: Boolean = true,
     pressFeedbackType: PressFeedbackType = PressFeedbackType.None,
     showIndication: Boolean = false,
     holdDownState: Boolean = false,
@@ -29,12 +29,12 @@ internal fun PageCard(
     onLongPress: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val backdrop = LocalPageSurfaceBackdrop.current.takeIf { colors.color.alpha > 0f }
-    val blurRadius = LocalPageCardBlurRadius.current
-    val surfaceAlpha = LocalPageCardSurfaceAlpha.current
+    val backdrop = if (usePageMaterial && colors.color.alpha > 0f) LocalPageSurfaceBackdrop.current else null
+    val blurRadius = if (usePageMaterial) LocalPageCardBlurRadius.current else NormalBarBlurRadius
+    val surfaceAlpha = if (usePageMaterial) LocalPageCardSurfaceAlpha.current else 1f
     val backgroundColor = pageCardBackgroundColor(
         color = colors.color,
-        hasWallpaper = LocalCustomPageBackground.current != null,
+        hasWallpaper = usePageMaterial && LocalCustomPageBackground.current != null,
         hasBackdrop = backdrop != null,
         surfaceAlpha = surfaceAlpha,
     )
@@ -73,10 +73,4 @@ internal fun pageCardBackgroundColor(
     hasBackdrop -> Color.Transparent
     hasWallpaper -> color.copy(alpha = color.alpha * surfaceAlpha.coerceIn(0f, 1f))
     else -> color
-}
-
-@Composable
-internal fun Modifier.pageSurfaceBlur(cornerRadius: Dp): Modifier {
-    val backdrop = LocalPageSurfaceBackdrop.current ?: return this
-    return squircleClip(cornerRadius).pageTextureBlur(backdrop)
 }

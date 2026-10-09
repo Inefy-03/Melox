@@ -146,6 +146,7 @@ class SettingsRepository(context: Context) {
                 blurEnabled = preferences[Keys.BlurEnabled] ?: true,
                 progressiveTopBarBlurEnabled =
                     preferences[Keys.ProgressiveTopBarBlurEnabled] ?: false,
+                smallPlayerBar = preferences[Keys.SmallPlayerBar] ?: false,
                 hideBottomBar = preferences[Keys.HideBottomBar] ?: false,
                 floatingBottomBar = preferences[Keys.FloatingBottomBar]
                     ?: (preferences[Keys.BottomBarStyle] != null &&
@@ -399,6 +400,12 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    suspend fun setSmallPlayerBar(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SmallPlayerBar] = enabled
+        }
+    }
+
     suspend fun setHideBottomBar(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.HideBottomBar] = enabled
@@ -545,6 +552,7 @@ class SettingsRepository(context: Context) {
             booleanPreferencesKey("progressive_top_bar_blur_enabled")
         val FloatingBottomBar = booleanPreferencesKey("floating_bottom_bar")
         val NavigationRailExpanded = booleanPreferencesKey("navigation_rail_expanded")
+        val SmallPlayerBar = booleanPreferencesKey("small_player_bar")
         val HideBottomBar = booleanPreferencesKey("hide_bottom_bar")
         val LiquidGlass = booleanPreferencesKey("liquid_glass")
         val PredictiveBackEnabled = booleanPreferencesKey("predictive_back_enabled")

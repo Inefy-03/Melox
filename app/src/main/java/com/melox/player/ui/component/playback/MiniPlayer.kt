@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,12 +48,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.melox.player.R
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.PlaybackQueueItem
@@ -107,14 +106,24 @@ internal fun MiniPlayer(
     val item = playback.currentItem
     val hasItem = item != null
     val isNormal = chrome.style == BottomBarStyle.NORMAL
+    val isSmallFloating = chrome.smallPlayerBar && !isNormal
     val surfaceCornerRadius = if (isNormal) 18.dp else 32.dp
-    val artworkCornerRadius = if (isNormal) 7.dp else 8.dp
+    val artworkCornerRadius = miniPlayerArtworkCornerRadius(isNormal, chrome.smallPlayerBar)
     val normalOutlineColor = DividerDefaults.DividerColor.copy(
         alpha = NORMAL_BAR_STROKE_ALPHA,
     )
-    val artworkSize = if (isNormal) 48.dp else 44.dp
-    val metadataSpacing = if (isNormal) 6.dp else 8.dp
-    val controlSize = 40.dp
+    val playerHeight = miniPlayerHeight(chrome.style, chrome.smallPlayerBar)
+    val artworkSize = when {
+        isSmallFloating -> 32.dp
+        chrome.smallPlayerBar -> 36.dp
+        else -> playerHeight - 20.dp
+    }
+    val metadataSpacing = when {
+        isNormal -> 6.dp
+        isSmallFloating -> 4.dp
+        else -> 8.dp
+    }
+    val controlSize = miniPlayerControlSize(isNormal, chrome.smallPlayerBar)
     val playPauseIconSize = 22.dp
     val controlIconSize = 24.dp
     val expansionGestureModifier = rememberPlayerSheetVerticalDragModifier(
@@ -131,7 +140,7 @@ internal fun MiniPlayer(
             .fillMaxWidth()
             .padding(horizontal = if (isNormal) 6.dp else 0.dp)
             .padding(bottom = if (isNormal) 6.dp else FLOATING_MINI_PLAYER_BOTTOM_PADDING)
-            .height(if (isNormal) 68.dp else 64.dp)
+            .height(playerHeight)
             .onGloballyPositioned { coordinates ->
                 onPlayerBoundsChanged(coordinates.boundsInRoot())
             }
@@ -195,8 +204,12 @@ internal fun MiniPlayer(
                 }
                 .recordPlayerContentLayer(playerContentLayer)
                 .padding(
-                    start = if (isNormal) 10.dp else 16.dp,
-                    end = 10.dp,
+                    start = if (isNormal) 10.dp else if (isSmallFloating) 14.dp else 16.dp,
+                    end = when {
+                        isSmallFloating -> 8.dp
+                        chrome.smallPlayerBar -> (playerHeight - controlSize) / 2
+                        else -> 10.dp
+                    },
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -231,18 +244,31 @@ internal fun MiniPlayer(
                 playback = playback,
                 onPrevious = onPrevious,
                 onNext = onNext,
+                titleStyle = if (isSmallFloating) {
+                    MiuixTheme.textStyles.subtitle
+                } else {
+                    MiuixTheme.textStyles.body1
+                },
                 modifier = Modifier.weight(1f),
                 contentStartPadding = 4.dp,
             )
             Spacer(modifier = Modifier.width(if (isNormal) 6.dp else 2.dp))
             Row(
-                modifier = Modifier.onGloballyPositioned { coordinates ->
-                    onPlayerControlsBoundsChanged(coordinates.boundsInRoot())
-                },
+                modifier = Modifier
+                    .offset(
+                        x = if (isSmallFloating) {
+                            8.dp - (playerHeight - controlSize) / 2
+                        } else {
+                            0.dp
+                        },
+                    )
+                    .onGloballyPositioned { coordinates ->
+                        onPlayerControlsBoundsChanged(coordinates.boundsInRoot())
+                    },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
-                    modifier = Modifier.offset(x = (-6).dp),
+                    modifier = Modifier.offset(x = if (chrome.smallPlayerBar) 0.dp else (-6).dp),
                     enabled = hasItem,
                     onClick = onTogglePlayPause,
                     minWidth = controlSize,
@@ -269,7 +295,7 @@ internal fun MiniPlayer(
                     }
                 }
                 IconButton(
-                    modifier = Modifier.offset(x = if (isNormal) 0.dp else (-2).dp),
+                    modifier = Modifier.offset(x = if (isNormal || isSmallFloating) 0.dp else (-2).dp),
                     onClick = onOpenQueue,
                     minWidth = controlSize,
                     minHeight = controlSize,
@@ -290,6 +316,7 @@ private fun SwipeableMetadata(
     playback: PlaybackUiState,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    titleStyle: TextStyle,
     modifier: Modifier = Modifier,
     contentStartPadding: Dp = 0.dp,
 ) {
@@ -506,6 +533,7 @@ private fun SwipeableMetadata(
                     titleColor = titleColor,
                     artistColor = artistColor,
                     alpha = 1f - crossfadeProgress,
+                    titleStyle = titleStyle,
                 )
             }
             MiniMetadataColumn(
@@ -513,6 +541,7 @@ private fun SwipeableMetadata(
                 titleColor = titleColor,
                 artistColor = artistColor,
                 alpha = if (outgoingMetadata == null) 1f else crossfadeProgress,
+                titleStyle = titleStyle,
             )
         }
     }
@@ -521,7 +550,25 @@ private fun SwipeableMetadata(
 private val MiniMetadataEdgeMaskWidth = 4.dp
 private val MiniMetadataLabelSpacing = 12.dp
 private const val MiniMetadataReturnDurationMillis = 160
+
+internal fun miniPlayerHeight(style: BottomBarStyle, smallPlayerBar: Boolean): Dp =
+    if (style == BottomBarStyle.NORMAL) {
+        if (smallPlayerBar) 54.dp else 68.dp
+    } else {
+        if (smallPlayerBar) 48.dp else 64.dp
+    }
+
 internal val FLOATING_MINI_PLAYER_BOTTOM_PADDING = 8.dp
+
+internal fun miniPlayerControlSize(normalChrome: Boolean, smallPlayerBar: Boolean): Dp =
+    if (!normalChrome && smallPlayerBar) 36.dp else 40.dp
+
+internal fun miniPlayerArtworkCornerRadius(normalChrome: Boolean, smallPlayerBar: Boolean): Dp =
+    when {
+        normalChrome -> 7.dp
+        smallPlayerBar -> 6.dp
+        else -> 8.dp
+    }
 
 private data class MiniPlayerMetadata(
     val mediaId: String?,
@@ -540,17 +587,17 @@ private fun MiniMetadataColumn(
     titleColor: Color,
     artistColor: Color,
     alpha: Float,
+    titleStyle: TextStyle,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { this.alpha = alpha },
-        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             text = metadata.title,
             modifier = Modifier,
-            style = MiuixTheme.textStyles.body1.copy(fontSize = 15.sp),
+            style = titleStyle,
             color = titleColor,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Start,

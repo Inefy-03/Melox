@@ -164,6 +164,7 @@ import com.melox.player.ui.component.playlist.PlaylistNameDialog
 import com.melox.player.ui.component.playlist.PlaylistPickerOverlay
 import com.melox.player.ui.component.playback.playerNavigationOffset
 import com.melox.player.ui.component.playback.MiniPlayer
+import com.melox.player.ui.component.playback.miniPlayerArtworkCornerRadius
 import com.melox.player.ui.component.playback.DynamicFlowBackgroundState
 import com.melox.player.ui.component.playback.PLAYER_FULL_ARTWORK_REQUEST_SIZE
 import com.melox.player.ui.component.playback.PlayerSheetArtworkOverlay
@@ -1641,6 +1642,7 @@ fun MeloxApp(
                             persistedNavigationRailExpanded = settings.navigationRailExpanded,
                             onNavigationRailExpandedChange = viewModel::setNavigationRailExpanded,
                             bottomBarStyle = renderedBottomBarStyle,
+                            smallPlayerBar = settings.smallPlayerBar,
                             liquidGlassSupported = liquidGlassSupported,
                             isDark = isDark,
                             blurEnabled = settings.blurEnabled,
@@ -1763,6 +1765,8 @@ fun MeloxApp(
                                                                 viewModel::setBlurEnabled,
                                                             onProgressiveTopBarBlurChange =
                                                                 viewModel::setProgressiveTopBarBlurEnabled,
+                                                            onSmallPlayerBarChange =
+                                                                viewModel::setSmallPlayerBar,
                                                             onHideBottomBarChange =
                                                                 viewModel::setHideBottomBar,
                                                             onFloatingBottomBarChange =
@@ -2282,6 +2286,7 @@ fun MeloxApp(
                         transition = playerTransition,
                         hasItem = compactPlayback.currentItem != null,
                         normalChrome = miniPlayerUsesNormalChrome,
+                        smallPlayerBar = settings.smallPlayerBar,
                         onTogglePlayPause = viewModel::togglePlayPause,
                         onOpenQueue = { showQueue = true },
                         modifier = Modifier.zIndex(3f),
@@ -2300,7 +2305,10 @@ fun MeloxApp(
                     PlayerSheetArtworkOverlay(
                         playback = compactPlayback,
                         transition = playerTransition,
-                        collapsedCornerRadius = if (miniPlayerUsesNormalChrome) 7.dp else 8.dp,
+                        collapsedCornerRadius = miniPlayerArtworkCornerRadius(
+                            normalChrome = miniPlayerUsesNormalChrome,
+                            smallPlayerBar = settings.smallPlayerBar,
+                        ),
                         enabled = sharedPlayerArtworkEnabled,
                     )
                 QueueSheetHost(

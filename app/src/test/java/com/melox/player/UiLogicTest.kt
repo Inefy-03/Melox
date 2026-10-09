@@ -1657,16 +1657,16 @@ class UiLogicTest {
             ),
         )
         assertEquals(
-            752.dp,
+            768.dp,
             floatingBottomBarAvailableWidth(
                 windowWidth = 800.dp,
                 windowHeight = 1200.dp,
-                contentMaxWidth = 752.dp,
+                contentMaxWidth = 788.dp,
                 portraitReferenceWidth = 800.dp,
             ),
         )
         assertEquals(
-            352.dp,
+            551.dp,
             floatingBottomBarAvailableWidth(
                 windowWidth = 599.dp,
                 windowHeight = 400.dp,
@@ -2736,31 +2736,31 @@ class UiLogicTest {
     }
 
     @Test
-    fun landscapeFloatingBottomBarUsesNavigationInsetOrTwelveDpFallback() {
+    fun landscapeFloatingBottomBarUsesNavigationInsetOrSixteenDpFallback() {
         assertEquals(24.dp, floatingBottomBarBottomPadding(24.dp))
-        assertEquals(12.dp, floatingBottomBarBottomPadding(0.dp))
+        assertEquals(16.dp, floatingBottomBarBottomPadding(0.dp))
     }
 
     @Test
     fun portraitMiniPlayerStopsAtTheFloatingNavigationBarPosition() {
         assertEquals(
-            24.dp,
+            16.dp,
             floatingMiniPlayerBottomPaddingWhenNavigationIsHidden(
                 navigationBarBottomInset = 0.dp,
                 isPortrait = true,
             ),
         )
-        assertEquals(32.dp, floatingNavigationBarBottomPadding(0.dp))
-        assertEquals(32.dp, floatingNavigationBarBottomPadding(24.dp))
+        assertEquals(24.dp, floatingNavigationBarBottomPadding(0.dp))
+        assertEquals(24.dp, floatingNavigationBarBottomPadding(24.dp))
         assertEquals(
-            0.dp,
+            8.dp,
             floatingMiniPlayerBottomPaddingWhenNavigationIsHidden(
                 navigationBarBottomInset = 0.dp,
                 isPortrait = false,
             ),
         )
         assertEquals(
-            24.dp,
+            16.dp,
             floatingMiniPlayerBottomPaddingWhenNavigationIsHidden(
                 navigationBarBottomInset = 24.dp,
                 isPortrait = true,

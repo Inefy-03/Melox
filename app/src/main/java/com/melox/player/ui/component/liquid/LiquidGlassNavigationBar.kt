@@ -649,10 +649,9 @@ fun LiquidGlassNavigationBar(
 
 internal fun floatingNavigationBarBottomPadding(navigationBarBottomInset: Dp): Dp =
     if (navigationBarBottomInset > 0.dp) {
-        FLOATING_NAVIGATION_BAR_BOTTOM_MARGIN + navigationBarBottomInset
+        navigationBarBottomInset
     } else {
         FLOATING_NAVIGATION_BAR_BOTTOM_PADDING_WITHOUT_SYSTEM_NAVIGATION
     }
 
-private val FLOATING_NAVIGATION_BAR_BOTTOM_MARGIN = 8.dp
-private val FLOATING_NAVIGATION_BAR_BOTTOM_PADDING_WITHOUT_SYSTEM_NAVIGATION = 32.dp
+private val FLOATING_NAVIGATION_BAR_BOTTOM_PADDING_WITHOUT_SYSTEM_NAVIGATION = 24.dp

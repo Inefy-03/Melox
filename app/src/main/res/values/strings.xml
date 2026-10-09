@@ -245,6 +245,7 @@
     <string name="settings_floating_bottom_bar_summary">Use a floating-style navigation bar</string>
     <string name="settings_liquid_glass_title">Liquid glass</string>
     <string name="settings_liquid_glass_summary">Use refractive glass for the floating bottom bar</string>
+    <string name="settings_small_player_bar_title">Small player bar</string>
     <string name="settings_hide_bottom_bar_title">Hide bottom bar</string>
     <string name="settings_predictive_back_title">Predictive back gesture</string>
     <string name="settings_navigation_transition_style_title">Transition style</string>

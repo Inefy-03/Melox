@@ -191,6 +191,7 @@ internal fun PlayerSheetMiniControlsInputOverlay(
     transition: PlayerSheetTransitionState,
     hasItem: Boolean,
     normalChrome: Boolean,
+    smallPlayerBar: Boolean,
     onTogglePlayPause: () -> Unit,
     onOpenQueue: () -> Unit,
     modifier: Modifier = Modifier,
@@ -211,9 +212,12 @@ internal fun PlayerSheetMiniControlsInputOverlay(
         controlsBounds = controls,
     )
     val density = LocalDensity.current
-    val playOffset = with(density) { (-6).dp.toPx() }
-    val queueOffset = with(density) { (if (normalChrome) 0.dp else (-2).dp).toPx() }
-    val controlSize = with(density) { 40.dp.toPx() }
+    val playOffset = with(density) { (if (smallPlayerBar) 0.dp else (-6).dp).toPx() }
+    val queueOffset = with(density) {
+        (if (normalChrome || smallPlayerBar) 0.dp else (-2).dp).toPx()
+    }
+    val controlSizeDp = miniPlayerControlSize(normalChrome, smallPlayerBar)
+    val controlSize = with(density) { controlSizeDp.toPx() }
     val currentOnTogglePlayPause by rememberUpdatedState(onTogglePlayPause)
     val currentOnOpenQueue by rememberUpdatedState(onOpenQueue)
 
@@ -238,7 +242,7 @@ internal fun PlayerSheetMiniControlsInputOverlay(
                             (renderedControls.top - bounds.top).roundToInt(),
                         )
                     }
-                    .size(40.dp)
+                    .size(controlSizeDp)
                     .pointerInput(Unit) {
                         detectTapGestures { currentOnTogglePlayPause() }
                     },
@@ -253,7 +257,7 @@ internal fun PlayerSheetMiniControlsInputOverlay(
                         (renderedControls.top - bounds.top).roundToInt(),
                     )
                 }
-                .size(40.dp)
+                .size(controlSizeDp)
                 .pointerInput(Unit) {
                     detectTapGestures { currentOnOpenQueue() }
                 },

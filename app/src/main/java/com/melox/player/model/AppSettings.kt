@@ -142,6 +142,7 @@ data class AppSettings(
         LyricsSidecarFormatPriority.LRC,
     val blurEnabled: Boolean = true,
     val progressiveTopBarBlurEnabled: Boolean = false,
+    val smallPlayerBar: Boolean = false,
     val hideBottomBar: Boolean = false,
     val floatingBottomBar: Boolean = false,
     val navigationRailExpanded: Boolean = true,

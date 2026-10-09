@@ -67,6 +67,7 @@ fun ThemeSettingsScreen(
     onPlaybackBackgroundStyleChange: (PlaybackBackgroundStyle) -> Unit,
     onBlurChange: (Boolean) -> Unit,
     onProgressiveTopBarBlurChange: (Boolean) -> Unit,
+    onSmallPlayerBarChange: (Boolean) -> Unit,
     onHideBottomBarChange: (Boolean) -> Unit,
     onFloatingBottomBarChange: (Boolean) -> Unit,
     onLiquidGlassChange: (Boolean) -> Unit,
@@ -82,6 +83,9 @@ fun ThemeSettingsScreen(
     }
     var progressiveTopBarBlurChecked by remember(settings.progressiveTopBarBlurEnabled) {
         mutableStateOf(settings.progressiveTopBarBlurEnabled)
+    }
+    var smallPlayerBarChecked by remember(settings.smallPlayerBar) {
+        mutableStateOf(settings.smallPlayerBar)
     }
     var hideBottomBarChecked by remember(settings.hideBottomBar) {
         mutableStateOf(settings.hideBottomBar)
@@ -266,6 +270,14 @@ fun ThemeSettingsScreen(
                                 enabled = liquidGlassSupported,
                             )
                         }
+                        SwitchPreference(
+                            checked = smallPlayerBarChecked,
+                            onCheckedChange = { checked ->
+                                smallPlayerBarChecked = checked
+                                onSmallPlayerBarChange(checked)
+                            },
+                            title = stringResource(R.string.settings_small_player_bar_title),
+                        )
                         SwitchPreference(
                             checked = hideBottomBarChecked,
                             onCheckedChange = { checked ->

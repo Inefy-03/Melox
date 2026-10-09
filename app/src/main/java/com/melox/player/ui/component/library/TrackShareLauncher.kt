@@ -1,10 +1,12 @@
 package com.melox.player.ui.component.library
 
 import android.content.ClipData
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import com.melox.player.MainActivity
 import com.melox.player.model.MusicTrack
 import java.io.File
 
@@ -27,6 +29,12 @@ internal fun shareTrackFile(context: Context, track: MusicTrack, chooserTitle: S
             clipData = ClipData.newRawUri(track.fileName ?: track.title ?: "audio", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, chooserTitle))
+        val chooser = Intent.createChooser(intent, chooserTitle).apply {
+            putExtra(
+                Intent.EXTRA_EXCLUDE_COMPONENTS,
+                arrayOf(ComponentName(context, MainActivity::class.java)),
+            )
+        }
+        context.startActivity(chooser)
         true
     }.getOrDefault(false)

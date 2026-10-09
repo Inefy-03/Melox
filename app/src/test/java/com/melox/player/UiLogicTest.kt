@@ -2769,7 +2769,7 @@ class UiLogicTest {
     }
 
     @Test
-    fun homeRecommendationsStopWhenArtworkTracksAreExhausted() = runBlocking {
+    fun homeRecommendationsFillMissingArtworkOnlyAfterArtworkTracksAreExhausted() = runBlocking {
         val tracks = (1L..8L).map { id ->
             musicTrack(id, "Track $id", id, "$id.mp3", id, id)
         }
@@ -2790,9 +2790,11 @@ class UiLogicTest {
             track.id in artworkTrackIds
         }
 
-        assertEquals(artworkTrackIds, recommendations.map(MusicTrack::id).toSet())
-        assertEquals(artworkTrackIds.size, recommendations.size)
-        assertEquals(recommendations.map(MusicTrack::id), repeatedSelection.map(MusicTrack::id))
+        assertEquals(artworkTrackIds, recommendations.tracks.take(3).map(MusicTrack::id).toSet())
+        assertEquals(artworkTrackIds, recommendations.artworkTrackIds)
+        assertEquals(5, recommendations.tracks.size)
+        assertTrue(recommendations.tracks.drop(3).none { it.id in artworkTrackIds })
+        assertEquals(recommendations, repeatedSelection)
     }
 
     @Test
@@ -2815,15 +2817,68 @@ class UiLogicTest {
             tracks = tracks,
             seed = 42,
             count = 5,
-            knownArtworkTrackIds = priorityRecommendations.map(MusicTrack::id).toSet(),
+            knownArtworkTrackIds = priorityRecommendations.artworkTrackIds,
         ) { track ->
             expansionProbeIds += track.id
             true
         }
 
         assertEquals(2, priorityProbeIds.size)
-        assertEquals(priorityRecommendations, expandedRecommendations.take(2))
-        assertTrue(expansionProbeIds.none { it in priorityRecommendations.map(MusicTrack::id) })
+        assertEquals(priorityRecommendations.tracks, expandedRecommendations.tracks.take(2))
+        assertTrue(expansionProbeIds.none { it in priorityRecommendations.artworkTrackIds })
+    }
+
+    @Test
+    fun homeRecommendationsSkipMissingArtworkWhileCoveredCandidatesRemain() = runBlocking {
+        val tracks = (1L..8L).map { id -> musicTrack(id, "Track $id", id, "$id.mp3", id, id) }
+        val coveredIds = tracks.shuffled(Random(42)).takeLast(2).map(MusicTrack::id).toSet()
+        val probedIds = mutableSetOf<Long>()
+        val selected = selectHomeRecommendations(tracks, seed = 42, count = 2, probeBatchSize = 1) {
+            probedIds += it.id
+            it.id in coveredIds
+        }
+        assertEquals(coveredIds, selected.tracks.map(MusicTrack::id).toSet())
+        assertEquals(8, probedIds.size)
+        assertEquals(coveredIds, selected.artworkTrackIds)
+    }
+
+    @Test
+    fun homeRecommendationsShowArtworkFreeLibrariesInStableSeededOrder() = runBlocking {
+        val tracks = (1L..5L).map { id -> musicTrack(id, "Track $id", id, "$id.mp3", id, id) }
+        val probedIds = mutableSetOf<Long>()
+        val selected = selectHomeRecommendations(tracks, seed = 42, count = 3, probeBatchSize = 1) {
+            probedIds += it.id
+            false
+        }
+        assertEquals(tracks.shuffled(Random(42)).take(3), selected.tracks)
+        assertTrue(selected.artworkTrackIds.isEmpty())
+        assertEquals(5, probedIds.size)
+        val expanded = selectHomeRecommendations(
+            tracks, seed = 42, count = 10, knownArtworkTrackIds = selected.artworkTrackIds,
+        ) { false }
+        assertEquals(selected.tracks, expanded.tracks.take(3))
+        assertEquals(5, expanded.tracks.size)
+        assertEquals(5, expanded.tracks.map(MusicTrack::id).distinct().size)
+    }
+
+    @Test
+    fun homeRecommendationExpansionNeverPromotesPlaceholderSelectionsToArtworkHits() = runBlocking {
+        val tracks = (1L..5L).map { id -> musicTrack(id, "Track $id", id, "$id.mp3", id, id) }
+        val coveredId = tracks.shuffled(Random(42)).last().id
+        val initial = selectHomeRecommendations(tracks, seed = 42, count = 2) { it.id == coveredId }
+        assertEquals(setOf(coveredId), initial.artworkTrackIds)
+        val probedIds = mutableSetOf<Long>()
+        val expanded = selectHomeRecommendations(
+            tracks, seed = 42, count = 4, knownArtworkTrackIds = initial.artworkTrackIds,
+            probeBatchSize = 1,
+        ) {
+            probedIds += it.id
+            false
+        }
+        assertEquals(initial.tracks, expanded.tracks.take(2))
+        assertEquals(coveredId, expanded.tracks.first().id)
+        assertTrue(initial.tracks[1].id in probedIds)
+        assertEquals(setOf(coveredId), expanded.artworkTrackIds)
     }
 
     @Test

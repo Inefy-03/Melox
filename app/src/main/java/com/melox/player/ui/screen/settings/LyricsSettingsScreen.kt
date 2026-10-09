@@ -61,6 +61,7 @@ internal fun LyricsSettingsScreen(
     onOpenLyricsInterface: () -> Unit,
     onShowMusicTagEditorChange: (Boolean) -> Unit,
     onShowLyricoEditorChange: (Boolean) -> Unit,
+    onShowLunaBeatEditorChange: (Boolean) -> Unit,
 ) {
     var sourcePriority by remember(settings.lyricsSourcePriority) {
         mutableStateOf(settings.lyricsSourcePriority)
@@ -73,6 +74,9 @@ internal fun LyricsSettingsScreen(
     }
     var showLyricoEditor by remember(settings.showLyricoEditor) {
         mutableStateOf(settings.showLyricoEditor)
+    }
+    var showLunaBeatEditor by remember(settings.showLunaBeatEditor) {
+        mutableStateOf(settings.showLunaBeatEditor)
     }
     LyricsSettingsPage(
         titleRes = R.string.settings_lyrics_title,
@@ -163,6 +167,14 @@ internal fun LyricsSettingsScreen(
                     onCheckedChange = {
                         showLyricoEditor = it
                         onShowLyricoEditorChange(it)
+                    },
+                )
+                SwitchPreference(
+                    title = stringResource(R.string.lyrics_editor_luna_beat),
+                    checked = showLunaBeatEditor,
+                    onCheckedChange = {
+                        showLunaBeatEditor = it
+                        onShowLunaBeatEditorChange(it)
                     },
                 )
             }

@@ -75,6 +75,7 @@ fun FolderDetailScreen(
     onExternalEditReturned: (Long) -> Unit,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
 ) {
     var query by rememberSaveable(folder.key) { mutableStateOf("") }
     var searchVisible by rememberSaveable(folder.key) { mutableStateOf(false) }
@@ -263,6 +264,7 @@ fun FolderDetailScreen(
                 onExternalEditReturned = onExternalEditReturned,
                 showMusicTagEditor = showMusicTagEditor,
                 showLyricoEditor = showLyricoEditor,
+                showLunaBeatEditor = showLunaBeatEditor,
                 scrollBehavior = scrollBehavior,
                 indexTopPadding = indexTopPadding,
                 listState = listState,

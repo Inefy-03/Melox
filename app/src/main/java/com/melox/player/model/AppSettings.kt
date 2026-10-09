@@ -139,8 +139,9 @@ data class AppSettings(
     val leftAlignPlayerTitle: Boolean = false,
     val hideControlsOnLyrics: Boolean = false,
     val showLyricsTranslation: Boolean = true,
-    val showMusicTagEditor: Boolean = true,
-    val showLyricoEditor: Boolean = true,
+    val showMusicTagEditor: Boolean = false,
+    val showLyricoEditor: Boolean = false,
+    val showLunaBeatEditor: Boolean = false,
     val lyricsSourcePriority: LyricsSourcePriority = LyricsSourcePriority.EMBEDDED,
     val lyricsSidecarFormatPriority: LyricsSidecarFormatPriority =
         LyricsSidecarFormatPriority.LRC,

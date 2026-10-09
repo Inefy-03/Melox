@@ -109,6 +109,7 @@ fun AlbumDetailScreen(
     onExternalEditReturned: (Long) -> Unit,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberBlurBackdrop()
@@ -387,6 +388,7 @@ fun AlbumDetailScreen(
             onExternalEditReturned = onExternalEditReturned,
             showMusicTagEditor = showMusicTagEditor,
             showLyricoEditor = showLyricoEditor,
+            showLunaBeatEditor = showLunaBeatEditor,
         )
     }
 }
@@ -448,6 +450,7 @@ fun ArtistDetailScreen(
     onExternalEditReturned: (Long) -> Unit,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val backdrop = rememberBlurBackdrop()
@@ -694,6 +697,7 @@ fun ArtistDetailScreen(
             onExternalEditReturned = onExternalEditReturned,
             showMusicTagEditor = showMusicTagEditor,
             showLyricoEditor = showLyricoEditor,
+            showLunaBeatEditor = showLunaBeatEditor,
         )
     }
 }

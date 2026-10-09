@@ -119,6 +119,7 @@ fun PlaylistDetailScreen(
     onExternalEditReturned: (Long) -> Unit,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     onRemoveEntries: (Set<String>) -> Unit,
@@ -579,6 +580,7 @@ fun PlaylistDetailScreen(
         onExternalEditReturned = onExternalEditReturned,
         showMusicTagEditor = showMusicTagEditor,
         showLyricoEditor = showLyricoEditor,
+        showLunaBeatEditor = showLunaBeatEditor,
     )
     OverlayDialog(
         show = showRemoveSelectedConfirm,

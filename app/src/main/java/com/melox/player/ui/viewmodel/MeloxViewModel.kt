@@ -760,6 +760,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setShowLunaBeatEditor(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowLunaBeatEditor(enabled)
+        }
+    }
+
     fun setLyricsSidecarFormatPriority(priority: LyricsSidecarFormatPriority) {
         viewModelScope.launch {
             settingsRepository.setLyricsSidecarFormatPriority(priority)

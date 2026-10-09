@@ -1081,6 +1081,7 @@ fun MeloxApp(
                                 viewModel::refreshTrackAfterExternalEdit,
                             showMusicTagEditor = settings.showMusicTagEditor,
                             showLyricoEditor = settings.showLyricoEditor,
+                            showLunaBeatEditor = settings.showLunaBeatEditor,
                             scrollBehavior = scrollBehavior,
                             indexTopPadding = indexTopPadding,
                             listState = songsListState,
@@ -1863,6 +1864,8 @@ fun MeloxApp(
                                                                 viewModel::setShowMusicTagEditor,
                                                             onShowLyricoEditorChange =
                                                                 viewModel::setShowLyricoEditor,
+                                                            onShowLunaBeatEditorChange =
+                                                                viewModel::setShowLunaBeatEditor,
                                                             onOpenLyricsInterface = {
                                                                 currentRoute = AppRoute.LYRICS_INTERFACE
                                                             },
@@ -1995,6 +1998,7 @@ fun MeloxApp(
                                                                     viewModel::refreshTrackAfterExternalEdit,
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
+                                                                showLunaBeatEditor = settings.showLunaBeatEditor,
                                                             )
                                                         }
                                                     }
@@ -2048,6 +2052,7 @@ fun MeloxApp(
                                                                     viewModel::refreshTrackAfterExternalEdit,
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
+                                                                showLunaBeatEditor = settings.showLunaBeatEditor,
                                                             )
                                                         }
                                                     }
@@ -2099,6 +2104,7 @@ fun MeloxApp(
                                                                     viewModel::refreshTrackAfterExternalEdit,
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
+                                                                showLunaBeatEditor = settings.showLunaBeatEditor,
                                                             )
                                                         }
                                                     }
@@ -2182,6 +2188,7 @@ fun MeloxApp(
                                                                     viewModel::refreshTrackAfterExternalEdit,
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
+                                                                showLunaBeatEditor = settings.showLunaBeatEditor,
                                                                 onRename = { name ->
                                                                     viewModel.renamePlaylist(
                                                                         it.id,
@@ -2247,6 +2254,7 @@ fun MeloxApp(
                             showLyricsTranslation = settings.showLyricsTranslation,
                             showMusicTagEditor = settings.showMusicTagEditor,
                             showLyricoEditor = settings.showLyricoEditor,
+                            showLunaBeatEditor = settings.showLunaBeatEditor,
                             onDismiss = closePlayer,
                             onOpenQueue = { showQueue = true },
                             onAddToPlaylist = { track ->
@@ -2454,6 +2462,7 @@ private fun FullPlayerHost(
     showLyricsTranslation: Boolean,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
     onDismiss: () -> Unit,
     onOpenQueue: () -> Unit,
     onAddToPlaylist: (MusicTrack) -> Unit,
@@ -2542,6 +2551,7 @@ private fun FullPlayerHost(
         onExternalEditReturned = viewModel::refreshTrackAfterExternalEdit,
         showMusicTagEditor = showMusicTagEditor,
         showLyricoEditor = showLyricoEditor,
+        showLunaBeatEditor = showLunaBeatEditor,
         backgroundLayer = backgroundLayer,
         contentLayer = contentLayer,
         frameRecordingGeneration = frameRecordingGeneration,

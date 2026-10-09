@@ -133,8 +133,9 @@ class SettingsRepository(context: Context) {
                 leftAlignPlayerTitle = preferences[Keys.LeftAlignPlayerTitle] ?: false,
                 hideControlsOnLyrics = preferences[Keys.HideControlsOnLyrics] ?: false,
                 showLyricsTranslation = preferences[Keys.ShowLyricsTranslation] ?: true,
-                showMusicTagEditor = preferences[Keys.ShowMusicTagEditor] ?: true,
-                showLyricoEditor = preferences[Keys.ShowLyricoEditor] ?: true,
+                showMusicTagEditor = preferences[Keys.ShowMusicTagEditor] ?: false,
+                showLyricoEditor = preferences[Keys.ShowLyricoEditor] ?: false,
+                showLunaBeatEditor = preferences[Keys.ShowLunaBeatEditor] ?: false,
                 lyricsSourcePriority = preferences[Keys.LyricsSourcePriority]
                     ?.let { storedValue ->
                         enumValueOrDefault(storedValue, LyricsSourcePriority.EMBEDDED)
@@ -380,6 +381,10 @@ class SettingsRepository(context: Context) {
         dataStore.edit { it[Keys.ShowLyricoEditor] = enabled }
     }
 
+    suspend fun setShowLunaBeatEditor(enabled: Boolean) {
+        dataStore.edit { it[Keys.ShowLunaBeatEditor] = enabled }
+    }
+
     suspend fun setLyricsSidecarFormatPriority(priority: LyricsSidecarFormatPriority) {
         dataStore.edit { preferences ->
             preferences[Keys.LyricsSidecarFormatPriority] = priority.name
@@ -560,6 +565,7 @@ class SettingsRepository(context: Context) {
         val ShowLyricsTranslation = booleanPreferencesKey("show_lyrics_translation")
         val ShowMusicTagEditor = booleanPreferencesKey("show_music_tag_editor")
         val ShowLyricoEditor = booleanPreferencesKey("show_lyrico_editor")
+        val ShowLunaBeatEditor = booleanPreferencesKey("show_luna_beat_editor")
         val LyricsSourcePriority = stringPreferencesKey("lyrics_source_priority")
         val LyricsSidecarFormatPriority = stringPreferencesKey("lyrics_sidecar_format_priority")
         val BottomBarStyle = stringPreferencesKey("bottom_bar_style")

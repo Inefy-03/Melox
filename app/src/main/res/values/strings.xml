@@ -93,9 +93,11 @@
     <string name="music_song_info">Song info</string>
     <string name="music_edit_with_music_tag_editor">Edit with Music Tag Editor</string>
     <string name="music_edit_with_lyrico">Edit with Lyrico</string>
+    <string name="music_edit_with_luna_beat">Edit with LunaBeat</string>
     <string name="music_external_editor_unavailable">Unable to open the selected editor</string>
     <string name="music_tag_editor_not_found">Music Tag Editor app not found</string>
     <string name="lyrico_not_found">Lyrico app not found</string>
+    <string name="luna_beat_not_found">LunaBeat app not found</string>
     <string name="music_album_label">Album: %1$s</string>
     <string name="music_artist_label">Artist: %1$s</string>
     <string name="music_quality_raw">RAW</string>
@@ -362,6 +364,7 @@
     <string name="lyrics_editor_menu">Lyrics editing menu</string>
     <string name="lyrics_editor_music_tag">Music Tag Editor</string>
     <string name="lyrics_editor_lyrico">Lyrico</string>
+    <string name="lyrics_editor_luna_beat">LunaBeat</string>
     <string name="settings_lyrics_interface_title">Lyrics interface</string>
     <string name="lyrics_sidecar_lrc">.lrc</string>
     <string name="lyrics_sidecar_ttml">.ttml</string>

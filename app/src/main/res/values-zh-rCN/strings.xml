@@ -91,9 +91,11 @@
     <string name="music_song_info">歌曲信息</string>
     <string name="music_edit_with_music_tag_editor">使用音乐标签编辑</string>
     <string name="music_edit_with_lyrico">使用Lyrico编辑</string>
+    <string name="music_edit_with_luna_beat">使用LunaBeat编辑</string>
     <string name="music_external_editor_unavailable">无法打开所选编辑器</string>
     <string name="music_tag_editor_not_found">未发现 音乐标签 应用</string>
     <string name="lyrico_not_found">未发现 Lyrico 应用</string>
+    <string name="luna_beat_not_found">未发现 LunaBeat 应用</string>
     <string name="music_album_label">专辑：%1$s</string>
     <string name="music_artist_label">艺术家：%1$s</string>
     <string name="music_quality_raw">RAW</string>
@@ -349,6 +351,7 @@
     <string name="lyrics_editor_menu">歌词编辑菜单</string>
     <string name="lyrics_editor_music_tag">音乐标签</string>
     <string name="lyrics_editor_lyrico">Lyrico</string>
+    <string name="lyrics_editor_luna_beat">LunaBeat</string>
     <string name="settings_lyrics_interface_title">歌词界面</string>
     <string name="lyrics_sidecar_lrc">.lrc</string>
     <string name="lyrics_sidecar_ttml">.ttml</string>

@@ -4,18 +4,23 @@ import com.melox.player.model.AppSettings
 import com.melox.player.ui.component.library.ExternalEditorKind
 import com.melox.player.ui.component.library.visibleExternalEditors
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExternalEditorVisibilityTest {
     @Test
-    fun defaultSettingsShowBothEditorsInTheExistingOrder() {
+    fun defaultSettingsHideAllEditors() {
         val settings = AppSettings()
-        assertTrue(settings.showMusicTagEditor)
-        assertTrue(settings.showLyricoEditor)
-        assertEquals(
-            listOf(ExternalEditorKind.MusicTagEditor, ExternalEditorKind.Lyrico),
-            visibleExternalEditors(settings.showMusicTagEditor, settings.showLyricoEditor),
+        assertFalse(settings.showMusicTagEditor)
+        assertFalse(settings.showLyricoEditor)
+        assertFalse(settings.showLunaBeatEditor)
+        assertTrue(
+            visibleExternalEditors(
+                settings.showMusicTagEditor,
+                settings.showLyricoEditor,
+                settings.showLunaBeatEditor,
+            ).isEmpty(),
         )
     }
 
@@ -23,7 +28,11 @@ class ExternalEditorVisibilityTest {
     fun hidingMusicTagEditorPreservesLyrico() {
         assertEquals(
             listOf(ExternalEditorKind.Lyrico),
-            visibleExternalEditors(showMusicTagEditor = false, showLyricoEditor = true),
+            visibleExternalEditors(
+                showMusicTagEditor = false,
+                showLyricoEditor = true,
+                showLunaBeatEditor = false,
+            ),
         )
     }
 
@@ -31,13 +40,17 @@ class ExternalEditorVisibilityTest {
     fun hidingLyricoPreservesMusicTagEditor() {
         assertEquals(
             listOf(ExternalEditorKind.MusicTagEditor),
-            visibleExternalEditors(showMusicTagEditor = true, showLyricoEditor = false),
+            visibleExternalEditors(
+                showMusicTagEditor = true,
+                showLyricoEditor = false,
+                showLunaBeatEditor = false,
+            ),
         )
     }
 
     @Test
-    fun hidingBothEditorsRemovesBothEntries() {
-        assertTrue(visibleExternalEditors(false, false).isEmpty())
+    fun hidingAllEditorsRemovesAllEntries() {
+        assertTrue(visibleExternalEditors(false, false, false).isEmpty())
     }
 
     @Test
@@ -46,7 +59,28 @@ class ExternalEditorVisibilityTest {
             .copy(showMusicTagEditor = true, showLyricoEditor = true)
         assertEquals(
             listOf(ExternalEditorKind.MusicTagEditor, ExternalEditorKind.Lyrico),
-            visibleExternalEditors(settings.showMusicTagEditor, settings.showLyricoEditor),
+            visibleExternalEditors(
+                settings.showMusicTagEditor,
+                settings.showLyricoEditor,
+                settings.showLunaBeatEditor,
+            ),
         )
+    }
+
+    @Test
+    fun allSwitchCombinationsKeepOnlyEnabledEditorsInOrder() {
+        val editors = listOf(
+            ExternalEditorKind.MusicTagEditor,
+            ExternalEditorKind.Lyrico,
+            ExternalEditorKind.LunaBeat,
+        )
+        for (mask in 0..7) {
+            val enabled = List(3) { index -> mask and (1 shl index) != 0 }
+            assertEquals(
+                "Switch combination $mask",
+                editors.filterIndexed { index, _ -> enabled[index] },
+                visibleExternalEditors(enabled[0], enabled[1], enabled[2]),
+            )
+        }
     }
 }

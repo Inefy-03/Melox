@@ -89,6 +89,7 @@ fun MusicListScreen(
     onExternalEditReturned: (Long) -> Unit,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
     scrollBehavior: ScrollBehavior,
     indexTopPadding: Dp,
     listState: LazyListState,
@@ -314,6 +315,7 @@ fun MusicListScreen(
         onExternalEditReturned = onExternalEditReturned,
         showMusicTagEditor = showMusicTagEditor,
         showLyricoEditor = showLyricoEditor,
+        showLunaBeatEditor = showLunaBeatEditor,
     )
 }
 

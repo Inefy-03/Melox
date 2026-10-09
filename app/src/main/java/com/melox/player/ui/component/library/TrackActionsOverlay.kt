@@ -85,6 +85,7 @@ fun TrackActionsOverlay(
     onExternalEditReturned: (Long) -> Unit,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -94,6 +95,7 @@ fun TrackActionsOverlay(
     val musicTagEditorNotFoundMessage =
         stringResource(R.string.music_tag_editor_not_found)
     val lyricoNotFoundMessage = stringResource(R.string.lyrico_not_found)
+    val lunaBeatNotFoundMessage = stringResource(R.string.luna_beat_not_found)
     val shareTitle = stringResource(R.string.music_share)
     var retainedTrack by remember { mutableStateOf(track) }
     var artworkPreview by remember { mutableStateOf<ArtworkPreviewRequest?>(null) }
@@ -291,14 +293,20 @@ fun TrackActionsOverlay(
                             )
                         }
                     }
-                    visibleExternalEditors(showMusicTagEditor, showLyricoEditor).forEach { editor ->
+                    visibleExternalEditors(
+                        showMusicTagEditor,
+                        showLyricoEditor,
+                        showLunaBeatEditor,
+                    ).forEach { editor ->
                         val titleRes = when (editor) {
                             ExternalEditorKind.MusicTagEditor -> R.string.music_edit_with_music_tag_editor
                             ExternalEditorKind.Lyrico -> R.string.music_edit_with_lyrico
+                            ExternalEditorKind.LunaBeat -> R.string.music_edit_with_luna_beat
                         }
                         val notFoundMessage = when (editor) {
                             ExternalEditorKind.MusicTagEditor -> musicTagEditorNotFoundMessage
                             ExternalEditorKind.Lyrico -> lyricoNotFoundMessage
+                            ExternalEditorKind.LunaBeat -> lunaBeatNotFoundMessage
                         }
                         TrackAction(
                             icon = MiuixIcons.Edit,

@@ -219,6 +219,7 @@ internal fun FullPlayerScreen(
     onExternalEditReturned: (Long) -> Unit,
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
+    showLunaBeatEditor: Boolean,
     backgroundLayer: GraphicsLayer,
     contentLayer: GraphicsLayer,
     frameRecordingGeneration: Int,
@@ -973,6 +974,7 @@ internal fun FullPlayerScreen(
                     onExternalEditReturned = onExternalEditReturned,
                     showMusicTagEditor = showMusicTagEditor,
                     showLyricoEditor = showLyricoEditor,
+                    showLunaBeatEditor = showLunaBeatEditor,
                 )
                 PlayerSettingsSheet(
                     show = showLyricsSettings,

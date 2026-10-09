@@ -18,6 +18,8 @@ internal const val MusicTagEditorActivity =
     "com.xjcheng.musictageditor.SongDetailActivity"
 internal const val LyricoPackage = "com.lonx.lyrico"
 internal const val LyricoEditTagAction = "com.lonx.lyrico.action.EDIT_TAG"
+internal const val LunaBeatPackage = "com.example.LyricBox"
+internal const val LunaBeatMetadataActivity = "com.example.LyricBox.SongMetadataEditActivity"
 
 private const val ExternalEditorUriGrantFlags =
     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
@@ -26,6 +28,7 @@ private const val FileProviderSuffix = ".fileprovider"
 internal enum class ExternalEditorKind {
     MusicTagEditor,
     Lyrico,
+    LunaBeat,
 }
 
 private data class ExternalEditorUris(
@@ -42,6 +45,7 @@ internal fun launchExternalEditor(
     val candidates = when (kind) {
         ExternalEditorKind.MusicTagEditor -> track.musicTagEditorIntents(context, uris)
         ExternalEditorKind.Lyrico -> listOf(track.lyricoEditorIntent(context, uris))
+        ExternalEditorKind.LunaBeat -> listOf(track.lunaBeatEditorIntent(context, uris))
     }
     val availableCandidates = candidates.filter(context::canOpenExternalEditor)
     return availableCandidates.any { intent ->
@@ -73,6 +77,9 @@ internal fun Context.hasExternalEditor(kind: ExternalEditorKind): Boolean = when
     }.isSuccess
     ExternalEditorKind.Lyrico -> runCatching {
         packageManager.getPackageInfo(LyricoPackage, 0)
+    }.isSuccess
+    ExternalEditorKind.LunaBeat -> runCatching {
+        packageManager.getPackageInfo(LunaBeatPackage, 0)
     }.isSuccess
 }
 
@@ -148,6 +155,23 @@ private fun MusicTrack.lyricoEditorIntent(
         title ?: fileName ?: "audio",
         uris.editUri,
     )
+    addFlags(ExternalEditorUriGrantFlags)
+}
+
+private fun MusicTrack.lunaBeatEditorIntent(
+    context: Context,
+    uris: ExternalEditorUris,
+): Intent = Intent(Intent.ACTION_EDIT).apply {
+    component = ComponentName(LunaBeatPackage, LunaBeatMetadataActivity)
+    addCategory(Intent.CATEGORY_DEFAULT)
+    setDataAndType(uris.editUri, externalEditorMimeType())
+    putExtra(Intent.EXTRA_STREAM, uris.editUri)
+    displayFileLocation()
+        ?.let(::File)
+        ?.takeIf { it.isFile && it.canRead() }
+        ?.let { putExtra("audio_path", it.absolutePath) }
+    mediaStoreId?.let { putExtra("media_store_id", it) }
+    clipData = ClipData.newUri(context.contentResolver, title ?: fileName ?: "audio", uris.editUri)
     addFlags(ExternalEditorUriGrantFlags)
 }
 

@@ -1,5 +1,7 @@
 package com.melox.player.model
 
+import com.melox.player.data.playlist.PlaylistSortConfig
+
 /** Controls whether the app follows the system appearance or forces a light/dark theme. */
 enum class ThemeMode {
     SYSTEM,
@@ -164,6 +166,7 @@ data class AppSettings(
     val artistSortDescending: Boolean = false,
     val folderSortFieldOrdinal: Int = 0,
     val folderSortDescending: Boolean = false,
+    val playlistSortConfigs: Map<String, PlaylistSortConfig> = emptyMap(),
     val defaultHomePage: DefaultHomePage = DefaultHomePage.HOME,
 ) {
     val bottomBarStyle: BottomBarStyle

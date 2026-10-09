@@ -24,6 +24,8 @@ import com.melox.player.data.library.FolderSortField
 import com.melox.player.data.library.MusicSortConfig
 import com.melox.player.data.library.MusicSortField
 import com.melox.player.model.AppSettings
+import com.melox.player.data.playlist.PlaylistSortConfig
+import com.melox.player.data.playlist.PlaylistSortField
 import com.melox.player.model.normalizeCustomBackgroundBlurPercent
 import com.melox.player.model.resolveCustomBackgroundBlurPercent
 import com.melox.player.model.normalizeCustomBackgroundDimPercent
@@ -195,6 +197,9 @@ class SettingsRepository(context: Context) {
                     ?.coerceIn(FolderSortField.entries.indices)
                     ?: FolderSortField.NAME.ordinal,
                 folderSortDescending = preferences[Keys.FolderSortDescending] ?: false,
+                playlistSortConfigs = decodePlaylistSortConfigs(
+                    preferences[Keys.PlaylistSortConfigs].orEmpty(),
+                ),
                 defaultHomePage = preferences[Keys.DefaultHomePage]
                     ?.let { storedValue ->
                         enumValueOrDefault(storedValue, DefaultHomePage.HOME)
@@ -516,6 +521,17 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    suspend fun setPlaylistSortConfig(playlistId: String, config: PlaylistSortConfig) {
+        dataStore.edit { preferences ->
+            val configs = decodePlaylistSortConfigs(
+                preferences[Keys.PlaylistSortConfigs].orEmpty(),
+            ).toMutableMap()
+            if (config == PlaylistSortConfig()) configs.remove(playlistId)
+            else configs[playlistId] = config
+            preferences[Keys.PlaylistSortConfigs] = encodePlaylistSortConfigs(configs)
+        }
+    }
+
     private object Keys {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DynamicColorEnabled = booleanPreferencesKey("dynamic_color_enabled")
@@ -573,8 +589,24 @@ class SettingsRepository(context: Context) {
         val ArtistSortDescending = booleanPreferencesKey("artist_sort_descending")
         val FolderSortField = intPreferencesKey("folder_sort_field")
         val FolderSortDescending = booleanPreferencesKey("folder_sort_descending")
+        val PlaylistSortConfigs = stringSetPreferencesKey("playlist_sort_configs")
     }
 }
+
+internal fun encodePlaylistSortConfigs(configs: Map<String, PlaylistSortConfig>): Set<String> =
+    configs.mapTo(mutableSetOf()) { (id, config) ->
+        "${config.field.name}|${config.descending}|$id"
+    }
+
+internal fun decodePlaylistSortConfigs(stored: Set<String>): Map<String, PlaylistSortConfig> =
+    stored.mapNotNull { value ->
+        val parts = value.split('|', limit = 3)
+        if (parts.size != 3 || parts[2].isBlank()) return@mapNotNull null
+        val field = PlaylistSortField.entries.firstOrNull { it.name == parts[0] }
+            ?: return@mapNotNull null
+        val descending = parts[1].toBooleanStrictOrNull() ?: return@mapNotNull null
+        parts[2] to PlaylistSortConfig(field, descending)
+    }.toMap()
 
 private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String, default: T): T =
     enumValues<T>().firstOrNull { enumValue -> enumValue.name == value } ?: default

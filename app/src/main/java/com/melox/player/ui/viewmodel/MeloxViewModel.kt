@@ -47,6 +47,7 @@ import com.melox.player.data.repository.LyricsRequest
 import com.melox.player.data.repository.PlaylistRepository
 import com.melox.player.data.repository.SettingsRepository
 import com.melox.player.data.playlist.addTracksToPlaylist
+import com.melox.player.data.playlist.PlaylistSortConfig
 import com.melox.player.data.playlist.removePlaylistEntries
 import com.melox.player.data.playlist.reorderPlaylistEntries
 import com.melox.player.data.playlist.reorderPlaylists
@@ -992,6 +993,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
+    fun setPlaylistSortConfig(playlistId: String, config: PlaylistSortConfig) {
+        viewModelScope.launch {
+            settingsRepository.setPlaylistSortConfig(playlistId, config)
+        }
+    }
+
     fun deletePlaylist(playlistId: String): Boolean {
         if (!playlistsLoaded.value) return false
         val currentPlaylists = playlists.value
@@ -999,6 +1006,7 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         if (updated.size == currentPlaylists.size) return false
         playlists.value = updated
         persistPlaylists()
+        setPlaylistSortConfig(playlistId, PlaylistSortConfig())
         return true
     }
 

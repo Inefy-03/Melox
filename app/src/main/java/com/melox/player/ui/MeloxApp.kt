@@ -2145,6 +2145,11 @@ fun MeloxApp(
                                                             PlaylistDetailScreen(
                                                                 onShufflePlay = viewModel::shuffleTracks,
                                                                 playlist = it,
+                                                                sortConfig = settings.playlistSortConfigs[it.id]
+                                                                    ?: com.melox.player.data.playlist.PlaylistSortConfig(),
+                                                                onSortConfigChange = { config ->
+                                                                    viewModel.setPlaylistSortConfig(it.id, config)
+                                                                },
                                                                 libraryTracks = uiState.tracks,
                                                                 readableContentUris =
                                                                     playlistState.readableContentUris,

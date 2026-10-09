@@ -123,6 +123,8 @@ fun PlaylistDetailScreen(
     onDelete: () -> Unit,
     onRemoveEntries: (Set<String>) -> Unit,
     onMoveEntry: (List<String>) -> Boolean,
+    sortConfig: PlaylistSortConfig,
+    onSortConfigChange: (PlaylistSortConfig) -> Unit,
 ) {
     var query by rememberSaveable(playlist.id) { mutableStateOf("") }
     var searchVisible by rememberSaveable(playlist.id) { mutableStateOf(false) }
@@ -131,18 +133,6 @@ fun PlaylistDetailScreen(
     val backdrop = rememberBlurBackdrop()
     val listState = rememberLazyListState()
     val layoutDirection = LocalLayoutDirection.current
-    val density = LocalDensity.current
-    var bottomContentHeightPx by remember { mutableIntStateOf(0) }
-    var sortFieldOrdinal by rememberSaveable(playlist.id) {
-        mutableIntStateOf(PlaylistSortField.CUSTOM.ordinal)
-    }
-    var sortDescending by rememberSaveable(playlist.id) { mutableStateOf(false) }
-    val sortConfig = PlaylistSortConfig(
-        field = PlaylistSortField.entries.getOrElse(sortFieldOrdinal) {
-            PlaylistSortField.CUSTOM
-        },
-        descending = sortDescending,
-    )
     val resolvedTracks = remember(playlist, libraryTracks, readableContentUris) {
         resolvePlaylistTracks(playlist, libraryTracks, readableContentUris)
     }
@@ -175,9 +165,6 @@ fun PlaylistDetailScreen(
     }
     var reorderScrollTopPadding by remember { mutableStateOf(0.dp) }
     var reorderScrollBottomPadding by remember { mutableStateOf(0.dp) }
-    var fixedExpandedBarPadding by remember(playlist.id, density) {
-        mutableStateOf<Dp?>(null)
-    }
     val reorderEnabled =
         selectionMode && sortConfig.field == PlaylistSortField.CUSTOM && query.isBlank()
     val currentOnMoveEntry by rememberUpdatedState(onMoveEntry)
@@ -381,10 +368,7 @@ fun PlaylistDetailScreen(
                                 )
                                 PlaylistSortButton(
                                     config = sortConfig,
-                                    onConfigChange = { config ->
-                                        sortFieldOrdinal = config.field.ordinal
-                                        sortDescending = config.descending
-                                    },
+                                    onConfigChange = onSortConfigChange,
                                 )
                                 PlaylistActionsButton(
                                     onRename = { showRename = true },

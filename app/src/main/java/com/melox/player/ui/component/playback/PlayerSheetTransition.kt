@@ -7,7 +7,11 @@ import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -45,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import com.melox.player.model.PlaybackUiState
@@ -506,6 +511,7 @@ internal fun rememberPlayerSheetTransitionState(): PlayerSheetTransitionState = 
 internal fun rememberPlayerSheetVerticalDragModifier(
     enabled: Boolean,
     hasItem: Boolean,
+    topExclusionHeight: Dp = 0.dp,
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
     onDragEnd: (Float) -> Unit,
@@ -517,24 +523,38 @@ internal fun rememberPlayerSheetVerticalDragModifier(
     val currentOnDragCancel by rememberUpdatedState(onDragCancel)
     if (!enabled || !hasItem) return Modifier
 
-    return Modifier.pointerInput(enabled, hasItem) {
+    val density = LocalDensity.current
+    val topExclusionPx = with(density) { topExclusionHeight.toPx() }
+
+    return Modifier.pointerInput(enabled, hasItem, topExclusionPx) {
         val velocityTracker = VelocityTracker()
-        detectVerticalDragGestures(
-            onDragStart = {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            if (topExclusionPx > 0f && down.position.y < topExclusionPx) {
+                return@awaitEachGesture
+            }
+            var overSlop = 0f
+            val drag = awaitVerticalTouchSlopOrCancellation(down.id) { change, over ->
+                change.consume()
+                overSlop = over
+            }
+            if (drag != null) {
                 velocityTracker.resetTracking()
                 currentOnDragStart()
-            },
-            onVerticalDrag = { change, dragAmount ->
-                // The host moves under the pointer; track original event coordinates.
-                velocityTracker.addPointerInputChange(change)
-                currentOnDrag(dragAmount)
-                change.consume()
-            },
-            onDragEnd = {
-                currentOnDragEnd(velocityTracker.calculateVelocity().y)
-            },
-            onDragCancel = currentOnDragCancel,
-        )
+                velocityTracker.addPointerInputChange(drag)
+                currentOnDrag(overSlop)
+                val isSuccess = verticalDrag(drag.id) { change ->
+                    velocityTracker.addPointerInputChange(change)
+                    currentOnDrag(change.positionChange().y)
+                    change.consume()
+                }
+                if (isSuccess) {
+                    currentOnDragEnd(velocityTracker.calculateVelocity().y)
+                } else {
+                    currentOnDragCancel()
+                }
+            }
+        }
     }
 }
 

@@ -149,6 +149,7 @@ data class AppSettings(
     val progressiveTopBarBlurEnabled: Boolean = false,
     val smallPlayerBar: Boolean = false,
     val hideBottomBar: Boolean = false,
+    val hideStatusBar: Boolean = false,
     val floatingBottomBar: Boolean = false,
     val navigationRailExpanded: Boolean = true,
     val liquidGlass: Boolean = false,

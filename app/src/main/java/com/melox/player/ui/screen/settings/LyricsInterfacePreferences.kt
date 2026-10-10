@@ -45,6 +45,8 @@ internal fun LyricsInterfacePreferences(
     onLyricBlurEnabledChange: (Boolean) -> Unit,
     onLyricAnimationModeChange: (LyricAnimationMode) -> Unit,
     onHideControlsOnLyricsChange: (Boolean) -> Unit,
+    hideStatusBar: Boolean = false,
+    onHideStatusBarChange: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
     cardColor: Color = MiuixTheme.colorScheme.surfaceContainer,
     usePageMaterial: Boolean = true,
@@ -134,6 +136,19 @@ internal fun LyricsInterfacePreferences(
                     summary = stringResource(R.string.lyrics_hide_controls_summary),
                     checked = hideControlsOnLyrics,
                     onCheckedChange = onHideControlsOnLyricsChange,
+                )
+            }
+        }
+        if (onHideStatusBarChange != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.defaultColors(color = cardColor),
+            ) {
+                SwitchPreference(
+                    title = stringResource(R.string.settings_hide_status_bar_title),
+                    summary = stringResource(R.string.settings_hide_status_bar_summary),
+                    checked = hideStatusBar,
+                    onCheckedChange = onHideStatusBarChange,
                 )
             }
         }

@@ -44,7 +44,12 @@ class PlayerSheetDragVelocityTest {
         checkRelease(lastMoveFraction = 0.28f, expectedOpen = true)
     }
 
-    private fun checkRelease(lastMoveFraction: Float, expectedOpen: Boolean) {
+    @Test
+    fun horizontalStartStaysRejectedWhenTheFingerLaterMovesDown() {
+        checkRelease(lastMoveFraction = 0.7f, expectedOpen = true, horizontalFirst = true)
+    }
+
+    private fun checkRelease(lastMoveFraction: Float, expectedOpen: Boolean, horizontalFirst: Boolean = false) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val transition = PlayerSheetTransitionState(initialProgress = 1f)
         val firstDraw = CountDownLatch(1)
@@ -81,6 +86,7 @@ class PlayerSheetDragVelocityTest {
                                 progress,
                             )
                             val density = LocalDensity.current
+                            transition.gestureDensity = density.density
                             val gesture = rememberPlayerSheetVerticalDragModifier(
                                 enabled = true,
                                 hasItem = true,
@@ -129,10 +135,10 @@ class PlayerSheetDragVelocityTest {
             val downTime = SystemClock.uptimeMillis()
             var eventTime = downTime
 
-            fun send(action: Int, yFraction: Float) {
+            fun send(action: Int, yFraction: Float, xFraction: Float = 0.5f) {
                 val event = MotionEvent.obtain(
                     downTime, eventTime, action,
-                    size.width * 0.5f, size.height * yFraction, 0,
+                    size.width * xFraction, size.height * yFraction, 0,
                 )
                 event.source = InputDevice.SOURCE_TOUCHSCREEN
                 try {
@@ -141,6 +147,22 @@ class PlayerSheetDragVelocityTest {
                     event.recycle()
                 }
                 eventTime += 16L
+            }
+
+            if (horizontalFirst) {
+                scenario.onActivity {
+                    send(MotionEvent.ACTION_DOWN, 0.3f, 0.1f)
+                    send(MotionEvent.ACTION_MOVE, 0.31f, 0.5f)
+                    send(MotionEvent.ACTION_MOVE, 0.32f, 0.8f)
+                    send(MotionEvent.ACTION_MOVE, 0.7f, 0.8f)
+                    send(MotionEvent.ACTION_UP, 0.7f, 0.8f)
+                    assertFalse(transition.isDragging)
+                    assertTrue(transition.targetOpen)
+                    assertEquals(1f, transition.progress, 0f)
+                    assertTrue("Horizontal input must not release a sheet drag", velocity.isNaN())
+                    assertFalse(cancelled)
+                }
+                return
             }
 
             scenario.onActivity { send(MotionEvent.ACTION_DOWN, 0.15f) }

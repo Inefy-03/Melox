@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.offset
+import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
@@ -188,6 +189,7 @@ internal fun bottomSheetGlassModifier(): Modifier {
     } else {
         val stroke = BloomStroke.GlassStrokeBigLight
         Highlight(
+            width = 1.dp,
             style = stroke.copy(
                 primaryLight = stroke.primaryLight.copy(intensity = 0f),
                 secondaryLight = stroke.secondaryLight.copy(intensity = 0f),

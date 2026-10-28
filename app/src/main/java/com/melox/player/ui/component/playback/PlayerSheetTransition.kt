@@ -7,7 +7,9 @@ import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -45,6 +48,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import com.melox.player.model.PlaybackUiState
@@ -59,6 +64,7 @@ import com.melox.player.ui.component.liquid.miuixFloatingBarShadow
 import com.melox.player.ui.component.liquid.miniPlayerSurface
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sign
 import androidx.compose.runtime.saveable.Saver
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.squircle.squircleBorder
@@ -104,7 +110,7 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
     private var renderedProgress by mutableFloatStateOf(restoredProgress)
     private var dragStartProgress = 0f
     private var dragDistanceY = 0f
-    private var lastDragAmountY = 0f
+    var gestureDensity = 1f
     private var dragOriginOpen = false
     private var dragStartedFromMiniPlayer = false
     private var miniPlayerExpansionStarted by mutableStateOf(false)
@@ -446,7 +452,6 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         dragStartProgress = currentProgress
         renderedProgress = dragStartProgress
         dragDistanceY = 0f
-        lastDragAmountY = 0f
         dragOriginOpen = targetOpen
         dragStartedFromMiniPlayer = startedFromMiniPlayer
         miniPlayerExpansionStarted = startedFromMiniPlayer && currentProgress > 0f
@@ -465,7 +470,6 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
     fun dragBy(dragAmountY: Float) {
         if (!isDragging) return
         dragDistanceY += dragAmountY
-        if (dragAmountY != 0f) lastDragAmountY = dragAmountY
         updateDragProgress()
     }
 
@@ -484,8 +488,11 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         )
         val open = playerSheetDragTarget(
             velocityY = velocityY,
-            lastDragAmountY = lastDragAmountY,
+            progress = progress,
+            travelDistance = verticalTravel,
             originOpen = dragOriginOpen,
+            density = gestureDensity,
+            startProgress = dragStartProgress,
         )
         closingStartProgress = progress
         isDragging = false
@@ -625,10 +632,11 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
 }
 
 @Composable
-internal fun rememberPlayerSheetTransitionState(): PlayerSheetTransitionState = rememberSaveable(
-    saver = PlayerSheetTransitionState.Saver,
-) {
-    PlayerSheetTransitionState()
+internal fun rememberPlayerSheetTransitionState(): PlayerSheetTransitionState {
+    val density = LocalDensity.current.density
+    val state = rememberSaveable(saver = PlayerSheetTransitionState.Saver) { PlayerSheetTransitionState() }
+    SideEffect { state.gestureDensity = density }
+    return state
 }
 
 @Composable
@@ -648,22 +656,52 @@ internal fun rememberPlayerSheetVerticalDragModifier(
 
     return Modifier.pointerInput(enabled, hasItem) {
         val velocityTracker = VelocityTracker()
-        detectVerticalDragGestures(
-            onDragStart = {
-                velocityTracker.resetTracking()
-                currentOnDragStart()
-            },
-            onVerticalDrag = { change, dragAmount ->
-                // The host moves under the pointer; track original event coordinates.
-                velocityTracker.addPointerInputChange(change)
-                currentOnDrag(dragAmount)
-                change.consume()
-            },
-            onDragEnd = {
-                currentOnDragEnd(velocityTracker.calculateVelocity().y)
-            },
-            onDragCancel = currentOnDragCancel,
-        )
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            velocityTracker.resetTracking()
+            velocityTracker.addPointerInputChange(down)
+            var delta = Offset.Zero
+            var started = false
+            var released = false
+            try {
+                while (!started) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                        ?: return@awaitEachGesture
+                    if (change.isConsumed || !change.pressed) return@awaitEachGesture
+                    velocityTracker.addPointerInputChange(change)
+                    delta += change.positionChange()
+                    when (playerSheetDragAxis(delta, viewConfiguration.touchSlop)) {
+                        PlayerSheetDragAxis.HORIZONTAL -> return@awaitEachGesture
+                        PlayerSheetDragAxis.VERTICAL -> {
+                            started = true
+                            change.consume()
+                            currentOnDragStart()
+                            currentOnDrag(delta.y - sign(delta.y) * viewConfiguration.touchSlop)
+                        }
+                        PlayerSheetDragAxis.PENDING -> {
+                            // Ancestors may claim this event after our Main pass.
+                            if (awaitPointerEvent(PointerEventPass.Final).changes.any {
+                                it.id == down.id && it.isConsumed
+                            }) return@awaitEachGesture
+                        }
+                    }
+                }
+                val completed = drag(down.id) { change ->
+                    // Keep original event coordinates while the host moves under the pointer.
+                    velocityTracker.addPointerInputChange(change)
+                    currentOnDrag(change.positionChange().y)
+                    change.consume()
+                }
+                if (completed) {
+                    currentEvent.changes.firstOrNull { !it.pressed && it.previousPressed }
+                        ?.let(velocityTracker::addPointerInputChange)
+                    released = true
+                    currentOnDragEnd(velocityTracker.calculateVelocity().y)
+                }
+            } finally {
+                if (started && !released) currentOnDragCancel()
+            }
+        }
     }
 }
 

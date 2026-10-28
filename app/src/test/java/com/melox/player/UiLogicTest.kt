@@ -121,6 +121,8 @@ import com.melox.player.ui.component.playback.playerSheetPlaceholderArtworkAlpha
 import com.melox.player.ui.component.playback.playerSheetMiniContentAlpha
 import com.melox.player.ui.component.playback.playerSheetBackgroundAlpha
 import com.melox.player.ui.component.playback.playerSheetDragProgress
+import com.melox.player.ui.component.playback.playerSheetDragAxis
+import com.melox.player.ui.component.playback.PlayerSheetDragAxis
 import com.melox.player.ui.component.playback.playerSheetDragTarget
 import com.melox.player.ui.component.playback.playerSheetVerticalTravel
 import com.melox.player.ui.component.playback.playerSheetGlassVisible
@@ -2196,13 +2198,81 @@ class UiLogicTest {
     }
 
     @Test
-    fun sharedPlayerDragReleaseFollowsVerticalDirection() {
-        assertTrue(playerSheetDragTarget(-1f, 1f, originOpen = false))
-        assertFalse(playerSheetDragTarget(1f, -1f, originOpen = true))
-        assertTrue(playerSheetDragTarget(0f, -1f, originOpen = false))
-        assertFalse(playerSheetDragTarget(0f, 1f, originOpen = true))
-        assertTrue(playerSheetDragTarget(0f, 0f, originOpen = true))
-        assertFalse(playerSheetDragTarget(0f, 0f, originOpen = false))
+    fun sharedPlayerDragRequiresVerticalIntentBeyondTouchSlop() {
+        assertEquals(PlayerSheetDragAxis.PENDING, playerSheetDragAxis(Offset.Zero, 10f))
+        assertEquals(PlayerSheetDragAxis.PENDING, playerSheetDragAxis(Offset(6f, 8f), 10f))
+        for (x in listOf(-1f, 1f)) for (y in listOf(-1f, 1f)) {
+            assertEquals(PlayerSheetDragAxis.HORIZONTAL, playerSheetDragAxis(Offset(x * 100f, y * 50f), 10f))
+            assertEquals(PlayerSheetDragAxis.VERTICAL, playerSheetDragAxis(Offset(x * 100f, y * 60f), 10f))
+            assertEquals(PlayerSheetDragAxis.PENDING, playerSheetDragAxis(Offset(x * 11f, y * 8f), 10f))
+            assertEquals(PlayerSheetDragAxis.VERTICAL, playerSheetDragAxis(Offset(0f, y * 11f), 10f))
+        }
+    }
+
+    @Test
+    fun sharedPlayerDragReleaseUsesDensityScaledVelocityAndPositionThresholds() {
+        for (density in listOf(1f, 2f, 3f)) {
+            fun target(velocity: Float, progress: Float, open: Boolean, travelDp: Float = 112f) =
+                playerSheetDragTarget(velocity * density, progress, travelDp * density, open, density)
+            assertTrue(target(124f, 0.75f, true))
+            assertFalse(target(125f, 0.75f, true))
+            assertFalse(target(-124f, 0.25f, false))
+            assertTrue(target(-125f, 0.25f, false))
+            assertTrue(target(0f, 0.5001f, true))
+            assertFalse(target(0f, 0.5f, true))
+            assertFalse(target(0f, 0.4999f, false))
+            assertTrue(target(0f, 0.5f, false))
+            // Tiny reverse motion does not override a completed slow drag.
+            assertFalse(target(-1f, 0.25f, true))
+            assertTrue(target(1f, 0.75f, false))
+            assertTrue(target(-125f, 0.25f, true))
+            assertFalse(target(125f, 0.75f, false))
+            // Endpoint clamps retain slow releases but allow intentional reverse flings.
+            assertTrue(target(124f, 1f, true))
+            assertFalse(target(-124f, 0f, false))
+            assertFalse(target(125f, 1f, true))
+            assertTrue(target(-125f, 0f, false))
+            assertFalse(target(0f, 0f, true, travelDp = 20f))
+            assertTrue(target(0f, 1f, false, travelDp = 20f))
+        }
+    }
+
+    @Test
+    fun playerSheetStateReturnsShortDragsAndCancelsToItsOriginalAnchor() {
+        fun state(open: Boolean) = PlayerSheetTransitionState(if (open) 1f else 0f).apply {
+            gestureDensity = 2f
+            updateMiniPlayerBounds(Rect(0f, 720f, 360f, 800f))
+            updateFullPlayerBounds(Rect(0f, 0f, 360f, 800f))
+            if (open) beginFullPlayerDrag() else beginMiniPlayerDrag()
+        }
+        val shortClose = state(true)
+        shortClose.dragBy(40f)
+        shortClose.endDrag(1f)
+        assertTrue(shortClose.targetOpen)
+        val shortOpen = state(false)
+        shortOpen.dragBy(-40f)
+        shortOpen.endDrag(-1f)
+        assertFalse(shortOpen.targetOpen)
+        val slowClose = state(true)
+        slowClose.dragBy(200f)
+        slowClose.dragBy(-1f)
+        slowClose.endDrag(-1f)
+        assertFalse(slowClose.targetOpen)
+        for (initial in listOf(0.4f, 0.6f)) {
+            val interrupted = PlayerSheetTransitionState(initial).apply {
+                updateMiniPlayerBounds(Rect(0f, 720f, 360f, 800f))
+                updateFullPlayerBounds(Rect(0f, 0f, 360f, 800f))
+                beginFullPlayerDrag()
+            }
+            interrupted.dragBy(if (initial > 0.5f) 20f else -20f)
+            interrupted.endDrag(0f)
+            assertEquals(initial > 0.5f, interrupted.targetOpen)
+        }
+        val cancelled = state(true)
+        cancelled.dragBy(200f)
+        cancelled.cancelDrag()
+        assertTrue(cancelled.targetOpen)
+        assertFalse(cancelled.isDragging)
     }
 
     @Test

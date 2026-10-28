@@ -67,6 +67,7 @@ import com.melox.player.ui.component.library.rememberArtworkBitmap
 import com.melox.player.ui.component.liquid.miuixFloatingBarShadow
 import com.melox.player.ui.component.liquid.miniPlayerSurface
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.roundToInt
 import androidx.compose.runtime.saveable.Saver
 import top.yukonga.miuix.kmp.squircle.squircleClip
@@ -337,16 +338,34 @@ internal fun playerSheetVerticalTravel(
     abs(target.bottom - source.bottom),
 ).coerceAtLeast(1f)
 
+internal enum class PlayerSheetDragAxis { PENDING, HORIZONTAL, VERTICAL }
+
+/** Reject a horizontal start even when no other component accepts the gesture. */
+internal fun playerSheetDragAxis(delta: Offset, touchSlop: Float): PlayerSheetDragAxis = when {
+    delta.getDistance() <= touchSlop -> PlayerSheetDragAxis.PENDING
+    atan2(abs(delta.y).toDouble(), abs(delta.x).toDouble()) <= Math.PI / 6.0 ->
+        PlayerSheetDragAxis.HORIZONTAL
+    abs(delta.y) <= touchSlop -> PlayerSheetDragAxis.PENDING
+    else -> PlayerSheetDragAxis.VERTICAL
+}
+
 internal fun playerSheetDragTarget(
     velocityY: Float,
-    lastDragAmountY: Float,
+    progress: Float,
+    travelDistance: Float,
     originOpen: Boolean,
-): Boolean = when {
-    velocityY < 0f -> true
-    velocityY > 0f -> false
-    lastDragAmountY < 0f -> true
-    lastDragAmountY > 0f -> false
-    else -> originOpen
+    density: Float,
+    startProgress: Float = if (originOpen) 1f else 0f,
+): Boolean {
+    val velocityThreshold = 125f * density
+    // Preserve an intentional fling even after the drag returns to a clamped endpoint.
+    if (velocityY <= -velocityThreshold) return true
+    if (velocityY >= velocityThreshold) return false
+    val movement = (progress.coerceIn(0f, 1f) - startProgress.coerceIn(0f, 1f)) * travelDistance
+    if (movement == 0f) return originOpen
+    val distance = if (originOpen) -movement else movement
+    val positionThreshold = minOf(56f * density, travelDistance)
+    return if (distance >= positionThreshold) !originOpen else originOpen
 }
 
 internal fun sharedMiniPlayerControlsTranslationX(

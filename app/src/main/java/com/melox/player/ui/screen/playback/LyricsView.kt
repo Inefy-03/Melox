@@ -1465,6 +1465,7 @@ internal fun CompactTimedLyricLine(
     textStartPadding: Dp = 0.dp,
     textBaseline: Dp? = null,
     phoneticStyle: TextStyle? = null,
+    textEndPadding: Dp = 0.dp,
 ) {
     val density = LocalDensity.current
     val direction = LocalLayoutDirection.current
@@ -1488,6 +1489,7 @@ internal fun CompactTimedLyricLine(
     val effectScale = with(density) { lyricEffectGeometryScale(style.fontSize.toPx()) }
     val fadeWidth = with(density) { style.fontSize.toPx() * 0.25f }
     val textStartPx = with(density) { textStartPadding.toPx() }
+    val textEndPx = with(density) { textEndPadding.toPx() }
     val textBaselinePx = with(density) { textBaseline?.toPx() }
     var durationScale by remember { mutableStateOf<MotionDurationScale?>(null) }
     LaunchedEffect(Unit) { durationScale = coroutineContext[MotionDurationScale] }
@@ -1506,8 +1508,8 @@ internal fun CompactTimedLyricLine(
                             lyricIntervalProgress(position, line.startTimeMs, line.endTimeMs))
                     }
                     val target = textStartPx + compactLyricScrollTarget(
-                        (size.width - textStartPx).coerceAtLeast(0f), row.width, cursor, centered)
-                    val offset = scroll.update(target, position, size.width, row.width,
+                        (size.width - textStartPx).coerceAtLeast(0f), row.width, cursor, centered, textEndPx)
+                    val offset = scroll.update(target, position, size.width, row.width + textEndPx,
                         smooth = durationScale?.scaleFactor != 0f)
                     clipRect {
                         val annotationHeight = if (row.phonetics.isEmpty()) 0f

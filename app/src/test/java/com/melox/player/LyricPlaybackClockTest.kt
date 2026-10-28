@@ -328,6 +328,13 @@ class LyricPlaybackClockTest {
         assertEquals(-300f, compactLyricScrollTarget(100f, 400f, 400f, false), 0f)
         assertEquals(20f, compactLyricScrollTarget(100f, 60f, 60f, true), 0f)
         assertEquals(0f, compactLyricScrollTarget(100f, 60f, 60f, false), 0f)
+        // The scrolling end stops before the artwork viewport's horizontal fade.
+        assertEquals(-306f, compactLyricScrollTarget(100f, 400f, 400f, false, 6f), 0f)
+        assertEquals(-306f, compactLyricScrollTarget(100f, 400f, 400f, true, 6f), 0f)
+        assertEquals(0f, compactLyricScrollTarget(100f, 400f, 0f, false, 6f), 0f)
+        assertEquals(-150f, compactLyricScrollTarget(100f, 400f, 200f, false, 6f), 0f)
+        assertEquals(20f, compactLyricScrollTarget(100f, 60f, 60f, true, 6f), 0f)
+        assertEquals(0f, compactLyricScrollTarget(100f, 60f, 60f, false, 6f), 0f)
         val scroll = CompactLyricScroll()
         assertEquals(0f, scroll.update(0f, 1_000, 100f, 400f), 0f)
         val next = scroll.update(-100f, 1_250, 100f, 400f)

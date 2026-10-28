@@ -154,8 +154,9 @@ internal fun compactLyricScrollTarget(
     textWidth: Float,
     cursorX: Float,
     centered: Boolean,
+    endPaddingPx: Float = 0f,
 ): Float = if (textWidth > viewportWidth) {
-    (viewportWidth / 2f - cursorX).coerceIn(viewportWidth - textWidth, 0f)
+    (viewportWidth / 2f - cursorX).coerceIn(viewportWidth - textWidth - endPaddingPx.coerceAtLeast(0f), 0f)
 } else if (centered) {
     (viewportWidth - textWidth) / 2f
 } else {
@@ -510,6 +511,7 @@ private fun CompactLyricsViewport(
                         modifier = Modifier.fillMaxWidth(), centered = centered, focused = focused,
                         activeOpacityLimit = if (focused) activeLyricAlpha else 1f,
                         textStartPadding = CompactLyricHorizontalEdgeFadeWidth,
+                        textEndPadding = CompactLyricHorizontalEdgeFadeWidth,
                         phoneticStyle = auxiliaryStyle.takeIf { showRomanization },
                         resetKey = playback.playbackIteration to playback.positionDiscontinuityRevision)
                     auxiliary[localRow].forEach { text ->
@@ -528,5 +530,6 @@ private fun CompactAuxiliaryLine(line: LyricLine, text: String, style: TextStyle
     val auxiliary = remember(line, text) { line.copy(text = text, words = emptyList()) }
     CompactTimedLyricLine(auxiliary, style, color, time, LyricAnimationMode.NEVER, false,
         modifier = Modifier.fillMaxWidth(), centered = centered, focused = focused,
-        textStartPadding = CompactLyricHorizontalEdgeFadeWidth)
+        textStartPadding = CompactLyricHorizontalEdgeFadeWidth,
+        textEndPadding = CompactLyricHorizontalEdgeFadeWidth)
 }

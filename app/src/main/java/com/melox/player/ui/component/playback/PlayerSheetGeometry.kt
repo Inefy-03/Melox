@@ -260,6 +260,7 @@ internal fun sharedArtworkRect(
     source: Rect,
     target: Rect,
     progress: Float,
+    trackContainerEdges: Boolean = false,
 ): Rect {
     val fraction = progress.coerceIn(0f, 1f)
     val centerX = lerp(source.center.x, target.center.x, easeOutCubic(fraction))
@@ -274,6 +275,13 @@ internal fun sharedArtworkRect(
     val scale = lerp(1f, targetWidth / sourceWidth, fraction)
     val width = sourceWidth * scale
     val height = source.height.coerceAtLeast(1f) * scale
+    if (trackContainerEdges) {
+        // Container position plus interpolated insets reduces to edge interpolation
+        // because both use the same sheet progress. Keep the existing size clock.
+        val left = lerp(source.left, target.left, fraction)
+        val top = lerp(source.top, target.top, fraction)
+        return Rect(left, top, left + width, top + height)
+    }
     return Rect(
         left = centerX - width / 2f,
         top = centerY - height / 2f,

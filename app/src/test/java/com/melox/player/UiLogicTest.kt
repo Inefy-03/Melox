@@ -1832,6 +1832,23 @@ class UiLogicTest {
     }
 
     @Test
+    fun landscapeArtworkFollowsContainerEdgesWithTheExistingSizeClock() {
+        val source = Rect(24f, 380f, 72f, 428f)
+        for (target in listOf(Rect(60f, 40f, 300f, 280f), Rect(140f, 90f, 500f, 450f))) {
+            for (progress in listOf(0f, 0.25f, 0.5f, 0.75f, 1f)) {
+                val bounds = sharedArtworkRect(source, target, progress, trackContainerEdges = true)
+                val original = sharedArtworkRect(source, target, progress)
+                assertEquals(source.left + (target.left - source.left) * progress, bounds.left, 0.001f)
+                assertEquals(source.top + (target.top - source.top) * progress, bounds.top, 0.001f)
+                assertEquals(original.width, bounds.width, 0.001f)
+                assertEquals(original.height, bounds.height, 0.001f)
+            }
+            assertEquals(source, sharedArtworkRect(source, target, -1f, trackContainerEdges = true))
+            assertEquals(target, sharedArtworkRect(source, target, 2f, trackContainerEdges = true))
+        }
+    }
+
+    @Test
     fun sharedArtworkPathUsesTheOriginalEasedCenterTrajectory() {
         val thumbnail = Rect(16f, 708f, 64f, 756f)
         val albumArt = Rect(28f, 120f, 372f, 464f)

@@ -549,6 +549,7 @@ internal fun PlayerSheetArtworkOverlay(
         playbackArtworkBounds(source, it.width, it.height, squareClip)
     }
     val sourceBounds = sourceArtworkBounds ?: source
+    val trackContainerEdges = transition.fullPlayerBounds.let { it.width > it.height }
     if (!sharedArtworkTargetIsOnscreen(
         artworkBounds = target,
         viewportBounds = transition.fullPlayerBounds,
@@ -573,7 +574,7 @@ internal fun PlayerSheetArtworkOverlay(
     )
 
     if (bitmap == null) {
-        val renderedBounds = sharedArtworkRect(sourceBounds, target, progress)
+        val renderedBounds = sharedArtworkRect(sourceBounds, target, progress, trackContainerEdges)
         val scaleX = renderedBounds.width / source.width.coerceAtLeast(1f)
         val localCornerRadius = (artworkCornerRadius / scaleX.coerceAtLeast(1f)).dp
         Box(
@@ -593,6 +594,7 @@ internal fun PlayerSheetArtworkOverlay(
                         source = sourceBounds,
                         target = target,
                         progress = frameProgress,
+                        trackContainerEdges = trackContainerEdges,
                     )
                     transformOrigin = TransformOrigin(0f, 0f)
                     this.scaleX = frameBounds.width / source.width.coerceAtLeast(1f)
@@ -618,7 +620,7 @@ internal fun PlayerSheetArtworkOverlay(
         val targetBounds = target
         val targetArtworkWidth = targetBounds.width.coerceAtLeast(1f)
         val targetArtworkHeight = targetBounds.height.coerceAtLeast(1f)
-        val renderedBounds = sharedArtworkRect(sourceBounds, target, progress)
+        val renderedBounds = sharedArtworkRect(sourceBounds, target, progress, trackContainerEdges)
         val scaleX = renderedBounds.width / targetArtworkWidth
         val localCornerRadius = (artworkCornerRadius / scaleX.coerceAtLeast(0.001f)).dp
         Box(
@@ -639,6 +641,7 @@ internal fun PlayerSheetArtworkOverlay(
                         source = sourceBounds,
                         target = target,
                         progress = frameProgress,
+                        trackContainerEdges = trackContainerEdges,
                     )
                     transformOrigin = TransformOrigin(0f, 0f)
                     this.scaleX = frameBounds.width / targetArtworkWidth

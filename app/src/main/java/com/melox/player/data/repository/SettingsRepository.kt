@@ -195,6 +195,7 @@ class SettingsRepository(context: Context) {
                         enumValueOrDefault(storedValue, NavigationTransitionStyle.MIUIX)
                     }
                     ?: NavigationTransitionStyle.MIUIX,
+                tabSwitchHapticsEnabled = preferences[Keys.TabSwitchHapticsEnabled] ?: false,
                 songListPullToRefresh = preferences[Keys.SongListPullToRefresh] ?: true,
                 refreshLibraryOnStart = preferences[Keys.RefreshLibraryOnStart] ?: false,
                 skipShortAudio = preferences[Keys.SkipShortAudio] ?: false,
@@ -565,6 +566,12 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    suspend fun setTabSwitchHapticsEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.TabSwitchHapticsEnabled] = enabled
+        }
+    }
+
     suspend fun setSongListPullToRefresh(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.SongListPullToRefresh] = enabled
@@ -733,6 +740,7 @@ class SettingsRepository(context: Context) {
         val LiquidGlass = booleanPreferencesKey("liquid_glass")
         val PredictiveBackEnabled = booleanPreferencesKey("predictive_back_enabled")
         val NavigationTransitionStyle = stringPreferencesKey("navigation_transition_style")
+        val TabSwitchHapticsEnabled = booleanPreferencesKey("tab_switch_haptics_enabled")
         val SongListPullToRefresh = booleanPreferencesKey("song_list_pull_to_refresh")
         val RefreshLibraryOnStart = booleanPreferencesKey("refresh_library_on_start")
         val SkipShortAudio = booleanPreferencesKey("skip_short_audio")

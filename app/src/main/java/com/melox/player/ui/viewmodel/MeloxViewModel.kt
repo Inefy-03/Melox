@@ -960,6 +960,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setTabSwitchHapticsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setTabSwitchHapticsEnabled(enabled)
+        }
+    }
+
     fun setSongListPullToRefresh(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setSongListPullToRefresh(enabled)

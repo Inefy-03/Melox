@@ -140,6 +140,9 @@ class SettingsRepository(context: Context) {
                     ?: TransientAudioFocusBehavior.DUCK,
                 autoPlayOnStart = preferences[Keys.AutoPlayOnStart] ?: false,
                 terminateOnTaskRemoved = preferences[Keys.TerminateOnTaskRemoved] ?: false,
+                showNotificationPlaybackModeButton =
+                    preferences[Keys.ShowNotificationPlaybackModeButton] ?: true,
+                showNotificationCloseButton = preferences[Keys.ShowNotificationCloseButton] ?: true,
                 lyricFontScale = preferences[Keys.LyricFontScale]
                     ?.coerceIn(MIN_LYRIC_FONT_SCALE, MAX_LYRIC_FONT_SCALE)
                     ?: preferences[Keys.LegacyLyricFontScale]
@@ -398,6 +401,14 @@ class SettingsRepository(context: Context) {
 
     suspend fun setTerminateOnTaskRemoved(enabled: Boolean) {
         dataStore.edit { it[Keys.TerminateOnTaskRemoved] = enabled }
+    }
+
+    suspend fun setShowNotificationPlaybackModeButton(enabled: Boolean) {
+        dataStore.edit { it[Keys.ShowNotificationPlaybackModeButton] = enabled }
+    }
+
+    suspend fun setShowNotificationCloseButton(enabled: Boolean) {
+        dataStore.edit { it[Keys.ShowNotificationCloseButton] = enabled }
     }
 
     suspend fun setLyricFontScale(scale: Float) {
@@ -700,6 +711,10 @@ class SettingsRepository(context: Context) {
         val TransientAudioFocusBehavior = stringPreferencesKey("transient_audio_focus_behavior")
         val AutoPlayOnStart = booleanPreferencesKey("auto_play_on_start")
         val TerminateOnTaskRemoved = booleanPreferencesKey("terminate_on_task_removed")
+        val ShowNotificationPlaybackModeButton =
+            booleanPreferencesKey("show_notification_playback_mode_button")
+        val ShowNotificationCloseButton =
+            booleanPreferencesKey("show_notification_close_button")
         val LyricFontScale = floatPreferencesKey("lyric_font_scale_v2")
         val LegacyLyricFontScale = floatPreferencesKey("lyric_font_scale")
         val LyricFontWeight = intPreferencesKey("lyric_font_weight")

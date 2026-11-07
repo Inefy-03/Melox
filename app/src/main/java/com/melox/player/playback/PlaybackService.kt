@@ -112,6 +112,8 @@ class PlaybackService : MediaSessionService() {
     private var isClosing = false
     private var startupPlaybackApplied = false
     private var autoPlayOnStart = false
+    private var showNotificationPlaybackModeButton = true
+    private var showNotificationCloseButton = true
     private val cyclePlaybackModeCommand = SessionCommand(ACTION_CYCLE_PLAYBACK_MODE, Bundle.EMPTY)
     private val closeApplicationCommand = SessionCommand(ACTION_CLOSE_APPLICATION_COMMAND, Bundle.EMPTY)
     private val pauseFadeCommand = SessionCommand(ACTION_SET_PAUSE_FADE, Bundle.EMPTY)
@@ -413,6 +415,8 @@ class PlaybackService : MediaSessionService() {
         highPrecisionOutput = startupSettings.highPrecisionOutput
         pauseFadeEnabled = startupSettings.playbackPauseFade
         autoPlayOnStart = startupSettings.autoPlayOnStart
+        showNotificationPlaybackModeButton = startupSettings.showNotificationPlaybackModeButton
+        showNotificationCloseButton = startupSettings.showNotificationCloseButton
         sleepTimer.autoExtend = startupSettings.autoExtendSleepTimer
         val startupSnapshot = miniSnapshotStore.load()
             ?.withoutContentUris(startupSettings.hiddenTrackUris)
@@ -470,6 +474,16 @@ class PlaybackService : MediaSessionService() {
             .setCallback(mediaSessionCallback)
             .setMediaButtonPreferences(mediaButtonPreferences(player.currentPlaybackMode()))
             .build()
+        serviceScope.launch {
+            settingsRepository.settings
+                .map { it.showNotificationPlaybackModeButton to it.showNotificationCloseButton }
+                .distinctUntilChanged()
+                .collect { (showModeButton, showCloseButton) ->
+                    showNotificationPlaybackModeButton = showModeButton
+                    showNotificationCloseButton = showCloseButton
+                    refreshMediaButtonPreferences(player.currentPlaybackMode())
+                }
+        }
         scheduleArtworkUpdate(player)
         (application as MeloxApplication).fairMemoryManager.savePlayback = ::saveMemoryCheckpoint
         serviceScope.launch {
@@ -953,20 +967,28 @@ class PlaybackService : MediaSessionService() {
         mediaSession?.setMediaButtonPreferences(mediaButtonPreferences(mode))
     }
 
-    private fun mediaButtonPreferences(mode: PlaybackMode): List<CommandButton> = listOf(
-        CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-            .setSessionCommand(cyclePlaybackModeCommand)
-            .setCustomIconResId(mode.notificationIconResId())
-            .setDisplayName(getString(mode.notificationLabelResId()))
-            .setSlots(CommandButton.SLOT_BACK_SECONDARY, CommandButton.SLOT_OVERFLOW)
-            .build(),
-        CommandButton.Builder(CommandButton.ICON_UNDEFINED)
-            .setSessionCommand(closeApplicationCommand)
-            .setCustomIconResId(R.drawable.ic_notification_close)
-            .setDisplayName(getString(R.string.notification_close))
-            .setSlots(CommandButton.SLOT_FORWARD_SECONDARY, CommandButton.SLOT_OVERFLOW)
-            .build(),
-    )
+    private fun mediaButtonPreferences(mode: PlaybackMode): List<CommandButton> = buildList {
+        if (showNotificationPlaybackModeButton) {
+            add(
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+                    .setSessionCommand(cyclePlaybackModeCommand)
+                    .setCustomIconResId(mode.notificationIconResId())
+                    .setDisplayName(getString(mode.notificationLabelResId()))
+                    .setSlots(CommandButton.SLOT_BACK_SECONDARY, CommandButton.SLOT_OVERFLOW)
+                    .build(),
+            )
+        }
+        if (showNotificationCloseButton) {
+            add(
+                CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+                    .setSessionCommand(closeApplicationCommand)
+                    .setCustomIconResId(R.drawable.ic_notification_close)
+                    .setDisplayName(getString(R.string.notification_close))
+                    .setSlots(CommandButton.SLOT_FORWARD_SECONDARY, CommandButton.SLOT_OVERFLOW)
+                    .build(),
+            )
+        }
+    }
 
     private companion object {
         const val ACTION_CYCLE_PLAYBACK_MODE =

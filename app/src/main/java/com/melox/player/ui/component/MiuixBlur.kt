@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
@@ -251,16 +254,15 @@ internal fun BlurredBar(
     content: @Composable () -> Unit,
 ) {
     val progressive = LocalTopBarBlurSettings.current.progressiveEnabled
-    val refreshSignal = LocalFixedPageBackground.current?.refreshSignal
-    val progressiveColors = barBlurColors(progressive = true, surfaceColor = surfaceColor)
-    val progressiveGradient = ProgressiveBlur.Top.copy(startFraction = 0.2f, endFraction = 1f, curve = 3f)
+    val overlapDistance = rememberTopBarOverlapDistance(scrollBehavior)
     val wallpaperOnly = wallpaperTopBarVisible(
         hasBackground = LocalTopBarWallpaperVisible.current,
         blurEnabled = blurEnabled,
         progressiveEnabled = progressive,
         runtimeSupported = backdrop != null,
     )
-    val blurActive = blurEnabled && backdrop != null && !wallpaperOnly && !com.melox.player.ui.theme.LocalOs4Style.current
+    val blurActive = blurEnabled && backdrop != null && !wallpaperOnly &&
+        !com.melox.player.ui.theme.LocalOs4Style.current && !progressive
     Box(
         modifier = if (blurActive && !progressive) {
             Modifier.textureBlur(
@@ -273,35 +275,33 @@ internal fun BlurredBar(
             Modifier
         },
     ) {
-        if (blurActive && progressive) {
+        if (blurEnabled && backdrop != null && progressive && !com.melox.player.ui.theme.LocalOs4Style.current) {
+            @OptIn(ExperimentalLayoutApi::class)
+            val topInsets = androidx.compose.foundation.layout.WindowInsets.statusBarsIgnoringVisibility
+            // Match the current GlassTopAppBar band while retaining the OS3 title layout.
             Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .then(
-                        if (refreshSignal != null) {
-                            Modifier.drawBackdrop(
-                                backdrop = backdrop,
-                                shape = { RectangleShape },
-                                effects = {
-                                    progressiveTextureBlurEffect(
-                                        blurRadiusX = 12f,
-                                        gradient = progressiveGradient,
-                                        noiseCoefficient = BlurDefaults.ProgressiveNoiseCoefficient,
-                                        colors = progressiveColors,
-                                    )
-                                },
-                                progressiveGradient = progressiveGradient,
-                                onDrawBehind = { refreshSignal() },
-                            )
-                        } else {
-                            Modifier.progressiveTextureBlur(
-                                backdrop = backdrop,
-                                shape = RectangleShape,
-                                gradient = progressiveGradient,
-                                blurRadius = 12f,
-                                colors = progressiveColors,
-                            )
-                        },
+                Modifier.matchParentSize()
+                    .layout { measurable, constraints ->
+                        val height = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(
+                            barHeight = constraints.maxHeight, topInset = topInsets.getTop(this), density = this,
+                        )
+                        val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+                        layout(constraints.maxWidth, constraints.maxHeight) { placeable.placeRelative(0, 0) }
+                    }
+                    .graphicsLayer {
+                        val distance = overlapDistance?.value ?: scrollBehavior?.let { -it.state.contentOffset }
+                        alpha = distance?.let {
+                            (it / top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ProgressiveBlurRampDistance.toPx()).coerceIn(0f, 1f)
+                        } ?: 1f
+                    }
+                    .progressiveTextureBlur(
+                        backdrop = backdrop,
+                        shape = RectangleShape,
+                        gradient = ProgressiveBlur.Top.copy(curve = 0.5f),
+                        blurRadius = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ProgressiveBlurRadius.value,
+                        colors = BlurDefaults.blurColors(blendColors = listOf(
+                            BlendColorEntry(surfaceColor.copy(alpha = 0.3f)),
+                        )),
                     ),
             )
         }

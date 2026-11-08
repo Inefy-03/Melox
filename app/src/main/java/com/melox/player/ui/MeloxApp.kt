@@ -502,6 +502,8 @@ fun MeloxApp(
         } else {
             NavigationRailDefaults.MinWidth
         }
+    } else if (!settings.hideBottomBar && landscape && requestedBottomBarStyle == BottomBarStyle.LIQUID_GLASS) {
+        windowWidth - FloatingNavigationRailInset
     } else {
         windowWidth
     }

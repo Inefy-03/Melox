@@ -189,6 +189,17 @@ internal fun PlayerScaffold(
         routeBackdropRefresh.value + currentBackdropPagingSignal()
     }
 
+    if (landscape && effectiveStyle == BottomBarStyle.LIQUID_GLASS) {
+        LandscapeFloatingPlayerScaffold(
+            navigationItems = navigationItems, selectedTab = selectedTab, onTabSelected = onTabSelected,
+            showNavigation = showNavigation || showNavigationRailOnSecondary,
+            smallPlayerBar = smallPlayerBar, blurEnabled = blurEnabled,
+            liquidGlassSupported = liquidGlassSupported, isDark = isDark,
+            miniPlayer = miniPlayer, content = { padding -> content(padding, false) },
+        )
+        return
+    }
+
     if (useNavigationRail && landscape) {
         val miniPlayerBackdrop = rememberBlurBackdrop()
         val navigationRailVisible = showNavigation || showNavigationRailOnSecondary

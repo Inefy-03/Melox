@@ -58,6 +58,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -91,6 +92,11 @@ import top.yukonga.miuix.kmp.basic.BadgedBox
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.blur.Backdrop
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.unit.Density
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -243,6 +249,7 @@ fun LiquidGlassNavigationBar(
     containerHighlight: State<Highlight>? = null,
     bottomPadding: Dp? = null,
     badge: (Int) -> (@Composable () -> Unit)? = { null },
+    vertical: Boolean = false,
 ) {
     if (items.isEmpty()) return
     val pillShape = remember { CircleShape }
@@ -250,8 +257,28 @@ fun LiquidGlassNavigationBar(
     val tabContentColor = MiuixTheme.colorScheme.onSurface
     val surfaceContainer = MiuixTheme.colorScheme.surfaceContainer
     val liquidGlassActive = isLiquidGlassActive && backdrop != null
-    val blurBackdrop = backdrop.takeIf { isBlurActive }
-    val glassBackdrop = backdrop.takeIf { liquidGlassActive }
+    val samplingBackdrop = remember(backdrop, vertical) {
+        if (vertical && backdrop != null) object : Backdrop {
+            override val isCoordinatesDependent = true
+            override val offsetResidualX: Float get() = backdrop.offsetResidualX
+            override val offsetResidualY: Float get() = backdrop.offsetResidualY
+            override fun DrawScope.drawBackdrop(
+                density: Density, coordinates: LayoutCoordinates?,
+                layerBlock: (GraphicsLayerScope.() -> Unit)?, downscaleFactor: Int,
+            ) {
+                // LayerBackdrop cancels this rotation before sampling the screen-space scene.
+                // The parent then rotates the control, leaving the sampled background upright.
+                with(backdrop) {
+                    drawBackdrop(density, coordinates, {
+                        layerBlock?.invoke(this)
+                        rotationZ += 90f
+                    }, downscaleFactor)
+                }
+            }
+        } else backdrop
+    }
+    val blurBackdrop = samplingBackdrop.takeIf { isBlurActive }
+    val glassBackdrop = samplingBackdrop.takeIf { liquidGlassActive }
     val containerColor = if (isBlurActive || liquidGlassActive) surfaceContainer.copy(alpha = 0.4f) else surfaceContainer
 
     val tabsBackdrop = rememberLayerBackdrop()
@@ -421,6 +448,7 @@ fun LiquidGlassNavigationBar(
                         val s = tabScale()
                         scaleX = s
                         scaleY = s
+                        rotationZ = if (vertical) -90f else 0f
                     },
                 verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
                 horizontalAlignment = CenterHorizontally,
@@ -444,7 +472,15 @@ fun LiquidGlassNavigationBar(
         }
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
+    val orientationModifier = if (vertical) Modifier.layout { measurable, constraints ->
+        val length = (items.size * 72.dp.toPx() + 8.dp.toPx()).roundToInt().coerceAtMost(constraints.maxHeight)
+        val thickness = 64.dp.roundToPx()
+        val placeable = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(length, thickness))
+        layout(thickness, length) {
+            placeable.placeWithLayer(-(length - thickness) / 2, (length - thickness) / 2) { rotationZ = 90f }
+        }
+    } else Modifier
+    Column(modifier = modifier.then(orientationModifier).fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .padding(bottom = bottomPaddingValue)

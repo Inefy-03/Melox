@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>top.yukonga.miuix.kmp</groupId>
+  <artifactId>miuix-blur-android</artifactId>
+  <version>0.9.4.1-melox</version>
+  <packaging>aar</packaging>
+  <name>Miuix Blur - Melox local patch</name>
+  <licenses><license><name>Apache License 2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url></license></licenses>
+  <dependencies>
+    <dependency><groupId>top.yukonga.miuix.kmp</groupId><artifactId>miuix-shader-android</artifactId><version>0.9.4</version><scope>compile</scope></dependency>
+    <dependency><groupId>org.jetbrains.compose.foundation</groupId><artifactId>foundation-android</artifactId><version>1.12.0</version><scope>compile</scope></dependency>
+    <dependency><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-stdlib</artifactId><version>2.4.20</version><scope>compile</scope></dependency>
+  </dependencies>
+</project>

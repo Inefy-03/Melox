@@ -1,0 +1,51 @@
+--- a/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/overlay/OverlayDialog.kt
++++ b/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/overlay/OverlayDialog.kt
+@@ -107,3 +107,48 @@
+         content = content,
+     )
+ }
++
++/** Retains the 0.9.4 JVM entry point used by the published preference module. */
++@Composable
++fun OverlayDialog(
++    show: Boolean,
++    modifier: Modifier = Modifier,
++    title: String? = null,
++    titleColor: Color = DialogDefaults.titleColor(),
++    summary: String? = null,
++    summaryColor: Color = DialogDefaults.summaryColor(),
++    backgroundColor: Color = DialogDefaults.backgroundColor(),
++    enableWindowDim: Boolean = true,
++    onDismissRequest: (() -> Unit)? = null,
++    onDismissFinished: (() -> Unit)? = null,
++    outsideMargin: DpSize = DialogDefaults.outsideMargin,
++    insideMargin: DpSize = DialogDefaults.insideMargin,
++    defaultWindowInsetsPadding: Boolean = true,
++    renderInRootScaffold: Boolean = true,
++    maxWidth: Dp = DialogDefaults.MaxWidth,
++    largeScreen: Boolean? = null,
++    cornerRadius: Dp? = null,
++    content: @Composable () -> Unit,
++) {
++    OverlayDialog(
++        show = show,
++        modifier = modifier,
++        title = title,
++        titleColor = titleColor,
++        summary = summary,
++        summaryColor = summaryColor,
++        backgroundColor = backgroundColor,
++        enableWindowDim = enableWindowDim,
++        onDismissRequest = onDismissRequest,
++        onDismissFinished = onDismissFinished,
++        outsideMargin = outsideMargin,
++        insideMargin = insideMargin,
++        defaultWindowInsetsPadding = defaultWindowInsetsPadding,
++        renderInRootScaffold = renderInRootScaffold,
++        maxWidth = maxWidth,
++        largeScreen = largeScreen,
++        cornerRadius = cornerRadius,
++        content = content,
++        surface = null,
++    )
++}

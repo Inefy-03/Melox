@@ -14,7 +14,9 @@ materialKolor = "5.0.0"
 media3 = "1.11.0"
 media3Exoplayer = "1.11.0.1-melox"
 miuix = "0.9.4"
-miuixUi = "0.9.4.1-melox"
+miuixUi = "0.9.4.2-melox"
+miuixBlur = "0.9.4.1-melox"
+miuixNav = "0.9.4.1-melox"
 reorderable = "3.1.0"
 taglib = "1.0.6"
 tinypinyin = "2.0.3"
@@ -32,9 +34,9 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3Exoplayer" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 material-color-utilities = { module = "com.materialkolor:material-color-utilities-android", version.ref = "materialKolor" }
-miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur", version.ref = "miuix" }
+miuix-blur = { group = "top.yukonga.miuix.kmp", name = "miuix-blur-android", version.ref = "miuixBlur" }
 miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons", version.ref = "miuix" }
-miuix-nav = { group = "top.yukonga.miuix.kmp", name = "miuix-nav", version.ref = "miuix" }
+miuix-nav = { group = "top.yukonga.miuix.kmp", name = "miuix-nav-android", version.ref = "miuixNav" }
 miuix-preference = { group = "top.yukonga.miuix.kmp", name = "miuix-preference", version.ref = "miuix" }
 miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui-android", version.ref = "miuixUi" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }

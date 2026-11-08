@@ -71,6 +71,8 @@ if (releaseTaskRequested && !releaseSigningConfigured) {
 }
 
 android {
+    sourceSets.getByName("main").kotlin.directories.add("../third_party/miuix/glass/src")
+
     namespace = "com.melox.player"
     compileSdk = 37
 

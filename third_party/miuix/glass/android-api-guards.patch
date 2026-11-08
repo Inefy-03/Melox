@@ -1,0 +1,42 @@
+--- a/internal/GlassOverlays.kt
++++ b/internal/GlassOverlays.kt
+@@ -3,6 +3,7 @@
+ 
+ package top.yukonga.miuix.kmp.glass.internal
+ 
++import android.os.Build
+ import androidx.compose.ui.geometry.Offset
+ import androidx.compose.ui.geometry.Size
+ import androidx.compose.ui.graphics.BlendMode
+@@ -58,6 +59,7 @@
+     surface: Color,
+     alpha: Float,
+ ) {
++    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+     val shader = rimShader ?: return
+     if (alpha <= 0f || size.width <= 0f || size.height <= 0f) return
+     if (style.background.unShade >= 0.999f) return
+@@ -96,6 +98,7 @@
+     stroke: GlassStroke,
+     alpha: Float,
+ ) {
++    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+     val shader = strokeShader ?: return
+     if (alpha <= 0f || size.width <= 0f || size.height <= 0f) return
+ 
+@@ -124,6 +127,7 @@
+  * @param layoutDirection Resolves the shape's start and end corners.
+  */
+ internal fun DrawScope.drawGlassMask(shape: GlassShape, layoutDirection: LayoutDirection) {
++    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+     val shader = maskShader ?: return
+     if (size.width <= 0f || size.height <= 0f) return
+     shader.setSilhouetteUniforms(shape, layoutDirection, size, this)
+@@ -187,6 +191,7 @@
+     shadow: GlassShadow,
+     alpha: Float,
+ ) {
++    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+     val shader = shadowShader ?: return
+     if (alpha <= 0f || size.width <= 0f || size.height <= 0f) return
+ 

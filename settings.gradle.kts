@@ -33,6 +33,8 @@ dependencyResolutionManagement {
             url = uri("third_party/miuix/maven")
             content {
                 includeModule("top.yukonga.miuix.kmp", "miuix-ui-android")
+                includeModule("top.yukonga.miuix.kmp", "miuix-blur-android")
+                includeModule("top.yukonga.miuix.kmp", "miuix-nav-android")
             }
         }
         google()

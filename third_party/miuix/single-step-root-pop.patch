@@ -1,0 +1,129 @@
+--- a/miuix-nav/src/commonMain/kotlin/top/yukonga/miuix/kmp/nav/runtime/NavPresentation.kt
++++ b/miuix-nav/src/commonMain/kotlin/top/yukonga/miuix/kmp/nav/runtime/NavPresentation.kt
+@@ -5,6 +5,7 @@
+ 
+ import androidx.compose.animation.core.Animatable
+ import androidx.compose.animation.core.AnimationVector1D
++import androidx.compose.runtime.staticCompositionLocalOf
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.Stable
+ import androidx.compose.runtime.derivedStateOf
+@@ -22,6 +23,8 @@
+ import kotlin.time.TimeSource
+ 
+ /** Epsilon around zero within which an entry is treated as the steady-state top. */
++public val LocalSingleStepRootPop = staticCompositionLocalOf { false }
++
+ private const val TOP_EPSILON = 1e-3f
+ 
+ /** Mutable [NavSettle] backing: per-settle constants plus a per-frame elapsed stamp. */
+@@ -122,6 +125,17 @@
+      * per-frame visuals; both extensions live in `runtime/NavDriver.kt`.
+      */
+     val animatedTop: Animatable<Float, AnimationVector1D> = Animatable(initialTopIndex)
++
++    var rootPopOrigin: Int? by mutableStateOf(null)
++
++    fun depthAt(top: Float, index: Int): Float {
++        val origin = rootPopOrigin ?: return top - index
++        return when (index) {
++            0 -> top / origin
++            origin -> (top - origin) / origin
++            else -> -2f
++        }
++    }
+ 
+     // Presentation set = current back-stack entries UNION entries still leaving (relative depth > -1).
+     private val _presented = mutableStateListOf<NavEntry<*>>()
+--- a/miuix-nav/src/commonMain/kotlin/top/yukonga/miuix/kmp/nav/core/NavDisplay.kt
++++ b/miuix-nav/src/commonMain/kotlin/top/yukonga/miuix/kmp/nav/core/NavDisplay.kt
+@@ -52,6 +52,7 @@
+ import top.yukonga.miuix.kmp.nav.runtime.isVisibleAt
+ import top.yukonga.miuix.kmp.nav.runtime.navBackCompletionDecision
+ import top.yukonga.miuix.kmp.nav.runtime.navReconcile
++import top.yukonga.miuix.kmp.nav.runtime.LocalSingleStepRootPop
+ import top.yukonga.miuix.kmp.nav.runtime.relativeDepth
+ import top.yukonga.miuix.kmp.nav.runtime.rememberNavPresentation
+ import top.yukonga.miuix.kmp.nav.runtime.settleCancel
+@@ -352,6 +353,7 @@
+     // stable contentKey -> back-stack-index map so the render loop never rebuilds NavEntry instances to
+     // recover an index (no O(n^2)). Declared ahead of the gesture wiring: the settle physics
+     // resolution below feeds the gesture callbacks.
++    val singleStepRootPop = LocalSingleStepRootPop.current
+     val currentKeyList = backStack.toList()
+     // Plain (non-snapshot) holder for the previous classification input; bookkeeping only, never read
+     // by UI, so it must not be snapshot state (no cross-phase back-write).
+@@ -411,6 +413,10 @@
+                         "distinguishing keys via entry(contentKey = { route -> ... })."
+                 }
+             }
++        }
++        if (previousContentKeys[0] != newContentKeys) {
++            val previous = previousContentKeys[0].orEmpty()
++            presentation.rootPopOrigin = if (singleStepRootPop && newContentKeys.size == 1 && previous.size > 2 && previous.first() == newContentKeys.first()) previous.lastIndex else null
+         }
+         presentation.reconcile(currentEntries, navReconcile(previousContentKeys[0] ?: emptyList(), newContentKeys))
+         previousContentKeys[0] = newContentKeys
+@@ -564,7 +570,7 @@
+                 val e = presented[i]
+                 if (!e.presentation.isRemoving) continue
+                 val index = indexByContentKey[e.contentKey]
+-                if (index == null || top - index <= -1f || index < currentSize) {
++                if (index == null || presentation.depthAt(top, index) <= -1f || index < currentSize) {
+                     (result ?: ArrayList<NavEntry<*>>(presented.size).also { result = it }).add(e)
+                 }
+             }
+@@ -659,7 +665,7 @@
+                 for (i in presented.indices) {
+                     val entry = presented[i]
+                     val index = indexByContentKey[entry.contentKey] ?: continue
+-                    if (isVisibleAt(relativeDepth(top, index), windowDepth)) {
++                    if (isVisibleAt(presentation.depthAt(top, index), windowDepth)) {
+                         val list = result ?: ArrayList<NavEntry<*>>(presented.size).also { result = it }
+                         // Insertion-sorted by stack index: composition order is draw order, and a
+                         // pure back-stack reorder leaves `presented` in its old order. Stable, so a
+@@ -823,7 +829,7 @@
+     // inside the deferred graphicsLayer blocks installed below.
+     val depthBuckets by remember(presentation, entryIndex, entry, effects) {
+         derivedStateOf {
+-            val d = presentation.animatedTop.value - entryIndex
++            val d = presentation.depthAt(presentation.animatedTop.value, entryIndex)
+             var mask = navMaxLifecycleFor(entry.presentation, d, presentation.gesture != null).ordinal
+             if (d <= 0f) mask = mask or DEPTH_BUCKET_GOVERNS_OWN
+             if (effects.shouldClipCornersAt(d)) mask = mask or DEPTH_BUCKET_CLIP_CORNERS
+--- a/miuix-nav/src/commonMain/kotlin/top/yukonga/miuix/kmp/nav/core/LiveNavTransitionScope.kt
++++ b/miuix-nav/src/commonMain/kotlin/top/yukonga/miuix/kmp/nav/core/LiveNavTransitionScope.kt
+@@ -37,7 +37,7 @@
+     override val density: Density,
+ ) : NavTransitionScope {
+     override val relativeDepth: Float
+-        get() = relativeDepth(presentation.animatedTop.value, entryIndex)
++        get() = presentation.depthAt(presentation.animatedTop.value, entryIndex)
+ 
+     override val role: NavRole
+         get() = roleFor(relativeDepth, isRemoving)
+--- a/miuix-nav/src/commonTest/kotlin/top/yukonga/miuix/kmp/nav/runtime/NavPresentationMathTest.kt
++++ b/miuix-nav/src/commonTest/kotlin/top/yukonga/miuix/kmp/nav/runtime/NavPresentationMathTest.kt
+@@ -10,6 +10,22 @@
+ import kotlin.test.assertTrue
+ 
+ class NavPresentationMathTest {
++    @Test
++    fun rootPop_compressesTheWholeStackIntoOneTransition() {
++        val state = NavPresentation(3f)
++        state.rootPopOrigin = 3
++        for (top in listOf(3f, 2.25f, 1.5f, 0.75f, 0f)) {
++            assertEquals(top / 3f, state.depthAt(top, 0))
++            assertEquals((top - 3f) / 3f, state.depthAt(top, 3))
++            assertEquals(-2f, state.depthAt(top, 1))
++            assertEquals(-2f, state.depthAt(top, 2))
++        }
++        assertTrue(state.depthAt(0.75f, 3) > -1f)
++        assertEquals(-1f, state.depthAt(0f, 3))
++        state.rootPopOrigin = null
++        assertEquals(2f, state.depthAt(3f, 1))
++    }
++
+     // --- relativeDepth ---
+ 
+     @Test

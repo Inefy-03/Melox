@@ -1,0 +1,23 @@
+--- a/miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/BackdropEffects.kt
++++ b/miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/BackdropEffects.kt
+@@ -142,7 +142,7 @@
+         // variance exact), while every stack pass runs on 1/sf² pixels. The sharp end never rides
+         // this layer, so it doesn't constrain sf.
+         val sigma1 = maxOf(rX, rY) * BLUR_RADIUS_TO_SIGMA * PROGRESSIVE_LEVEL_FRACTION_1
+-        val exp = downScaleExpFor(sigma1 * sigma1)
++        val exp = downScaleExpFor(sigma1 * sigma1).coerceAtMost(3)
+         val sf = 1 shl exp
+         val kernelPadding = (BLUR_KERNEL_REACH * sf).toFloat()
+         if (kernelPadding > padding) {
+@@ -169,9 +169,8 @@
+     val sigmaX = radiusX * BLUR_RADIUS_TO_SIGMA
+     val sigmaY = radiusY * BLUR_RADIUS_TO_SIGMA
+ 
+-    // Same adaptive downscale as blur(): the box prefilter at each level is what keeps the fixed
+-    // 7-tap kernel from aliasing (blocky banding) at large radii. Capping it would defeat that.
+-    val exp = downScaleExpFor(maxOf(sigmaX * sigmaX, sigmaY * sigmaY))
++    // Limit progressive sampling to 1/8 resolution while retaining the requested blur radius.
++    val exp = downScaleExpFor(maxOf(sigmaX * sigmaX, sigmaY * sigmaY)).coerceAtMost(3)
+     val sf = 1 shl exp
+ 
+     val kernelPadding = (BLUR_KERNEL_REACH * sf).toFloat()

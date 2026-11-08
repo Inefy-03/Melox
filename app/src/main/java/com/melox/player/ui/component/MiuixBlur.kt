@@ -179,6 +179,7 @@ internal fun bottomSheetDirectContentColor(): Color =
 
 @Composable
 internal fun bottomSheetGlassModifier(): Modifier {
+    if (com.melox.player.ui.theme.LocalOs4Style.current) return Modifier
     val backdrop = LocalBottomSheetBlurBackdrop.current ?: return Modifier
     val elasticExtensionPx =
         (LocalWindowInfo.current.containerSize.height / BottomSheetDragDampingDivisor)
@@ -239,6 +240,8 @@ internal fun bottomSheetGlassModifier(): Modifier {
 
 private const val BottomSheetDragDampingDivisor = 10
 
+internal val LocalGlassTopBackdrop = compositionLocalOf<LayerBackdrop?> { null }
+
 @Composable
 internal fun BlurredBar(
     backdrop: LayerBackdrop?,
@@ -257,7 +260,7 @@ internal fun BlurredBar(
         progressiveEnabled = progressive,
         runtimeSupported = backdrop != null,
     )
-    val blurActive = blurEnabled && backdrop != null && !wallpaperOnly
+    val blurActive = blurEnabled && backdrop != null && !wallpaperOnly && !com.melox.player.ui.theme.LocalOs4Style.current
     Box(
         modifier = if (blurActive && !progressive) {
             Modifier.textureBlur(
@@ -302,7 +305,7 @@ internal fun BlurredBar(
                     ),
             )
         }
-        content()
+        androidx.compose.runtime.CompositionLocalProvider(LocalGlassTopBackdrop provides backdrop) { content() }
     }
 }
 

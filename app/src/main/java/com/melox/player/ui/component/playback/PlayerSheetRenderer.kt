@@ -53,6 +53,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.BottomBarStyle
+import top.yukonga.miuix.kmp.glass.GlassShape
+import top.yukonga.miuix.kmp.glass.GlassShadows
+import top.yukonga.miuix.kmp.glass.glassShadow
+import top.yukonga.miuix.kmp.glass.GlassNavigationBarDefaults
+import top.yukonga.miuix.kmp.glass.internal.drawGlassStroke
 import com.melox.player.ui.MiniPlayerChrome
 import com.melox.player.ui.NORMAL_BAR_STROKE_ALPHA
 import com.melox.player.ui.component.animation.InteractiveHighlight
@@ -332,6 +337,16 @@ internal fun PlayerSheetContentOverlay(
     val cornerRadii = playerSheetContainerCornerRadii(transition, collapsedCornerRadius)
     val cornerRadius = cornerRadii.topStart.dp
     val miniChromeAlpha = playerSheetBarAlpha(progress)
+    val os4Shape = GlassShape(
+        topStart = cornerRadii.topStart.dp,
+        topEnd = cornerRadii.topEnd.dp,
+        bottomEnd = cornerRadii.bottomEnd.dp,
+        bottomStart = cornerRadii.bottomStart.dp,
+        // The default shader switches from circular to continuous corners as the pill
+        // expands. Keep its outline identical to Compose's circular clipping path.
+        smoothing = 0f,
+    )
+    val os4Stroke = GlassNavigationBarDefaults.stroke()
 
     val glassChrome = miniPlayerChrome?.takeIf {
         playerSheetGlassVisible(progress)
@@ -340,6 +355,9 @@ internal fun PlayerSheetContentOverlay(
         Modifier
             .miniPlayerSurface(
                 cornerRadius = cornerRadius,
+                style = glassChrome.style,
+                glassShape = os4Shape,
+                showGlassStroke = glassChrome.style != BottomBarStyle.OS4,
                 backdrop = glassChrome.backdrop,
                 blurActive = glassChrome.blurActive,
                 liquidGlassActive = glassChrome.liquidGlassActive,
@@ -387,7 +405,9 @@ internal fun PlayerSheetContentOverlay(
                 height = with(density) { bounds.height.coerceAtLeast(1f).toDp() },
             )
             .then(
-                if (floatingMiniPlayer) {
+                if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
+                    Modifier.glassShadow(os4Shape, GlassShadows.Float, miniChromeAlpha)
+                } else if (floatingMiniPlayer) {
                     Modifier.miuixFloatingBarShadow(
                         cornerRadius = cornerRadius,
                         isDark = isDark,
@@ -398,7 +418,9 @@ internal fun PlayerSheetContentOverlay(
                 },
             )
             .then(
-                if (miniPlayerChrome?.liquidGlassActive == true && miniPlayerChrome.backdrop != null) {
+                if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
+                    Modifier.clip(os4Shape)
+                } else if (miniPlayerChrome?.liquidGlassActive == true && miniPlayerChrome.backdrop != null) {
                     // Preserve the glass pill's outline after its material fades away.
                     if (glassChrome != null) Modifier else Modifier.clip(RoundedCornerShape(cornerRadius))
                 } else {
@@ -410,7 +432,15 @@ internal fun PlayerSheetContentOverlay(
                     )
                 },
             )
-            .then(glassSurfaceModifier),
+            .then(glassSurfaceModifier)
+            .then(
+                if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
+                    Modifier.drawWithContent {
+                        drawContent()
+                        drawGlassStroke(os4Shape, layoutDirection, os4Stroke, (1f - progress).coerceIn(0f, 1f))
+                    }
+                } else Modifier,
+            ),
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (

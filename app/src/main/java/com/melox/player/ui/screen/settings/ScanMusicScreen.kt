@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import com.melox.player.ui.component.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -55,7 +55,7 @@ import com.melox.player.ui.component.PageCard as Card
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
@@ -64,10 +64,10 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.melox.player.ui.component.os4.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.More
-import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import com.melox.player.ui.component.os4.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.LocalContentColor
@@ -151,7 +151,7 @@ fun ScanMusicScreen(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = MiuixIcons.Back,
+                                imageVector = navigationBackIcon(),
                                 contentDescription = stringResource(R.string.back),
                             )
                         }

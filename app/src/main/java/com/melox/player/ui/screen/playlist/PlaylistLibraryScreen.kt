@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import com.melox.player.ui.component.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
@@ -54,14 +54,14 @@ import com.melox.player.ui.screen.home.homePlaylistGridColumnCount
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.melox.player.ui.component.os4.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.RecordingTape
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -126,7 +126,7 @@ fun PlaylistLibraryScreen(
                     navigationIcon = {
                         IconButton(onClick = { if (draggedPlaylistId == null) onBack() }) {
                             Icon(
-                                imageVector = MiuixIcons.Back,
+                                imageVector = navigationBackIcon(),
                                 contentDescription = stringResource(R.string.back),
                             )
                         }

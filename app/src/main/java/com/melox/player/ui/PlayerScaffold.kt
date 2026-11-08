@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -56,11 +57,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
+import com.melox.player.ui.component.os4.BottomSearchAction
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.ui.component.FixedPageBackgroundHost
 import com.melox.player.ui.component.GaussianBlurredBar
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.pageTextureBlur
+import com.melox.player.ui.component.playback.miniPlayerArtworkSize
 import com.melox.player.ui.component.playback.miniPlayerHeight
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.rememberPageSurfaceBackdrop
@@ -93,7 +96,36 @@ internal data class MiniPlayerChrome(
     val isDark: Boolean,
     val floatingHighlight: State<Highlight>? = null,
     val smallPlayerBar: Boolean = false,
-)
+) {
+    val height: Dp
+        get() = miniPlayerHeight(style, smallPlayerBar)
+
+    val cornerRadius: Dp
+        get() = when (style) {
+            BottomBarStyle.NORMAL -> 18.dp
+            BottomBarStyle.OS4 -> height / 2
+            else -> 32.dp
+        }
+
+    val contentFraction: Float
+        get() = if (style == BottomBarStyle.OS4) {
+            val compactHeight = miniPlayerHeight(BottomBarStyle.FLOATING, true)
+            val regularHeight = miniPlayerHeight(BottomBarStyle.FLOATING, false)
+            ((height - compactHeight) / (regularHeight - compactHeight)).coerceIn(0f, 1f)
+        } else {
+            1f
+        }
+
+    val artworkSize: Dp
+        get() = if (style == BottomBarStyle.OS4) 36.dp
+            else miniPlayerArtworkSize(style == BottomBarStyle.NORMAL, smallPlayerBar)
+
+    val os4ArtworkStartPadding: Dp
+        get() = 16.dp
+
+    val os4ArtworkCornerRadius: Dp
+        get() = 6.dp
+}
 
 internal const val NORMAL_BAR_STROKE_ALPHA = 0.42f
 private const val NAVIGATION_ENTER_DURATION_MILLIS = 280
@@ -121,6 +153,10 @@ internal fun PlayerScaffold(
     backdropRefreshKey: Any,
     backdropPagingSignal: () -> Float,
     miniPlayer: @Composable (MiniPlayerChrome) -> Unit,
+    bottomSearchAction: BottomSearchAction? = null,
+    showBottomSearch: Boolean = bottomSearchAction != null,
+    searchExpanded: Boolean = false,
+    searchOpen: Boolean = false,
     content: @Composable (PaddingValues, navigationRailExpanded: Boolean) -> Unit,
 ) {
     val homeLabel = stringResource(R.string.navigation_home)
@@ -216,13 +252,7 @@ internal fun PlayerScaffold(
         } else {
             0.dp
         }
-        val railBottomInsets = WindowInsets(
-            bottom = with(density) {
-                (miniPlayerHeight(BottomBarStyle.NORMAL, smallPlayerBar) +
-                    miniPlayerBottomPadding + PLAYER_NORMAL_MINI_PLAYER_INTERNAL_PADDING -
-                    miniPlayerVerticalOffset).roundToPx()
-            },
-        )
+        val railBottomInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
         FixedPageBackgroundHost(Modifier.fillMaxSize(), refreshSignal = backdropRefreshSignal) {
             val navigationRailBackdrop = rememberPageSurfaceBackdrop()
             val navigationRailModifier = navigationRailBackdrop?.let {
@@ -240,10 +270,7 @@ internal fun PlayerScaffold(
                         @Suppress("UNUSED_VARIABLE")
                         val refreshFrame = backdropRefreshSignal()
                         drawContent()
-                    }
-                    .then(
-                        miniPlayerBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier,
-                    ),
+                    },
             ) {
                 AnimatedVisibility(
                     visible = navigationRailVisible,
@@ -292,44 +319,48 @@ internal fun PlayerScaffold(
                             )
                         },
                     ) { innerPadding ->
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        // Record only page content; the player consuming it must stay outside capture.
+                        Box(modifier = Modifier.fillMaxSize().then(miniPlayerBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)) {
                             content(
                                 innerPadding,
                                 navigationRailVisible && navigationRailState.isExpanded,
                             )
                         }
                     }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = miniPlayerBottomPadding)
+                            .windowInsetsPadding(
+                                WindowInsets.navigationBars.union(WindowInsets.displayCutout)
+                                    .only(WindowInsetsSides.Horizontal),
+                            )
+                            .padding(horizontal = 16.dp - PLAYER_NORMAL_MINI_PLAYER_INTERNAL_PADDING),
+                        contentAlignment = Alignment.BottomCenter,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .offset(y = miniPlayerVerticalOffset)
+                                .widthIn(max = 720.dp)
+                                .fillMaxWidth(),
+                        ) {
+                            miniPlayer(
+                                MiniPlayerChrome(
+                                    style = BottomBarStyle.NORMAL,
+                                    smallPlayerBar = smallPlayerBar,
+                                    backdrop = miniPlayerBackdrop,
+                                    blurActive = miniPlayerBackdrop != null,
+                                    liquidGlassActive = false,
+                                    isDark = isDark,
+                                ),
+                            )
+                        }
+                    }
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = miniPlayerBottomPadding)
-                    .windowInsetsPadding(
-                        WindowInsets.navigationBars.union(WindowInsets.displayCutout)
-                            .only(WindowInsetsSides.Horizontal),
-                    )
-                    .padding(horizontal = 16.dp - PLAYER_NORMAL_MINI_PLAYER_INTERNAL_PADDING),
-                contentAlignment = Alignment.BottomCenter,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .offset(y = miniPlayerVerticalOffset)
-                        .fillMaxWidth(),
-                ) {
-                    miniPlayer(
-                        MiniPlayerChrome(
-                            style = BottomBarStyle.NORMAL,
-                            smallPlayerBar = smallPlayerBar,
-                            backdrop = miniPlayerBackdrop,
-                            blurActive = miniPlayerBackdrop != null,
-                            liquidGlassActive = false,
-                            isDark = isDark,
-                        ),
-                    )
-                }
-            }
+
         }
         return
     }
@@ -410,11 +441,16 @@ internal fun PlayerScaffold(
 
     if (effectiveStyle != BottomBarStyle.NORMAL) {
         IosLikeFloatingPlayerScaffold(
+            bottomSearchAction = bottomSearchAction,
+            showBottomSearch = showBottomSearch,
+            searchExpanded = searchExpanded,
+            searchOpen = searchOpen,
             selectedTab = selectedTab,
             onTabSelected = onTabSelected,
             navigationItems = navigationItems,
             blurEnabled = blurEnabled,
-            liquidGlassEnabled = bottomBarStyle == BottomBarStyle.LIQUID_GLASS,
+            bottomBarStyle = effectiveStyle,
+            liquidGlassEnabled = bottomBarStyle == BottomBarStyle.LIQUID_GLASS && blurEnabled,
             smallPlayerBar = smallPlayerBar,
             effectsSupported = liquidGlassSupported,
             isDark = isDark,
@@ -445,14 +481,7 @@ internal fun PlayerScaffold(
 internal fun resolveBottomBarStyle(
     bottomBarStyle: BottomBarStyle,
     liquidGlassSupported: Boolean,
-): BottomBarStyle = if (
-    // Older devices cannot create the RuntimeShader-based glass effect.
-    bottomBarStyle == BottomBarStyle.LIQUID_GLASS && !liquidGlassSupported
-) {
-    BottomBarStyle.FLOATING
-} else {
-    bottomBarStyle
-}
+): BottomBarStyle = com.melox.player.model.availableBottomBarStyle(bottomBarStyle, liquidGlassSupported)
 
 internal fun shouldUseNavigationRail(
     windowWidth: Dp,
@@ -495,7 +524,7 @@ internal fun shouldShowNavigation(
     landscape: Boolean,
     requestedBottomBarStyle: BottomBarStyle,
     renderedBottomBarStyle: BottomBarStyle = requestedBottomBarStyle,
-): Boolean = currentRouteIsRoot && !hideBottomBar &&
+): Boolean = requestedBottomBarStyle == BottomBarStyle.OS4 || currentRouteIsRoot && !hideBottomBar &&
     (!landscape || requestedBottomBarStyle == BottomBarStyle.NORMAL ||
         renderedBottomBarStyle != BottomBarStyle.NORMAL)
 

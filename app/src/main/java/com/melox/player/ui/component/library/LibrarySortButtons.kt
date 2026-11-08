@@ -1,5 +1,9 @@
 package com.melox.player.ui.component.library
 
+import com.melox.player.ui.theme.LocalOs4Style
+import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +28,7 @@ import com.melox.player.data.library.FolderSortField
 import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.ListPopupDefaults
 import top.yukonga.miuix.kmp.basic.PopupPositionProvider
@@ -48,6 +52,29 @@ fun AlbumSortButton(
         AlbumSortField.SONG_COUNT to stringResource(R.string.album_sort_song_count),
         AlbumSortField.YEAR to stringResource(R.string.album_sort_year),
     )
+    if (LocalOs4Style.current) {
+        OverlayIconDropdownMenu(
+            modifier = modifier,
+            entries = listOf(
+                DropdownEntry(gridStyles.map { (gridStyle, label) ->
+                    DropdownItem(text = label, selected = config.gridStyle == gridStyle,
+                        onClick = { onConfigChange(config.copy(gridStyle = gridStyle)) })
+                }),
+                DropdownEntry(fields.map { (field, label) ->
+                    DropdownItem(text = label, selected = config.field == field,
+                        onClick = { onConfigChange(config.copy(field = field)) })
+                }),
+                DropdownEntry(listOf(DropdownItem(
+                    text = stringResource(R.string.music_sort_descending), selected = config.descending,
+                    onClick = { onConfigChange(config.copy(descending = !config.descending)) },
+                ))),
+            ),
+            collapseOnSelection = true,
+        ) {
+            Icon(MiuixIcons.Sort, stringResource(R.string.album_sort_action), Modifier.size(24.dp))
+        }
+        return
+    }
     LibrarySortPopup(
         modifier = modifier,
         contentDescription = stringResource(R.string.album_sort_action),
@@ -114,6 +141,25 @@ fun ArtistSortButton(
         ArtistSortField.SONG_COUNT to stringResource(R.string.artist_sort_song_count),
         ArtistSortField.ALBUM_COUNT to stringResource(R.string.artist_sort_album_count),
     )
+    if (LocalOs4Style.current) {
+        OverlayIconDropdownMenu(
+            modifier = modifier,
+            entries = listOf(
+                DropdownEntry(fields.map { (field, label) ->
+                    DropdownItem(text = label, selected = config.field == field,
+                        onClick = { onConfigChange(config.copy(field = field)) })
+                }),
+                DropdownEntry(listOf(DropdownItem(
+                    text = stringResource(R.string.music_sort_descending), selected = config.descending,
+                    onClick = { onConfigChange(config.copy(descending = !config.descending)) },
+                ))),
+            ),
+            collapseOnSelection = true,
+        ) {
+            Icon(MiuixIcons.Sort, stringResource(R.string.artist_sort_action), Modifier.size(24.dp))
+        }
+        return
+    }
     LibrarySortPopup(
         modifier = modifier,
         contentDescription = stringResource(R.string.artist_sort_action),
@@ -154,6 +200,25 @@ fun FolderSortButton(
         FolderSortField.NAME to stringResource(R.string.folder_sort_name),
         FolderSortField.SONG_COUNT to stringResource(R.string.folder_sort_song_count),
     )
+    if (LocalOs4Style.current) {
+        OverlayIconDropdownMenu(
+            modifier = modifier,
+            entries = listOf(
+                DropdownEntry(fields.map { (field, label) ->
+                    DropdownItem(text = label, selected = config.field == field,
+                        onClick = { onConfigChange(config.copy(field = field)) })
+                }),
+                DropdownEntry(listOf(DropdownItem(
+                    text = stringResource(R.string.music_sort_descending), selected = config.descending,
+                    onClick = { onConfigChange(config.copy(descending = !config.descending)) },
+                ))),
+            ),
+            collapseOnSelection = true,
+        ) {
+            Icon(MiuixIcons.Sort, stringResource(R.string.folder_sort_action), Modifier.size(24.dp))
+        }
+        return
+    }
     LibrarySortPopup(
         modifier = modifier,
         contentDescription = stringResource(R.string.folder_sort_action),

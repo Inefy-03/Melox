@@ -97,17 +97,17 @@ class PlayerResponsiveLayoutTest {
         val widthAbovePaneLimit = 1248.dp
         val widePlaybackPane = landscapePlayerPlaybackPaneWidth(widthAbovePaneLimit)
         val wideLyricsPane = landscapePlayerLyricsPaneWidth(widthAbovePaneLimit)
-        assertEquals(500.dp, widePlaybackPane)
-        assertEquals(596.dp, wideLyricsPane)
+        assertEquals(480.dp, widePlaybackPane)
+        assertEquals(600.dp, wideLyricsPane)
         assertEquals(24.dp, landscapePlayerPaneSpacing(widthAbovePaneLimit))
-        assertEquals(52.dp, (widthAbovePaneLimit - 24.dp - widePlaybackPane -
+        assertEquals(60.dp, (widthAbovePaneLimit - 24.dp - widePlaybackPane -
             landscapePlayerPaneSpacing(widthAbovePaneLimit) - wideLyricsPane) / 2f)
     }
 
     @Test
     fun widePaneSpacingCompressesBeforeTheFixedLeadingInsetLosesItsMargin() {
         assertEquals(24.dp, landscapePlayerPaneSpacing(1152.dp))
-        assertEquals(18.088236.dp, landscapePlayerPaneSpacing(876.dp))
+        assertEquals(18.272728f, landscapePlayerPaneSpacing(876.dp).value, 0.00001f)
         assertEquals(12.dp, landscapePlayerPaneSpacing(600.dp))
         assertEquals(12.dp, landscapePlayerPaneSpacing(400.dp))
     }

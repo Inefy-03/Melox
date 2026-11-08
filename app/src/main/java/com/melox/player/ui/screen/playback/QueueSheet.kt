@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
@@ -67,14 +68,14 @@ import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import com.melox.player.ui.component.os4.OverlayBottomSheet
+import com.melox.player.ui.component.os4.OverlayDialog
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -86,15 +87,13 @@ private val QueueTitlePositionSpacing = 6.dp
 private val QueueSheetHeaderHeight = 82.dp + QueueTitlePositionSpacing
 
 @Composable
-private fun QueueSheetPosition(position: String) {
+private fun QueueSheetPosition(position: String, modifier: Modifier = Modifier) {
     Layout(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         content = {
             Text(
                 text = position,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(QueuePositionRowHeight),
+                modifier = Modifier.fillMaxWidth(),
                 style = MiuixTheme.textStyles.footnote1,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 textAlign = TextAlign.Center,
@@ -103,8 +102,11 @@ private fun QueueSheetPosition(position: String) {
         },
     ) { measurables, constraints ->
         val positionText = measurables.single().measure(Constraints(maxWidth = constraints.maxWidth))
-        layout(constraints.maxWidth, QueueTitlePositionSpacing.roundToPx()) {
-            positionText.placeRelative(0, -positionText.height)
+        // Keep the default header alignment while reserving space for larger text.
+        val overlap = QueuePositionRowHeight.roundToPx().coerceAtMost(positionText.height)
+        val height = QueueTitlePositionSpacing.roundToPx() + positionText.height - overlap
+        layout(constraints.maxWidth, height) {
+            positionText.placeRelative(0, -overlap)
         }
     }
 }
@@ -279,10 +281,12 @@ fun QueueSheet(
         WindowInsets.captionBar.asPaddingValues().calculateTopPadding(),
         WindowInsets.displayCutout.asPaddingValues().calculateTopPadding(),
     )
+    var queuePositionHeight by remember { mutableStateOf(QueueTitlePositionSpacing) }
     val queueMaxListHeight = (
         LocalWindowInfo.current.containerDpSize.height -
             queueSheetTopInset -
-            QueueSheetHeaderHeight
+            QueueSheetHeaderHeight -
+            (queuePositionHeight - QueueTitlePositionSpacing)
     ).coerceAtLeast(0.dp)
     val currentKey = playback.currentItem?.queueSlotKey()
     val displayedCurrentIndex = draftQueue.indexOfFirst { item ->
@@ -348,6 +352,7 @@ fun QueueSheet(
         startAction = {
             IconButton(
                 onClick = onDismiss,
+                glassEnabled = false,
                 modifier = Modifier.padding(start = 16.dp),
             ) {
                 Icon(
@@ -360,7 +365,10 @@ fun QueueSheet(
         endAction = {
             val currentTrackAvailable = displayedCurrentIndex in draftQueue.indices
             val queueNotEmpty = playback.queue.isNotEmpty()
-            Row(modifier = Modifier.padding(end = 20.dp)) {
+            Row(
+                modifier = Modifier.padding(end = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (com.melox.player.ui.theme.LocalOs4Style.current) 8.dp else 0.dp),
+            ) {
                 IconButton(
                     onClick = {
                         if (displayedCurrentIndex in draftQueue.indices) {
@@ -370,6 +378,7 @@ fun QueueSheet(
                         }
                     },
                     enabled = currentTrackAvailable,
+                    glassEnabled = false,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_locate_current_track),
@@ -382,6 +391,7 @@ fun QueueSheet(
                 IconButton(
                     onClick = { showClearConfirm = true },
                     enabled = queueNotEmpty,
+                    glassEnabled = false,
                 ) {
                     Icon(
                         imageVector = MiuixIcons.Delete,
@@ -397,7 +407,12 @@ fun QueueSheet(
         enableWindowDim = true,
         onDismissRequest = onDismiss,
     ) {
-        QueueSheetPosition(queuePosition)
+        QueueSheetPosition(
+            position = queuePosition,
+            modifier = Modifier.onSizeChanged { size ->
+                queuePositionHeight = with(density) { size.height.toDp() }
+            },
+        )
         if (draftQueue.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -513,6 +528,7 @@ fun QueueSheet(
                                 ) {
                                     IconButton(
                                         onClick = { moveAfterCurrent(index, slotKey) },
+                                        glassEnabled = false,
                                         enabled = playNextExitKey == null,
                                     ) {
                                         Icon(
@@ -528,9 +544,13 @@ fun QueueSheet(
                                             modifier = Modifier.size(24.dp),
                                         )
                                     }
+                                    if (com.melox.player.ui.theme.LocalOs4Style.current) {
+                                        Spacer(Modifier.width(8.dp))
+                                    }
                                 }
                                 IconButton(
                                     onClick = { onRemove(index) },
+                                    glassEnabled = false,
                                     modifier = Modifier.padding(end = 3.dp),
                                 ) {
                                     Icon(

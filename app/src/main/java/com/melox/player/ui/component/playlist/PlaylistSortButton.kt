@@ -1,5 +1,9 @@
 package com.melox.player.ui.component.playlist
 
+import com.melox.player.ui.theme.LocalOs4Style
+import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,7 +21,7 @@ import com.melox.player.data.playlist.PlaylistSortField
 import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.ListPopupDefaults
 import top.yukonga.miuix.kmp.basic.PopupPositionProvider
@@ -40,6 +44,26 @@ fun PlaylistSortButton(
         PlaylistSortField.FILE_SIZE to stringResource(R.string.music_sort_file_size),
         PlaylistSortField.DURATION to stringResource(R.string.music_sort_duration),
     )
+    if (LocalOs4Style.current) {
+        OverlayIconDropdownMenu(
+            modifier = modifier,
+            entries = listOf(
+                DropdownEntry(sortEntries.map { (field, label) ->
+                    DropdownItem(text = label, selected = config.field == field,
+                        onClick = { onConfigChange(config.copy(field = field)) })
+                }),
+                DropdownEntry(listOf(DropdownItem(
+                    text = stringResource(R.string.music_sort_descending), selected = config.descending,
+                    onClick = { onConfigChange(config.copy(descending = !config.descending)) },
+                ))),
+            ),
+            collapseOnSelection = true,
+        ) {
+            Icon(MiuixIcons.Sort, stringResource(R.string.playlist_sort_action), Modifier.size(24.dp))
+        }
+        return
+    }
+
     val optionSize = sortEntries.size + 1
 
     Box(modifier = modifier) {

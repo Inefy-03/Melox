@@ -76,6 +76,7 @@ import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.DynamicFlowStyle
 import com.melox.player.model.ScanStatus
+import com.melox.player.model.ThemeStyle
 import com.melox.player.model.ThemeMode
 import com.melox.player.model.withTrackMetadata
 import com.melox.player.model.PlaybackMetadataProjection
@@ -699,6 +700,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setThemeStyle(style: ThemeStyle) {
+        viewModelScope.launch {
+            settingsRepository.setThemeStyle(style)
+        }
+    }
+
     fun setThemeMode(themeMode: ThemeMode) {
         viewModelScope.launch {
             settingsRepository.setThemeMode(themeMode)
@@ -930,21 +937,9 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setFloatingBottomBar(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setFloatingBottomBar(enabled)
-        }
-    }
-
     fun setNavigationRailExpanded(expanded: Boolean) {
         viewModelScope.launch {
             settingsRepository.setNavigationRailExpanded(expanded)
-        }
-    }
-
-    fun setLiquidGlass(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setLiquidGlass(enabled)
         }
     }
 

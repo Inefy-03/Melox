@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -29,6 +29,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
+import com.melox.player.model.BottomBarStyle
+import com.melox.player.ui.component.os4.OverlayDropdownPreference
 import com.melox.player.model.AppSettings
 import com.melox.player.ui.component.AdaptiveTopAppBar
 import com.melox.player.ui.component.BlurredBar
@@ -36,12 +38,14 @@ import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.PageCard as Card
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.melox.player.ui.component.os4.navigationBackIcon
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -58,10 +62,12 @@ internal fun InterfaceStyleSettingsScreen(
     onProgressiveTopBarBlurChange: (Boolean) -> Unit,
     onSmallPlayerBarChange: (Boolean) -> Unit,
     onHideBottomBarChange: (Boolean) -> Unit,
-    onFloatingBottomBarChange: (Boolean) -> Unit,
-    onLiquidGlassChange: (Boolean) -> Unit,
+    onBottomBarStyleChange: (BottomBarStyle) -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
+    val size = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val landscape = with(density) { com.melox.player.ui.isMiuixWideLayout(size.width.toDp(), size.height.toDp()) }
     val blurSupported = liquidGlassSupported
     var blurChecked by remember(settings.blurEnabled) {
         mutableStateOf(settings.blurEnabled)
@@ -74,12 +80,6 @@ internal fun InterfaceStyleSettingsScreen(
     }
     var hideBottomBarChecked by remember(settings.hideBottomBar) {
         mutableStateOf(settings.hideBottomBar)
-    }
-    var floatingBottomBarChecked by remember(settings.floatingBottomBar) {
-        mutableStateOf(settings.floatingBottomBar)
-    }
-    var liquidGlassChecked by remember(settings.liquidGlass) {
-        mutableStateOf(settings.liquidGlass)
     }
     var topBarBackdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarBackdropCaptureCoordinates })
@@ -97,7 +97,7 @@ internal fun InterfaceStyleSettingsScreen(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = MiuixIcons.Back,
+                                imageVector = navigationBackIcon(),
                                 contentDescription = stringResource(R.string.back),
                             )
                         }
@@ -172,48 +172,46 @@ internal fun InterfaceStyleSettingsScreen(
                 }
                 item(key = "interface_bottom_bar") {
                     InterfaceStyleCard {
-                        SwitchPreference(
-                            checked = floatingBottomBarChecked,
-                            onCheckedChange = { checked ->
-                                floatingBottomBarChecked = checked
-                                onFloatingBottomBarChange(checked)
-                            },
-                            title = stringResource(R.string.settings_floating_bottom_bar_title),
-                            summary = stringResource(R.string.settings_floating_bottom_bar_summary),
+                        val styles = listOf(
+                            BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS, BottomBarStyle.OS4,
+                        )
+                        val labels = listOf(
+                            stringResource(R.string.settings_style_os3),
+                            stringResource(R.string.settings_bottom_bar_ios_like),
+                            stringResource(R.string.settings_style_os4),
+                        )
+                        OverlayDropdownPreference(
+                            title = stringResource(R.string.settings_bottom_bar_style_title),
+                            summary = if (!liquidGlassSupported) stringResource(R.string.settings_glass_styles_unsupported) else null,
+                            entry = DropdownEntry(items = styles.mapIndexed { index, style ->
+                                DropdownItem(
+                                    text = labels[index],
+                                    selected = settings.bottomBarStyle == style,
+                                    enabled = liquidGlassSupported ||
+                                        (style != BottomBarStyle.OS4 && style != BottomBarStyle.LIQUID_GLASS),
+                                    onClick = { onBottomBarStyleChange(style) },
+                                )
+                            }),
                         )
                         AnimatedVisibility(
-                            visible = floatingBottomBarChecked,
-                            enter = fadeIn(animationSpec = tween(200)) +
-                                expandVertically(animationSpec = tween(250)),
-                            exit = fadeOut(animationSpec = tween(150)) +
-                                shrinkVertically(animationSpec = tween(200)),
-                            label = "liquidGlassPreferenceVisibility",
+                            visible = settings.bottomBarStyle.supportsSmallPlayerBar && !landscape,
+                            enter = fadeIn(tween(200)) + expandVertically(tween(250)),
+                            exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
                         ) {
                             SwitchPreference(
-                                checked = liquidGlassChecked && liquidGlassSupported,
+                                checked = smallPlayerBarChecked,
                                 onCheckedChange = { checked ->
-                                    liquidGlassChecked = checked
-                                    onLiquidGlassChange(checked)
+                                    smallPlayerBarChecked = checked
+                                    onSmallPlayerBarChange(checked)
                                 },
-                                title = stringResource(R.string.settings_liquid_glass_title),
-                                summary = stringResource(
-                                    if (liquidGlassSupported) {
-                                        R.string.settings_liquid_glass_summary
-                                    } else {
-                                        R.string.settings_liquid_glass_unsupported
-                                    },
-                                ),
-                                enabled = liquidGlassSupported,
+                                title = stringResource(R.string.settings_small_player_bar_title),
                             )
                         }
-                        SwitchPreference(
-                            checked = smallPlayerBarChecked,
-                            onCheckedChange = { checked ->
-                                smallPlayerBarChecked = checked
-                                onSmallPlayerBarChange(checked)
-                            },
-                            title = stringResource(R.string.settings_small_player_bar_title),
-                        )
+                        AnimatedVisibility(
+                            visible = settings.bottomBarStyle != BottomBarStyle.OS4,
+                            enter = fadeIn(tween(200)) + expandVertically(tween(250)),
+                            exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
+                        ) {
                         SwitchPreference(
                             checked = hideBottomBarChecked,
                             onCheckedChange = { checked ->
@@ -223,6 +221,7 @@ internal fun InterfaceStyleSettingsScreen(
                             title = stringResource(R.string.settings_hide_bottom_bar_title),
                             summary = stringResource(R.string.settings_hide_bottom_bar_summary),
                         )
+                        }
                     }
                 }
             }

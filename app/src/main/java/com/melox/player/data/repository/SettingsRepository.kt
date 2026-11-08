@@ -35,6 +35,10 @@ import com.melox.player.model.normalizeCustomBackgroundCardBlurPercent
 import com.melox.player.model.DEFAULT_CUSTOM_BACKGROUND_CARD_BLUR_PERCENT
 import com.melox.player.model.DEFAULT_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT
 import com.melox.player.model.normalizeCustomBackgroundCardOpacityPercent
+import com.melox.player.model.resolveStoredNavigationStyle
+import android.os.Build
+import com.melox.player.model.availableBottomBarStyle
+import com.melox.player.model.ThemeStyle
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DefaultHomePage
 import com.melox.player.model.DynamicColorSource
@@ -176,6 +180,20 @@ class SettingsRepository(context: Context) {
                         enumValueOrDefault(storedValue, LyricsFormatPriority.LRC)
                     }
                     ?: LyricsFormatPriority.LRC,
+                themeStyle = preferences[Keys.ThemeStyle]
+                    ?.let { enumValueOrDefault(it, if (Build.VERSION.SDK_INT >= 33) ThemeStyle.OS4 else ThemeStyle.OS3) }
+                    ?.takeUnless { it == ThemeStyle.OS4 && Build.VERSION.SDK_INT < 33 }
+                    ?: if (Build.VERSION.SDK_INT >= 33) ThemeStyle.OS4 else ThemeStyle.OS3,
+                selectedBottomBarStyle = if (preferences[Keys.NavigationBarStyle] == null &&
+                    preferences[Keys.BottomBarStyle] == null && preferences[Keys.FloatingBottomBar] == null
+                ) {
+                    if (Build.VERSION.SDK_INT >= 33 && preferences[Keys.ThemeStyle] != ThemeStyle.OS3.name)
+                        BottomBarStyle.OS4 else BottomBarStyle.NORMAL
+                } else resolveStoredNavigationStyle(
+                    stored = preferences[Keys.NavigationBarStyle],
+                    legacyStyle = preferences[Keys.BottomBarStyle],
+                    floating = preferences[Keys.FloatingBottomBar],
+                ).let { availableBottomBarStyle(it, Build.VERSION.SDK_INT >= 33) },
                 blurEnabled = preferences[Keys.BlurEnabled] ?: true,
                 progressiveTopBarBlurEnabled =
                     preferences[Keys.ProgressiveTopBarBlurEnabled] ?: false,
@@ -492,8 +510,18 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    suspend fun setBottomBarStyle(bottomBarStyle: BottomBarStyle) {
+    suspend fun setThemeStyle(style: ThemeStyle) {
+        if (style == ThemeStyle.OS4 && Build.VERSION.SDK_INT < 33) return
         dataStore.edit { preferences ->
+            preferences[Keys.ThemeStyle] = style.name
+            preferences[Keys.NavigationBarStyle] = style.defaultBottomBarStyle.name
+        }
+    }
+
+    suspend fun setBottomBarStyle(bottomBarStyle: BottomBarStyle) {
+        if (availableBottomBarStyle(bottomBarStyle, Build.VERSION.SDK_INT >= 33) != bottomBarStyle) return
+        dataStore.edit { preferences ->
+            preferences[Keys.NavigationBarStyle] = bottomBarStyle.name
             preferences[Keys.FloatingBottomBar] = bottomBarStyle != BottomBarStyle.NORMAL
             preferences[Keys.LiquidGlass] = bottomBarStyle == BottomBarStyle.LIQUID_GLASS
         }
@@ -535,21 +563,9 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    suspend fun setFloatingBottomBar(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[Keys.FloatingBottomBar] = enabled
-        }
-    }
-
     suspend fun setNavigationRailExpanded(expanded: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.NavigationRailExpanded] = expanded
-        }
-    }
-
-    suspend fun setLiquidGlass(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[Keys.LiquidGlass] = enabled
         }
     }
 
@@ -720,6 +736,8 @@ class SettingsRepository(context: Context) {
         val LyricsSourcePriority = stringPreferencesKey("lyrics_source_priority")
         // Keep the existing key so saved external-format preferences apply to both sources.
         val LyricsFormatPriority = stringPreferencesKey("lyrics_sidecar_format_priority")
+        val ThemeStyle = stringPreferencesKey("theme_style")
+        val NavigationBarStyle = stringPreferencesKey("navigation_bar_style")
         val BottomBarStyle = stringPreferencesKey("bottom_bar_style")
         val BlurEnabled = booleanPreferencesKey("blur_enabled")
         val ProgressiveTopBarBlurEnabled =

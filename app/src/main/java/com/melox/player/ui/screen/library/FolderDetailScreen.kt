@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.ui.theme.referenceMusicHighlightColors
 import com.melox.player.R
+import com.melox.player.ui.theme.LocalOs4Style
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.FolderGroup
 import com.melox.player.data.library.filterFolders
@@ -62,13 +64,13 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.BreadcrumbBar
 import top.yukonga.miuix.kmp.basic.BreadcrumbBarDefaults
 import top.yukonga.miuix.kmp.basic.BreadcrumbItem
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.melox.player.ui.component.PageScaffold
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Folder
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.melox.player.ui.component.os4.navigationBackIcon
 
 @Composable
 fun FolderDetailScreen(
@@ -191,10 +193,10 @@ fun FolderDetailScreen(
                                 selectionMode = false
                             },
                             defaultNavigationIcon = {
-                                Row {
+                                Row(horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
                                     IconButton(onClick = handleBack) {
                                         Icon(
-                                            imageVector = MiuixIcons.Back,
+                                            imageVector = navigationBackIcon(),
                                             contentDescription = stringResource(R.string.back),
                                         )
                                     }

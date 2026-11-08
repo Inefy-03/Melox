@@ -5,6 +5,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import com.melox.player.model.BottomBarStyle
+import top.yukonga.miuix.kmp.glass.GlassNavigationBarDefaults
+import top.yukonga.miuix.kmp.glass.GlassDefaults
+import top.yukonga.miuix.kmp.glass.GlassShape
+import top.yukonga.miuix.kmp.glass.glassPanel
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
@@ -33,6 +39,9 @@ internal fun Modifier.miniPlayerSurface(
     floatingHighlight: State<Highlight>? = null,
     highlightAlpha: Float = 1f,
     layerBlock: (GraphicsLayerScope.() -> Unit)? = null,
+    style: BottomBarStyle = BottomBarStyle.FLOATING,
+    glassShape: GlassShape = GlassShape(cornerRadius),
+    showGlassStroke: Boolean = true,
 ): Modifier {
     val surfaceColor = if (followsNavigationBar) {
         MiuixTheme.colorScheme.surface
@@ -47,6 +56,18 @@ internal fun Modifier.miniPlayerSurface(
     val containerBlur = rememberGlassContainerBlur()
     return then(
         when {
+            style == BottomBarStyle.OS4 -> Modifier.glassPanel(
+                backdrop = usableBackdrop,
+                shape = glassShape,
+                style = GlassDefaults.Style,
+                alpha = resolvedHighlightAlpha,
+                material = GlassNavigationBarDefaults.material(),
+                stroke = if (showGlassStroke) GlassNavigationBarDefaults.stroke() else null,
+                shadow = null,
+                shading = false,
+                fallback = Modifier.clip(glassShape)
+                    .background(MiuixTheme.colorScheme.surfaceContainer),
+            )
             usableBackdrop != null && liquidGlassActive -> Modifier.drawBackdrop(
                 backdrop = usableBackdrop,
                 shape = { samplingShape },

@@ -86,6 +86,7 @@
     <string name="music_sort_descending">Descending</string>
     <string name="music_search_hint">Search songs, artists, albums, or files</string>
     <string name="search_hint">Search</string>
+    <string name="search_cancel">Cancel search</string>
     <string name="search_clear">Clear search</string>
     <string name="music_no_search_results">No matching songs</string>
     <string name="music_play_next">Play next</string>
@@ -283,10 +284,6 @@
     <string name="settings_blur_summary">Enable blur effects for the app</string>
     <string name="settings_blur_unsupported">Blur requires Android 13 or later</string>
     <string name="settings_progressive_top_bar_blur_title">Progressive top bar blur</string>
-    <string name="settings_floating_bottom_bar_title">Floating bottom bar</string>
-    <string name="settings_floating_bottom_bar_summary">Use a floating-style navigation bar</string>
-    <string name="settings_liquid_glass_title">Liquid glass</string>
-    <string name="settings_liquid_glass_summary">Use refractive glass for the floating bottom bar</string>
     <string name="settings_small_player_bar_title">Small player bar</string>
     <string name="settings_hide_bottom_bar_title">Always hide bottom bar</string>
     <string name="settings_hide_bottom_bar_summary">When the bottom bar is hidden, swipe to switch pages on the main screen</string>
@@ -294,7 +291,6 @@
     <string name="settings_navigation_transition_style_title">Transition style</string>
     <string name="settings_navigation_transition_style_miuix">Miuix</string>
     <string name="settings_navigation_transition_style_aosp">AOSP</string>
-    <string name="settings_liquid_glass_unsupported">Floating liquid glass requires Android 13 or later</string>
 
     <string name="settings_section_music_library">Library</string>
     <string name="settings_scan_local_music_title">Scan music</string>
@@ -457,4 +453,10 @@
     <string name="lyrics_translation_language_all">All translations</string>
     <string name="playback_audio_settings">Audio settings</string>
     <string name="lyrics_translation_open">Open lyrics translation</string>
+    <string name="settings_theme_style_title">Theme style</string>
+    <string name="settings_bottom_bar_style_title">Bottom bar style</string>
+    <string name="settings_bottom_bar_ios_like">iOS-like</string>
+    <string name="settings_style_os3">OS3</string>
+    <string name="settings_style_os4">OS4</string>
+    <string name="settings_glass_styles_unsupported">OS4 and iOS-like require Android 13 or later</string>
 </resources>

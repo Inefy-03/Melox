@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import com.melox.player.ui.component.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -230,7 +230,7 @@ internal fun AlbumGridItem(
     when (gridStyle) {
         AlbumGridStyle.TWO_SMALL -> Card(
             modifier = modifier.fillMaxWidth(),
-            cornerRadius = 16.dp,
+            cornerRadius = if (com.melox.player.ui.theme.LocalOs4Style.current) 16.dp else 14.dp,
             insideMargin = PaddingValues(
                 start = 6.dp,
                 top = 6.dp,
@@ -250,7 +250,7 @@ internal fun AlbumGridItem(
                     dateModifiedEpochSeconds = cover?.dateModifiedEpochSeconds ?: 0L,
                     fileSizeBytes = cover?.fileSizeBytes ?: 0L,
                     size = 54.dp,
-                    cornerRadius = 10.dp,
+                    cornerRadius = if (com.melox.player.ui.theme.LocalOs4Style.current) 10.dp else 8.dp,
                     showLoadingBackground = true,
                 )
                 AlbumGridLabels(
@@ -279,7 +279,7 @@ internal fun AlbumGridItem(
                         dateModifiedEpochSeconds = cover?.dateModifiedEpochSeconds ?: 0L,
                         fileSizeBytes = cover?.fileSizeBytes ?: 0L,
                         size = maxWidth,
-                        cornerRadius = 14.dp,
+                        cornerRadius = if (com.melox.player.ui.theme.LocalOs4Style.current) 18.dp else 14.dp,
                         showLoadingBackground = true,
                     )
                 }

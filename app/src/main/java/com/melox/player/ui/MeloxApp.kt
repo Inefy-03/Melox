@@ -66,6 +66,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -117,6 +118,7 @@ import com.melox.player.model.LyricsTranslationLanguage
 import com.melox.player.model.LyricAnimationMode
 import com.melox.player.model.isDuetForMedia
 import com.melox.player.R
+import com.melox.player.ui.component.os4.*
 import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
 import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.MusicSortConfig
@@ -263,17 +265,19 @@ import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SearchBar
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+import com.melox.player.ui.component.os4.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.NavigationRailDefaults
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import com.melox.player.ui.component.os4.TopAppBar
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.SearchCleanup
 import top.yukonga.miuix.kmp.icon.extended.Search
+import androidx.compose.runtime.snapshots.Snapshot
+import top.yukonga.miuix.kmp.nav.runtime.LocalSingleStepRootPop
 import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.NavKey
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
@@ -522,6 +526,8 @@ fun MeloxApp(
     var homeRecommendationGestureActive by remember { mutableStateOf(false) }
     val libraryPagerState = rememberPagerState(pageCount = { LIBRARY_TAB_COUNT })
     val playerPagerState = rememberPlayerPagerState(pagerState)
+    // A tab tap owns presentation until its scroll settles; swipes follow the visible page.
+    val navigationPresentationPage = if (playerPagerState.isNavigating) playerPagerState.selectedPage else pagerState.currentPage
     val homeRecommendations = rememberHomeRecommendations(
         tracks = uiState.tracks,
         active = playerPagerState.selectedPage == HOME_TAB_INDEX,
@@ -600,6 +606,9 @@ fun MeloxApp(
     val frameRecordingGeneration = playerTransition.currentFrameRecordingGeneration
     var miniPlayerChrome by remember { mutableStateOf<MiniPlayerChrome?>(null) }
     var currentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
+    var singleStepRootPop by remember { mutableStateOf(false) }
+    LaunchedEffect(currentRoute) { if (currentRoute != AppRoute.ROOT) singleStepRootPop = false }
+    val bottomSearchActions = remember { mutableStateMapOf<Any, BottomSearchAction>() }
     var detailSelectionActive by remember { mutableStateOf(false) }
     var detailSelectionExitRequest by remember { mutableIntStateOf(0) }
     var selectedAlbumKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -898,6 +907,8 @@ fun MeloxApp(
             }
             renderedBottomBarStyle = settings.bottomBarStyle
         }
+        val renderedSmallPlayerBar = settings.smallPlayerBar && !landscape &&
+            resolveBottomBarStyle(renderedBottomBarStyle, liquidGlassSupported).supportsSmallPlayerBar
         val miniPlayerUsesNormalChrome = usesNormalMiniPlayerChrome(
             renderedBottomBarStyle = renderedBottomBarStyle,
             liquidGlassSupported = liquidGlassSupported,
@@ -1177,6 +1188,7 @@ fun MeloxApp(
                                 },
                                 defaultActions = {
                                     LibrarySearchButton(
+                                    bottomActionActive = navigationPresentationPage == SONGS_TAB_INDEX,
                                     visible = songSearchVisible,
                                     scrollBehavior = songsScrollBehavior,
                                     onClick = {
@@ -1269,6 +1281,7 @@ fun MeloxApp(
                         useSmallTopAppBar = useSmallTopAppBar,
                         actions = {
                             LibrarySearchButton(
+                                bottomActionActive = navigationPresentationPage == LIBRARY_TAB_INDEX,
                                 visible = librarySearchVisible,
                                 scrollBehavior = libraryScrollBehavior,
                                 contentDescription = when (libraryPagerState.currentPage) {
@@ -1761,10 +1774,11 @@ fun MeloxApp(
             }
         }
         val onNavigationTabSelected: (Int) -> Unit = { selectedTab ->
-            while (navBackStack.size > 1) {
-                navBackStack.removeAt(navBackStack.lastIndex)
+            Snapshot.withMutableSnapshot {
+                singleStepRootPop = requestedBottomBarStyle == BottomBarStyle.OS4 && currentRoute != AppRoute.ROOT
+                if (navBackStack.size > 1) navBackStack.subList(1, navBackStack.size).clear()
+                currentRoute = AppRoute.ROOT
             }
-            currentRoute = AppRoute.ROOT
             playerPagerState.animateToPage(selectedTab)
         }
         var customBackgroundBlurPreview by remember(settings.customBackgroundId) {
@@ -1818,6 +1832,7 @@ fun MeloxApp(
             // Overlay content is composed by the root popup host.
             CompositionLocalProvider(
                 LocalBottomSheetBlurBackdrop provides bottomSheetBackdrop,
+                LocalBottomSearchActions provides bottomSearchActions.takeIf { requestedBottomBarStyle == BottomBarStyle.OS4 },
             ) {
                 Scaffold(
                     modifier = Modifier.customPageBackground(),
@@ -1829,6 +1844,18 @@ fun MeloxApp(
                         .fillMaxSize()
                         .then(bottomSheetBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
                 ) {
+                    val searchDestination = desiredNavBackStack.lastOrNull()?.entryContentKey()
+                    val currentSearchAction = bottomSearchActions.values.firstOrNull {
+                        it.owner == searchDestination && it.active.value
+                    }
+                    val searchDestinationKey = searchDestination to navigationPresentationPage.takeIf { currentRoute == AppRoute.ROOT }
+                    var preparedSearchDestination by remember { mutableStateOf<Pair<String?, Int?>?>(null) }
+                    if (currentSearchAction != null) SideEffect { preparedSearchDestination = searchDestinationKey }
+                    val destinationHasSearch = when (currentRoute) {
+                        AppRoute.ROOT -> navigationPresentationPage == SONGS_TAB_INDEX || navigationPresentationPage == LIBRARY_TAB_INDEX
+                        AppRoute.FOLDER_DETAIL, AppRoute.INTERNAL_STORAGE, AppRoute.PLAYLIST_DETAIL -> true
+                        else -> false
+                    }
                     PlayerScaffold(
                             playerNavigationOffset = {
                                 playerNavigationOffset(
@@ -1837,6 +1864,11 @@ fun MeloxApp(
                                     progress = playerTransition.progress,
                                 )
                             },
+                            bottomSearchAction = currentSearchAction,
+                            showBottomSearch = currentSearchAction != null ||
+                                (destinationHasSearch && preparedSearchDestination != searchDestinationKey),
+                            searchExpanded = currentSearchAction?.expanded?.value == true,
+                            searchOpen = currentSearchAction?.searchOpen?.value == true,
                             selectedTab = playerPagerState.selectedPage,
                             onTabSelected = onNavigationTabSelected,
                             navigationHideMotion = if (currentRoute == AppRoute.ROOT) {
@@ -1857,11 +1889,11 @@ fun MeloxApp(
                             showNavigationRailOnSecondary =
                                 !settings.hideBottomBar &&
                                     landscape &&
-                                    requestedBottomBarStyle == BottomBarStyle.NORMAL,
+                                    (requestedBottomBarStyle == BottomBarStyle.NORMAL || requestedBottomBarStyle == BottomBarStyle.LIQUID_GLASS),
                             persistedNavigationRailExpanded = settings.navigationRailExpanded,
                             onNavigationRailExpandedChange = viewModel::setNavigationRailExpanded,
                             bottomBarStyle = renderedBottomBarStyle,
-                            smallPlayerBar = settings.smallPlayerBar,
+                            smallPlayerBar = renderedSmallPlayerBar,
                             liquidGlassSupported = liquidGlassSupported,
                             isDark = isDark,
                             blurEnabled = settings.blurEnabled,
@@ -1983,6 +2015,7 @@ fun MeloxApp(
                                     }
                                 }
                                 CompositionLocalProvider(
+                                    LocalSingleStepRootPop provides singleStepRootPop,
                                     LocalAlphabetIndexBottomPadding provides if (currentRoute == AppRoute.ROOT) {
                                         songsIndexBottomPadding
                                     } else {
@@ -1994,11 +2027,15 @@ fun MeloxApp(
                                     predictiveBackEnabled =
                                         settings.predictiveBackEnabled && !showQueue,
                                     backEnabled = !playerTransition.isMounted,
-                                    withinPageBackEnabled = currentRoute == AppRoute.INTERNAL_STORAGE &&
-                                        internalStoragePath != INTERNAL_STORAGE_ROOT && !showQueue,
+                                    withinPageBackEnabled = currentSearchAction?.searchOpen?.value == true ||
+                                        (currentRoute == AppRoute.INTERNAL_STORAGE &&
+                                        internalStoragePath != INTERNAL_STORAGE_ROOT && !showQueue),
                                     transitionStyle = settings.navigationTransitionStyle,
                                     isDark = isDark,
-                                    onBack = navigateBack,
+                                    onBack = {
+                                        if (currentSearchAction?.searchOpen?.value == true) currentSearchAction.onClick.value()
+                                        else navigateBack()
+                                    },
                                     modifier = Modifier.fillMaxSize(),
                                 ) {
                                     entry<AppNavDestination>(
@@ -2007,6 +2044,7 @@ fun MeloxApp(
                                             internalStoragePath != INTERNAL_STORAGE_ROOT
                                         ) NavSwipeDirection.None else null,
                                     ) { route ->
+                                        CompositionLocalProvider(LocalBottomSearchOwner provides route.entryContentKey()) {
                                             if (route.route == AppRoute.ROOT) {
                                                 content(
                                                     currentRootPadding,
@@ -2029,6 +2067,7 @@ fun MeloxApp(
                                                             scrollBehavior =
                                                                 themeSettingsScrollBehavior,
                                                             onBack = navigateBack,
+                                                            onThemeStyleChange = viewModel::setThemeStyle,
                                                             onThemeModeChange =
                                                                 viewModel::setThemeMode,
                                                             onImmersiveModeChange =
@@ -2084,10 +2123,7 @@ fun MeloxApp(
                                                                 viewModel::setSmallPlayerBar,
                                                             onHideBottomBarChange =
                                                                 viewModel::setHideBottomBar,
-                                                            onFloatingBottomBarChange =
-                                                                viewModel::setFloatingBottomBar,
-                                                            onLiquidGlassChange =
-                                                                viewModel::setLiquidGlass,
+                                                            onBottomBarStyleChange = viewModel::setBottomBarStyle,
                                                         )
 
                                                     AppRoute.MAIN_BACKGROUND ->
@@ -2664,6 +2700,7 @@ fun MeloxApp(
                                                 }
                                             }
                                         }
+                                        }
                                     }
                                 }
                                 }
@@ -2793,7 +2830,7 @@ fun MeloxApp(
                         hasItem = true,
                         modifier = Modifier.zIndex(2f),
                         collapsedCornerRadius =
-                            if (miniPlayerUsesNormalChrome) 18.dp else 32.dp,
+                            miniPlayerChrome?.cornerRadius ?: if (miniPlayerUsesNormalChrome) 18.dp else 32.dp,
                         liquidGlassActive =
                             miniPlayerChrome?.let { it.liquidGlassActive && it.backdrop != null } == true,
                     )
@@ -2801,7 +2838,7 @@ fun MeloxApp(
                         transition = playerTransition,
                         hasItem = compactPlayback.currentItem != null,
                         normalChrome = miniPlayerUsesNormalChrome,
-                        smallPlayerBar = settings.smallPlayerBar,
+                        smallPlayerBar = renderedSmallPlayerBar,
                         onTogglePlayPause = viewModel::togglePlayPause,
                         onOpenQueue = { showQueue = true },
                         modifier = Modifier.zIndex(3f),
@@ -2814,7 +2851,7 @@ fun MeloxApp(
                         miniPlayerChrome = miniPlayerChrome,
                         miniPlayerInteractiveHighlight = miniPlayerInteractiveHighlight,
                         collapsedCornerRadius =
-                            if (miniPlayerUsesNormalChrome) 18.dp else 32.dp,
+                            miniPlayerChrome?.cornerRadius ?: if (miniPlayerUsesNormalChrome) 18.dp else 32.dp,
                         floatingMiniPlayer = !miniPlayerUsesNormalChrome,
                         isDark = isDark,
                     )
@@ -2822,9 +2859,12 @@ fun MeloxApp(
                         playback = compactPlayback,
                         artworkState = artworkState,
                         transition = playerTransition,
-                        collapsedCornerRadius = miniPlayerArtworkCornerRadius(
+                        collapsedCornerRadius = if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
+                            if (settings.circularArtwork) miniPlayerChrome!!.artworkSize / 2
+                            else miniPlayerChrome!!.os4ArtworkCornerRadius
+                        } else miniPlayerArtworkCornerRadius(
                             normalChrome = miniPlayerUsesNormalChrome,
-                            smallPlayerBar = settings.smallPlayerBar,
+                            smallPlayerBar = renderedSmallPlayerBar,
                             circular = settings.circularArtwork,
                         ),
                         enabled = sharedPlayerArtworkEnabled,
@@ -3275,12 +3315,12 @@ internal fun LibrarySearchButton(
     scrollBehavior: ScrollBehavior,
     contentDescription: String = stringResource(R.string.music_search_hint),
     onClick: () -> Unit,
+    bottomActionActive: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
     val currentOnClick by rememberUpdatedState(onClick)
     var collapsing by remember { mutableStateOf(false) }
-    IconButton(
-        onClick = {
+    val onSearchClick: () -> Unit = {
             collapsing = true
             scope.launch {
                 try {
@@ -3303,7 +3343,13 @@ internal fun LibrarySearchButton(
                     collapsing = false
                 }
             }
-        },
+        }
+    val effectiveOnSearchClick: () -> Unit = if (com.melox.player.ui.theme.LocalOs4Style.current) {
+        { currentOnClick() }
+    } else onSearchClick
+    if (publishBottomSearchAction(bottomActionActive, visible || LocalGlassSearchPage.current?.transitionActive == true, visible, contentDescription, !collapsing, effectiveOnSearchClick)) return
+    IconButton(
+        onClick = effectiveOnSearchClick,
         enabled = !collapsing,
         holdDownState = visible,
     ) {
@@ -3426,6 +3472,9 @@ internal fun LibrarySearchBar(
         BackHandler(enabled = ordinaryBackEnabled) {
             onVisibleChange(false)
         }
+    }
+    if (registerGlassSearchSession(visible && backEnabled, query, label, onQueryChange, onFocusedChange) { onVisibleChange(false) }) {
+        return
     }
     val hasWallpaper = LocalCustomPageBackground.current != null
     val topBarBlurSettings = LocalTopBarBlurSettings.current
@@ -3599,7 +3648,8 @@ private fun PlayerPage(
                     start = innerPadding.calculateStartPadding(layoutDirection),
                     top = innerPadding.calculateTopPadding(),
                     end = innerPadding.calculateEndPadding(layoutDirection),
-                    bottom = outerPadding.calculateBottomPadding(),
+                    bottom = if (LocalGlassSearchPage.current?.isExpanded == true) innerPadding.calculateBottomPadding()
+                        else outerPadding.calculateBottomPadding(),
                 ),
                 scrollBehavior,
                 indexTopPadding,

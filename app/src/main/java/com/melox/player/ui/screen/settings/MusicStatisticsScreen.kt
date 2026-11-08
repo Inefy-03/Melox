@@ -7,6 +7,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import com.melox.player.ui.theme.LocalOs4Style
+import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,7 +25,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -76,7 +80,7 @@ import java.util.Locale
 import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.ListPopupDefaults
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -86,7 +90,7 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.melox.player.ui.component.os4.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.Music
 import top.yukonga.miuix.kmp.icon.extended.Tune
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
@@ -152,7 +156,7 @@ fun MusicStatisticsScreen(
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = MiuixIcons.Back,
+                                imageVector = navigationBackIcon(),
                                 contentDescription = stringResource(R.string.back),
                             )
                         }
@@ -205,6 +209,29 @@ private fun StatisticsTuneButton(
     val countLabel = stringResource(R.string.music_statistics_metric_count)
     val sizeLabel = stringResource(R.string.music_statistics_metric_size)
 
+    if (LocalOs4Style.current) {
+        OverlayIconDropdownMenu(
+            modifier = modifier,
+            entries = listOf(
+                DropdownEntry(listOf(
+                    DropdownItem(text = qualityLabel, selected = group == StatisticsGroup.QUALITY,
+                        onClick = { onGroupChange(StatisticsGroup.QUALITY) }),
+                    DropdownItem(text = formatLabel, selected = group == StatisticsGroup.FORMAT,
+                        onClick = { onGroupChange(StatisticsGroup.FORMAT) }),
+                )),
+                DropdownEntry(listOf(
+                    DropdownItem(text = countLabel, selected = metric == StatisticsMetric.COUNT,
+                        onClick = { onMetricChange(StatisticsMetric.COUNT) }),
+                    DropdownItem(text = sizeLabel, selected = metric == StatisticsMetric.SIZE,
+                        onClick = { onMetricChange(StatisticsMetric.SIZE) }),
+                )),
+            ),
+            collapseOnSelection = true,
+        ) {
+            Icon(MiuixIcons.Tune, stringResource(R.string.music_statistics_tune_action), Modifier.size(24.dp))
+        }
+        return
+    }
     Box(modifier = modifier) {
         OverlayListPopup(
             show = showPopup,

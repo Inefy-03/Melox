@@ -7,9 +7,46 @@ import com.melox.player.ui.floatingMiniPlayerBottomPaddingWhenNavigationIsHidden
 import com.melox.player.ui.normalMiniPlayerBottomPadding
 import com.melox.player.ui.component.liquid.floatingNavigationBarBottomPadding
 import org.junit.Assert.assertEquals
+import com.melox.player.ui.MiniPlayerChrome
+import com.melox.player.model.BottomBarStyle
 import org.junit.Test
 
 class BottomBarGeometryTest {
+    @Test
+    fun progressiveBandFollowsMeasuredTabsAndSearchHeight() {
+        for (scale in listOf(1f, 2f, 3f)) {
+            val density = androidx.compose.ui.unit.Density(scale)
+            val topInset = (24 * scale).toInt()
+            val bar = (76 * scale).toInt()
+            val tabs = (48 * scale).toInt()
+            val search = (56 * scale).toInt()
+            val base = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(bar, topInset, density)
+            assertEquals(base + tabs, top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(bar + tabs, topInset, density))
+            assertEquals(base + tabs + search, top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(bar + tabs + search, topInset, density))
+        }
+    }
+
+    @Test
+    fun os4PlaybackGeometryUsesTheFixedHeight() {
+        val chrome = MiniPlayerChrome(
+            style = BottomBarStyle.OS4,
+            backdrop = null,
+            blurActive = false,
+            liquidGlassActive = false,
+            isDark = false,
+            smallPlayerBar = true,
+        )
+        assertEquals(52.dp, com.melox.player.ui.component.playback.miniPlayerHeight(BottomBarStyle.OS4, false))
+        assertEquals(52.dp, chrome.height)
+        assertEquals(26.dp, chrome.cornerRadius)
+        assertEquals(36.dp, chrome.artworkSize)
+        assertEquals(16.dp, chrome.os4ArtworkStartPadding)
+        assertEquals(6.dp, chrome.os4ArtworkCornerRadius)
+        assertEquals(0.25f, chrome.contentFraction)
+        assertEquals(52.dp, chrome.copy(smallPlayerBar = false).height)
+        assertEquals(64.dp, chrome.copy(style = BottomBarStyle.LIQUID_GLASS, smallPlayerBar = false).height)
+    }
+
     @Test
     fun floatingPortraitWidthReservesSixteenDpOnEachSide() {
         assertEquals(358.dp, floatingBottomBarAvailableWidth(390.dp, 844.dp, 378.dp, 390.dp))

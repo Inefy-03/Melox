@@ -25,7 +25,19 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import com.melox.player.ui.component.os4.BottomSearchAction
+import com.melox.player.ui.component.os4.glassSearchIcon
+import top.yukonga.miuix.kmp.glass.GlassIconButton
+import top.yukonga.miuix.kmp.basic.Icon
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.melox.player.ui.component.os4.rememberGlassSearchBarAlpha
+import androidx.compose.runtime.remember
+import top.yukonga.miuix.kmp.glass.popupShadowOutsets
+import top.yukonga.miuix.kmp.glass.GlassShadows
 import androidx.compose.runtime.Composable
+import top.yukonga.miuix.kmp.glass.GlassNavigationBarDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +53,8 @@ import com.melox.player.ui.component.liquid.rememberFloatingBarHighlight
 import com.melox.player.ui.component.liquid.rememberIosLikeNavigationBarWidth
 import com.melox.player.ui.component.playback.FLOATING_MINI_PLAYER_BOTTOM_PADDING
 import com.melox.player.model.BottomBarStyle
+import top.yukonga.miuix.kmp.glass.GlassNavigationBar
+import top.yukonga.miuix.kmp.glass.GlassNavigationItem
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -55,6 +69,7 @@ internal fun IosLikeFloatingPlayerScaffold(
     navigationItems: List<NavigationItem>,
     blurEnabled: Boolean,
     liquidGlassEnabled: Boolean,
+    bottomBarStyle: BottomBarStyle,
     smallPlayerBar: Boolean,
     effectsSupported: Boolean,
     isDark: Boolean,
@@ -62,10 +77,16 @@ internal fun IosLikeFloatingPlayerScaffold(
     navigationHideMotion: NavSettleSpec.Tween?,
     playerNavigationOffset: () -> Float,
     miniPlayer: @Composable (MiniPlayerChrome) -> Unit,
+    bottomSearchAction: BottomSearchAction? = null,
+    showBottomSearch: Boolean = bottomSearchAction != null,
+    searchExpanded: Boolean = false,
+    searchOpen: Boolean = false,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val surfaceColor = MiuixTheme.colorScheme.surface
+    val searchChromeAlpha = rememberGlassSearchBarAlpha(searchOpen)
     val density = LocalDensity.current
+    val chromeShadowOutsets = remember(density) { with(density) { popupShadowOutsets(GlassShadows.Regular) } }
     val windowSize = LocalWindowInfo.current.containerSize
     val windowWidth = with(density) { windowSize.width.toDp() }
     val windowHeight = with(density) { windowSize.height.toDp() }
@@ -117,9 +138,17 @@ internal fun IosLikeFloatingPlayerScaffold(
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
+            // Match the Glass example: preserve chrome and its layout through search mode.
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer {
+                        outsets = chromeShadowOutsets
+                        alpha = searchChromeAlpha.value
+                    }
+                    .then(if (searchExpanded || searchOpen) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
+                        awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                    } else Modifier)
                     .padding(
                         horizontal = (if (ordinaryPortrait) 16.dp else 24.dp) -
                             FLOATING_NAVIGATION_BAR_SHADOW_PADDING,
@@ -132,10 +161,11 @@ internal fun IosLikeFloatingPlayerScaffold(
                     contentMaxWidth = maxWidth,
                     portraitReferenceWidth = portraitReferenceWidth,
                 )
-                val barWidth = rememberIosLikeNavigationBarWidth(
-                    items = navigationItems,
-                    maxWidth = availableBarWidth,
-                )
+                val barWidth = if (bottomBarStyle == BottomBarStyle.OS4) {
+                    availableBarWidth
+                } else {
+                    rememberIosLikeNavigationBarWidth(items = navigationItems, maxWidth = availableBarWidth)
+                }
                 Column(
                     modifier = Modifier.width(
                         barWidth + FLOATING_NAVIGATION_BAR_SHADOW_PADDING * 2,
@@ -152,17 +182,13 @@ internal fun IosLikeFloatingPlayerScaffold(
                     ) {
                         miniPlayer(
                             MiniPlayerChrome(
-                                style = if (liquidGlassEnabled) {
-                                    BottomBarStyle.LIQUID_GLASS
-                                } else {
-                                    BottomBarStyle.FLOATING
-                                },
+                                style = bottomBarStyle,
                                 backdrop = backdrop,
                                 blurActive = blurEnabled && effectsSupported,
                                 liquidGlassActive = liquidGlassEnabled && effectsSupported,
                                 isDark = isDark,
                                 floatingHighlight = floatingHighlight,
-                                smallPlayerBar = smallPlayerBar,
+                                smallPlayerBar = smallPlayerBar && bottomBarStyle.supportsSmallPlayerBar,
                             ),
                         )
                     }
@@ -199,19 +225,44 @@ internal fun IosLikeFloatingPlayerScaffold(
                                 ),
                             ),
                         ) {
-                            LiquidGlassNavigationBar(
-                                items = navigationItems,
-                                selectedIndex = selectedTab,
-                                onItemClick = onTabSelected,
-                                backdrop = backdrop,
-                                isBlurActive = blurEnabled && effectsSupported,
-                                isLiquidGlassActive = liquidGlassEnabled && effectsSupported,
-                                isDark = isDark,
-                                containerHighlight = floatingHighlight,
-                                bottomPadding = (
-                                    navigationBottomPadding - FLOATING_NAVIGATION_BAR_SHADOW_PADDING
-                                ).coerceAtLeast(0.dp),
-                            )
+                            val barBottomPadding = (
+                                navigationBottomPadding - FLOATING_NAVIGATION_BAR_SHADOW_PADDING
+                            ).coerceAtLeast(0.dp)
+                            when (bottomBarStyle) {
+                                BottomBarStyle.OS4 -> GlassNavigationBar(
+                                    items = navigationItems.map {
+                                        GlassNavigationItem(icon = it.icon, label = it.label)
+                                    },
+                                    selectedIndex = selectedTab,
+                                    onSelect = onTabSelected,
+                                    backdrop = backdrop.takeIf { blurEnabled && effectsSupported },
+                                    defaultWindowInsetsPadding = false,
+                                    trailingAction = if (showBottomSearch) {
+                                        {
+                                            GlassIconButton(
+                                                onClick = { bottomSearchAction?.onClick?.value?.invoke() },
+                                                enabled = bottomSearchAction?.enabled?.value == true,
+                                                size = GlassNavigationBarDefaults.Height,
+                                                backdrop = backdrop.takeIf { blurEnabled && effectsSupported },
+                                            ) {
+                                                Icon(glassSearchIcon, bottomSearchAction?.label?.value ?: androidx.compose.ui.res.stringResource(com.melox.player.R.string.search_hint), Modifier.size(24.dp))
+                                            }
+                                        }
+                                    } else null,
+                                    modifier = Modifier.padding(bottom = barBottomPadding),
+                                )
+                                else -> LiquidGlassNavigationBar(
+                                    items = navigationItems,
+                                    selectedIndex = selectedTab,
+                                    onItemClick = onTabSelected,
+                                    backdrop = backdrop,
+                                    isBlurActive = blurEnabled && effectsSupported,
+                                    isLiquidGlassActive = liquidGlassEnabled && effectsSupported,
+                                    isDark = isDark,
+                                    containerHighlight = floatingHighlight,
+                                    bottomPadding = barBottomPadding,
+                                )
+                            }
                         }
                     }
                 }

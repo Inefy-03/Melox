@@ -4,6 +4,10 @@ import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
+import com.melox.player.ui.theme.LocalOs4Style
+import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,7 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -85,7 +89,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.ListPopupDefaults
 import top.yukonga.miuix.kmp.basic.PopupPositionProvider
@@ -94,10 +98,10 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.melox.player.ui.component.os4.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.icon.extended.Music
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import com.melox.player.ui.component.os4.OverlayDialog
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -334,10 +338,10 @@ fun PlaylistDetailScreen(
                                 }
                             },
                             defaultNavigationIcon = {
-                                Row {
+                                Row(horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
                                     IconButton(onClick = onBack) {
                                         Icon(
-                                            imageVector = MiuixIcons.Back,
+                                            imageVector = navigationBackIcon(),
                                             contentDescription = stringResource(R.string.back),
                                         )
                                     }
@@ -685,6 +689,17 @@ private fun RowScope.PlaylistActionsButton(
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    if (LocalOs4Style.current) {
+        OverlayIconDropdownMenu(
+            entry = DropdownEntry(listOf(
+                DropdownItem(text = stringResource(R.string.playlist_rename), onClick = onRename),
+                DropdownItem(text = stringResource(R.string.playlist_delete), onClick = onDelete),
+            )),
+        ) {
+            Icon(MiuixIcons.More, stringResource(R.string.playlist_more_actions), Modifier.size(24.dp))
+        }
+        return
+    }
     var showPopup by remember { mutableStateOf(false) }
     Box {
         OverlayListPopup(

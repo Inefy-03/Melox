@@ -1,5 +1,8 @@
 package com.melox.player.ui.theme
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import com.melox.player.model.ThemeStyle
 import android.os.Build
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
@@ -21,6 +24,8 @@ import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
+
+internal val LocalOs4Style = staticCompositionLocalOf { false }
 
 private const val PLAYBACK_ARTWORK_COLOR_TRANSITION_DURATION_MILLIS = 600
 
@@ -72,7 +77,9 @@ fun MeloxTheme(
         }
         MiuixTheme(
             colors = rememberAnimatedThemeColors(targetColors, paletteTarget),
-            content = content,
+            content = {
+                CompositionLocalProvider(LocalOs4Style provides (settings.themeStyle == ThemeStyle.OS4 && Build.VERSION.SDK_INT >= 33)) { content() }
+            },
         )
     }
 }

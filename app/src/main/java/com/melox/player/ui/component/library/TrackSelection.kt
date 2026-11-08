@@ -2,6 +2,8 @@ package com.melox.player.ui.component.library
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import com.melox.player.ui.theme.LocalOs4Style
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -11,7 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
@@ -59,7 +61,7 @@ fun SelectionActionsAnimatedContent(
         contentAlignment = Alignment.CenterEnd,
         label = "TopBarSelectionActions",
     ) { selectionActive ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
             if (selectionActive) selectionActions() else defaultActions()
         }
     }
@@ -75,7 +77,7 @@ fun TrackSelectionActions(
     onToggleAll: () -> Unit,
     onAction: () -> Unit,
 ) {
-    Row(modifier = modifier) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
         IconButton(
             onClick = onToggleAll,
             enabled = enabled,

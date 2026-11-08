@@ -148,10 +148,15 @@ internal fun landscapePlayerPlaybackPaneWidth(availableWidth: Dp): Dp = (
     .div(2f)
     .coerceAtMost(PLAYER_WIDE_PLAYBACK_PANE_MAX_WIDTH)
 
-internal fun landscapePlayerLyricsPaneWidth(availableWidth: Dp): Dp = (
-    landscapePlayerPlaybackPaneWidth(availableWidth) +
-        PLAYER_WIDE_LYRICS_PANE_WIDTH_EXPANSION
-).coerceAtMost(landscapePlayerDesignContentWidth(availableWidth))
+internal fun landscapePlayerLyricsPaneWidth(availableWidth: Dp): Dp {
+    val playbackWidth = landscapePlayerPlaybackPaneWidth(availableWidth)
+    val designWidth = landscapePlayerDesignContentWidth(availableWidth)
+    // Preserve the narrower-screen split; lyrics can keep growing after playback reaches its cap.
+    return maxOf(
+        playbackWidth + PLAYER_WIDE_LYRICS_PANE_WIDTH_EXPANSION,
+        designWidth - playbackWidth - PLAYER_WIDE_PANE_SPACING_MAX,
+    ).coerceAtMost(PLAYER_WIDE_LYRICS_PANE_MAX_WIDTH).coerceAtMost(designWidth)
+}
 
 internal fun landscapePlayerPaneSpacing(availableWidth: Dp): Dp {
     val compressionFraction = (
@@ -258,8 +263,10 @@ internal val PLAYER_HEADER_TITLE_EDGE_FADE_WIDTH = 12.dp
 // 宽屏播放页：固定 24 dp 作为双栏组的首项，整个组在页面中居中。
 internal val PLAYER_WIDE_FIXED_START_INSET = 24.dp
 // 宽屏播放页：左侧播放列的最大宽度。
-internal val PLAYER_WIDE_PLAYBACK_PANE_MAX_WIDTH = 500.dp
-// 宽屏播放页：歌词列相对播放列的固定宽度增量。
+internal val PLAYER_WIDE_PLAYBACK_PANE_MAX_WIDTH = 480.dp
+// Independent upper bound for the lyrics pane.
+internal val PLAYER_WIDE_LYRICS_PANE_MAX_WIDTH = 600.dp
+// Baseline lyrics-width expansion before the playback pane reaches its cap.
 internal val PLAYER_WIDE_LYRICS_PANE_WIDTH_EXPANSION = 96.dp
 // 宽屏播放页：播放栏与歌词栏之间的可调间距范围。
 internal val PLAYER_WIDE_PANE_SPACING_MAX = 24.dp
@@ -268,8 +275,8 @@ internal val PLAYER_WIDE_PANE_SPACING_MIN = 12.dp
 internal val PLAYER_WIDE_PANE_SPACING_COMPRESSION_END_WIDTH = 600.dp
 internal val PLAYER_WIDE_PREFERRED_GROUP_WIDTH =
     PLAYER_WIDE_FIXED_START_INSET +
-        PLAYER_WIDE_PLAYBACK_PANE_MAX_WIDTH * 2f +
-        PLAYER_WIDE_LYRICS_PANE_WIDTH_EXPANSION +
+        PLAYER_WIDE_PLAYBACK_PANE_MAX_WIDTH +
+        PLAYER_WIDE_LYRICS_PANE_MAX_WIDTH +
         PLAYER_WIDE_PANE_SPACING_MAX
 // 宽屏播放页：歌词栏内容两侧的固定内缩。
 internal val PLAYER_WIDE_LYRICS_CONTENT_SIDE_INSET = 32.dp

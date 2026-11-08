@@ -84,6 +84,7 @@
     <string name="music_sort_descending">倒序</string>
     <string name="music_search_hint">搜索歌曲、艺术家、专辑或文件</string>
     <string name="search_hint">搜索</string>
+    <string name="search_cancel">取消搜索</string>
     <string name="search_clear">清空搜索</string>
     <string name="music_no_search_results">没有匹配的歌曲</string>
     <string name="music_play_next">下一首播放</string>
@@ -274,10 +275,6 @@
     <string name="settings_blur_summary">为应用启用模糊效果</string>
     <string name="settings_blur_unsupported">模糊需要 Android 13 或更高版本</string>
     <string name="settings_progressive_top_bar_blur_title">顶栏渐进模糊</string>
-    <string name="settings_floating_bottom_bar_title">悬浮底栏</string>
-    <string name="settings_floating_bottom_bar_summary">使用悬浮样式的导航栏</string>
-    <string name="settings_liquid_glass_title">液态玻璃</string>
-    <string name="settings_liquid_glass_summary">为悬浮底栏启用折射玻璃效果</string>
     <string name="settings_small_player_bar_title">小播放栏</string>
     <string name="settings_hide_bottom_bar_title">始终隐藏底栏</string>
     <string name="settings_hide_bottom_bar_summary">隐藏底栏后，主界面只能滑动切换页面</string>
@@ -285,7 +282,6 @@
     <string name="settings_navigation_transition_style_title">过渡风格</string>
     <string name="settings_navigation_transition_style_miuix">Miuix</string>
     <string name="settings_navigation_transition_style_aosp">AOSP</string>
-    <string name="settings_liquid_glass_unsupported">悬浮液态玻璃底栏需要 Android 13 及以上</string>
 
     <string name="settings_section_music_library">音乐库</string>
     <string name="settings_scan_local_music_title">扫描音乐</string>
@@ -443,4 +439,10 @@
     <string name="lyrics_translation_language_all">全部译文</string>
     <string name="playback_audio_settings">音频设置</string>
     <string name="lyrics_translation_open">打开歌词翻译</string>
+    <string name="settings_theme_style_title">主题风格</string>
+    <string name="settings_bottom_bar_style_title">底栏样式</string>
+    <string name="settings_bottom_bar_ios_like">iOS-like</string>
+    <string name="settings_style_os3">OS3</string>
+    <string name="settings_style_os4">OS4</string>
+    <string name="settings_glass_styles_unsupported">OS4 和 iOS-like 需要 Android 13 及以上</string>
 </resources>

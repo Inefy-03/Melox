@@ -1,7 +1,15 @@
 package com.melox.player.ui.component
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.layout.layout
+import com.melox.player.ui.component.os4.*
+import com.melox.player.ui.LocalFloatingNavigationRailInset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -32,9 +40,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.melox.player.data.repository.CustomBackgroundRepository
@@ -177,22 +187,29 @@ internal fun PageScaffold(
     topBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    val floatingRailInset = LocalFloatingNavigationRailInset.current
+    val scrollContent = remember { TopBarScrollContent() }
+    val searchPage = remember { GlassSearchPage() }
+    val searchActive = searchPage.isExpanded || searchPage.transitionActive
+    val searchBarAlpha = rememberGlassSearchBarAlpha(searchPage.isExpanded)
+    val hidePageContent = searchPage.isExpanded && searchPage.session?.query?.value.isNullOrBlank()
+    val pageAlpha = rememberGlassSearchBarAlpha(hidePageContent)
     val fixedBackground = LocalFixedPageBackground.current
     val surfaceBackdrop = rememberPageSurfaceBackdrop()
     val image = LocalCustomPageBackground.current
     val dimAlpha = LocalCustomBackgroundDimAlpha.current
     val surfaceColor = MiuixTheme.colorScheme.surface
     val statusBarSpace = WindowInsets.statusBarsIgnoringVisibility.only(WindowInsetsSides.Top)
-    BoxWithConstraints(modifier = modifier) {
+    BoxWithConstraints(modifier = modifier.onGloballyPositioned { scrollContent.bounds = it.boundsInRoot() }) {
         val viewportSize = Size(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
-        CompositionLocalProvider(LocalPageSurfaceBackdrop provides surfaceBackdrop) {
+        CompositionLocalProvider(LocalPageSurfaceBackdrop provides surfaceBackdrop, LocalGlassSearchPage provides searchPage, LocalTopBarScrollContent provides scrollContent) {
             Scaffold(
                 // Each route must cover retained pages with its matching wallpaper region.
-                modifier = if (fixedBackground == null) {
+                modifier = (if (fixedBackground == null) {
                     Modifier.customPageBackground()
                 } else {
                     Modifier.fixedWallpaperRegion(fixedBackground)
-                },
+                }).then(if (searchActive) Modifier.imePadding() else Modifier),
                 containerColor = customPageContainerColor(),
                 contentWindowInsets = WindowInsets.systemBars
                     .union(WindowInsets.displayCutout)
@@ -200,7 +217,7 @@ internal fun PageScaffold(
                 topBar = {
                     CompositionLocalProvider(LocalTopBarWallpaperVisible provides (image != null)) {
                         Box(
-                            if (fixedBackground != null) {
+                            Modifier.padding(start = floatingRailInset).then(if (fixedBackground != null) {
                                 Modifier.fixedWallpaperRegion(fixedBackground)
                             } else Modifier.drawWithCache {
                                 onDrawBehind {
@@ -211,11 +228,27 @@ internal fun PageScaffold(
                                         drawCustomPageBackground(image, dimAlpha, viewportSize)
                                     }
                                 }
-                            },
-                        ) { topBar() }
+                            }),
+                        ) {
+                            Box(Modifier.glassSearchBarTransition(searchPage.isExpanded) { searchBarAlpha.value }.layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints)
+                                val progress = searchPage.progress?.value ?: 0f
+                                val searchHeight = statusBarSpace.getTop(this) + 52.dp.roundToPx()
+                                val height = (placeable.height + (searchHeight - placeable.height) * progress).toInt()
+                                layout(placeable.width, height.coerceAtLeast(0)) {
+                                    placeable.placeRelative(0, 0)
+                                }
+                            }) { topBar() }
+                            searchPage.session?.let { GlassSearchHeader(it, searchPage) }
+                        }
                     }
                 },
             ) { padding ->
+                // Move the list viewport; retain its own original content padding.
+                Box(Modifier.fillMaxSize().padding(start = floatingRailInset).graphicsLayer { alpha = pageAlpha.value }
+                    .then(if (hidePageContent) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
+                        awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                    } else Modifier)) {
                 if (surfaceBackdrop == null || fixedBackground != null) {
                     content(padding)
                 } else {
@@ -224,6 +257,7 @@ internal fun PageScaffold(
                         Box(Modifier.matchParentSize().layerBackdrop(surfaceBackdrop))
                         content(padding)
                     }
+                }
                 }
             }
         }

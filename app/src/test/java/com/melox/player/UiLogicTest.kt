@@ -238,6 +238,46 @@ import kotlin.random.Random
 
 class UiLogicTest {
     @Test
+    fun navigationStyleMigratesLegacyChoicesAndRetainsExplicitOverrides() {
+        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle(null, null, null))
+        assertEquals(BottomBarStyle.LIQUID_GLASS, com.melox.player.model.resolveStoredNavigationStyle(null, "FLOATING", null))
+        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle(null, "LIQUID_GLASS", false))
+        for (style in listOf(BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS, BottomBarStyle.OS4)) {
+            assertEquals(style, com.melox.player.model.resolveStoredNavigationStyle(style.name, "NORMAL", false))
+        }
+        assertEquals(BottomBarStyle.LIQUID_GLASS, com.melox.player.model.resolveStoredNavigationStyle("unknown", null, true))
+        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.ThemeStyle.OS3.defaultBottomBarStyle)
+        assertEquals(BottomBarStyle.OS4, com.melox.player.model.ThemeStyle.OS4.defaultBottomBarStyle)
+        assertEquals(BottomBarStyle.NORMAL, resolveBottomBarStyle(BottomBarStyle.OS4, liquidGlassSupported = false))
+        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle("OS3_FLOATING", null, true))
+        assertFalse(AppSettings(selectedBottomBarStyle = BottomBarStyle.OS4, smallPlayerBar = true).effectiveSmallPlayerBar)
+        val compactPreference = AppSettings(selectedBottomBarStyle = BottomBarStyle.OS4, smallPlayerBar = true)
+        assertTrue(compactPreference.smallPlayerBar)
+        assertTrue(compactPreference.copy(selectedBottomBarStyle = BottomBarStyle.LIQUID_GLASS).effectiveSmallPlayerBar)
+        assertTrue(compactPreference.copy(selectedBottomBarStyle = BottomBarStyle.NORMAL).effectiveSmallPlayerBar)
+        assertTrue(AppSettings(selectedBottomBarStyle = BottomBarStyle.LIQUID_GLASS, smallPlayerBar = true).effectiveSmallPlayerBar)
+
+    }
+
+    @Test
+    fun topBarUsesVisibleListPositionAfterReboundAndPagerSwitch() {
+        val page = com.melox.player.ui.component.TopBarScrollContent()
+        page.bounds = androidx.compose.ui.geometry.Rect(0f, 0f, 600f, 800f)
+        val scrolled = com.melox.player.ui.component.ScrollContentPosition(androidx.compose.runtime.mutableStateOf({ 180f }))
+        val atTop = com.melox.player.ui.component.ScrollContentPosition(androidx.compose.runtime.mutableStateOf({ 0f }))
+        scrolled.bounds = page.bounds
+        atTop.bounds = androidx.compose.ui.geometry.Rect(600f, 0f, 1200f, 800f)
+        page.lists[scrolled] = scrolled
+        page.lists[atTop] = atTop
+        assertEquals(180f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f))
+        assertEquals(180f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 90f))
+        scrolled.bounds = androidx.compose.ui.geometry.Rect(-600f, 0f, 0f, 800f)
+        atTop.bounds = page.bounds
+        assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, -900f))
+        assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f))
+    }
+
+    @Test
     fun sliderTapUsesTrackBoundsStepsKeyPointsAndLayoutDirection() {
         assertEquals(
             1f,
@@ -395,6 +435,8 @@ class UiLogicTest {
         val settings = AppSettings()
 
         assertEquals(ThemeMode.SYSTEM, settings.themeMode)
+        assertEquals(com.melox.player.model.ThemeStyle.OS4, settings.themeStyle)
+        assertEquals(BottomBarStyle.OS4, settings.bottomBarStyle)
         assertFalse(settings.dynamicColorEnabled)
         assertTrue(settings.showSongListArtwork)
         assertTrue(settings.showSongListDuration)
@@ -426,7 +468,6 @@ class UiLogicTest {
         assertTrue(settings.songListPullToRefresh)
         assertFalse(settings.refreshLibraryOnStart)
         assertFalse(settings.skipShortAudio)
-        assertEquals(BottomBarStyle.NORMAL, settings.bottomBarStyle)
     }
 
     @Test
@@ -1441,7 +1482,7 @@ class UiLogicTest {
     @Test
     fun unsupportedLiquidGlassFallsBackToFloating() {
         assertEquals(
-            BottomBarStyle.FLOATING,
+            BottomBarStyle.NORMAL,
             resolveBottomBarStyle(BottomBarStyle.LIQUID_GLASS, liquidGlassSupported = false),
         )
         assertEquals(
@@ -1513,6 +1554,28 @@ class UiLogicTest {
                 renderedBottomBarStyle = BottomBarStyle.NORMAL,
             ),
         )
+    }
+
+    @Test
+    fun os4NavigationRemainsAvailableOnSecondaryPagesAndPreservesHidePreference() {
+        for (landscape in listOf(false, true)) {
+            assertTrue(shouldShowNavigation(
+                currentRouteIsRoot = false, hideBottomBar = true, landscape = landscape,
+                requestedBottomBarStyle = BottomBarStyle.OS4,
+            ))
+        }
+        for (style in listOf(BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS)) {
+            assertFalse(shouldShowNavigation(
+                currentRouteIsRoot = false, hideBottomBar = false, landscape = false,
+                requestedBottomBarStyle = style,
+            ))
+            assertFalse(shouldShowNavigation(
+                currentRouteIsRoot = true, hideBottomBar = true, landscape = false,
+                requestedBottomBarStyle = style,
+            ))
+        }
+        val settings = AppSettings(hideBottomBar = true, selectedBottomBarStyle = BottomBarStyle.OS4)
+        assertTrue(settings.copy(selectedBottomBarStyle = BottomBarStyle.NORMAL).hideBottomBar)
     }
 
     @Test
@@ -3976,20 +4039,20 @@ class UiLogicTest {
 
     @Test
     fun bottomBarBooleansResolveToExpectedNavigationStyle() {
-        assertEquals(BottomBarStyle.NORMAL, AppSettings().bottomBarStyle)
+        assertEquals(BottomBarStyle.NORMAL, AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3).bottomBarStyle)
         assertEquals(
             BottomBarStyle.FLOATING,
-            AppSettings(floatingBottomBar = true).bottomBarStyle,
+            AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3, floatingBottomBar = true).bottomBarStyle,
         )
         assertEquals(
             BottomBarStyle.LIQUID_GLASS,
-            AppSettings(floatingBottomBar = true, liquidGlass = true).bottomBarStyle,
+            AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3, floatingBottomBar = true, liquidGlass = true).bottomBarStyle,
         )
     }
 
     @Test
     fun floatingBottomBarToggleRetainsLiquidGlassPreference() {
-        val settings = AppSettings(floatingBottomBar = false, liquidGlass = true)
+        val settings = AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3, floatingBottomBar = false, liquidGlass = true)
 
         assertEquals(BottomBarStyle.NORMAL, settings.bottomBarStyle)
         assertEquals(

@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import com.melox.player.ui.component.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -79,16 +79,16 @@ import kotlinx.coroutines.launch
 import com.melox.player.ui.component.PageCard as Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
+import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+import com.melox.player.ui.component.os4.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.basic.TabRowDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import com.melox.player.ui.component.os4.navigationBackIcon
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -193,7 +193,7 @@ fun AlbumDetailScreen(
                             defaultNavigationIcon = {
                                 IconButton(onClick = onBack) {
                                     Icon(
-                                        imageVector = MiuixIcons.Back,
+                                        imageVector = navigationBackIcon(),
                                         contentDescription = stringResource(R.string.back),
                                     )
                                 }
@@ -529,7 +529,7 @@ fun ArtistDetailScreen(
                             defaultNavigationIcon = {
                                 IconButton(onClick = onBack) {
                                     Icon(
-                                        imageVector = MiuixIcons.Back,
+                                        imageVector = navigationBackIcon(),
                                         contentDescription = stringResource(R.string.back),
                                     )
                                 }

@@ -20,7 +20,7 @@ import com.melox.player.data.playlist.PlaylistSortConfig
 import com.melox.player.data.playlist.PlaylistSortField
 import top.yukonga.miuix.kmp.basic.DropdownImpl
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.ListPopupColumn
 import top.yukonga.miuix.kmp.basic.ListPopupDefaults

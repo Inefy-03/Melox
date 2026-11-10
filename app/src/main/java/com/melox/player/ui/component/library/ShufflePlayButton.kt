@@ -7,7 +7,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme

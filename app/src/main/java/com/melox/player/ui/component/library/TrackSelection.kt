@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close

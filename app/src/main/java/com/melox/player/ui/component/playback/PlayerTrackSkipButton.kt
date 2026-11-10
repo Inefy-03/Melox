@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.Dp
 import com.melox.player.R
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 
 @Composable
 internal fun PlayerTrackSkipButton(

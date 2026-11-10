@@ -89,7 +89,7 @@ import kotlin.math.sign
 import kotlin.math.sin
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BadgedBox
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.Backdrop

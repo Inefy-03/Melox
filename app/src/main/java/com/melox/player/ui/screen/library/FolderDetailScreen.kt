@@ -60,7 +60,7 @@ import com.melox.player.ui.component.library.selectedItemsInDisplayedOrder
 import com.melox.player.ui.component.library.toggleAllTrackSelection
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 import top.yukonga.miuix.kmp.basic.BreadcrumbBar
 import top.yukonga.miuix.kmp.basic.BreadcrumbBarDefaults
 import top.yukonga.miuix.kmp.basic.BreadcrumbItem

@@ -89,7 +89,7 @@ import kotlinx.coroutines.flow.collectLatest
 import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.os4.TopAppBar

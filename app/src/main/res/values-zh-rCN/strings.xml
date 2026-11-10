@@ -236,6 +236,10 @@
     <string name="settings_auto_play_summary">启动应用时自动继续播放上次的歌曲</string>
     <string name="settings_terminate_on_task_removed_title">从最近任务移除时终止应用</string>
     <string name="settings_terminate_on_task_removed_summary">移除最近任务时结束应用进程并停止播放。关闭后，系统仍可能结束应用。</string>
+    <string name="settings_notification_playback_mode_button_title">显示播放顺序切换按钮</string>
+    <string name="settings_notification_playback_mode_button_summary">在系统媒体通知栏或控制中心显示播放顺序切换按钮</string>
+    <string name="settings_notification_close_button_title">显示关闭按钮</string>
+    <string name="settings_notification_close_button_summary">在系统媒体通知栏或控制中心显示用于强制结束应用进程的按钮</string>
     <string name="settings_section_navigation">导航与动画</string>
     <string name="language_title">语言</string>
     <string name="language_follow_system">跟随系统</string>

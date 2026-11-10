@@ -2299,6 +2299,10 @@ fun MeloxApp(
                                                         onBack = navigateBack,
                                                         onAutoPlayOnStartChange = viewModel::setAutoPlayOnStart,
                                                         onTerminateOnTaskRemovedChange = viewModel::setTerminateOnTaskRemoved,
+                                                        onShowNotificationPlaybackModeButtonChange =
+                                                            viewModel::setShowNotificationPlaybackModeButton,
+                                                        onShowNotificationCloseButtonChange =
+                                                            viewModel::setShowNotificationCloseButton,
                                                     )
 
                                                     AppRoute.ABOUT -> AboutScreen(

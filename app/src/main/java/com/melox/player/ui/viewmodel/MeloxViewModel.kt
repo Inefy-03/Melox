@@ -1402,6 +1402,14 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { settingsRepository.setTerminateOnTaskRemoved(enabled) }
     }
 
+    fun setShowNotificationPlaybackModeButton(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowNotificationPlaybackModeButton(enabled) }
+    }
+
+    fun setShowNotificationCloseButton(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowNotificationCloseButton(enabled) }
+    }
+
     fun playNext(track: MusicTrack) {
         if (visibleMusicTracks(listOf(track), hiddenFolderPaths.value, hiddenTrackUris.value).isNotEmpty()) {
             playbackController.playNext(track)

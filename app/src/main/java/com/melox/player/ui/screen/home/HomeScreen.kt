@@ -140,6 +140,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
+    val artworkSize = if (landscape) 240.dp else HomeRecommendationArtworkSize
     val layoutDirection = LocalLayoutDirection.current
     val recommendationTracks = recommendations?.tracks.orEmpty()
     val currentOnRecommendationGestureActiveChanged by rememberUpdatedState(
@@ -183,7 +184,7 @@ fun HomeScreen(
                         HomeSectionTitle(R.string.home_recommendation_title)
                     }
                     item(key = "home_recommendation_loading") {
-                        HomeRecommendationLoadingState()
+                        HomeRecommendationLoadingState(artworkSize = artworkSize)
                     }
                 }
 
@@ -213,7 +214,7 @@ fun HomeScreen(
                         }
                         HorizontalPager(
                             state = pagerState,
-                            pageSize = PageSize.Fixed(HomeRecommendationArtworkSize),
+                            pageSize = PageSize.Fixed(artworkSize),
                             contentPadding = PaddingValues(
                                 horizontal = HomeRecommendationHorizontalContentPadding,
                             ),
@@ -222,7 +223,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = HomeRecommendationSectionBottomSpacing)
-                                .height(HomeRecommendationArtworkSize + HomeRecommendationInfoHeight)
+                                .height(artworkSize + HomeRecommendationInfoHeight)
                                 .pointerInput(Unit) {
                                     awaitEachGesture {
                                         val down = awaitFirstDown(
@@ -252,7 +253,7 @@ fun HomeScreen(
                             HomeRecommendationCard(
                                 track = track,
                                 hasArtwork = track.id in recommendations.artworkTrackIds,
-                                artworkSize = HomeRecommendationArtworkSize,
+                                artworkSize = artworkSize,
                                 blurEnabled = blurEnabled,
                                 onClick = {
                                     onRecommendationClick(track, recommendationTracks)
@@ -356,12 +357,15 @@ private fun HomeEmptyPlaylistCard(
 }
 
 @Composable
-private fun HomeRecommendationLoadingState(modifier: Modifier = Modifier) {
+private fun HomeRecommendationLoadingState(
+    modifier: Modifier = Modifier,
+    artworkSize: Dp = HomeRecommendationArtworkSize,
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(bottom = HomeRecommendationSectionBottomSpacing)
-            .height(HomeRecommendationArtworkSize + HomeRecommendationInfoHeight),
+            .height(artworkSize + HomeRecommendationInfoHeight),
         contentAlignment = Alignment.Center,
     ) {
         InfiniteProgressIndicator(color = MiuixTheme.colorScheme.onSurface)
@@ -475,22 +479,19 @@ internal fun HomeEmptyCardContent(
 internal fun homePlaylistGridColumnCount(
     landscape: Boolean,
     availableWidth: Dp,
-): Int = if (landscape) {
-    responsiveGridColumnCount(
-        availableWidth = availableWidth,
-        horizontalPadding = HomePlaylistGridHorizontalPadding,
-        minimumCellWidth = HomePlaylistGridMinimumCellWidth,
-        minimumColumns = HomePlaylistPortraitColumnCount,
-        maximumColumns = HomePlaylistLandscapeMaximumColumnCount,
-    )
-} else {
-    HomePlaylistPortraitColumnCount
-}
+): Int = responsiveGridColumnCount(
+    availableWidth = availableWidth,
+    horizontalPadding = HomePlaylistGridHorizontalPadding,
+    minimumCellWidth = HomePlaylistGridMinimumCellWidth,
+    minimumColumns = HomePlaylistMinimumColumnCount,
+    maximumColumns = if (landscape) HomePlaylistLandscapeMaximumColumnCount else HomePlaylistPortraitMaximumColumnCount,
+)
 
-internal fun homeInitialRecommendationCount(viewportWidth: Dp): Int {
+internal fun homeInitialRecommendationCount(viewportWidth: Dp, landscape: Boolean = false): Int {
+    val artworkSize = if (landscape) 240.dp else HomeRecommendationArtworkSize
     val pageViewportWidth = (viewportWidth - HomeRecommendationHorizontalContentPadding * 2)
         .coerceAtLeast(0.dp)
-    val pageExtent = HomeRecommendationArtworkSize + HomeRecommendationPageSpacing
+    val pageExtent = artworkSize + HomeRecommendationPageSpacing
     return ceil(
         ((pageViewportWidth + HomeRecommendationPageSpacing) / pageExtent).toDouble(),
     ).toInt()
@@ -653,8 +654,8 @@ internal fun rememberHomeRecommendationSelection(
 @Composable
 internal fun HomeSectionTitle(
     stringRes: Int,
-    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     topPadding: Dp = 2.dp,
     endPadding: Dp = 16.dp,
 ) {
@@ -767,6 +768,7 @@ private fun HomeRecommendationCard(
                 HomeRecommendationReflectionArtwork(
                     clearArtwork = checkNotNull(artwork),
                     reflectedArtwork = checkNotNull(reflection),
+                    clearArtworkHeight = artworkSize,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
@@ -822,10 +824,11 @@ private fun HomeRecommendationMetadata(
 private fun HomeRecommendationReflectionArtwork(
     clearArtwork: Bitmap,
     reflectedArtwork: Bitmap,
+    clearArtworkHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier = modifier) {
-        val clearArtworkHeight = HomeRecommendationClearArtworkHeight.toPx()
+        val clearArtworkHeight = clearArtworkHeight.toPx()
         val reflectionTop = clearArtworkHeight / 2f
         drawIntoCanvas { composeCanvas ->
             val nativeCanvas = composeCanvas.nativeCanvas
@@ -963,14 +966,14 @@ private val HomeRecommendationArtworkSize = 220.dp
 private val HomeRecommendationCardCornerRadius = 20.dp
 private val HomeRecommendationPageSpacing = 12.dp
 private val HomeRecommendationHorizontalContentPadding = 16.dp
-private const val HomePlaylistPortraitColumnCount = 2
+private const val HomePlaylistMinimumColumnCount = 2
+private const val HomePlaylistPortraitMaximumColumnCount = 3
 private const val HomePlaylistLandscapeMaximumColumnCount = 6
 private val HomePlaylistGridHorizontalPadding = 32.dp
-private val HomePlaylistGridMinimumCellWidth = 140.dp
+private val HomePlaylistGridMinimumCellWidth = 160.dp
 private val HomeRecommendationInfoHeight = 70.dp
-private val HomeRecommendationClearArtworkHeight = 220.dp
 private val HomeRecommendationMetadataHorizontalPadding = 18.dp
 private val HomeRecommendationMetadataBottomPadding = 14.dp
+internal val HomeSectionSpacing = 32.dp
 private val HomeRecommendationSectionBottomSpacing = 14.dp
 private val HomeEmptyCardContentHeight = 160.dp
-internal val HomeSectionSpacing = 32.dp

@@ -481,7 +481,9 @@ class PlaybackService : MediaSessionService() {
                 .collect { (showModeButton, showCloseButton) ->
                     showNotificationPlaybackModeButton = showModeButton
                     showNotificationCloseButton = showCloseButton
-                    refreshMediaButtonPreferences(player.currentPlaybackMode())
+                    mediaSession?.player?.let { currentPlayer ->
+                        refreshMediaButtonPreferences(currentPlayer.currentPlaybackMode())
+                    }
                 }
         }
         scheduleArtworkUpdate(player)

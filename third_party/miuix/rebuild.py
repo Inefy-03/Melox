@@ -43,7 +43,7 @@ def main():
             cwd=work, check=True,
         )
         subprocess.run(
-            ["git", "apply", str(directory / "top-app-bar-state-observation.patch")],
+            ["git", "apply", "--unidiff-zero", str(directory / "top-app-bar-state-observation.patch")],
             cwd=work, check=True,
         )
         # Keep the shipped blur API and change only progressive downsampling.

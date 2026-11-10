@@ -220,8 +220,7 @@
     <string name="player_immersive_mode_enable">开启沉浸模式</string>
     <string name="player_immersive_mode_disable">关闭沉浸模式</string>
     <string name="settings_section_personalization">个性化</string>
-    <string name="settings_tab_switch_haptics_title">标签切换震动</string>
-    <string name="settings_tab_switch_haptics_summary">切换底部标签时轻微震动</string>
+    <string name="settings_tab_switch_haptics_title">底栏切换选项震动</string>
     <string name="settings_section_other">其他</string>
     <string name="settings_section_playback">播放</string>
     <string name="settings_audio_output_title">音频输出</string>
@@ -450,6 +449,6 @@
     <string name="settings_bottom_bar_ios_like">iOS-like</string>
     <string name="settings_style_os3">OS3</string>
     <string name="settings_style_os4">OS4</string>
-    <string name="library_preview_empty_description">扫描音乐后将在此显示</string>
     <string name="settings_glass_styles_unsupported">OS4 和 iOS-like 需要 Android 13 及以上</string>
+    <string name="library_preview_empty_description">扫描音乐后将在此显示</string>
 </resources>

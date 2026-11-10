@@ -82,6 +82,7 @@ fun ThemeSettingsScreen(
     onShowSongListDurationChange: (Boolean) -> Unit,
     onPredictiveBackChange: (Boolean) -> Unit,
     onNavigationTransitionStyleChange: (NavigationTransitionStyle) -> Unit,
+    onTabSwitchHapticsEnabledChange: (Boolean) -> Unit,
     onOpenMainBackground: () -> Unit,
     onOpenInterfaceStyle: () -> Unit,
 ) {
@@ -122,6 +123,9 @@ fun ThemeSettingsScreen(
     }
     var predictiveBackChecked by remember(settings.predictiveBackEnabled) {
         mutableStateOf(settings.predictiveBackEnabled)
+    }
+    var tabSwitchHapticsChecked by remember(settings.tabSwitchHapticsEnabled) {
+        mutableStateOf(settings.tabSwitchHapticsEnabled)
     }
     var navigationTransitionStyle by remember(settings.navigationTransitionStyle) {
         mutableStateOf(settings.navigationTransitionStyle)
@@ -464,6 +468,14 @@ fun ThemeSettingsScreen(
                                 },
                             )
                         }
+                        SwitchPreference(
+                            title = stringResource(R.string.settings_tab_switch_haptics_title),
+                            checked = tabSwitchHapticsChecked,
+                            onCheckedChange = { checked ->
+                                tabSwitchHapticsChecked = checked
+                                onTabSwitchHapticsEnabledChange(checked)
+                            },
+                        )
                     }
                 }
             }

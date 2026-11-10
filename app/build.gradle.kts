@@ -42,7 +42,7 @@ val releaseSigningValues = listOf(
 val releaseSigningConfigured = localPropertiesFile.isFile &&
     releaseKeystoreFile?.isFile == true &&
     releaseSigningValues.all { (_, value) -> !value.isNullOrBlank() }
-val appVersionName = "1.5.1-" + ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+val appVersionName = "2.0.0-beta1-" + ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
     .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.equals("assemble", ignoreCase = true) ||
@@ -80,7 +80,7 @@ android {
         applicationId = "com.melox.player"
         minSdk = 28
         targetSdk = 36
-        versionCode = 8
+        versionCode = 9
         versionName = appVersionName
 
         ndk {

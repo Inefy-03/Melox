@@ -1,6 +1,5 @@
 package com.melox.player
 
-import com.melox.player.ui.keepSidebarPageOnRootSelection
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.TargetBasedAnimation
 import androidx.compose.animation.core.VectorConverter
@@ -21,6 +20,75 @@ import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 
 class NavigationChromeMotionTest {
     @Test
+    fun sidebarSelectionFollowsTheCurrentPageAndItsNearestListedAncestor() {
+        val routes = listOf(
+            com.melox.player.ui.AppRoute.PLAYLISTS,
+            com.melox.player.ui.AppRoute.ALBUMS,
+            com.melox.player.ui.AppRoute.ARTISTS,
+            com.melox.player.ui.AppRoute.FOLDERS,
+        )
+        fun selected(vararg path: com.melox.player.ui.AppRoute) = com.melox.player.ui.selectedSidebarShortcut(
+            path.mapIndexed { index, route -> com.melox.player.ui.AppNavDestination(route, depth = index) },
+            routes,
+        )
+        org.junit.Assert.assertNull(selected(com.melox.player.ui.AppRoute.ROOT))
+        routes.forEachIndexed { index, route ->
+            assertEquals(index, selected(com.melox.player.ui.AppRoute.ROOT, route))
+        }
+        assertEquals(1, selected(com.melox.player.ui.AppRoute.ROOT, com.melox.player.ui.AppRoute.ALBUMS, com.melox.player.ui.AppRoute.ALBUM_DETAIL))
+        assertEquals(2, selected(com.melox.player.ui.AppRoute.ROOT, com.melox.player.ui.AppRoute.ARTISTS, com.melox.player.ui.AppRoute.ARTIST_DETAIL, com.melox.player.ui.AppRoute.ALBUM_DETAIL))
+        org.junit.Assert.assertNull(selected(com.melox.player.ui.AppRoute.ROOT, com.melox.player.ui.AppRoute.ALBUM_DETAIL))
+    }
+
+    @Test
+    fun navigationHostKeepsItsRememberedStateAcrossLayoutPositionsAndRouteCaptures() = kotlinx.coroutines.runBlocking {
+        val secondary = androidx.compose.runtime.mutableStateOf(false)
+        var capturedRoute = false
+        var token: Any? = null
+        var created = 0
+        withArtworkComposition(content = {
+            val route = secondary.value
+            val retained = com.melox.player.ui.navigation.rememberNavigationHostContent {
+                val remembered = androidx.compose.runtime.remember { created++; Any() }
+                androidx.compose.runtime.SideEffect { token = remembered; capturedRoute = route }
+            }
+            if (route) retained() else retained()
+        }) {
+            frame(0)
+            val initialToken = token
+            secondary.value = true
+            frame(16)
+            org.junit.Assert.assertSame(initialToken, token)
+            assertTrue(capturedRoute)
+            secondary.value = false
+            frame(32)
+            org.junit.Assert.assertSame(initialToken, token)
+            org.junit.Assert.assertFalse(capturedRoute)
+            assertEquals(1, created)
+        }
+    }
+
+    @Test
+    fun routeReconciliationKeepsRetainedEntriesAndHonorsAnAlreadyCommittedPop() {
+        val root = com.melox.player.ui.AppNavDestination(com.melox.player.ui.AppRoute.ROOT, depth = 0)
+        val parent = com.melox.player.ui.AppNavDestination(com.melox.player.ui.AppRoute.ALBUMS, depth = 1)
+        val detail = com.melox.player.ui.AppNavDestination(com.melox.player.ui.AppRoute.ALBUM_DETAIL, "album", 2)
+        val stack = top.yukonga.miuix.kmp.nav.core.navBackStackOf(root, parent)
+        com.melox.player.ui.synchronizeAppNavBackStack(stack, listOf(root.copy(), parent.copy(), detail))
+        org.junit.Assert.assertSame(root, stack[0])
+        org.junit.Assert.assertSame(parent, stack[1])
+        assertEquals(detail, stack.last())
+
+        // The completion callback pops before Miuix releases the gesture's driver ownership.
+        stack.removeAt(stack.lastIndex)
+        com.melox.player.ui.synchronizeAppNavBackStack(stack, listOf(root.copy(), parent.copy()))
+        assertEquals(listOf(root, parent), stack.toList())
+        org.junit.Assert.assertSame(parent, stack.last())
+        com.melox.player.ui.synchronizeAppNavBackStack(stack, listOf(root.copy()))
+        org.junit.Assert.assertSame(root, stack.single())
+    }
+
+    @Test
     fun inlineTitleAppearsOnlyWhenTheNormalLandscapeTitleIsHidden() {
         fun inline(alpha: Float, progress: Float?, enabled: Boolean = true, title: String = "Albums") =
             com.melox.player.ui.component.os4.shouldShowInlineTopBarTitle(title, alpha, progress, enabled)
@@ -31,14 +99,6 @@ class NavigationChromeMotionTest {
         assertTrue(!inline(1f, null))
         assertTrue(!inline(1f, 0f, enabled = false))
         assertTrue(!inline(1f, 0f, title = ""))
-    }
-
-    @Test
-    fun sidebarOwnershipSwitchKeepsTheSamePageWhenReturningToItsUpperDestination() {
-        assertTrue(keepSidebarPageOnRootSelection(shortcutSelected = true, currentPage = 2, targetPage = 2))
-        assertTrue(keepSidebarPageOnRootSelection(shortcutSelected = true, currentPage = 0, targetPage = 0))
-        org.junit.Assert.assertFalse(keepSidebarPageOnRootSelection(shortcutSelected = true, currentPage = 2, targetPage = 0))
-        org.junit.Assert.assertFalse(keepSidebarPageOnRootSelection(shortcutSelected = false, currentPage = 2, targetPage = 2))
     }
 
     @Test

@@ -37,6 +37,15 @@ internal val LocalWindowBackDispatcherOwner =
 internal val LocalOrdinaryBackDispatcherOwner =
     compositionLocalOf<NavigationEventDispatcherOwner?> { null }
 
+/** Retains the complete host, including its adaptive chrome and dispatcher ownership. */
+@Composable
+internal fun rememberNavigationHostContent(content: @Composable () -> Unit): @Composable () -> Unit {
+    val latestContent = androidx.compose.runtime.rememberUpdatedState(content)
+    return remember {
+        androidx.compose.runtime.movableContentOf { latestContent.value() }
+    }
+}
+
 internal val ImmediateNavigationTransition = navGraphicsTransition(
     motion = NavMotion(programmatic = NavSettleSpec.Tween(0, LinearEasing)),
     scrim = { 0f },

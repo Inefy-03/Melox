@@ -94,6 +94,8 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import top.yukonga.miuix.kmp.glass.popupShadowOutsets
 import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.Role
@@ -217,6 +219,11 @@ import com.melox.player.ui.component.playback.prefetchPlaybackBackground
 import com.melox.player.ui.component.playback.rememberDynamicFlowBackgroundState
 import com.melox.player.ui.component.playback.rememberPlayerSheetTransitionState
 import com.melox.player.ui.navigation.PredictiveNavDisplay
+import com.melox.player.ui.navigation.ImmediateNavigationTransition
+import com.melox.player.ui.screen.library.Os4LibraryOverviewScreen
+import com.melox.player.data.library.sortAlbums
+import com.melox.player.data.library.sortArtists
+import com.melox.player.data.library.sortFolders
 import com.melox.player.ui.navigation.secondaryPageEnterMotion
 import com.melox.player.ui.navigation.LocalWindowBackDispatcherOwner
 import com.melox.player.ui.navigation.LocalOrdinaryBackDispatcherOwner
@@ -275,22 +282,28 @@ import top.yukonga.miuix.kmp.basic.Text
 import com.melox.player.ui.component.os4.TopAppBar
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.SearchCleanup
 import top.yukonga.miuix.kmp.icon.extended.Search
 import androidx.compose.runtime.snapshots.Snapshot
-import top.yukonga.miuix.kmp.nav.runtime.LocalSingleStepRootPop
 import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.NavKey
+import top.yukonga.miuix.kmp.nav.core.LocalNavTransitionScope
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 import top.yukonga.miuix.kmp.squircle.squircleBorder
 import top.yukonga.miuix.kmp.squircle.squircleBackground
+import top.yukonga.miuix.kmp.basic.NavigationItem
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Album
+import top.yukonga.miuix.kmp.icon.extended.Contacts
+import top.yukonga.miuix.kmp.icon.extended.RecordingTape
+import top.yukonga.miuix.kmp.icon.extended.Folder
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import top.yukonga.miuix.kmp.utils.overScrollHorizontal
 import kotlin.math.abs
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -324,7 +337,7 @@ internal fun shouldTriggerTabSwitchHaptic(
 ): Boolean = enabled && selectedPage != targetPage
 
 @Serializable
-private enum class AppRoute {
+internal enum class AppRoute {
     ROOT,
     SCAN_SETTINGS,
     MUSIC_STATISTICS,
@@ -341,6 +354,9 @@ private enum class AppRoute {
     FOLDER_DETAIL,
     INTERNAL_STORAGE,
     PLAYLISTS,
+    ALBUMS,
+    ARTISTS,
+    FOLDERS,
     PLAYLIST_DETAIL,
     BLOCKED_FOLDERS,
     HIDDEN_SONGS,
@@ -348,7 +364,7 @@ private enum class AppRoute {
 }
 
 @Serializable
-private data class AppNavDestination(
+internal data class AppNavDestination(
     val route: AppRoute,
     val contentKey: String? = null,
     val depth: Int,
@@ -360,7 +376,13 @@ private fun AppNavDestination.entryContentKey(): String =
     if (route == AppRoute.INTERNAL_STORAGE) "melox:${route.name}:$depth:$contentKey"
     else "melox:${route.name}:$depth"
 
-private fun synchronizeAppNavBackStack(
+internal fun selectedSidebarShortcut(
+    destinations: List<AppNavDestination>,
+    sidebarRoutes: List<AppRoute>,
+): Int? = destinations.asReversed()
+    .firstNotNullOfOrNull { destination -> sidebarRoutes.indexOf(destination.route).takeIf { it >= 0 } }
+
+internal fun synchronizeAppNavBackStack(
     backStack: NavBackStack,
     destinations: List<AppNavDestination>,
 ) {
@@ -542,6 +564,7 @@ fun MeloxApp(
         blurEnabled = settings.blurEnabled,
         initialRecommendationCount = homeInitialRecommendationCount(
             recommendationViewportWidth,
+            landscape = windowWidth > windowHeight,
         ),
     )
     var permissionRequestSource by rememberSaveable {
@@ -557,9 +580,15 @@ fun MeloxApp(
     var songSearchFocused by remember { mutableStateOf(false) }
     var selectedSongUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var songsSelectionMode by remember { mutableStateOf(false) }
-    var librarySearchQuery by rememberSaveable { mutableStateOf("") }
-    var librarySearchVisible by rememberSaveable { mutableStateOf(false) }
-    var librarySearchFocused by remember { mutableStateOf(false) }
+    val librarySearchQueryState = rememberSaveable { mutableStateOf("") }
+    var librarySearchQuery by librarySearchQueryState
+    val secondarySearchQuery = List(LIBRARY_TAB_COUNT) { rememberSaveable { mutableStateOf("") } }
+    val librarySearchVisibleState = rememberSaveable { mutableStateOf(false) }
+    var librarySearchVisible by librarySearchVisibleState
+    val secondarySearchVisible = List(LIBRARY_TAB_COUNT) { rememberSaveable { mutableStateOf(false) } }
+    val librarySearchFocusedState = remember { mutableStateOf(false) }
+    var librarySearchFocused by librarySearchFocusedState
+    val secondarySearchFocused = List(LIBRARY_TAB_COUNT) { remember { mutableStateOf(false) } }
     var albumSortFieldOrdinal by rememberSaveable {
         mutableIntStateOf(AlbumSortField.ALBUM.ordinal)
     }
@@ -614,8 +643,8 @@ fun MeloxApp(
     val frameRecordingGeneration = playerTransition.currentFrameRecordingGeneration
     var miniPlayerChrome by remember { mutableStateOf<MiniPlayerChrome?>(null) }
     var currentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
-    var singleStepRootPop by remember { mutableStateOf(false) }
-    LaunchedEffect(currentRoute) { if (currentRoute != AppRoute.ROOT) singleStepRootPop = false }
+    var standaloneLibraryParent by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
+    var sidebarEntryRoute by rememberSaveable { mutableStateOf<AppRoute?>(null) }
     val bottomSearchActions = remember { mutableStateMapOf<Any, BottomSearchAction>() }
     var detailSelectionActive by remember { mutableStateOf(false) }
     var detailSelectionExitRequest by remember { mutableIntStateOf(0) }
@@ -730,14 +759,19 @@ fun MeloxApp(
     LaunchedEffect(songSearchQuery, musicSortConfig) {
         viewModel.updateMusicPresentation(songSearchQuery, musicSortConfig)
     }
-    LaunchedEffect(librarySearchQuery, albumSortConfig) {
-        viewModel.updateAlbumPresentation(librarySearchQuery, albumSortConfig)
+    val independentLibrarySearch = settings.themeStyle == com.melox.player.model.ThemeStyle.OS4 &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val albumSearchQuery = if (independentLibrarySearch) secondarySearchQuery[LIBRARY_ALBUMS_TAB_INDEX].value else librarySearchQuery
+    val artistSearchQuery = if (independentLibrarySearch) secondarySearchQuery[LIBRARY_ARTISTS_TAB_INDEX].value else librarySearchQuery
+    val folderSearchQuery = if (independentLibrarySearch) secondarySearchQuery[LIBRARY_FOLDERS_TAB_INDEX].value else librarySearchQuery
+    LaunchedEffect(albumSearchQuery, albumSortConfig) {
+        viewModel.updateAlbumPresentation(albumSearchQuery, albumSortConfig)
     }
-    LaunchedEffect(librarySearchQuery, artistSortConfig) {
-        viewModel.updateArtistPresentation(librarySearchQuery, artistSortConfig)
+    LaunchedEffect(artistSearchQuery, artistSortConfig) {
+        viewModel.updateArtistPresentation(artistSearchQuery, artistSortConfig)
     }
-    LaunchedEffect(librarySearchQuery, folderSortConfig) {
-        viewModel.updateFolderPresentation(librarySearchQuery, folderSortConfig)
+    LaunchedEffect(folderSearchQuery, folderSortConfig) {
+        viewModel.updateFolderPresentation(folderSearchQuery, folderSortConfig)
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collectLatest(playerPagerState::syncPage)
@@ -887,6 +921,14 @@ fun MeloxApp(
         val albumsGridState = rememberLazyGridState()
         val artistsListState = rememberLazyListState()
         val foldersListState = rememberLazyListState()
+        val secondaryAlbumsGridState = rememberLazyGridState()
+        val secondaryArtistsListState = rememberLazyListState()
+        val secondaryFoldersListState = rememberLazyListState()
+        val secondaryLibraryScrollBehaviors = List(LIBRARY_TAB_COUNT) { index ->
+            rememberSearchTopBarScrollBehavior(
+                if (independentLibrarySearch) secondarySearchVisible[index].value else librarySearchVisible,
+            )
+        }
         val themeSettingsListState = rememberLazyListState()
         val interfaceStyleListState = rememberLazyListState()
         val mainBackgroundListState = rememberLazyListState()
@@ -934,18 +976,6 @@ fun MeloxApp(
         val lyricsInterfaceScrollBehavior = MiuixScrollBehavior()
         val playbackBehaviorScrollBehavior = MiuixScrollBehavior()
         val audioOutputScrollBehavior = MiuixScrollBehavior()
-        LaunchedEffect(
-            pendingAlbumGridReset,
-            albumSortConfig.gridStyle,
-        ) {
-            val pendingGridStyle = pendingAlbumGridReset ?: return@LaunchedEffect
-            if (albumSortConfig.gridStyle != pendingGridStyle) return@LaunchedEffect
-            withFrameNanos { }
-            albumsGridState.scrollToItem(0)
-            libraryScrollBehavior.state.heightOffset = 0f
-            libraryScrollBehavior.state.contentOffset = 0f
-            pendingAlbumGridReset = null
-        }
         val openPlaylistPicker: (List<MusicTrack>) -> Unit = { tracks ->
             if (playlistState.loaded && tracks.isNotEmpty()) {
                 playlistPickerOnAdded = null
@@ -994,6 +1024,14 @@ fun MeloxApp(
             }
         }
         val openTrackAlbum: (MusicTrack) -> Unit = { track ->
+            if (currentRoute !in listOf(
+                    AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS,
+                    AppRoute.ALBUM_DETAIL, AppRoute.ARTIST_DETAIL,
+                    AppRoute.FOLDER_DETAIL, AppRoute.INTERNAL_STORAGE,
+                )
+            ) {
+                standaloneLibraryParent = AppRoute.ROOT
+            }
             uiState.albums.firstOrNull { album ->
                 album.tracks.any { it.id == track.id }
             }?.let { album ->
@@ -1011,6 +1049,14 @@ fun MeloxApp(
             }
         }
         val openTrackArtist: (ArtistGroup) -> Unit = { artist ->
+            if (currentRoute !in listOf(
+                    AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS,
+                    AppRoute.ALBUM_DETAIL, AppRoute.ARTIST_DETAIL,
+                    AppRoute.FOLDER_DETAIL, AppRoute.INTERNAL_STORAGE,
+                )
+            ) {
+                standaloneLibraryParent = AppRoute.ROOT
+            }
             if (
                 currentRoute == AppRoute.ALBUM_DETAIL &&
                     albumParentRoute == AppRoute.ARTIST_DETAIL &&
@@ -1051,6 +1097,382 @@ fun MeloxApp(
                 )
             }
         }
+        val libraryRoutes = listOf(AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS)
+        val sidebarRoutes = listOf(AppRoute.PLAYLISTS) + libraryRoutes
+        val libraryOverviewListState = rememberLazyListState()
+        val libraryContent: @Composable (PaddingValues, Boolean, Int?, () -> Unit) -> Unit =
+            { outerPadding, navigationRailExpanded, section, onBack ->
+                val overview = section == null && com.melox.player.ui.theme.LocalOs4Style.current
+                val independentSection = section.takeIf { independentLibrarySearch }
+                var librarySearchQuery by (independentSection?.let { secondarySearchQuery[it] } ?: librarySearchQueryState)
+                var librarySearchVisible by (independentSection?.let { secondarySearchVisible[it] } ?: librarySearchVisibleState)
+                var librarySearchFocused by (independentSection?.let { secondarySearchFocused[it] } ?: librarySearchFocusedState)
+                val pageLibraryScrollBehavior = if (section == null) {
+                    libraryScrollBehavior
+                } else {
+                    secondaryLibraryScrollBehaviors[section]
+                }
+                val pageFoldersListState = if (section == null) foldersListState else secondaryFoldersListState
+                val pageArtistsListState = if (section == null) artistsListState else secondaryArtistsListState
+                val pageAlbumsGridState = if (section == null) albumsGridState else secondaryAlbumsGridState
+                LaunchedEffect(pendingAlbumGridReset, albumSortConfig.gridStyle, currentRoute) {
+                    val pageRoute = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                    val pendingGridStyle = pendingAlbumGridReset ?: return@LaunchedEffect
+                    if (currentRoute != pageRoute || albumSortConfig.gridStyle != pendingGridStyle) {
+                        return@LaunchedEffect
+                    }
+                    withFrameNanos { }
+                    pageAlbumsGridState.scrollToItem(0)
+                    pageLibraryScrollBehavior.state.heightOffset = 0f
+                    pageLibraryScrollBehavior.state.contentOffset = 0f
+                    pendingAlbumGridReset = null
+                }
+                PlayerPage(
+                    title = section?.let { libraryTabs[it] } ?: libraryTitle,
+                    navigationIcon = {
+                        if (section != null) {
+                            IconButton(onClick = onBack) {
+                                Icon(
+                                    com.melox.player.ui.component.os4.navigationBackIcon(),
+                                    stringResource(R.string.back),
+                                )
+                            }
+                        }
+                    },
+                    outerPadding = outerPadding,
+                    scrollBehavior = pageLibraryScrollBehavior,
+                    useSmallTopAppBar = useSmallTopAppBar,
+                    isRootPage = section == null,
+                    actions = {
+                        if (!overview) {
+                            LibrarySearchButton(
+                                bottomActionActive = section != null || navigationPresentationPage == LIBRARY_TAB_INDEX,
+                                visible = librarySearchVisible,
+                                scrollBehavior = pageLibraryScrollBehavior,
+                                contentDescription = when (section ?: libraryPagerState.currentPage) {
+                                    LIBRARY_ARTISTS_TAB_INDEX ->
+                                        stringResource(R.string.artist_search_hint)
+                                    LIBRARY_FOLDERS_TAB_INDEX ->
+                                        stringResource(R.string.folder_search_hint)
+                                    else -> stringResource(R.string.album_search_hint)
+                                },
+                                onClick = {
+                                    if (librarySearchVisible) {
+                                        librarySearchVisible = false
+                                        librarySearchFocused = false
+                                        librarySearchQuery = ""
+                                    } else {
+                                        librarySearchVisible = true
+                                        librarySearchFocused = true
+                                    }
+                                },
+                            )
+                            when (section ?: libraryPagerState.currentPage) {
+                                LIBRARY_ARTISTS_TAB_INDEX -> ArtistSortButton(
+                                    config = artistSortConfig,
+                                    onConfigChange = { config ->
+                                        artistSortFieldOrdinal = config.field.ordinal
+                                        artistSortDescending = config.descending
+                                        viewModel.setArtistSortConfig(config)
+                                    },
+                                )
+
+                                LIBRARY_FOLDERS_TAB_INDEX -> FolderSortButton(
+                                    config = folderSortConfig,
+                                    onConfigChange = { config ->
+                                        folderSortFieldOrdinal = config.field.ordinal
+                                        folderSortDescending = config.descending
+                                        viewModel.setFolderSortConfig(config)
+                                    },
+                                )
+
+                                else -> AlbumSortButton(
+                                    config = albumSortConfig,
+                                    onConfigChange = { config ->
+                                        val gridStyleChanged =
+                                            config.gridStyle != albumSortConfig.gridStyle
+                                        albumSortFieldOrdinal = config.field.ordinal
+                                        albumSortDescending = config.descending
+                                        albumGridStyleOrdinal = config.gridStyle.ordinal
+                                        viewModel.setAlbumSortConfig(config)
+                                        if (gridStyleChanged) {
+                                            pendingAlbumGridReset = config.gridStyle
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    },
+                    bottomContent = {
+                        if (!overview) {
+                            Column {
+                                if (section == null) {
+                                    Box(
+                                        modifier = Modifier.height(
+                                            expandedTopBarBottomContentGap(
+                                                pageLibraryScrollBehavior,
+                                                12.dp,
+                                            ),
+                                        ),
+                                    )
+                                    LibraryTabRow(
+                                        tabs = libraryTabs,
+                                        selectedTabIndex = libraryPagerState.targetPage,
+                                        onTabSelected = { selectedTab ->
+                                            rootScope.launch {
+                                                libraryPagerState.animateScrollToPage(selectedTab)
+                                            }
+                                            viewModel.setLibraryTabIndex(selectedTab)
+                                        },
+                                        blurred = settings.blurEnabled,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 20.dp),
+                                    )
+                                    Box(modifier = Modifier.height(6.dp))
+                                }
+                                LibrarySearchBar(
+                                    visible = librarySearchVisible,
+                                    focused = librarySearchFocused,
+                                    backEnabled = if (section != null) currentRoute == libraryRoutes[section]
+                                    else currentRoute == AppRoute.ROOT && pagerState.currentPage == LIBRARY_TAB_INDEX,
+                                    query = librarySearchQuery,
+                                    label = stringResource(R.string.search_hint),
+                                    topPadding = 6.dp,
+                                    onQueryChange = { query -> librarySearchQuery = query },
+                                    onFocusedChange = { librarySearchFocused = it },
+                                    onVisibleChange = { visible ->
+                                        librarySearchVisible = visible
+                                        if (!visible) {
+                                            librarySearchFocused = false
+                                            librarySearchQuery = ""
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    },
+                ) { contentPadding, _, indexTopPadding ->
+                    if (overview) {
+                        Os4LibraryOverviewScreen(
+                            albums = remember(uiState.albums, albumSortConfig) { sortAlbums(uiState.albums, albumSortConfig) },
+                            artists = remember(uiState.artists, artistSortConfig) { sortArtists(uiState.artists, artistSortConfig) },
+                            folders = remember(uiState.folders, folderSortConfig) { sortFolders(uiState.folders, folderSortConfig) },
+                            gridStyle = albumSortConfig.gridStyle,
+                            listState = libraryOverviewListState,
+                            scrollBehavior = pageLibraryScrollBehavior,
+                            contentPadding = contentPadding,
+                            onOpenSection = { index ->
+                                librarySearchVisible = false
+                                librarySearchFocused = false
+                                librarySearchQuery = ""
+                                currentRoute = libraryRoutes[index]
+                            },
+                            onAlbumClick = { album ->
+                                standaloneLibraryParent = AppRoute.ROOT
+                                selectedAlbumKey = album.key
+                                albumParentRoute = AppRoute.ROOT
+                                albumParentArtistKey = null
+                                currentRoute = AppRoute.ALBUM_DETAIL
+                            },
+                            onArtistClick = openTrackArtist,
+                            onFolderClick = { folder ->
+                                standaloneLibraryParent = AppRoute.ROOT
+                                selectedFolderKey = folder.key
+                                currentRoute = AppRoute.FOLDER_DETAIL
+                            },
+                        )
+                    } else {
+                        val layoutDirection = LocalLayoutDirection.current
+                        val onLibraryIndexTargetChanged: (Int, Boolean) -> Unit =
+                            { _, restoreLargeTitle ->
+                                val state = pageLibraryScrollBehavior.state
+                                if (restoreLargeTitle && !pageLibraryScrollBehavior.isPinned) {
+                                    state.heightOffset = 0f
+                                    state.contentOffset = 0f
+                                } else if (state.heightOffsetLimit != -Float.MAX_VALUE) {
+                                    state.heightOffset = state.heightOffsetLimit
+                                    state.contentOffset = state.heightOffsetLimit
+                                }
+                            }
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            val libraryIndexModifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(
+                                    top = indexTopPadding + 4.dp,
+                                    end = contentPadding.calculateEndPadding(layoutDirection),
+                                    bottom = LocalAlphabetIndexBottomPadding.current,
+                                )
+                                .fillMaxHeight()
+                            val renderLibrarySection: @Composable (Int) -> Unit = { libraryPage ->
+                                when (libraryPage) {
+                                    LIBRARY_ALBUMS_TAB_INDEX -> AlbumLibraryScreen(
+                                        displayedAlbums = albumPresentation.items,
+                                        sectionIndexMap = albumPresentation.sectionIndexMap,
+                                        query = albumPresentation.query,
+                                        scanStatus = uiState.scanStatus,
+                                        sortConfig = albumPresentation.sortConfig.copy(
+                                            gridStyle = albumSortConfig.gridStyle,
+                                        ),
+                                        onAlbumClick = { album ->
+                                            dismissLibrarySearchFocus()
+                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            selectedAlbumKey = album.key
+                                            albumParentRoute = AppRoute.ROOT
+                                            albumParentArtistKey = null
+                                            currentRoute = AppRoute.ALBUM_DETAIL
+                                        },
+                                        scrollBehavior = pageLibraryScrollBehavior,
+                                        indexTopPadding = indexTopPadding,
+                                        gridState = pageAlbumsGridState,
+                                        contentPadding = contentPadding,
+                                        showIndex = false,
+                                        landscape = landscape,
+                                        navigationRailExpanded = navigationRailExpanded,
+                                    )
+
+                                    LIBRARY_ARTISTS_TAB_INDEX -> ArtistLibraryScreen(
+                                        displayedArtists = artistPresentation.items,
+                                        sectionIndexMap = artistPresentation.sectionIndexMap,
+                                        query = artistPresentation.query,
+                                        scanStatus = uiState.scanStatus,
+                                        sortConfig = artistPresentation.sortConfig,
+                                        onArtistClick = { artist ->
+                                            dismissLibrarySearchFocus()
+                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            openTrackArtist(artist)
+                                        },
+                                        scrollBehavior = pageLibraryScrollBehavior,
+                                        indexTopPadding = indexTopPadding,
+                                        listState = pageArtistsListState,
+                                        contentPadding = contentPadding,
+                                        showIndex = false,
+                                    )
+
+                                    LIBRARY_FOLDERS_TAB_INDEX -> FolderLibraryScreen(
+                                        displayedFolders = folderPresentation.items,
+                                        sectionIndexMap = folderPresentation.sectionIndexMap,
+                                        query = folderPresentation.query,
+                                        scanStatus = uiState.scanStatus,
+                                        sortConfig = folderPresentation.sortConfig,
+                                        onFolderClick = { folder ->
+                                            dismissLibrarySearchFocus()
+                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            selectedFolderKey = folder.key
+                                            currentRoute = AppRoute.FOLDER_DETAIL
+                                        },
+                                        onOpenInternalStorage = {
+                                            dismissLibrarySearchFocus()
+                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            internalStoragePath = INTERNAL_STORAGE_ROOT
+                                            currentRoute = AppRoute.INTERNAL_STORAGE
+                                        },
+                                        onBlockFolder = { path ->
+                                            viewModel.addBlockedFolderPath(path)
+                                        },
+                                        scrollBehavior = pageLibraryScrollBehavior,
+                                        indexTopPadding = indexTopPadding,
+                                        listState = pageFoldersListState,
+                                        contentPadding = contentPadding,
+                                        showIndex = false,
+                                    )
+                                }
+                            }
+                            if (section == null) {
+                                HorizontalPager(
+                                    state = libraryPagerState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    userScrollEnabled = false,
+                                    key = { it },
+                                ) { renderLibrarySection(it) }
+                            } else {
+                                renderLibrarySection(section)
+                            }
+
+                            when (section ?: libraryPagerState.currentPage) {
+                                LIBRARY_ALBUMS_TAB_INDEX -> if (
+                                    albumPresentation.items.isNotEmpty() &&
+                                    librarySearchQuery.isBlank() &&
+                                    (
+                                        albumSortConfig.field == AlbumSortField.ALBUM ||
+                                            albumSortConfig.field ==
+                                            AlbumSortField.ALBUM_ARTIST
+                                    )
+                                ) {
+                                    AlphabetSideBar(
+                                        sectionIndexMap = albumPresentation.sectionIndexMap,
+                                        topOffset = 108.dp,
+                                        itemCount = albumPresentation.items.size,
+                                        scrollStateKey = pageAlbumsGridState,
+                                        isAtTarget = { index ->
+                                            pageAlbumsGridState.firstVisibleItemIndex == index &&
+                                                pageAlbumsGridState.firstVisibleItemScrollOffset == 0
+                                        },
+                                        scrollToItem = pageAlbumsGridState::scrollToItem,
+                                        sections = if (albumSortConfig.descending) {
+                                            AlphabetSections.asReversed()
+                                        } else {
+                                            AlphabetSections
+                                        },
+                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
+                                        modifier = libraryIndexModifier,
+                                    )
+                                }
+
+                                LIBRARY_ARTISTS_TAB_INDEX -> if (
+                                    artistPresentation.items.isNotEmpty() &&
+                                    librarySearchQuery.isBlank() &&
+                                    artistSortConfig.field == ArtistSortField.NAME
+                                ) {
+                                    AlphabetSideBar(
+                                        sectionIndexMap = artistPresentation.sectionIndexMap,
+                                        topOffset = 108.dp,
+                                        itemCount = artistPresentation.items.size,
+                                        scrollStateKey = pageArtistsListState,
+                                        isAtTarget = { index ->
+                                            pageArtistsListState.firstVisibleItemIndex == index &&
+                                                pageArtistsListState.firstVisibleItemScrollOffset == 0
+                                        },
+                                        scrollToItem = pageArtistsListState::scrollToItem,
+                                        sections = if (artistSortConfig.descending) {
+                                            AlphabetSections.asReversed()
+                                        } else {
+                                            AlphabetSections
+                                        },
+                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
+                                        modifier = libraryIndexModifier,
+                                    )
+                                }
+
+                                LIBRARY_FOLDERS_TAB_INDEX -> if (
+                                    folderPresentation.items.isNotEmpty() &&
+                                    librarySearchQuery.isBlank() &&
+                                    folderSortConfig.field == FolderSortField.NAME
+                                ) {
+                                    AlphabetSideBar(
+                                        sectionIndexMap = folderLibrarySectionIndexMap,
+                                        topOffset = 108.dp,
+                                        itemCount = folderPresentation.items.size + 1,
+                                        scrollStateKey = pageFoldersListState,
+                                        isAtTarget = { index ->
+                                            pageFoldersListState.firstVisibleItemIndex == index &&
+                                                pageFoldersListState.firstVisibleItemScrollOffset == 0
+                                        },
+                                        scrollToItem = pageFoldersListState::scrollToItem,
+                                        sections = if (folderSortConfig.descending) {
+                                            AlphabetSections.asReversed()
+                                        } else {
+                                            AlphabetSections
+                                        },
+                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
+                                        modifier = libraryIndexModifier,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         val content: @Composable (PaddingValues, Boolean) -> Unit =
             { outerPadding, navigationRailExpanded ->
             FixedPageBackgroundHost(
@@ -1067,7 +1489,7 @@ fun MeloxApp(
                     .fillMaxSize()
                     .overScrollHorizontal()
                     .trackFixedWallpaperMotion(),
-                userScrollEnabled = rootPagerUserScrollEnabled(
+                userScrollEnabled = !(landscape && requestedBottomBarStyle == BottomBarStyle.OS4) && rootPagerUserScrollEnabled(
                     selectedPage = playerPagerState.selectedPage,
                     homeRecommendationPage = homeRecommendationPage,
                     homeRecommendationPageCount = homeRecommendations?.tracks?.size ?: 0,
@@ -1092,6 +1514,7 @@ fun MeloxApp(
                             scanStatus = uiState.scanStatus,
                             blurEnabled = settings.blurEnabled,
                             onOpenPlaylists = {
+                                sidebarEntryRoute = null
                                 currentRoute = AppRoute.PLAYLISTS
                             },
                             onOpenScanSettings = {
@@ -1126,7 +1549,7 @@ fun MeloxApp(
                             },
                             scrollBehavior = scrollBehavior,
                             listState = homeListState,
-                            landscape = landscape,
+                            landscape = windowWidth > windowHeight,
                             contentPadding = contentPadding,
                         )
                     }
@@ -1282,294 +1705,7 @@ fun MeloxApp(
                         )
                     }
 
-                    LIBRARY_TAB_INDEX -> PlayerPage(
-                        title = libraryTitle,
-                        outerPadding = outerPadding,
-                        scrollBehavior = libraryScrollBehavior,
-                        useSmallTopAppBar = useSmallTopAppBar,
-                        actions = {
-                            LibrarySearchButton(
-                                bottomActionActive = navigationPresentationPage == LIBRARY_TAB_INDEX,
-                                visible = librarySearchVisible,
-                                scrollBehavior = libraryScrollBehavior,
-                                contentDescription = when (libraryPagerState.currentPage) {
-                                    LIBRARY_ARTISTS_TAB_INDEX ->
-                                        stringResource(R.string.artist_search_hint)
-                                    LIBRARY_FOLDERS_TAB_INDEX ->
-                                        stringResource(R.string.folder_search_hint)
-                                    else -> stringResource(R.string.album_search_hint)
-                                },
-                                onClick = {
-                                    if (librarySearchVisible) {
-                                        librarySearchVisible = false
-                                        librarySearchFocused = false
-                                        librarySearchQuery = ""
-                                    } else {
-                                        librarySearchVisible = true
-                                        librarySearchFocused = true
-                                    }
-                                },
-                            )
-                            when (libraryPagerState.currentPage) {
-                                LIBRARY_ARTISTS_TAB_INDEX -> ArtistSortButton(
-                                    config = artistSortConfig,
-                                    onConfigChange = { config ->
-                                        artistSortFieldOrdinal = config.field.ordinal
-                                        artistSortDescending = config.descending
-                                        viewModel.setArtistSortConfig(config)
-                                    },
-                                )
-
-                                LIBRARY_FOLDERS_TAB_INDEX -> FolderSortButton(
-                                    config = folderSortConfig,
-                                    onConfigChange = { config ->
-                                        folderSortFieldOrdinal = config.field.ordinal
-                                        folderSortDescending = config.descending
-                                        viewModel.setFolderSortConfig(config)
-                                    },
-                                )
-
-                                else -> AlbumSortButton(
-                                    config = albumSortConfig,
-                                    onConfigChange = { config ->
-                                        val gridStyleChanged =
-                                            config.gridStyle != albumSortConfig.gridStyle
-                                        albumSortFieldOrdinal = config.field.ordinal
-                                        albumSortDescending = config.descending
-                                        albumGridStyleOrdinal = config.gridStyle.ordinal
-                                        viewModel.setAlbumSortConfig(config)
-                                        if (gridStyleChanged) {
-                                            pendingAlbumGridReset = config.gridStyle
-                                        }
-                                    },
-                                )
-                            }
-                        },
-                        bottomContent = {
-                            Column {
-                                Box(
-                                    modifier = Modifier.height(
-                                        expandedTopBarBottomContentGap(
-                                            libraryScrollBehavior,
-                                            12.dp,
-                                        ),
-                                    ),
-                                )
-                                LibraryTabRow(
-                                    tabs = libraryTabs,
-                                    selectedTabIndex = libraryPagerState.targetPage,
-                                    onTabSelected = { selectedTab ->
-                                        rootScope.launch {
-                                            libraryPagerState.animateScrollToPage(selectedTab)
-                                        }
-                                        viewModel.setLibraryTabIndex(selectedTab)
-                                    },
-                                    blurred = settings.blurEnabled,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 20.dp),
-                                )
-                                Box(modifier = Modifier.height(6.dp))
-                                LibrarySearchBar(
-                                    visible = librarySearchVisible,
-                                    focused = librarySearchFocused,
-                                    backEnabled = pagerState.currentPage == LIBRARY_TAB_INDEX,
-                                    query = librarySearchQuery,
-                                    label = stringResource(R.string.search_hint),
-                                    topPadding = 6.dp,
-                                    onQueryChange = { query -> librarySearchQuery = query },
-                                    onFocusedChange = { librarySearchFocused = it },
-                                    onVisibleChange = { visible ->
-                                        librarySearchVisible = visible
-                                        if (!visible) {
-                                            librarySearchFocused = false
-                                            librarySearchQuery = ""
-                                        }
-                                    },
-                                )
-                            }
-                        },
-                    ) { contentPadding, _, indexTopPadding ->
-                        val layoutDirection = LocalLayoutDirection.current
-                        val onLibraryIndexTargetChanged: (Int, Boolean) -> Unit =
-                            { _, restoreLargeTitle ->
-                                val state = libraryScrollBehavior.state
-                                if (restoreLargeTitle && !libraryScrollBehavior.isPinned) {
-                                    state.heightOffset = 0f
-                                    state.contentOffset = 0f
-                                } else if (state.heightOffsetLimit != -Float.MAX_VALUE) {
-                                    state.heightOffset = state.heightOffsetLimit
-                                    state.contentOffset = state.heightOffsetLimit
-                                }
-                            }
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            val libraryIndexModifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(
-                                    top = indexTopPadding + 4.dp,
-                                    end = contentPadding.calculateEndPadding(layoutDirection),
-                                    bottom = LocalAlphabetIndexBottomPadding.current,
-                                )
-                                .fillMaxHeight()
-                            HorizontalPager(
-                                state = libraryPagerState,
-                                modifier = Modifier.fillMaxSize(),
-                                userScrollEnabled = false,
-                                verticalAlignment = Alignment.Top,
-                                key = { it },
-                            ) { libraryPage ->
-                                when (libraryPage) {
-                                    LIBRARY_ALBUMS_TAB_INDEX -> AlbumLibraryScreen(
-                                        displayedAlbums = albumPresentation.items,
-                                        sectionIndexMap = albumPresentation.sectionIndexMap,
-                                        query = albumPresentation.query,
-                                        scanStatus = uiState.scanStatus,
-                                        sortConfig = albumPresentation.sortConfig.copy(
-                                            gridStyle = albumSortConfig.gridStyle,
-                                        ),
-                                        onAlbumClick = { album ->
-                                            dismissLibrarySearchFocus()
-                                            selectedAlbumKey = album.key
-                                            albumParentRoute = AppRoute.ROOT
-                                            albumParentArtistKey = null
-                                            currentRoute = AppRoute.ALBUM_DETAIL
-                                        },
-                                        scrollBehavior = libraryScrollBehavior,
-                                        indexTopPadding = indexTopPadding,
-                                        gridState = albumsGridState,
-                                        contentPadding = contentPadding,
-                                        showIndex = false,
-                                        landscape = landscape,
-                                        navigationRailExpanded = navigationRailExpanded,
-                                    )
-
-                                    LIBRARY_ARTISTS_TAB_INDEX -> ArtistLibraryScreen(
-                                        displayedArtists = artistPresentation.items,
-                                        sectionIndexMap = artistPresentation.sectionIndexMap,
-                                        query = artistPresentation.query,
-                                        scanStatus = uiState.scanStatus,
-                                        sortConfig = artistPresentation.sortConfig,
-                                        onArtistClick = { artist ->
-                                            dismissLibrarySearchFocus()
-                                            openTrackArtist(artist)
-                                        },
-                                        scrollBehavior = libraryScrollBehavior,
-                                        indexTopPadding = indexTopPadding,
-                                        listState = artistsListState,
-                                        contentPadding = contentPadding,
-                                        showIndex = false,
-                                    )
-
-                                                    LIBRARY_FOLDERS_TAB_INDEX -> FolderLibraryScreen(
-                                        displayedFolders = folderPresentation.items,
-                                        sectionIndexMap = folderPresentation.sectionIndexMap,
-                                        query = folderPresentation.query,
-                                        scanStatus = uiState.scanStatus,
-                                        sortConfig = folderPresentation.sortConfig,
-                                        onFolderClick = { folder ->
-                                            dismissLibrarySearchFocus()
-                                            selectedFolderKey = folder.key
-                                            currentRoute = AppRoute.FOLDER_DETAIL
-                                        },
-                                        onOpenInternalStorage = {
-                                            dismissLibrarySearchFocus()
-                                            internalStoragePath = INTERNAL_STORAGE_ROOT
-                                            currentRoute = AppRoute.INTERNAL_STORAGE
-                                        },
-                                        onBlockFolder = { path ->
-                                            viewModel.addBlockedFolderPath(path)
-                                        },
-                                        scrollBehavior = libraryScrollBehavior,
-                                        indexTopPadding = indexTopPadding,
-                                        listState = foldersListState,
-                                        contentPadding = contentPadding,
-                                        showIndex = false,
-                                    )
-                                }
-                            }
-
-                            when (libraryPagerState.currentPage) {
-                                LIBRARY_ALBUMS_TAB_INDEX -> if (
-                                    albumPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
-                                    (
-                                        albumSortConfig.field == AlbumSortField.ALBUM ||
-                                            albumSortConfig.field ==
-                                            AlbumSortField.ALBUM_ARTIST
-                                    )
-                                ) {
-                                    AlphabetSideBar(
-                                        sectionIndexMap = albumPresentation.sectionIndexMap,
-                                        topOffset = 108.dp,
-                                        itemCount = albumPresentation.items.size,
-                                        scrollStateKey = albumsGridState,
-                                        isAtTarget = { index ->
-                                            albumsGridState.firstVisibleItemIndex == index &&
-                                                albumsGridState.firstVisibleItemScrollOffset == 0
-                                        },
-                                        scrollToItem = albumsGridState::scrollToItem,
-                                        sections = if (albumSortConfig.descending) {
-                                            AlphabetSections.asReversed()
-                                        } else {
-                                            AlphabetSections
-                                        },
-                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
-                                        modifier = libraryIndexModifier,
-                                    )
-                                }
-
-                                LIBRARY_ARTISTS_TAB_INDEX -> if (
-                                    artistPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
-                                    artistSortConfig.field == ArtistSortField.NAME
-                                ) {
-                                    AlphabetSideBar(
-                                        sectionIndexMap = artistPresentation.sectionIndexMap,
-                                        topOffset = 108.dp,
-                                        itemCount = artistPresentation.items.size,
-                                        scrollStateKey = artistsListState,
-                                        isAtTarget = { index ->
-                                            artistsListState.firstVisibleItemIndex == index &&
-                                                artistsListState.firstVisibleItemScrollOffset == 0
-                                        },
-                                        scrollToItem = artistsListState::scrollToItem,
-                                        sections = if (artistSortConfig.descending) {
-                                            AlphabetSections.asReversed()
-                                        } else {
-                                            AlphabetSections
-                                        },
-                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
-                                        modifier = libraryIndexModifier,
-                                    )
-                                }
-
-                                LIBRARY_FOLDERS_TAB_INDEX -> if (
-                                    folderPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
-                                    folderSortConfig.field == FolderSortField.NAME
-                                ) {
-                                    AlphabetSideBar(
-                                        sectionIndexMap = folderLibrarySectionIndexMap,
-                                        topOffset = 108.dp,
-                                        itemCount = folderPresentation.items.size + 1,
-                                        scrollStateKey = foldersListState,
-                                        isAtTarget = { index ->
-                                            foldersListState.firstVisibleItemIndex == index &&
-                                                foldersListState.firstVisibleItemScrollOffset == 0
-                                        },
-                                        scrollToItem = foldersListState::scrollToItem,
-                                        sections = if (folderSortConfig.descending) {
-                                            AlphabetSections.asReversed()
-                                        } else {
-                                            AlphabetSections
-                                        },
-                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
-                                        modifier = libraryIndexModifier,
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    LIBRARY_TAB_INDEX -> libraryContent(outerPadding, navigationRailExpanded, null, {})
 
                     SETTINGS_TAB_INDEX -> PlayerPage(
                         title = settingsTitle,
@@ -1581,8 +1717,6 @@ fun MeloxApp(
                             defaultHomePage = settings.defaultHomePage,
                             trackCount = uiState.tracks.size,
                             onDefaultHomePageChange = viewModel::setDefaultHomePage,
-                            tabSwitchHapticsEnabled = settings.tabSwitchHapticsEnabled,
-                            onTabSwitchHapticsEnabledChange = viewModel::setTabSwitchHapticsEnabled,
                             onOpenThemeSettings = {
                                 themeSettingsListState.requestScrollToItem(0)
                                 themeSettingsScrollBehavior.state.heightOffset = 0f
@@ -1628,33 +1762,47 @@ fun MeloxApp(
             artistParentRoute,
             artistParentAlbumKey,
             playlistParentRoute,
+            standaloneLibraryParent,
         ) {
             val root = AppNavDestination(AppRoute.ROOT, depth = 0)
             when {
                 currentRoute == AppRoute.ROOT -> listOf(root)
-                currentRoute == AppRoute.INTERNAL_STORAGE -> listOf(
-                    root,
-                    AppNavDestination(AppRoute.INTERNAL_STORAGE, contentKey = INTERNAL_STORAGE_ROOT, depth = 1),
-                )
+                currentRoute == AppRoute.INTERNAL_STORAGE -> buildList {
+                    add(root)
+                    if (standaloneLibraryParent != AppRoute.ROOT) {
+                        add(AppNavDestination(standaloneLibraryParent, depth = size))
+                    }
+                    add(AppNavDestination(AppRoute.INTERNAL_STORAGE, contentKey = INTERNAL_STORAGE_ROOT, depth = size))
+                }
                 currentRoute == AppRoute.ALBUM_DETAIL &&
                     albumParentRoute == AppRoute.ARTIST_DETAIL &&
-                    albumParentArtistKey != null -> listOf(
-                    root,
-                    AppNavDestination(
-                        route = AppRoute.ARTIST_DETAIL,
-                        contentKey = albumParentArtistKey,
-                        depth = 1,
-                    ),
-                    AppNavDestination(
-                        route = AppRoute.ALBUM_DETAIL,
-                        contentKey = selectedAlbumKey,
-                        depth = 2,
-                    ),
-                )
+                    albumParentArtistKey != null -> buildList {
+                    add(root)
+                    if (standaloneLibraryParent != AppRoute.ROOT) {
+                        add(AppNavDestination(standaloneLibraryParent, depth = size))
+                    }
+                    add(
+                        AppNavDestination(
+                            route = AppRoute.ARTIST_DETAIL,
+                            contentKey = albumParentArtistKey,
+                            depth = size,
+                        ),
+                    )
+                    add(
+                        AppNavDestination(
+                            route = AppRoute.ALBUM_DETAIL,
+                            contentKey = selectedAlbumKey,
+                            depth = size,
+                        ),
+                    )
+                }
                 currentRoute == AppRoute.ARTIST_DETAIL &&
                     artistParentRoute == AppRoute.ALBUM_DETAIL &&
                     artistParentAlbumKey != null -> buildList {
                     add(root)
+                    if (standaloneLibraryParent != AppRoute.ROOT) {
+                        add(AppNavDestination(standaloneLibraryParent, depth = size))
+                    }
                     if (
                         albumParentRoute == AppRoute.ARTIST_DETAIL &&
                             albumParentArtistKey != null
@@ -1663,7 +1811,7 @@ fun MeloxApp(
                             AppNavDestination(
                                 route = AppRoute.ARTIST_DETAIL,
                                 contentKey = albumParentArtistKey,
-                                depth = 1,
+                                depth = size,
                             ),
                         )
                     }
@@ -1723,6 +1871,12 @@ fun MeloxApp(
                         depth = 2,
                     ),
                 )
+                currentRoute in listOf(AppRoute.ALBUM_DETAIL, AppRoute.ARTIST_DETAIL, AppRoute.FOLDER_DETAIL) &&
+                    standaloneLibraryParent != AppRoute.ROOT -> listOf(
+                    root,
+                    AppNavDestination(standaloneLibraryParent, depth = 1),
+                    AppNavDestination(currentRoute, contentKey = currentRouteContentKey, depth = 2),
+                )
                 else -> listOf(
                     root,
                     AppNavDestination(
@@ -1736,74 +1890,80 @@ fun MeloxApp(
         val navBackStack = rememberNavBackStack<AppNavDestination>(
             *desiredNavBackStack.toTypedArray(),
         )
-        LaunchedEffect(desiredNavBackStack) {
+        // Reconcile before composing entries so no frame renders the new route with the old stack.
+        Snapshot.withMutableSnapshot {
             synchronizeAppNavBackStack(navBackStack, desiredNavBackStack)
         }
         val navigateBack = {
-            if (detailSelectionActive) {
-                detailSelectionExitRequest += 1
-            } else if (showQueue) {
-                showQueue = false
-            } else if (currentRoute == AppRoute.INTERNAL_STORAGE) {
-                val trail = internalStorageDirectoryTrail(internalStoragePath)
-                val parent = trail.getOrNull(trail.lastIndex - 1)
-                if (parent == null) currentRoute = AppRoute.ROOT else internalStoragePath = parent
-            } else if (
-                currentRoute == AppRoute.ALBUM_DETAIL &&
-                albumParentRoute == AppRoute.ARTIST_DETAIL &&
-                albumParentArtistKey != null
-            ) {
-                returnToAlbumParentArtist(null)
-            } else if (
-                currentRoute == AppRoute.ARTIST_DETAIL &&
-                artistParentRoute == AppRoute.ALBUM_DETAIL &&
-                artistParentAlbumKey != null
-            ) {
-                returnToArtistParentAlbum(null)
-            } else if (
-                currentRoute == AppRoute.BLOCKED_FOLDERS ||
-                currentRoute == AppRoute.HIDDEN_SONGS
-            ) {
-                currentRoute = AppRoute.SCAN_SETTINGS
-            } else if (currentRoute == AppRoute.LYRICS_INTERFACE) {
-                currentRoute = AppRoute.LYRICS_SETTINGS
-            } else if (
-                currentRoute == AppRoute.MAIN_BACKGROUND ||
-                currentRoute == AppRoute.INTERFACE_STYLE
-            ) {
-                currentRoute = AppRoute.THEME_SETTINGS
-            } else if (currentRoute == AppRoute.SPONSOR) {
-                currentRoute = AppRoute.ABOUT
-            } else if (
-                currentRoute == AppRoute.PLAYLIST_DETAIL &&
-                playlistParentRoute == AppRoute.PLAYLISTS
-            ) {
-                currentRoute = AppRoute.PLAYLISTS
-            } else {
-                currentRoute = AppRoute.ROOT
+            Snapshot.withMutableSnapshot {
+                val previousRoute = currentRoute
+                if (detailSelectionActive) {
+                    detailSelectionExitRequest += 1
+                } else if (showQueue) {
+                    showQueue = false
+                } else if (currentRoute == AppRoute.INTERNAL_STORAGE) {
+                    val trail = internalStorageDirectoryTrail(internalStoragePath)
+                    val parent = trail.getOrNull(trail.lastIndex - 1)
+                    if (parent == null) currentRoute = standaloneLibraryParent else internalStoragePath = parent
+                } else if (
+                    currentRoute == AppRoute.ALBUM_DETAIL &&
+                    albumParentRoute == AppRoute.ARTIST_DETAIL &&
+                    albumParentArtistKey != null
+                ) {
+                    returnToAlbumParentArtist(null)
+                } else if (
+                    currentRoute == AppRoute.ARTIST_DETAIL &&
+                    artistParentRoute == AppRoute.ALBUM_DETAIL &&
+                    artistParentAlbumKey != null
+                ) {
+                    returnToArtistParentAlbum(null)
+                } else if (
+                    currentRoute == AppRoute.BLOCKED_FOLDERS ||
+                    currentRoute == AppRoute.HIDDEN_SONGS
+                ) {
+                    currentRoute = AppRoute.SCAN_SETTINGS
+                } else if (currentRoute == AppRoute.LYRICS_INTERFACE) {
+                    currentRoute = AppRoute.LYRICS_SETTINGS
+                } else if (
+                    currentRoute == AppRoute.MAIN_BACKGROUND ||
+                    currentRoute == AppRoute.INTERFACE_STYLE
+                ) {
+                    currentRoute = AppRoute.THEME_SETTINGS
+                } else if (currentRoute == AppRoute.SPONSOR) {
+                    currentRoute = AppRoute.ABOUT
+                } else if (
+                    currentRoute == AppRoute.PLAYLIST_DETAIL &&
+                    playlistParentRoute == AppRoute.PLAYLISTS
+                ) {
+                    currentRoute = AppRoute.PLAYLISTS
+                } else {
+                    currentRoute = when (currentRoute) {
+                        AppRoute.ALBUM_DETAIL, AppRoute.ARTIST_DETAIL, AppRoute.FOLDER_DETAIL -> standaloneLibraryParent
+                        else -> AppRoute.ROOT
+                    }
+                }
+                // Miuix consumes the pop synchronously before releasing predictive gesture ownership.
+                if (currentRoute != previousRoute && navBackStack.size > 1) {
+                    navBackStack.removeAt(navBackStack.lastIndex)
+                }
             }
         }
         val hapticFeedback = LocalHapticFeedback.current
         val onNavigationTabSelected: (Int) -> Unit = { selectedTab ->
-<<<<<<< HEAD
-            Snapshot.withMutableSnapshot {
-                singleStepRootPop = requestedBottomBarStyle == BottomBarStyle.OS4 && currentRoute != AppRoute.ROOT
-                if (navBackStack.size > 1) navBackStack.subList(1, navBackStack.size).clear()
-                currentRoute = AppRoute.ROOT
-=======
             val shouldHaptic = shouldTriggerTabSwitchHaptic(
                 enabled = settings.tabSwitchHapticsEnabled,
                 selectedPage = playerPagerState.selectedPage,
                 targetPage = selectedTab,
             )
-            if (shouldHaptic) {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            if (shouldHaptic) hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            val wideOs4 = landscape && requestedBottomBarStyle == BottomBarStyle.OS4
+            Snapshot.withMutableSnapshot {
+                if (wideOs4 && currentRoute != AppRoute.ROOT) sidebarEntryRoute = AppRoute.ROOT
+                if (navBackStack.size > 1) navBackStack.subList(1, navBackStack.size).clear()
+                currentRoute = AppRoute.ROOT
             }
-            while (navBackStack.size > 1) {
-                navBackStack.removeAt(navBackStack.lastIndex)
->>>>>>> origin/main
-            }
-            playerPagerState.animateToPage(selectedTab)
+            if (wideOs4) playerPagerState.snapToPage(selectedTab)
+            else playerPagerState.animateToPage(selectedTab)
         }
         var customBackgroundBlurPreview by remember(settings.customBackgroundId) {
             mutableStateOf<Int?>(null)
@@ -1856,7 +2016,7 @@ fun MeloxApp(
             // Overlay content is composed by the root popup host.
             CompositionLocalProvider(
                 LocalBottomSheetBlurBackdrop provides bottomSheetBackdrop,
-                LocalBottomSearchActions provides bottomSearchActions.takeIf { requestedBottomBarStyle == BottomBarStyle.OS4 },
+                LocalBottomSearchActions provides bottomSearchActions.takeIf { requestedBottomBarStyle == BottomBarStyle.OS4 && !landscape },
             ) {
                 Scaffold(
                     modifier = Modifier.customPageBackground(),
@@ -1874,12 +2034,19 @@ fun MeloxApp(
                     }
                     val searchDestinationKey = searchDestination to navigationPresentationPage.takeIf { currentRoute == AppRoute.ROOT }
                     var preparedSearchDestination by remember { mutableStateOf<Pair<String?, Int?>?>(null) }
-                    if (currentSearchAction != null) SideEffect { preparedSearchDestination = searchDestinationKey }
                     val destinationHasSearch = when (currentRoute) {
-                        AppRoute.ROOT -> navigationPresentationPage == SONGS_TAB_INDEX || navigationPresentationPage == LIBRARY_TAB_INDEX
+                        AppRoute.ROOT -> navigationPresentationPage == SONGS_TAB_INDEX ||
+                            (navigationPresentationPage == LIBRARY_TAB_INDEX && !com.melox.player.ui.theme.LocalOs4Style.current)
+                        AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS,
                         AppRoute.FOLDER_DETAIL, AppRoute.INTERNAL_STORAGE, AppRoute.PLAYLIST_DETAIL -> true
                         else -> false
                     }
+                    if (currentSearchAction != null || !destinationHasSearch) {
+                        SideEffect { preparedSearchDestination = searchDestinationKey }
+                    }
+                    val pageNavigationHideMotion = if (currentRoute == AppRoute.ROOT) null
+                        else secondaryPageEnterMotion(settings.navigationTransitionStyle)
+                    val pageScaffoldContent: @Composable () -> Unit = {
                     PlayerScaffold(
                             playerNavigationOffset = {
                                 playerNavigationOffset(
@@ -1895,11 +2062,21 @@ fun MeloxApp(
                             searchOpen = currentSearchAction?.searchOpen?.value == true,
                             selectedTab = playerPagerState.selectedPage,
                             onTabSelected = onNavigationTabSelected,
-                            navigationHideMotion = if (currentRoute == AppRoute.ROOT) {
-                                null
-                            } else {
-                                secondaryPageEnterMotion(settings.navigationTransitionStyle)
+                            sidebarShortcutItems = listOf(
+                                NavigationItem(stringResource(R.string.home_playlists_title), MiuixIcons.RecordingTape),
+                                NavigationItem(albumsTitle, MiuixIcons.Album),
+                                NavigationItem(artistsTitle, MiuixIcons.Contacts),
+                                NavigationItem(foldersTitle, MiuixIcons.Folder),
+                            ),
+                            selectedSidebarShortcut = selectedSidebarShortcut(desiredNavBackStack, sidebarRoutes),
+                            onSidebarShortcutSelected = { index ->
+                                val target = sidebarRoutes[index]
+                                if (currentRoute != target) {
+                                    sidebarEntryRoute = target
+                                    currentRoute = target
+                                }
                             },
+                            navigationHideMotion = pageNavigationHideMotion,
                             showNavigation = shouldShowNavigation(
                                 currentRouteIsRoot = currentRoute == AppRoute.ROOT,
                                 hideBottomBar = settings.hideBottomBar,
@@ -2039,7 +2216,6 @@ fun MeloxApp(
                                     }
                                 }
                                 CompositionLocalProvider(
-                                    LocalSingleStepRootPop provides singleStepRootPop,
                                     LocalAlphabetIndexBottomPadding provides if (currentRoute == AppRoute.ROOT) {
                                         songsIndexBottomPadding
                                     } else {
@@ -2064,10 +2240,23 @@ fun MeloxApp(
                                 ) {
                                     entry<AppNavDestination>(
                                         contentKey = AppNavDestination::entryContentKey,
+                                        transition = if (
+                                            landscape && shouldUseImmediateOs4Navigation(windowWidth, windowHeight, requestedBottomBarStyle) &&
+                                            sidebarEntryRoute != null
+                                        ) ImmediateNavigationTransition else null,
                                         swipeDismiss = if (currentRoute == AppRoute.INTERNAL_STORAGE &&
                                             internalStoragePath != INTERNAL_STORAGE_ROOT
                                         ) NavSwipeDirection.None else null,
                                     ) { route ->
+                                        val transitionScope = LocalNavTransitionScope.current
+                                        LaunchedEffect(route.route, sidebarEntryRoute, transitionScope) {
+                                            if (route.route != sidebarEntryRoute) return@LaunchedEffect
+                                            snapshotFlow {
+                                                !transitionScope.isRunning && transitionScope.relativeDepth == 0f
+                                            }.first { it }
+                                            // End the immediate sidebar switch; subsequent pushes and pops use the normal transition.
+                                            if (sidebarEntryRoute == route.route) sidebarEntryRoute = null
+                                        }
                                         CompositionLocalProvider(LocalBottomSearchOwner provides route.entryContentKey()) {
                                             if (route.route == AppRoute.ROOT) {
                                                 content(
@@ -2120,6 +2309,8 @@ fun MeloxApp(
                                                                 viewModel::setPredictiveBackEnabled,
                                                             onNavigationTransitionStyleChange =
                                                                 viewModel::setNavigationTransitionStyle,
+                                                            onTabSwitchHapticsEnabledChange =
+                                                                viewModel::setTabSwitchHapticsEnabled,
                                                             onOpenInterfaceStyle = {
                                                                 interfaceStyleListState.requestScrollToItem(0)
                                                                 interfaceStyleScrollBehavior.state.heightOffset = 0f
@@ -2612,12 +2803,14 @@ fun MeloxApp(
                                                         }
                                                     }
 
+                                                    AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS ->
+                                                        libraryContent(outerPadding, navigationRailExpanded, libraryRoutes.indexOf(route.route), navigateBack)
                                                     AppRoute.PLAYLISTS ->
                                                         PlaylistLibraryScreen(
                                                             playlists = playlistState.playlists,
                                                             loaded = playlistState.loaded,
                                                             onMovePlaylists = viewModel::movePlaylists,
-                                                            landscape = landscape,
+                                                            landscape = windowWidth > windowHeight,
                                                             bottomContentPadding =
                                                                 routeBottomPadding,
                                                             onBack = navigateBack,
@@ -2733,6 +2926,9 @@ fun MeloxApp(
                                 }
                                 }
                         }
+                    }
+                    val retainedScaffoldContent = com.melox.player.ui.navigation.rememberNavigationHostContent(pageScaffoldContent)
+                    retainedScaffoldContent()
                     BackHandler(enabled = playerTransition.isMounted) {
                         closePlayer()
                     }
@@ -3376,6 +3572,34 @@ internal fun LibrarySearchButton(
         { currentOnClick() }
     } else onSearchClick
     if (publishBottomSearchAction(bottomActionActive, visible || LocalGlassSearchPage.current?.transitionActive == true, visible, contentDescription, !collapsing, effectiveOnSearchClick)) return
+    if (LocalOs4LandscapeNavigation.current != null) {
+        val searchPage = LocalGlassSearchPage.current
+        val materialProgress = top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext.current?.materialProgress
+        SideEffect { searchPage?.materialProgress = materialProgress }
+        val buttonAlpha = androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (visible) 0f else 1f,
+            animationSpec = tween(400, easing = androidx.compose.animation.core.LinearEasing),
+            label = "landscapeSearchButtonAlpha",
+        )
+        val density = LocalDensity.current
+        val shadowOutsets = remember(density) {
+            with(density) { popupShadowOutsets(top.yukonga.miuix.kmp.glass.GlassShadows.Regular) }
+        }
+        Box(Modifier.graphicsLayer {
+            alpha = buttonAlpha.value
+            outsets = shadowOutsets
+        }) {
+            top.yukonga.miuix.kmp.glass.GlassIconButton(
+                onClick = effectiveOnSearchClick,
+                enabled = !visible && !collapsing,
+                size = top.yukonga.miuix.kmp.basic.IconButtonDefaults.MinHeight,
+                modifier = if (visible) Modifier.clearAndSetSemantics { } else Modifier,
+            ) {
+                Icon(imageVector = MiuixIcons.Search, contentDescription = contentDescription)
+            }
+        }
+        return
+    }
     IconButton(
         onClick = effectiveOnSearchClick,
         enabled = !collapsing,
@@ -3621,11 +3845,14 @@ private fun PlayerPage(
     outerPadding: PaddingValues,
     scrollBehavior: ScrollBehavior,
     useSmallTopAppBar: Boolean,
+    isRootPage: Boolean = true,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues, ScrollBehavior, indexTopPadding: androidx.compose.ui.unit.Dp) -> Unit,
 ) {
+    val landscapeNavigation = LocalOs4LandscapeNavigation.current.takeIf { isRootPage }
+    val replaceTitle = landscapeNavigation?.labels?.contains(title) == true
     val layoutDirection = LocalLayoutDirection.current
     var topBarCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarCaptureCoordinates })
@@ -3638,9 +3865,19 @@ private fun PlayerPage(
                 scrollBehavior = scrollBehavior,
             ) {
                 val topBarColor = topBarBackdrop.miuixBarColor()
-                if (useSmallTopAppBar) {
+                if (!isRootPage) {
+                    com.melox.player.ui.component.AdaptiveTopAppBar(
+                        title = title,
+                        scrollBehavior = scrollBehavior,
+                        color = topBarColor,
+                        navigationIcon = navigationIcon,
+                        actions = actions,
+                        bottomContent = bottomContent,
+                    )
+                } else if (useSmallTopAppBar) {
                     SmallTopAppBar(
                         title = title,
+                        inlineTitleEnabled = !replaceTitle,
                         modifier = Modifier.stableTopAppBarInsets(topBarColor),
                         color = topBarColor,
                         navigationIcon = navigationIcon,

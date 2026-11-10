@@ -243,6 +243,8 @@ internal fun bottomSheetGlassModifier(): Modifier {
 
 private const val BottomSheetDragDampingDivisor = 10
 
+internal val LocalWideTopBackdrop = compositionLocalOf<LayerBackdrop?> { null }
+
 internal val LocalGlassTopBackdrop = compositionLocalOf<LayerBackdrop?> { null }
 
 @Composable
@@ -305,7 +307,7 @@ internal fun BlurredBar(
                     ),
             )
         }
-        androidx.compose.runtime.CompositionLocalProvider(LocalGlassTopBackdrop provides backdrop) { content() }
+        androidx.compose.runtime.CompositionLocalProvider(LocalGlassTopBackdrop provides (LocalWideTopBackdrop.current ?: backdrop)) { content() }
     }
 }
 

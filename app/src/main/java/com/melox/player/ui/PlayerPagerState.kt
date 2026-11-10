@@ -41,6 +41,15 @@ internal class PlayerPagerState(
 
     private var navigationJob: Job? = null
 
+    fun snapToPage(targetIndex: Int) {
+        if (targetIndex !in 0 until pagerState.pageCount) return
+        navigationJob?.cancel()
+        navigationJob = null
+        selectedPage = targetIndex
+        isNavigating = false
+        pagerState.requestScrollToPage(targetIndex)
+    }
+
     fun animateToPage(targetIndex: Int) {
         if (targetIndex == selectedPage || targetIndex !in 0 until pagerState.pageCount) return
 

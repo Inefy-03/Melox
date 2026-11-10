@@ -1,6 +1,7 @@
 package com.melox.player.ui.navigation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -26,6 +27,8 @@ import top.yukonga.miuix.kmp.nav.core.NavEntryBuilder
 import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
 import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 import top.yukonga.miuix.kmp.nav.transition.NavSettleSpec
+import top.yukonga.miuix.kmp.nav.transition.NavMotion
+import top.yukonga.miuix.kmp.nav.transition.navGraphicsTransition
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 internal val LocalWindowBackDispatcherOwner =
@@ -34,14 +37,16 @@ internal val LocalWindowBackDispatcherOwner =
 internal val LocalOrdinaryBackDispatcherOwner =
     compositionLocalOf<NavigationEventDispatcherOwner?> { null }
 
-internal fun secondaryPageEnterMotion(transitionStyle: NavigationTransitionStyle): NavSettleSpec.Tween {
-    val transition = if (transitionStyle == NavigationTransitionStyle.AOSP) {
-        AospNavigationTransition
-    } else {
-        NavTransitions.MiuixDefault
-    }
-    return transition.motion.programmatic as NavSettleSpec.Tween
-}
+internal val ImmediateNavigationTransition = navGraphicsTransition(
+    motion = NavMotion(programmatic = NavSettleSpec.Tween(0, LinearEasing)),
+    scrim = { 0f },
+) {}
+
+internal fun secondaryPageTransition(transitionStyle: NavigationTransitionStyle) =
+    if (transitionStyle == NavigationTransitionStyle.AOSP) AospNavigationTransition else NavTransitions.MiuixDefault
+
+internal fun secondaryPageEnterMotion(transitionStyle: NavigationTransitionStyle): NavSettleSpec.Tween =
+    secondaryPageTransition(transitionStyle).motion.programmatic as NavSettleSpec.Tween
 
 /**
  * Keeps one Miuix navigation host while predictive back is toggled at runtime.
@@ -71,11 +76,7 @@ fun PredictiveNavDisplay(
             systemCornerRadius = cornerRadius,
         )
     }
-    val transition = if (useAospTransition) {
-        AospNavigationTransition
-    } else {
-        NavTransitions.MiuixDefault
-    }
+    val transition = secondaryPageTransition(transitionStyle)
     val effects = NavDisplayEffects(
         cornerClipRadius = transitionCornerRadius,
         cornerClipMode = if (useAospTransition) {

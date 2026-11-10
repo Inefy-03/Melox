@@ -216,6 +216,7 @@ internal val LocalGlassTopAppBarContext = staticCompositionLocalOf<GlassTopAppBa
  * @param material Button material, applied over the rendered progressive band when enabled.
  * @param backgroundAlpha Draw-phase opacity multiplier for the background band.
  * @param titleAlpha Draw-phase opacity for title containers.
+ * @param compact Use the pinned small-title layout without an expandable title region.
  * @param navigationIcon Leading control slot. Use [GlassIconButton] for a glass button.
  * @param actions Trailing control slot. Use [GlassIconButton] for glass buttons.
  * @param bottomContent Content pinned below the title inside the bar.
@@ -248,6 +249,7 @@ fun GlassTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     bottomContent: @Composable () -> Unit = {},
+    compact: Boolean = false,
 ) {
     val isContentScrolled by remember(scrollBehavior, overlapDistance) {
         derivedStateOf { overlapDistance?.value?.let { it > 0f } ?: scrollBehavior?.state?.let { it.contentOffset < 0f } ?: true }
@@ -255,6 +257,7 @@ fun GlassTopAppBar(
     GlassTopAppBar(
         title = title,
         isContentScrolled = isContentScrolled,
+        compact = compact,
         modifier = modifier,
         overlapDistance = overlapDistance,
         progressiveBlur = progressiveBlur,
@@ -319,6 +322,7 @@ fun GlassTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     bottomContent: @Composable () -> Unit = {},
+    compact: Boolean = false,
 ) {
     val fallbackRamp = GlassTopAppBarDefaults.collapseRamp(scrollBehavior)
     val density = LocalDensity.current
@@ -423,7 +427,15 @@ fun GlassTopAppBar(
                 shadow = buttonShadow,
             ),
         ) {
-            BlurTopAppBar(
+            if (compact) {
+                GlassCompactTopAppBar(
+                    title = title, modifier = contentModifier,
+                    titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = titleAlpha()),
+                    subtitle = subtitle, scrollBehavior = scrollBehavior,
+                    defaultWindowInsetsPadding = defaultWindowInsetsPadding,
+                    navigationIcon = navigationIcon, actions = actions, bottomContent = bottomContent,
+                )
+            } else BlurTopAppBar(
                 title = title,
                 modifier = contentModifier,
                 titleAlpha = titleAlpha,

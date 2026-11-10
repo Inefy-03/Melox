@@ -1,12 +1,22 @@
 package com.melox.player.ui.component.os4
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextOverflow
+import com.melox.player.ui.LocalOs4LandscapeNavigation
 import androidx.compose.ui.Alignment
 import com.melox.player.ui.component.stableTopAppBarContentInsets
 import com.melox.player.ui.component.rememberTopBarOverlapDistance
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -35,21 +45,50 @@ internal fun SmallTopAppBar(
     titlePadding: Dp = TopAppBarDefaults.TitlePadding,
     navigationIconPadding: Dp = TopAppBarDefaults.NavigationIconPadding,
     actionIconPadding: Dp = TopAppBarDefaults.ActionIconPadding,
+    inlineTitleEnabled: Boolean = true,
     bottomContent: @Composable () -> Unit = {},
 ) {
     val backdrop = LocalGlassTopBackdrop.current
     if (LocalOs4Style.current) {
+        val navigation = LocalOs4LandscapeNavigation.current
+        val inlineTitle = shouldShowInlineTopBarTitle(
+            title, titleColor.alpha, navigation?.titleAlpha?.invoke(), inlineTitleEnabled,
+        )
+        val inlineTitleVisibility = remember { MutableTransitionState(false) }
+        inlineTitleVisibility.targetState = inlineTitle
         GlassTopAppBar(
-            title = title, modifier = modifier, subtitle = subtitle,
+            title = if (inlineTitle) "" else title, modifier = modifier, subtitle = subtitle,
+            compact = true,
             contentModifier = Modifier.stableTopAppBarContentInsets(),
             backdrop = backdrop, scrollBehavior = scrollBehavior,
             overlapDistance = rememberTopBarOverlapDistance(scrollBehavior),
             progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
             defaultWindowInsetsPadding = defaultWindowInsetsPadding,
-            titleAlpha = { titleColor.alpha },
+            titleAlpha = { titleColor.alpha * (navigation?.titleAlpha?.invoke() ?: 1f) },
             bandOverhang = if (LocalTopBarBlurSettings.current.blurEnabled) GlassTopAppBarDefaults.BandOverhang else 0.dp,
             bandBrush = if (backdrop != null) GlassTopAppBarDefaults.bandBrush(MiuixTheme.colorScheme.surface) else SolidColor(color),
-            navigationIcon = navigationIcon,
+            navigationIcon = {
+                Row(
+                    modifier = if (inlineTitle && navigation != null) Modifier.widthIn(max = navigation.leadingContentMaxWidth) else Modifier,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    navigationIcon()
+                    AnimatedVisibility(
+                        visibleState = inlineTitleVisibility,
+                        modifier = Modifier.weight(1f, fill = false),
+                        enter = fadeIn(tween(150)),
+                        exit = ExitTransition.None,
+                    ) {
+                        Text(
+                            title,
+                            modifier = Modifier.padding(start = 12.dp),
+                            style = MiuixTheme.textStyles.body1,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            },
             actions = {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { actions() }
             }, bottomContent = bottomContent,
@@ -58,3 +97,11 @@ internal fun SmallTopAppBar(
         MiuixSmallTopAppBar(title = title, modifier = modifier, color = color, titleColor = titleColor, subtitle = subtitle, subtitleColor = subtitleColor, navigationIcon = navigationIcon, actions = actions, scrollBehavior = scrollBehavior, defaultWindowInsetsPadding = defaultWindowInsetsPadding, titlePadding = titlePadding, navigationIconPadding = navigationIconPadding, actionIconPadding = actionIconPadding, bottomContent = bottomContent)
     }
 }
+
+internal fun shouldShowInlineTopBarTitle(
+    title: String,
+    titleAlpha: Float,
+    navigationProgress: Float?,
+    enabled: Boolean,
+): Boolean = enabled && title.isNotEmpty() && navigationProgress != null &&
+    (navigationProgress <= 0f || titleAlpha <= 0f)

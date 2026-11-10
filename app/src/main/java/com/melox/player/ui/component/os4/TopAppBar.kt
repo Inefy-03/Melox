@@ -40,9 +40,24 @@ internal fun TopAppBar(
     bottomContent: @Composable () -> Unit = {},
 ) {
     val backdrop = LocalGlassTopBackdrop.current
-    if (LocalOs4Style.current) {
+    if (LocalOs4Style.current && com.melox.player.ui.usesMiuixSmallTopAppBar()) {
+        SmallTopAppBar(
+            title = title,
+            modifier = modifier,
+            color = color,
+            titleColor = titleColor,
+            subtitle = subtitle,
+            subtitleColor = subtitleColor,
+            navigationIcon = navigationIcon,
+            actions = actions,
+            scrollBehavior = scrollBehavior,
+            defaultWindowInsetsPadding = defaultWindowInsetsPadding,
+            bottomContent = bottomContent,
+        )
+    } else if (LocalOs4Style.current) {
         GlassTopAppBar(
             title = title, modifier = modifier, subtitle = subtitle,
+            compact = com.melox.player.ui.usesMiuixSmallTopAppBar(),
             contentModifier = Modifier.stableTopAppBarContentInsets(),
             backdrop = backdrop, scrollBehavior = scrollBehavior,
             overlapDistance = rememberTopBarOverlapDistance(scrollBehavior),

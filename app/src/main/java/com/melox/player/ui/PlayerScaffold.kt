@@ -39,11 +39,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
+import com.melox.player.ui.icon.Album as GlassAlbum
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -157,23 +159,35 @@ internal fun PlayerScaffold(
     showBottomSearch: Boolean = bottomSearchAction != null,
     searchExpanded: Boolean = false,
     searchOpen: Boolean = false,
+    sidebarShortcutItems: List<NavigationItem> = emptyList(),
+    selectedSidebarShortcut: Int? = null,
+    onSidebarShortcutSelected: (Int) -> Unit = {},
     content: @Composable (PaddingValues, navigationRailExpanded: Boolean) -> Unit,
 ) {
+    val currentContent by rememberUpdatedState(content)
+    // Keep NavDisplay and its entry dispatchers alive when adaptive scaffold branches change.
+    val stableContent = remember {
+        movableContentOf<PaddingValues, Boolean> { padding, railExpanded ->
+            currentContent(padding, railExpanded)
+        }
+    }
+    val os4Icons = com.melox.player.ui.theme.LocalOs4Style.current
     val homeLabel = stringResource(R.string.navigation_home)
     val songsLabel = stringResource(R.string.navigation_music)
     val libraryLabel = stringResource(R.string.navigation_library)
     val settingsLabel = stringResource(R.string.navigation_settings)
     val navigationItems = remember(
+        os4Icons,
         homeLabel,
         songsLabel,
         libraryLabel,
         settingsLabel,
     ) {
         listOf(
-            NavigationItem(label = homeLabel, icon = MiuixIcons.Home),
-            NavigationItem(label = songsLabel, icon = MiuixIcons.Music),
-            NavigationItem(label = libraryLabel, icon = MiuixIcons.Album),
-            NavigationItem(label = settingsLabel, icon = MiuixIcons.Settings),
+            NavigationItem(label = homeLabel, icon = if (os4Icons) com.melox.player.ui.component.os4.glassIcon(MiuixIcons.Home) else MiuixIcons.Home),
+            NavigationItem(label = songsLabel, icon = if (os4Icons) com.melox.player.ui.component.os4.glassIcon(MiuixIcons.Music) else MiuixIcons.Music),
+            NavigationItem(label = libraryLabel, icon = if (os4Icons) com.melox.player.ui.icon.GlassIcons.GlassAlbum else MiuixIcons.Album),
+            NavigationItem(label = settingsLabel, icon = if (os4Icons) com.melox.player.ui.component.os4.glassIcon(MiuixIcons.Settings) else MiuixIcons.Settings),
         )
     }
     val effectiveStyle = resolveBottomBarStyle(bottomBarStyle, liquidGlassSupported)
@@ -225,13 +239,26 @@ internal fun PlayerScaffold(
         routeBackdropRefresh.value + currentBackdropPagingSignal()
     }
 
+    if (landscape && effectiveStyle == BottomBarStyle.OS4) {
+        Os4LandscapePlayerScaffold(
+            navigationItems = navigationItems, selectedTab = selectedTab, onTabSelected = onTabSelected,
+            showNavigation = showNavigation || showNavigationRailOnSecondary,
+            smallPlayerBar = smallPlayerBar, blurEnabled = blurEnabled, isDark = isDark,
+            miniPlayer = miniPlayer, refreshSignal = backdropRefreshSignal,
+            shortcutItems = sidebarShortcutItems, selectedShortcut = selectedSidebarShortcut,
+            onShortcutSelected = onSidebarShortcutSelected,
+            content = { padding -> stableContent(padding, false) },
+        )
+        return
+    }
+
     if (landscape && effectiveStyle == BottomBarStyle.LIQUID_GLASS) {
         LandscapeFloatingPlayerScaffold(
             navigationItems = navigationItems, selectedTab = selectedTab, onTabSelected = onTabSelected,
             showNavigation = showNavigation || showNavigationRailOnSecondary,
             smallPlayerBar = smallPlayerBar, blurEnabled = blurEnabled,
             liquidGlassSupported = liquidGlassSupported, isDark = isDark,
-            miniPlayer = miniPlayer, content = { padding -> content(padding, false) },
+            miniPlayer = miniPlayer, content = { padding -> stableContent(padding, false) },
         )
         return
     }
@@ -321,7 +348,7 @@ internal fun PlayerScaffold(
                     ) { innerPadding ->
                         // Record only page content; the player consuming it must stay outside capture.
                         Box(modifier = Modifier.fillMaxSize().then(miniPlayerBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)) {
-                            content(
+                            stableContent(
                                 innerPadding,
                                 navigationRailVisible && navigationRailState.isExpanded,
                             )
@@ -430,7 +457,7 @@ internal fun PlayerScaffold(
                         },
                     ) { innerPadding ->
                         Box(modifier = Modifier.fillMaxSize()) {
-                            content(innerPadding, false)
+                            stableContent(innerPadding, false)
                         }
                     }
                 }
@@ -458,7 +485,7 @@ internal fun PlayerScaffold(
             navigationHideMotion = navigationHideMotion,
             playerNavigationOffset = playerNavigationOffset,
             miniPlayer = miniPlayer,
-            content = { padding -> content(padding, false) },
+            content = { padding -> stableContent(padding, false) },
         )
     } else {
         BasePlayerScaffold(
@@ -473,7 +500,7 @@ internal fun PlayerScaffold(
             playerNavigationOffset = playerNavigationOffset,
             miniPlayer = miniPlayer,
             backdropRefreshSignal = backdropRefreshSignal,
-            content = { padding -> content(padding, false) },
+            content = { padding -> stableContent(padding, false) },
         )
     }
 }
@@ -517,6 +544,12 @@ internal fun usesNormalMiniPlayerChrome(
     val resolvedStyle = resolveBottomBarStyle(renderedBottomBarStyle, liquidGlassSupported)
     return resolvedStyle == BottomBarStyle.NORMAL
 }
+
+internal fun shouldUseImmediateOs4Navigation(
+    windowWidth: Dp,
+    windowHeight: Dp,
+    style: BottomBarStyle,
+): Boolean = style == BottomBarStyle.OS4 && windowHeight > 0.dp && windowWidth > windowHeight
 
 internal fun shouldShowNavigation(
     currentRouteIsRoot: Boolean,

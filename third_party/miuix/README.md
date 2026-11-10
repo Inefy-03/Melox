@@ -138,3 +138,43 @@ OS3 and OS4 progressive bands share progressiveBandHeight: actual measured bar h
 (including tab rows and inline search) plus the original collapsed-band fade reach.
 Changing bottom content moves the blur edge by the same amount without stretching
 the fade overhang or changing the reserved hidden-status-bar geometry.
+
+### Compact glass top bars
+
+`GlassTopAppBar(compact = true)` retains its glass material/background host but
+renders an unclipped foreground using native small-bar dimensions. Melox uses this for wide OS4
+layouts, including secondary pages, so scrolling cannot reveal a large-title
+region. The default remains the existing expandable foreground.
+
+`GlassNavigationIndicator` is the selected capsule extracted from
+`GlassNavigationBar` without changing its fill, clipping or press springs. OS4
+sidebar and top navigation reuse it, preserving the bottom bar's selected look.
+
+The OS4 landscape capsule uses `GlassNavigationBar` with a leading action region
+and labels-only destinations. Hit testing, drag bounds and indicator coordinates
+exclude that leading region; default bottom-bar geometry remains unchanged.
+`GlassNavigationIndicator(scaleOnPress = false)` lets sidebar rows retain the
+same fill feedback without press scaling. The switch uses the existing Sidebar vector.
+
+The compact foreground reserves system status space once and deliberately omits
+SmallTopAppBarLayout's clipToBounds so Glass control shadows draw beyond the
+compact layout and pins scrolling.
+
+Landscape destinations may supply measured widths. Position/index conversion is
+shared by drag hit testing and animated indicator edges. Indicator bounds accept
+independent leading/trailing insets so an embedded switch never reserves trailing
+space. Bottom navigation keeps equal slots and its original symmetric insets.
+The compact Glass bar retains its original 52 dp layout and 50 dp control-center
+band. Emulator-derived offsets and size adjustments were reverted.
+
+Wide progressive top blur captures the full page before the sidebar viewport inset,
+so its sampling origin agrees with the full-width bar. The top switch uses a
+34 dp circular GlassIconButton, matching the selection indicator's height.
+
+## OS4 App Icons
+
+The app vendors the used Regular vectors from `miuix-glass-icons` at upstream
+commit `797835f92a6aef3ce46a3bd1969d9d4f3a25b3bb`. Their Apache-2.0 source headers
+are retained in `glass/src/com/melox/player/ui/icon`. The app-side Icon adapter
+selects these vectors for OS4. Home uses the original Miuix vector, RecordingTape
+represents sidebar playlists, and AiScan represents albums and album empty states.

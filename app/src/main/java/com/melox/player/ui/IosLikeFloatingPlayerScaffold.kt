@@ -28,12 +28,16 @@ import androidx.compose.foundation.layout.width
 import com.melox.player.ui.component.os4.BottomSearchAction
 import com.melox.player.ui.component.os4.glassSearchIcon
 import top.yukonga.miuix.kmp.glass.GlassIconButton
-import top.yukonga.miuix.kmp.basic.Icon
+import com.melox.player.ui.component.os4.Icon
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.melox.player.ui.component.os4.rememberGlassSearchBarAlpha
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import top.yukonga.miuix.kmp.glass.popupShadowOutsets
 import top.yukonga.miuix.kmp.glass.GlassShadows
 import androidx.compose.runtime.Composable
@@ -83,6 +87,12 @@ internal fun IosLikeFloatingPlayerScaffold(
     searchOpen: Boolean = false,
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    var presentedBottomSearch by remember { mutableStateOf(showBottomSearch) }
+    LaunchedEffect(showNavigation, showBottomSearch) {
+        // Keep the prior search-slot layout for the first destination frame.
+        if (showNavigation) withFrameNanos { }
+        presentedBottomSearch = showBottomSearch
+    }
     val surfaceColor = MiuixTheme.colorScheme.surface
     val searchChromeAlpha = rememberGlassSearchBarAlpha(searchOpen)
     val density = LocalDensity.current
@@ -237,7 +247,7 @@ internal fun IosLikeFloatingPlayerScaffold(
                                     onSelect = onTabSelected,
                                     backdrop = backdrop.takeIf { blurEnabled && effectsSupported },
                                     defaultWindowInsetsPadding = false,
-                                    trailingAction = if (showBottomSearch) {
+                                    trailingAction = if (presentedBottomSearch) {
                                         {
                                             GlassIconButton(
                                                 onClick = { bottomSearchAction?.onClick?.value?.invoke() },

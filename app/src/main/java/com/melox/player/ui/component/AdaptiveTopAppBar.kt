@@ -27,9 +27,20 @@ internal fun AdaptiveTopAppBar(
     bottomContent: @Composable () -> Unit = {},
 ) {
     val barModifier = modifier.stableTopAppBarInsets(color)
-    if (com.melox.player.ui.theme.LocalOs4Style.current) {
+    if (com.melox.player.ui.theme.LocalOs4Style.current && usesMiuixSmallTopAppBar()) {
+        SmallTopAppBar(
+            title = title,
+            modifier = barModifier,
+            color = color,
+            navigationIcon = navigationIcon,
+            actions = actions,
+            scrollBehavior = scrollBehavior,
+            bottomContent = bottomContent,
+        )
+    } else if (com.melox.player.ui.theme.LocalOs4Style.current) {
         top.yukonga.miuix.kmp.glass.GlassTopAppBar(
             title = title, modifier = barModifier,
+            compact = usesMiuixSmallTopAppBar(),
             contentModifier = Modifier.stableTopAppBarContentInsets(),
             scrollBehavior = scrollBehavior,
             backdrop = LocalGlassTopBackdrop.current,

@@ -1,6 +1,8 @@
 package com.melox.player.ui.screen.library
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -11,10 +13,10 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
-import com.melox.player.ui.LocalFloatingNavigationRailInset
+import com.melox.player.ui.component.library.responsiveGridColumnCount
 import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.AlbumGridStyle
 import com.melox.player.data.library.ArtistGroup
@@ -27,13 +29,17 @@ import com.melox.player.ui.screen.home.HomeEmptyCardContent
 import com.melox.player.ui.screen.home.HomeSectionTitle
 import com.melox.player.ui.screen.home.HomeSectionSpacing
 import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.icon.basic.ArrowRight
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.melox.player.ui.screen.home.HomeEmptyActionRow
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.Album
 import top.yukonga.miuix.kmp.icon.extended.Contacts
 import top.yukonga.miuix.kmp.icon.extended.Folder
@@ -57,9 +63,10 @@ internal fun Os4LibraryOverviewScreen(
 ) {
     val window = LocalWindowInfo.current.containerSize
     val landscape = window.width > window.height
-    val sidebarVisible = LocalFloatingNavigationRailInset.current > 0.dp
     val direction = LocalLayoutDirection.current
     BoxWithConstraints(modifier.fillMaxSize()) {
+        val availableWidth = maxWidth - contentPadding.calculateStartPadding(direction) -
+            contentPadding.calculateEndPadding(direction)
         val columns = albumGridColumnCount(
             gridStyle, landscape, false,
             maxWidth - contentPadding.calculateStartPadding(direction) - contentPadding.calculateEndPadding(direction),
@@ -97,19 +104,23 @@ internal fun Os4LibraryOverviewScreen(
                 HomeSectionTitle(R.string.navigation_artists, onClick = { onOpenSection(1) }, topPadding = HomeSectionSpacing - LibraryPreviewBottomPadding, endPadding = 28.dp)
             }
             item(key = "artists") {
-                if (artists.isEmpty()) LibraryPreviewEmptyCard(1) else LibraryPreviewCards(artists.size, landscape, sidebarVisible) { index ->
+                if (artists.isEmpty()) LibraryPreviewEmptyCard(1) else LibraryPreviewCards(artists.size, landscape, availableWidth) { index ->
                     val artist = artists[index]
                     LibraryPreviewRow(
                         artist.name ?: stringResource(R.string.artist_unknown), artist.tracks.size,
                         { onArtistClick(artist) },
-                    ) { ArtistArtwork(artist.coverTrack, size = 24.dp) }
+                    ) {
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            ArtistArtwork(artist.coverTrack, Modifier.requiredSize(28.dp), size = 28.dp)
+                        }
+                    }
                 }
             }
             item(key = "folders_title") {
                 HomeSectionTitle(R.string.navigation_folders, onClick = { onOpenSection(2) }, topPadding = HomeSectionSpacing - LibraryPreviewBottomPadding, endPadding = 28.dp)
             }
             item(key = "folders") {
-                if (folders.isEmpty()) LibraryPreviewEmptyCard(2) else LibraryPreviewCards(folders.size, landscape, sidebarVisible) { index ->
+                if (folders.isEmpty()) LibraryPreviewEmptyCard(2) else LibraryPreviewCards(folders.size, landscape, availableWidth) { index ->
                     val folder = folders[index]
                     LibraryPreviewRow(
                         folder.name ?: stringResource(R.string.folder_unknown), folder.tracks.size,
@@ -140,13 +151,19 @@ private fun LibraryPreviewEmptyCard(section: Int, modifier: Modifier = Modifier)
 private fun LibraryPreviewCards(
     count: Int,
     landscape: Boolean,
-    sidebarVisible: Boolean,
+    availableWidth: Dp,
     modifier: Modifier = Modifier,
     content: @Composable (Int) -> Unit,
 ) {
-    val groups = libraryPreviewColumns(count, landscape, sidebarVisible)
-    val columns = libraryPreviewColumnCount(landscape, sidebarVisible)
-    Row(modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = LibraryPreviewBottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    val groups = libraryPreviewColumns(count, landscape, availableWidth)
+    val columns = libraryPreviewColumnCount(landscape, availableWidth)
+    val contentWidth = (availableWidth - 32.dp).coerceAtLeast(0.dp)
+    val rowWidth = if (landscape) contentWidth.coerceAtLeast(492.dp) else contentWidth
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = LibraryPreviewBottomPadding)
+            .horizontalScroll(rememberScrollState()).width(rowWidth),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         groups.forEach { indices ->
             PageCard(Modifier.weight(1f), insideMargin = PaddingValues(0.dp)) {
                 indices.forEach { content(it) }
@@ -164,13 +181,22 @@ private fun LibraryPreviewRow(
     modifier: Modifier = Modifier,
     artwork: @Composable () -> Unit,
 ) {
+    val direction = LocalLayoutDirection.current
     BasicComponent(
         modifier = modifier,
         startAction = artwork,
         endActions = {
-            Text(songCount.toString(), style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-            Spacer(Modifier.width(8.dp))
-            Icon(MiuixIcons.Basic.ArrowRight, null, Modifier.size(width = 10.dp, height = 16.dp))
+            Row(Modifier.padding(end = 8.dp).align(Alignment.CenterVertically).weight(1f, fill = false)) {
+                Text(songCount.toString(), style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            }
+            Image(
+                imageVector = MiuixIcons.Basic.ArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(10.dp, 16.dp).graphicsLayer {
+                    scaleX = if (direction == LayoutDirection.Rtl) -1f else 1f
+                }.align(Alignment.CenterVertically),
+                colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurfaceVariantActions),
+            )
         },
         onClick = onClick,
     ) {
@@ -178,18 +204,21 @@ private fun LibraryPreviewRow(
     }
 }
 
-internal fun libraryPreviewColumnCount(landscape: Boolean, sidebarVisible: Boolean): Int = when {
-    !landscape -> 1
-    sidebarVisible -> 3
-    else -> 4
-}
+internal fun libraryPreviewColumnCount(landscape: Boolean, availableWidth: Dp): Int =
+    if (landscape) responsiveGridColumnCount(
+        availableWidth = availableWidth,
+        horizontalPadding = 32.dp,
+        minimumCellWidth = 240.dp,
+        minimumColumns = 2,
+        maximumColumns = 4,
+    ) else 1
 
 internal fun libraryPreviewColumns(
     count: Int,
     landscape: Boolean,
-    sidebarVisible: Boolean = false,
+    availableWidth: Dp,
 ): List<List<Int>> {
-    val columns = libraryPreviewColumnCount(landscape, sidebarVisible)
+    val columns = libraryPreviewColumnCount(landscape, availableWidth)
     val rows = if (landscape) 5 else 4
     return (0 until minOf(count, rows * columns)).groupBy { it % columns }.values.toList()
 }

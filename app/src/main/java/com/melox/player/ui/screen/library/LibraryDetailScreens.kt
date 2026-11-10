@@ -31,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -86,12 +87,60 @@ import com.melox.player.ui.component.os4.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.basic.TabRowDefaults
 import top.yukonga.miuix.kmp.basic.Text
+import com.melox.player.ui.theme.LocalOs4Style
+import top.yukonga.miuix.kmp.blur.Backdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRow
+import top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import com.melox.player.ui.component.os4.navigationBackIcon
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+
+@Composable
+private fun LibraryDetailTabs(
+    tabs: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    backdrop: Backdrop?,
+    backgroundColor: Color,
+    selectedBackgroundColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    if (LocalOs4Style.current) {
+        val surfaceColor = MiuixTheme.colorScheme.surface
+        val tabBackdrop = backdrop ?: rememberLayerBackdrop { drawRect(surfaceColor) }
+        GlassSegmentedTabRow(
+            tabs = tabs,
+            selectedIndex = selectedIndex,
+            onSelect = onSelect,
+            backdrop = tabBackdrop,
+            modifier = modifier,
+            surfaceAlpha = if (backdrop == null) 0f else LocalGlassTopAppBarContext.current?.materialProgress?.value ?: 1f,
+        )
+    } else {
+        Card(
+            modifier = modifier,
+            insideMargin = PaddingValues(0.dp),
+            colors = CardDefaults.defaultColors(
+                color = backgroundColor,
+                contentColor = MiuixTheme.colorScheme.onSurface,
+            ),
+        ) {
+            TabRowWithContour(
+                tabs = tabs,
+                selectedTabIndex = selectedIndex,
+                onTabSelected = onSelect,
+                colors = TabRowDefaults.tabRowColors(
+                    backgroundColor = backgroundColor,
+                    selectedBackgroundColor = selectedBackgroundColor,
+                ),
+            )
+        }
+    }
+}
 
 @Composable
 fun AlbumDetailScreen(
@@ -235,31 +284,22 @@ fun AlbumDetailScreen(
                     bottomContent = {
                         Column {
                             AlbumDetailHeader(album)
-                            Card(
+                            LibraryDetailTabs(
+                                tabs = listOf(
+                                    stringResource(R.string.artist_songs),
+                                    stringResource(R.string.participating_artists),
+                                ),
+                                selectedIndex = pagerState.currentPage,
+                                onSelect = { page ->
+                                    scope.launch { pagerState.animateScrollToPage(page) }
+                                },
+                                backdrop = backdrop,
+                                backgroundColor = tabRowBackgroundColor,
+                                selectedBackgroundColor = tabSelectedColor,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 16.dp, end = 16.dp, bottom = 1.dp),
-                                insideMargin = PaddingValues(0.dp),
-                                colors = CardDefaults.defaultColors(
-                                    color = tabRowBackgroundColor,
-                                    contentColor = MiuixTheme.colorScheme.onSurface,
-                                ),
-                            ) {
-                                TabRowWithContour(
-                                    tabs = listOf(
-                                        stringResource(R.string.artist_songs),
-                                        stringResource(R.string.participating_artists),
-                                    ),
-                                    selectedTabIndex = pagerState.currentPage,
-                                    onTabSelected = { page ->
-                                        scope.launch { pagerState.animateScrollToPage(page) }
-                                    },
-                                    colors = TabRowDefaults.tabRowColors(
-                                        backgroundColor = tabRowBackgroundColor,
-                                        selectedBackgroundColor = tabSelectedColor,
-                                    ),
-                                )
-                            }
+                            )
                         }
                     },
                 )
@@ -571,31 +611,22 @@ fun ArtistDetailScreen(
                     bottomContent = {
                         Column {
                             ArtistDetailHeader(artist)
-                            Card(
+                            LibraryDetailTabs(
+                                tabs = listOf(
+                                    stringResource(R.string.artist_songs),
+                                    stringResource(R.string.artist_albums),
+                                ),
+                                selectedIndex = pagerState.currentPage,
+                                onSelect = { page ->
+                                    scope.launch { pagerState.animateScrollToPage(page) }
+                                },
+                                backdrop = backdrop,
+                                backgroundColor = tabRowBackgroundColor,
+                                selectedBackgroundColor = tabSelectedColor,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 16.dp, end = 16.dp, bottom = 1.dp),
-                                insideMargin = PaddingValues(0.dp),
-                                colors = CardDefaults.defaultColors(
-                                    color = tabRowBackgroundColor,
-                                    contentColor = MiuixTheme.colorScheme.onSurface,
-                                ),
-                            ) {
-                                TabRowWithContour(
-                                    tabs = listOf(
-                                        stringResource(R.string.artist_songs),
-                                        stringResource(R.string.artist_albums),
-                                    ),
-                                    selectedTabIndex = pagerState.currentPage,
-                                    onTabSelected = { page ->
-                                        scope.launch { pagerState.animateScrollToPage(page) }
-                                    },
-                                    colors = TabRowDefaults.tabRowColors(
-                                        backgroundColor = tabRowBackgroundColor,
-                                        selectedBackgroundColor = tabSelectedColor,
-                                    ),
-                                )
-                            }
+                            )
                         }
                     },
                 )

@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -93,6 +94,8 @@ fun AlbumLibraryScreen(
         if (sortConfig.descending) AlphabetSections.asReversed() else AlphabetSections
     }
 
+    val windowSize = LocalWindowInfo.current.containerSize
+    val os4Landscape = com.melox.player.ui.theme.LocalOs4Style.current && windowSize.width > windowSize.height
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val gridContentPadding = PaddingValues(
             start = contentPadding.calculateStartPadding(layoutDirection) + 20.dp,
@@ -104,9 +107,10 @@ fun AlbumLibraryScreen(
             columns = GridCells.Fixed(
                 albumGridColumnCount(
                     gridStyle = sortConfig.gridStyle,
-                    landscape = landscape,
+                    landscape = landscape || os4Landscape,
                     navigationRailExpanded = navigationRailExpanded,
                     availableWidth = maxWidth,
+                    os4 = os4Landscape,
                 ),
             ),
             modifier = Modifier
@@ -199,6 +203,8 @@ internal fun albumGridColumnCount(
     landscape: Boolean,
     navigationRailExpanded: Boolean,
     availableWidth: Dp,
+    os4: Boolean = false,
+    horizontalPadding: Dp = 40.dp,
 ): Int {
     if (!landscape) return gridStyle.columns
 
@@ -207,12 +213,12 @@ internal fun albumGridColumnCount(
         else -> 5
     }
     val minimumCellWidth = when (gridStyle) {
-        AlbumGridStyle.TWO_SMALL -> 140.dp
-        AlbumGridStyle.THREE -> 120.dp
+        AlbumGridStyle.TWO_SMALL -> if (os4) 200.dp else 140.dp
+        AlbumGridStyle.THREE -> if (os4) 160.dp else 120.dp
     }
     return responsiveGridColumnCount(
         availableWidth = availableWidth,
-        horizontalPadding = 40.dp,
+        horizontalPadding = horizontalPadding,
         minimumCellWidth = minimumCellWidth,
         minimumColumns = gridStyle.columns,
         maximumColumns = maximumColumns,

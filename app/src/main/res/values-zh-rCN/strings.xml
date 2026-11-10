@@ -450,5 +450,6 @@
     <string name="settings_bottom_bar_ios_like">iOS-like</string>
     <string name="settings_style_os3">OS3</string>
     <string name="settings_style_os4">OS4</string>
+    <string name="library_preview_empty_description">扫描音乐后将在此显示</string>
     <string name="settings_glass_styles_unsupported">OS4 和 iOS-like 需要 Android 13 及以上</string>
 </resources>

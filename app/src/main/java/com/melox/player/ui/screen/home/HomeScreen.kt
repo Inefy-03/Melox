@@ -282,7 +282,7 @@ fun HomeScreen(
             HomeSectionTitle(
                 stringRes = R.string.home_playlists_title,
                 onClick = onOpenPlaylists,
-                topPadding = 8.dp,
+                topPadding = HomeSectionSpacing - HomeRecommendationSectionBottomSpacing,
                 endPadding = 28.dp,
             )
         }
@@ -413,25 +413,28 @@ private fun HomeEmptyRecommendationState(
 }
 
 @Composable
-private fun HomeEmptyActionRow(
+internal fun HomeEmptyActionRow(
     label: String,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
-    HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
-    BasicComponent(
-        insideMargin = PaddingValues(horizontal = 20.dp),
-        onClick = onClick,
-    ) {
-        Text(
-            text = label,
-            style = MiuixTheme.textStyles.button,
-            color = MiuixTheme.colorScheme.primary,
-        )
+    Column(modifier) {
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp))
+        BasicComponent(
+            insideMargin = PaddingValues(horizontal = 20.dp),
+            onClick = onClick,
+        ) {
+            Text(
+                text = label,
+                style = MiuixTheme.textStyles.button,
+                color = MiuixTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
 @Composable
-private fun HomeEmptyCardContent(
+internal fun HomeEmptyCardContent(
     imageVector: ImageVector,
     title: String,
     description: String,
@@ -648,15 +651,16 @@ internal fun rememberHomeRecommendationSelection(
 }
 
 @Composable
-private fun HomeSectionTitle(
+internal fun HomeSectionTitle(
     stringRes: Int,
     onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
     topPadding: Dp = 2.dp,
     endPadding: Dp = 16.dp,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .then(
                 if (onClick != null) {
@@ -680,7 +684,8 @@ private fun HomeSectionTitle(
         )
         if (onClick != null) {
             Icon(
-                imageVector = MiuixIcons.Demibold.ChevronForward,
+                imageVector = if (com.melox.player.ui.theme.LocalOs4Style.current)
+                    com.melox.player.ui.icon.GlassIcons.ChevronForwardDemibold else MiuixIcons.Demibold.ChevronForward,
                 contentDescription = stringResource(stringRes),
                 modifier = Modifier.size(16.dp),
                 tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
@@ -968,3 +973,4 @@ private val HomeRecommendationMetadataHorizontalPadding = 18.dp
 private val HomeRecommendationMetadataBottomPadding = 14.dp
 private val HomeRecommendationSectionBottomSpacing = 14.dp
 private val HomeEmptyCardContentHeight = 160.dp
+internal val HomeSectionSpacing = 32.dp

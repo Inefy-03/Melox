@@ -464,5 +464,6 @@
     <string name="settings_bottom_bar_ios_like">iOS-like</string>
     <string name="settings_style_os3">OS3</string>
     <string name="settings_style_os4">OS4</string>
+    <string name="library_preview_empty_description">Scan music to populate your library</string>
     <string name="settings_glass_styles_unsupported">OS4 and iOS-like require Android 13 or later</string>
 </resources>

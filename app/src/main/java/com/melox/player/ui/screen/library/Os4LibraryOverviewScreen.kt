@@ -22,7 +22,6 @@ import com.melox.player.data.library.FolderGroup
 import com.melox.player.ui.component.LazyColumn
 import com.melox.player.ui.component.PageCard
 import com.melox.player.ui.component.library.ArtistArtwork
-import com.melox.player.ui.component.os4.Icon
 import com.melox.player.ui.component.overScrollVertical
 import com.melox.player.ui.screen.home.HomeEmptyCardContent
 import com.melox.player.ui.screen.home.HomeSectionTitle

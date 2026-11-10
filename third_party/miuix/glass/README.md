@@ -10,7 +10,7 @@
   Melox adds 2 dp padding inside each original 28 dp icon slot for 24 dp
   visible icons, preserving navigation height and interaction geometry.
 
-The app compiles the Glass sources against the pinned 0.9.4.2-melox UI backport.
+The app compiles the Glass sources against the pinned 0.9.4.3-melox UI backport.
 The rail inset patch is retained. The backport is compiled with Melox's Compose
 1.12.0, Kotlin 2.4.20 and AGP 9.4.1 versions. Other Miuix modules remain 0.9.4. The existing theme/palette implementation
 and material-color-utilities 5.0.1 are retained.

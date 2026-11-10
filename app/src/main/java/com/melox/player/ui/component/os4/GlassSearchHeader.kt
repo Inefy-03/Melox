@@ -24,10 +24,14 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +52,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -134,6 +139,7 @@ internal fun GlassSearchHeader(
     val searchMaterial = GlassTopAppBarDefaults.buttonMaterial()
     val searchStroke = GlassTopAppBarDefaults.buttonStroke()
     val query = session.query.value
+    val showResults = showGlassSearchResults(expanded, query)
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -156,10 +162,9 @@ internal fun GlassSearchHeader(
     androidx.compose.runtime.DisposableEffect(page) {
         onDispose {
             page.transitionActive = false
-            page.progress = null
         }
     }
-    SideEffect { page.transitionActive = active; page.progress = progress }
+    SideEffect { page.transitionActive = active }
     val backOwner = LocalWindowBackDispatcherOwner.current ?: LocalNavigationEventDispatcherOwner.current
     if (backOwner != null) CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides backOwner) {
         NavigationBackHandler(
@@ -172,7 +177,7 @@ internal fun GlassSearchHeader(
     val colors = MiuixTheme.colorScheme
     Box(
         modifier = modifier
-            .fillMaxWidth()
+            .then(if (wide) Modifier.fillMaxWidth() else Modifier.fillMaxSize())
             .onPreviewKeyEvent {
                 if (it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
                     onDismissRequest()
@@ -182,13 +187,21 @@ internal fun GlassSearchHeader(
                 }
             },
     ) {
+        if (!wide && !showResults) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable(interactionSource = null, indication = null) { keyboard?.hide() },
+            )
+        }
         Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .then(if (wide) Modifier.padding(end = 52.dp).then(Modifier.widthIn(max = wideSearchWidth.coerceAtMost(320.dp))) else Modifier)
                 .fillMaxWidth()
                 .graphicsLayer { alpha = progress.value }
-                .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility),
+                .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
+                .then(if (wide) Modifier else Modifier.imePadding()),
         ) {
             Box(
                 modifier = Modifier
@@ -345,3 +358,24 @@ internal fun Modifier.glassSearchBarTransition(expanded: Boolean, barAlpha: () -
     }
 }
 
+/** ActionBarView reveals the title container after exit progress crosses 0.8. */
+@Composable
+internal fun rememberGlassSearchTitleAlpha(expanded: Boolean, collapsed: Boolean): () -> Float {
+    val transition = updateTransition(expanded, label = "glassSearchTitlePhase")
+    val progress = transition.animateFloat(
+        transitionSpec = { tween(400, easing = SearchModeEasing) },
+        label = "glassSearchTitleExitProgress",
+    ) { if (it) 0f else 1f }
+    val reveal by remember(expanded, progress) { derivedStateOf { expanded || progress.value > 0.8f } }
+    val response = if (collapsed) 0.15f else 0.6f
+    val titleAlpha = animateFloatAsState(
+        targetValue = if (reveal) 1f else 0f,
+        animationSpec = if (reveal && !expanded) {
+            spring(dampingRatio = 1f, stiffness = (2 * PI / response).let { (it * it).toFloat() }, visibilityThreshold = 0.001f)
+        } else {
+            snap()
+        },
+        label = "glassSearchTitleAlpha",
+    )
+    return remember(titleAlpha) { { titleAlpha.value } }
+}

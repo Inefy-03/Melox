@@ -21,12 +21,14 @@ internal class GlassSearchSession(
     val onDismiss: State<() -> Unit>,
 )
 
+internal fun showGlassSearchResults(expanded: Boolean, query: String): Boolean =
+    expanded && query.isNotBlank()
+
 internal class GlassSearchPage {
     var session: GlassSearchSession? by mutableStateOf(null)
     var materialProgress: State<Float>? by mutableStateOf(null)
     var fieldBounds: Rect? = null
     var transitionActive by mutableStateOf(false)
-    var progress: State<Float>? by mutableStateOf(null)
     val isExpanded: Boolean get() = session?.expanded?.value == true
 }
 

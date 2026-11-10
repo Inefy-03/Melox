@@ -1,5 +1,11 @@
 package com.melox.player
 
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Home
+import top.yukonga.miuix.kmp.icon.extended.Album
+import top.yukonga.miuix.kmp.icon.extended.RecordingTape
+import com.melox.player.ui.component.os4.glassIcon
+
 import android.Manifest
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -239,6 +245,25 @@ import kotlin.random.Random
 
 class UiLogicTest {
     @Test
+    fun topBarTitleVisibilityTracksCollapseLimitChanges() {
+        val state = top.yukonga.miuix.kmp.basic.TopAppBarState(-1000f, -100f, 0f)
+        val visible = androidx.compose.runtime.derivedStateOf { state.collapsedFraction * 3f >= 1f }
+        assertFalse(visible.value)
+        androidx.compose.runtime.snapshots.Snapshot.withMutableSnapshot {
+            state.heightOffsetLimit = -100f
+        }
+        assertTrue(visible.value)
+    }
+
+    @Test
+    fun glassSearchResultsAreInteractiveOnlyForAnExpandedNonblankQuery() {
+        assertFalse(com.melox.player.ui.component.os4.showGlassSearchResults(false, "song"))
+        assertFalse(com.melox.player.ui.component.os4.showGlassSearchResults(true, ""))
+        assertFalse(com.melox.player.ui.component.os4.showGlassSearchResults(true, "  "))
+        assertTrue(com.melox.player.ui.component.os4.showGlassSearchResults(true, "song"))
+    }
+
+    @Test
     fun navigationStyleMigratesLegacyChoicesAndRetainsExplicitOverrides() {
         assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle(null, null, null))
         assertEquals(BottomBarStyle.LIQUID_GLASS, com.melox.player.model.resolveStoredNavigationStyle(null, "FLOATING", null))
@@ -261,6 +286,39 @@ class UiLogicTest {
     }
 
     @Test
+    fun os4IconMappingUsesRequestedSymbolsAndPreservesHome() {
+        assertEquals(MiuixIcons.Home, glassIcon(MiuixIcons.Home))
+        assertEquals("AiScan.Glass.Regular", glassIcon(MiuixIcons.Album).name)
+        val recordingTape = glassIcon(MiuixIcons.RecordingTape)
+        assertEquals("RecordingTape.Glass.Regular", recordingTape.name)
+        assertEquals(recordingTape, glassIcon(recordingTape))
+    }
+
+    @Test
+    fun libraryPreviewColumnsUse240DpWidthWithinTwoToFourColumns() {
+        val cases = mapOf(524 to 2, 775 to 2, 776 to 3, 1027 to 3, 1028 to 4, 1600 to 4)
+        cases.forEach { (width, columns) ->
+            assertEquals(columns, com.melox.player.ui.screen.library.libraryPreviewColumnCount(true, width.dp))
+        }
+        assertEquals(1, com.melox.player.ui.screen.library.libraryPreviewColumnCount(false, 1200.dp))
+    }
+
+    @Test
+    fun libraryOverviewRowsRespectOrientationLimitsAndReadingOrder() {
+        assertEquals(
+            listOf(listOf(0, 3, 6, 9, 12), listOf(1, 4, 7, 10, 13), listOf(2, 5, 8, 11, 14)),
+            com.melox.player.ui.screen.library.libraryPreviewColumns(20, true, 800.dp),
+        )
+        assertEquals(emptyList<List<Int>>(), com.melox.player.ui.screen.library.libraryPreviewColumns(0, true, 1028.dp))
+        assertEquals(listOf(listOf(0)), com.melox.player.ui.screen.library.libraryPreviewColumns(1, true, 1028.dp))
+        assertEquals(listOf(listOf(0, 1, 2, 3)), com.melox.player.ui.screen.library.libraryPreviewColumns(8, false, 400.dp))
+        assertEquals(
+            listOf(listOf(0, 4, 8, 12, 16), listOf(1, 5, 9, 13, 17), listOf(2, 6, 10, 14, 18), listOf(3, 7, 11, 15, 19)),
+            com.melox.player.ui.screen.library.libraryPreviewColumns(24, true, 1028.dp),
+        )
+    }
+
+    @Test
     fun topBarUsesVisibleListPositionAfterReboundAndPagerSwitch() {
         val page = com.melox.player.ui.component.TopBarScrollContent()
         page.bounds = androidx.compose.ui.geometry.Rect(0f, 0f, 600f, 800f)
@@ -276,6 +334,10 @@ class UiLogicTest {
         atTop.bounds = page.bounds
         assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, -900f))
         assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f))
+        assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f, 48f))
+        assertEquals(48f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f, -48f))
+        assertEquals(228f, com.melox.player.ui.component.topBarOverlapDistance(180f, 0f, -48f))
+        assertEquals(180f, com.melox.player.ui.component.topBarOverlapDistance(180f, 0f, 48f))
     }
 
     @Test
@@ -2879,39 +2941,46 @@ class UiLogicTest {
         assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 560.dp))
         assertEquals(5, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 720.dp))
         assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 840.dp))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 451.dp, os4 = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 452.dp, os4 = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 371.dp, os4 = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 372.dp, os4 = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, true, 840.dp, os4 = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 840.dp, os4 = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, false, false, 400.dp, os4 = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 663.dp, os4 = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 664.dp, os4 = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 715.dp, os4 = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 716.dp, os4 = true))
+        assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, os4 = true))
+        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, os4 = true))
         assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 400.dp))
+        assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 535.dp))
+        assertEquals(3, homePlaylistGridColumnCount(landscape = false, availableWidth = 536.dp))
+        assertEquals(3, homePlaylistGridColumnCount(landscape = false, availableWidth = 1200.dp))
         assertEquals(2, homePlaylistGridColumnCount(landscape = true, availableWidth = 400.dp))
         assertEquals(3, homePlaylistGridColumnCount(landscape = true, availableWidth = 600.dp))
-        assertEquals(5, homePlaylistGridColumnCount(landscape = true, availableWidth = 840.dp))
+        assertEquals(4, homePlaylistGridColumnCount(landscape = true, availableWidth = 840.dp))
         assertEquals(3, responsiveGridColumnCount(600.dp, 32.dp, 140.dp, 2, 6))
         assertEquals(4, homeInitialRecommendationCount(400.dp))
         assertEquals(8, homeInitialRecommendationCount(1280.dp))
         assertEquals(9, homeInitialRecommendationCount(1413.dp))
+        assertEquals(8, homeInitialRecommendationCount(1413.dp, landscape = true))
     }
 
     @Test
-    fun playlistGridColumnsStayBetweenTheTwoAlbumGridStyles() {
-        (320..1200 step 4).forEach { width ->
-            val availableWidth = width.dp
-            val smallAlbumColumns = albumGridColumnCount(
-                gridStyle = AlbumGridStyle.TWO_SMALL,
-                landscape = true,
-                navigationRailExpanded = false,
-                availableWidth = availableWidth,
+    fun playlistGridColumnsUse160DpThresholdWithinTwoToSixClamp() {
+        val cases = mapOf(
+            320 to 2, 364 to 2, 535 to 2, 536 to 3,
+            707 to 3, 708 to 4, 879 to 4, 880 to 5,
+            1051 to 5, 1052 to 6, 2000 to 6,
+        )
+        cases.forEach { (width, expectedColumns) ->
+            assertEquals(
+                "Playlist columns at ${width}dp",
+                expectedColumns,
+                homePlaylistGridColumnCount(landscape = true, availableWidth = width.dp),
             )
-            val playlistColumns = homePlaylistGridColumnCount(
-                landscape = true,
-                availableWidth = availableWidth,
-            )
-            val largeAlbumColumns = albumGridColumnCount(
-                gridStyle = AlbumGridStyle.THREE,
-                landscape = true,
-                navigationRailExpanded = false,
-                availableWidth = availableWidth,
-            )
-
-            assertTrue(smallAlbumColumns <= playlistColumns)
-            assertTrue(playlistColumns <= largeAlbumColumns)
         }
     }
 

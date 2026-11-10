@@ -1,12 +1,15 @@
 package com.melox.player.ui.component
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.ui.layout.layout
 import com.melox.player.ui.component.os4.*
 import com.melox.player.ui.LocalFloatingNavigationRailInset
 import androidx.compose.foundation.layout.padding
@@ -199,9 +202,13 @@ internal fun PageScaffold(
         onDispose { wideSearchHost?.pages?.remove(searchPage) }
     }
     val searchActive = searchPage.isExpanded || searchPage.transitionActive
-    val searchBarAlpha = rememberGlassSearchBarAlpha(searchPage.isExpanded && !wideOs4)
-    val hidePageContent = !wideOs4 && searchPage.isExpanded && searchPage.session?.query?.value.isNullOrBlank()
-    val pageAlpha = rememberGlassSearchBarAlpha(hidePageContent)
+    val showSearchResults = !wideOs4 && showGlassSearchResults(
+        searchPage.isExpanded, searchPage.session?.query?.value.orEmpty(),
+    )
+    val hidePageContent = !wideOs4 && searchPage.isExpanded && !showSearchResults
+    val blockPageContent = searchActive && !wideOs4 && !showSearchResults
+    val layoutDirection = LocalLayoutDirection.current
+    val density = LocalDensity.current
     val fixedBackground = LocalFixedPageBackground.current
     val surfaceBackdrop = rememberPageSurfaceBackdrop()
     val image = LocalCustomPageBackground.current
@@ -217,7 +224,7 @@ internal fun PageScaffold(
                     Modifier.customPageBackground()
                 } else {
                     Modifier.fixedWallpaperRegion(fixedBackground)
-                }).then(if (searchActive && !wideOs4) Modifier.imePadding() else Modifier),
+                }),
                 containerColor = customPageContainerColor(),
                 contentWindowInsets = WindowInsets.systemBars
                     .union(WindowInsets.displayCutout)
@@ -238,39 +245,38 @@ internal fun PageScaffold(
                                 }
                             }),
                         ) {
-                            Box(Modifier.glassSearchBarTransition(searchPage.isExpanded && !wideOs4) { searchBarAlpha.value }.layout { measurable, constraints ->
-                                val placeable = measurable.measure(constraints)
-                                val progress = if (wideOs4) 0f else searchPage.progress?.value ?: 0f
-                                val searchHeight = statusBarSpace.getTop(this) + 52.dp.roundToPx()
-                                val height = (placeable.height + (searchHeight - placeable.height) * progress).toInt()
-                                layout(placeable.width, height.coerceAtLeast(0)) {
-                                    placeable.placeRelative(0, 0)
-                                }
-                            }) { topBar() }
-                            if (!wideOs4) searchPage.session?.let { GlassSearchHeader(it, searchPage) }
+                            topBar()
                         }
                     }
                 },
             ) { padding ->
-                // Move the list viewport; retain its own original content padding.
+                val pagePadding = if (showSearchResults) PaddingValues(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    top = with(density) { statusBarSpace.getTop(this).toDp() } + 52.dp,
+                    end = padding.calculateEndPadding(layoutDirection),
+                    bottom = padding.calculateBottomPadding(),
+                ) else padding
+                // Keep the same filtered list and state underneath the search header.
                 Box(Modifier.fillMaxSize()
+                    .then(if (showSearchResults) Modifier.imePadding() else Modifier)
                     .onGloballyPositioned { wideCaptureCoordinates = it }
                     .then(wideTopBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)
-                    .padding(start = floatingRailInset).graphicsLayer { alpha = pageAlpha.value }
-                    .then(if (hidePageContent) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
+                    .padding(start = floatingRailInset).graphicsLayer { alpha = if (hidePageContent) 0f else 1f }
+                    .then(if (blockPageContent) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
                         awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
                     } else Modifier)) {
                 if (surfaceBackdrop == null || fixedBackground != null) {
-                    content(padding)
+                    content(pagePadding)
                 } else {
                     Box(Modifier.fillMaxSize()) {
                         // Capture only the wallpaper, never the Cards that consume this layer.
                         Box(Modifier.matchParentSize().layerBackdrop(surfaceBackdrop))
-                        content(padding)
+                        content(pagePadding)
                     }
                 }
                 }
             }
+            if (!wideOs4) searchPage.session?.let { GlassSearchHeader(it, searchPage) }
         }
     }
 }

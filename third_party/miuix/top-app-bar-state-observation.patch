@@ -1,0 +1,11 @@
+--- a/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/TopAppBar.kt
++++ b/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/TopAppBar.kt
+@@ -386,7 +386,7 @@
+      *
+      * Use this limit to coerce the [heightOffset] value when it's updated.
+      */
+-    var heightOffsetLimit = initialHeightOffsetLimit
++    var heightOffsetLimit by mutableFloatStateOf(initialHeightOffsetLimit)
+ 
+     /**
+      * The top app bar's current height offset in pixels. This height offset is applied to the fixed

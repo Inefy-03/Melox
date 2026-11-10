@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 UPSTREAM_COMMIT = "b7a5f08f"
-PATCH_VERSION = "0.9.4.2-melox"
+PATCH_VERSION = "0.9.4.3-melox"
 RAIL_SOURCE = "miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt"
 RAIL_SHA256 = "231daca7b4ba8352092a23cae6376eddbb73e97938dd9117c08c8e691d7f8e7f"
 
@@ -40,6 +40,10 @@ def main():
         )
         subprocess.run(
             ["git", "apply", str(directory / "overlay-dialog-binary-compat.patch")],
+            cwd=work, check=True,
+        )
+        subprocess.run(
+            ["git", "apply", str(directory / "top-app-bar-state-observation.patch")],
             cwd=work, check=True,
         )
         # Keep the shipped blur API and change only progressive downsampling.
@@ -80,6 +84,10 @@ def main():
                            .replace('kotlin = "2.4.21"', 'kotlin = "2.4.20"')
                            .replace('agp = "9.5.1"', 'agp = "9.4.1"')
                            .replace('materialKolor-utilities = "6.0.0"', 'materialKolor-utilities = "5.0.1"'))
+        catalog.write_text(catalog.read_text().replace(
+            'jetbrains-compose-multiplatform = "1.12.0"',
+            'jetbrains-compose-multiplatform = "1.12.2"',
+        ))
         catalog.write_text(catalog.read_text().replace('kotlinx-serialization = "1.12.0"', 'kotlinx-serialization = "1.11.0"').replace('kotlinx-collections-immutable = "0.5.2"', 'kotlinx-collections-immutable = "0.5.1"'))
         build = work / "miuix-ui/build.gradle.kts"
         content = build.read_text()

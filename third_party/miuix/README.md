@@ -1,7 +1,7 @@
 # Miuix Native Rail Inset Patch
 
 Melox uses a local Android UI patch based on pinned Miuix Glass commit `b7a5f08f`.
-`0.9.4.2-melox` is a Melox patch version, not an upstream release. Other Miuix
+`0.9.4.3-melox` is a Melox patch version, not an upstream release. Other Miuix
 modules and the UI artifact's transitive dependencies remain at their original
 versions.
 
@@ -112,8 +112,10 @@ buffers from clipping shadows while keeping measured width and spacing unchanged
 `miuix-nav-android:0.9.4.1-melox` retains v0.9.4 source/dependencies and adds the
 opt-in LocalSingleStepRootPop. A root bulk pop projects the native shared driver
 onto the original top/root pair, including visibility, lifecycle and unloading;
-intermediate removed entries leave immediately. App bottom-tab returns enable it
-only for OS4. Default Back remains unchanged. Rebuild runs the pure
+intermediate removed entries leave immediately. The app currently leaves this
+projection disabled and uses native stack transitions. OS4 landscape sidebar
+switches use the zero-duration transition override; hierarchical Back uses the
+configured normal transition. Rebuild runs the pure
 NavPresentationMathTest suite, including multi-level pop projection and final-frame
 retention; no UI test window, emulator or device is started.
 
@@ -178,3 +180,8 @@ commit `797835f92a6aef3ce46a3bd1969d9d4f3a25b3bb`. Their Apache-2.0 source heade
 are retained in `glass/src/com/melox/player/ui/icon`. The app-side Icon adapter
 selects these vectors for OS4. Home uses the original Miuix vector, RecordingTape
 represents sidebar playlists, and AiScan represents albums and album empty states.
+
+The UI patch `top-app-bar-state-observation.patch` makes the collapse limit
+snapshot-observable. Native cached title visibility now refreshes when rotation
+or title measurement changes the limit without changing the current offset.
+The app regression test reproduces the stale derived visibility with the prior AAR.

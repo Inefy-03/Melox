@@ -157,6 +157,7 @@ import com.melox.player.ui.resolveBottomBarStyle
 import com.melox.player.ui.rootPagerUserScrollEnabled
 import com.melox.player.ui.shouldUseNavigationRail
 import com.melox.player.ui.shouldShowNavigation
+import com.melox.player.ui.shouldTriggerTabSwitchHaptic
 import com.melox.player.ui.usesNormalMiniPlayerChrome
 import com.melox.player.ui.screen.home.homePlaylistGridColumnCount
 import com.melox.player.ui.screen.home.homeInitialRecommendationCount
@@ -386,6 +387,31 @@ class UiLogicTest {
                 homeRecommendationPage = 1,
                 homeRecommendationPageCount = 4,
                 homeRecommendationGestureActive = true,
+            ),
+        )
+    }
+
+    @Test
+    fun tabSwitchHapticOnlyFiresWhenEnabledAndTheTabChanges() {
+        assertTrue(
+            shouldTriggerTabSwitchHaptic(
+                enabled = true,
+                selectedPage = 0,
+                targetPage = 1,
+            ),
+        )
+        assertFalse(
+            shouldTriggerTabSwitchHaptic(
+                enabled = true,
+                selectedPage = 1,
+                targetPage = 1,
+            ),
+        )
+        assertFalse(
+            shouldTriggerTabSwitchHaptic(
+                enabled = false,
+                selectedPage = 0,
+                targetPage = 1,
             ),
         )
     }

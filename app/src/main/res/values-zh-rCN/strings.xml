@@ -219,6 +219,8 @@
     <string name="player_immersive_mode_enable">开启沉浸模式</string>
     <string name="player_immersive_mode_disable">关闭沉浸模式</string>
     <string name="settings_section_personalization">个性化</string>
+    <string name="settings_tab_switch_haptics_title">标签切换震动</string>
+    <string name="settings_tab_switch_haptics_summary">切换底部标签时轻微震动</string>
     <string name="settings_section_other">其他</string>
     <string name="settings_section_playback">播放</string>
     <string name="settings_audio_output_title">音频输出</string>

@@ -229,6 +229,8 @@
     <string name="player_immersive_mode_enable">Enable immersive mode</string>
     <string name="player_immersive_mode_disable">Disable immersive mode</string>
     <string name="settings_section_personalization">Personalization</string>
+    <string name="settings_tab_switch_haptics_title">Tab switch haptics</string>
+    <string name="settings_tab_switch_haptics_summary">Vibrate briefly when switching bottom tabs</string>
     <string name="settings_section_other">Other</string>
     <string name="settings_section_playback">Playback</string>
     <string name="settings_audio_output_title">Audio output</string>
@@ -244,6 +246,10 @@
     <string name="settings_auto_play_summary">Automatically resume the last song when the app starts</string>
     <string name="settings_terminate_on_task_removed_title">Terminate app when removed from recents</string>
     <string name="settings_terminate_on_task_removed_summary">End the app process and stop playback when removed from recent apps. When off, the system may still end the app.</string>
+    <string name="settings_notification_playback_mode_button_title">Show playback mode button</string>
+    <string name="settings_notification_playback_mode_button_summary">Show a button that switches the playback mode in the system media notification and control center</string>
+    <string name="settings_notification_close_button_title">Show close button</string>
+    <string name="settings_notification_close_button_summary">Show a button that terminates the app process in the system media notification and control center</string>
     <string name="settings_section_navigation">Navigation and animation</string>
     <string name="language_title">Language</string>
     <string name="language_follow_system">Follow system</string>

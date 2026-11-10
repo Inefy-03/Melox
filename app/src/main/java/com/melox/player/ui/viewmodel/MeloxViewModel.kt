@@ -955,6 +955,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setTabSwitchHapticsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setTabSwitchHapticsEnabled(enabled)
+        }
+    }
+
     fun setSongListPullToRefresh(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setSongListPullToRefresh(enabled)
@@ -1389,6 +1395,14 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setTerminateOnTaskRemoved(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setTerminateOnTaskRemoved(enabled) }
+    }
+
+    fun setShowNotificationPlaybackModeButton(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowNotificationPlaybackModeButton(enabled) }
+    }
+
+    fun setShowNotificationCloseButton(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowNotificationCloseButton(enabled) }
     }
 
     fun playNext(track: MusicTrack) {

@@ -220,6 +220,8 @@ data class AppSettings(
     val transientAudioFocusBehavior: TransientAudioFocusBehavior = TransientAudioFocusBehavior.DUCK,
     val autoPlayOnStart: Boolean = false,
     val terminateOnTaskRemoved: Boolean = false,
+    val showNotificationPlaybackModeButton: Boolean = true,
+    val showNotificationCloseButton: Boolean = true,
     val lyricFontScale: Float = 1f,
     val lyricFontWeight: Int = 400,
     val lyricAnimationMode: LyricAnimationMode = LyricAnimationMode.CURRENT_LINE,
@@ -250,6 +252,7 @@ data class AppSettings(
     val predictiveBackEnabled: Boolean = true,
     val navigationTransitionStyle: NavigationTransitionStyle =
         NavigationTransitionStyle.MIUIX,
+    val tabSwitchHapticsEnabled: Boolean = false,
     val songListPullToRefresh: Boolean = true,
     val refreshLibraryOnStart: Boolean = false,
     val skipShortAudio: Boolean = false,

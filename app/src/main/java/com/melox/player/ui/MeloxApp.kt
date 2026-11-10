@@ -77,6 +77,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -85,6 +86,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -314,6 +316,12 @@ internal fun rootPagerUserScrollEnabled(
     !homeRecommendationGestureActive ||
     homeRecommendationPage <= 0 ||
     homeRecommendationPage >= homeRecommendationPageCount - 1
+
+internal fun shouldTriggerTabSwitchHaptic(
+    enabled: Boolean,
+    selectedPage: Int,
+    targetPage: Int,
+): Boolean = enabled && selectedPage != targetPage
 
 @Serializable
 private enum class AppRoute {
@@ -1573,6 +1581,8 @@ fun MeloxApp(
                             defaultHomePage = settings.defaultHomePage,
                             trackCount = uiState.tracks.size,
                             onDefaultHomePageChange = viewModel::setDefaultHomePage,
+                            tabSwitchHapticsEnabled = settings.tabSwitchHapticsEnabled,
+                            onTabSwitchHapticsEnabledChange = viewModel::setTabSwitchHapticsEnabled,
                             onOpenThemeSettings = {
                                 themeSettingsListState.requestScrollToItem(0)
                                 themeSettingsScrollBehavior.state.heightOffset = 0f
@@ -1773,11 +1783,25 @@ fun MeloxApp(
                 currentRoute = AppRoute.ROOT
             }
         }
+        val hapticFeedback = LocalHapticFeedback.current
         val onNavigationTabSelected: (Int) -> Unit = { selectedTab ->
+<<<<<<< HEAD
             Snapshot.withMutableSnapshot {
                 singleStepRootPop = requestedBottomBarStyle == BottomBarStyle.OS4 && currentRoute != AppRoute.ROOT
                 if (navBackStack.size > 1) navBackStack.subList(1, navBackStack.size).clear()
                 currentRoute = AppRoute.ROOT
+=======
+            val shouldHaptic = shouldTriggerTabSwitchHaptic(
+                enabled = settings.tabSwitchHapticsEnabled,
+                selectedPage = playerPagerState.selectedPage,
+                targetPage = selectedTab,
+            )
+            if (shouldHaptic) {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            }
+            while (navBackStack.size > 1) {
+                navBackStack.removeAt(navBackStack.lastIndex)
+>>>>>>> origin/main
             }
             playerPagerState.animateToPage(selectedTab)
         }
@@ -2318,6 +2342,10 @@ fun MeloxApp(
                                                         onBack = navigateBack,
                                                         onAutoPlayOnStartChange = viewModel::setAutoPlayOnStart,
                                                         onTerminateOnTaskRemovedChange = viewModel::setTerminateOnTaskRemoved,
+                                                        onShowNotificationPlaybackModeButtonChange =
+                                                            viewModel::setShowNotificationPlaybackModeButton,
+                                                        onShowNotificationCloseButtonChange =
+                                                            viewModel::setShowNotificationCloseButton,
                                                     )
 
                                                     AppRoute.ABOUT -> AboutScreen(

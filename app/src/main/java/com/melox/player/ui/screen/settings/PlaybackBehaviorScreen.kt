@@ -49,12 +49,22 @@ internal fun PlaybackBehaviorScreen(
     onBack: () -> Unit,
     onAutoPlayOnStartChange: (Boolean) -> Unit,
     onTerminateOnTaskRemovedChange: (Boolean) -> Unit,
+    onShowNotificationPlaybackModeButtonChange: (Boolean) -> Unit,
+    onShowNotificationCloseButtonChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     var autoPlay by remember(settings.autoPlayOnStart) { mutableStateOf(settings.autoPlayOnStart) }
     var terminate by remember(settings.terminateOnTaskRemoved) {
         mutableStateOf(settings.terminateOnTaskRemoved)
+    }
+    var showNotificationPlaybackModeButton by remember(
+        settings.showNotificationPlaybackModeButton,
+    ) {
+        mutableStateOf(settings.showNotificationPlaybackModeButton)
+    }
+    var showNotificationCloseButton by remember(settings.showNotificationCloseButton) {
+        mutableStateOf(settings.showNotificationCloseButton)
     }
     var captureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val backdrop = rememberBlurBackdrop(captureCoordinates = { captureCoordinates })
@@ -129,6 +139,32 @@ internal fun PlaybackBehaviorScreen(
                             onCheckedChange = {
                                 terminate = it
                                 onTerminateOnTaskRemovedChange(it)
+                            },
+                        )
+                    }
+                }
+                item(key = "notification_buttons") {
+                    PageCard(
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .padding(top = 12.dp),
+                    ) {
+                        SwitchPreference(
+                            title = stringResource(R.string.settings_notification_playback_mode_button_title),
+                            summary = stringResource(R.string.settings_notification_playback_mode_button_summary),
+                            checked = showNotificationPlaybackModeButton,
+                            onCheckedChange = {
+                                showNotificationPlaybackModeButton = it
+                                onShowNotificationPlaybackModeButtonChange(it)
+                            },
+                        )
+                        SwitchPreference(
+                            title = stringResource(R.string.settings_notification_close_button_title),
+                            summary = stringResource(R.string.settings_notification_close_button_summary),
+                            checked = showNotificationCloseButton,
+                            onCheckedChange = {
+                                showNotificationCloseButton = it
+                                onShowNotificationCloseButtonChange(it)
                             },
                         )
                     }

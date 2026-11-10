@@ -27,7 +27,12 @@ import com.melox.player.ui.component.PageCard as Card
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+<<<<<<< HEAD
 import com.melox.player.ui.component.os4.OverlayDropdownPreference
+=======
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
+>>>>>>> origin/main
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -36,6 +41,8 @@ fun SettingsScreen(
     defaultHomePage: DefaultHomePage,
     trackCount: Int,
     onDefaultHomePageChange: (DefaultHomePage) -> Unit,
+    tabSwitchHapticsEnabled: Boolean,
+    onTabSwitchHapticsEnabledChange: (Boolean) -> Unit,
     onOpenThemeSettings: () -> Unit,
     onOpenLyricsSettings: () -> Unit,
     onOpenPlaybackBehavior: () -> Unit,
@@ -47,6 +54,9 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
+    var tabSwitchHapticsChecked by remember(tabSwitchHapticsEnabled) {
+        mutableStateOf(tabSwitchHapticsEnabled)
+    }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -74,6 +84,15 @@ fun SettingsScreen(
                 ArrowPreference(
                     title = stringResource(R.string.settings_lyrics_entry_title),
                     onClick = onOpenLyricsSettings,
+                )
+                SwitchPreference(
+                    title = stringResource(R.string.settings_tab_switch_haptics_title),
+                    summary = stringResource(R.string.settings_tab_switch_haptics_summary),
+                    checked = tabSwitchHapticsChecked,
+                    onCheckedChange = {
+                        tabSwitchHapticsChecked = it
+                        onTabSwitchHapticsEnabledChange(it)
+                    },
                 )
             }
         }

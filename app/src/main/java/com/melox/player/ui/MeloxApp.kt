@@ -398,11 +398,6 @@ internal fun synchronizeAppNavBackStack(
     for (index in sharedCount until destinations.size) backStack.add(destinations[index])
 }
 
-private enum class PermissionRequestSource {
-    STARTUP,
-    MANUAL_SCAN,
-}
-
 private data class PlaylistCreateRequest(
     val tracks: List<MusicTrack>,
     val openAfterCreate: Boolean,
@@ -567,10 +562,6 @@ fun MeloxApp(
             landscape = windowWidth > windowHeight,
         ),
     )
-    var permissionRequestSource by rememberSaveable {
-        mutableStateOf<PermissionRequestSource?>(null)
-    }
-    var startupPermissionRequested by rememberSaveable { mutableStateOf(false) }
     var musicSortFieldOrdinal by rememberSaveable {
         mutableIntStateOf(MusicSortField.TITLE.ordinal)
     }
@@ -843,34 +834,16 @@ fun MeloxApp(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) {
-            if (permissionRequestSource == PermissionRequestSource.MANUAL_SCAN) {
-                viewModel.scanMusic()
-            } else {
-                viewModel.markPermissionGrantedWithoutScan()
-            }
+            viewModel.scanMusic()
         } else {
             viewModel.markPermissionRequired()
         }
-        permissionRequestSource = null
     }
 
-    val scanMusic: () -> Unit = {
-        when {
-            context.hasPermission(audioPermission) -> viewModel.scanMusic()
-            else -> {
-                permissionRequestSource = PermissionRequestSource.MANUAL_SCAN
-                permissionLauncher.launch(audioPermission)
-            }
-        }
-    }
-
-    LaunchedEffect(audioPermission) {
-        if (
-            !startupPermissionRequested &&
-            !context.hasPermission(audioPermission)
-        ) {
-            startupPermissionRequested = true
-            permissionRequestSource = PermissionRequestSource.STARTUP
+    val startManualScan: () -> Unit = {
+        if (context.hasPermission(audioPermission)) {
+            viewModel.scanMusic()
+        } else {
             permissionLauncher.launch(audioPermission)
         }
     }
@@ -1696,7 +1669,7 @@ fun MeloxApp(
                             scrollBehavior = scrollBehavior,
                             indexTopPadding = indexTopPadding,
                             listState = songsListState,
-                            onRefresh = if (settings.songListPullToRefresh) scanMusic else null,
+                            onRefresh = if (settings.songListPullToRefresh) viewModel::scanMusic else null,
                             contentPadding = contentPadding,
                             selectionMode = songsSelectionMode,
                             selectedTrackUris = selectedSongUris,
@@ -2454,7 +2427,7 @@ fun MeloxApp(
                                                             onOpenHiddenSongs = {
                                                                 currentRoute = AppRoute.HIDDEN_SONGS
                                                             },
-                                                            onStartScan = scanMusic,
+                                                            onStartScan = startManualScan,
                                                             onClearMusicLibrary =
                                                                 viewModel::clearMusicLibrary,
                                                         )

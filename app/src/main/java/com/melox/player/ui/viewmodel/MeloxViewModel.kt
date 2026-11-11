@@ -1534,10 +1534,6 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         scanStatus.value = ScanStatus.PermissionRequired
     }
 
-    fun markPermissionGrantedWithoutScan() {
-        scanStatus.value = ScanStatus.Idle
-    }
-
     private fun hasAudioPermission(): Boolean {
         // Android 13 split audio access from the legacy shared-storage permission.
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

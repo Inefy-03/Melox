@@ -192,6 +192,7 @@ snapshot-observable. Native cached title visibility now refreshes when rotation
 or title measurement changes the limit without changing the current offset.
 The app regression test reproduces the stale derived visibility with the prior AAR.
 
-The navigation indicator draws the selected destination directly until its first
-valid measurement has initialized both pixel edges. Startup selection therefore
-uses the configured destination immediately, before selection springs are enabled.
+The navigation indicator draws the initial selected destination directly across
+startup width measurements and trailing-action changes. Both edges snap to each
+new startup geometry. Selection springs become active when the selected
+destination changes, retaining their normal width-change and drag behavior.

@@ -266,9 +266,9 @@ fun GlassNavigationBar(
     }
 
     val scope = rememberCoroutineScope()
-    val left = remember { Animatable(0f) }
-    val right = remember { Animatable(0f) }
-    var indicatorInitialized by remember { mutableStateOf(false) }
+    val indicatorMotion = remember { GlassNavigationIndicatorMotion(index) }
+    val left = indicatorMotion.left
+    val right = indicatorMotion.right
     fun animateIndicator(
         newLeft: Float,
         newRight: Float,
@@ -289,13 +289,9 @@ fun GlassNavigationBar(
     val targetRight = contentStart + overhang + navigationSlotPosition(index + 1f, spans)
     LaunchedEffect(targetLeft, targetRight, dragging.value) {
         if (barWidth <= contentStart + contentInset || dragging.value) return@LaunchedEffect
-        if (!indicatorInitialized) {
-            left.snapTo(targetLeft)
-            right.snapTo(targetRight)
-            indicatorInitialized = true
-            return@LaunchedEffect
+        indicatorMotion.syncTarget(index, targetLeft, targetRight) { newLeft, newRight ->
+            animateIndicator(newLeft, newRight)
         }
-        animateIndicator(targetLeft, targetRight)
     }
 
     val chipPressed = pressedIndex >= 0
@@ -459,8 +455,8 @@ fun GlassNavigationBar(
                         val initialLeft = contentStart - overhang + navigationSlotPosition(index.toFloat(), initialSpans)
                         val initialRight = contentStart + overhang + navigationSlotPosition(index + 1f, initialSpans)
                         val bounds = navigationIndicatorBounds(
-                            if (indicatorInitialized) left.value else initialLeft,
-                            if (indicatorInitialized) right.value else initialRight,
+                            if (indicatorMotion.useAnimatedBounds(index)) left.value else initialLeft,
+                            if (indicatorMotion.useAnimatedBounds(index)) right.value else initialRight,
                             constraints.maxWidth.toFloat(),
                             contentStart - overhang,
                             contentInset - overhang,
@@ -599,4 +595,32 @@ fun GlassNavigationIndicator(
             scaleY = scale
         }.clip(RoundedCornerShape(percent = 50)).drawBehind { drawRect(fill.value) },
     )
+}
+
+/** Keeps startup geometry attached to its selected destination until selection actually changes. */
+internal class GlassNavigationIndicatorMotion(initialIndex: Int) {
+    val left = Animatable(0f)
+    val right = Animatable(0f)
+    private var lastIndex = initialIndex
+    private var initialized by mutableStateOf(false)
+    private var selectionChanged by mutableStateOf(false)
+
+    fun useAnimatedBounds(index: Int): Boolean = initialized && (selectionChanged || index != lastIndex)
+
+    suspend fun syncTarget(
+        index: Int,
+        targetLeft: Float,
+        targetRight: Float,
+        animate: (Float, Float) -> Unit,
+    ) {
+        if (index != lastIndex) selectionChanged = true
+        lastIndex = index
+        if (!initialized || !selectionChanged) {
+            left.snapTo(targetLeft)
+            right.snapTo(targetRight)
+            initialized = true
+        } else {
+            animate(targetLeft, targetRight)
+        }
+    }
 }

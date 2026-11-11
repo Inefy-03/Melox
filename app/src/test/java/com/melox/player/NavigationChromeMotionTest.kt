@@ -20,6 +20,33 @@ import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 
 class NavigationChromeMotionTest {
     @Test
+    fun glassIndicatorKeepsEveryStartupMeasurementAtItsDefaultDestination() = kotlinx.coroutines.runBlocking {
+        for (initialIndex in 0..2) {
+            val motion = top.yukonga.miuix.kmp.glass.GlassNavigationIndicatorMotion(initialIndex)
+            val animatedTargets = mutableListOf<Pair<Float, Float>>()
+            val animate: (Float, Float) -> Unit = { left, right -> animatedTargets += left to right }
+            org.junit.Assert.assertFalse(motion.useAnimatedBounds(initialIndex))
+            for (width in listOf(20f, 48f, 360f, 284f)) {
+                val slotWidth = (width - 16f) / 4f
+                val left = 3f + initialIndex * slotWidth
+                val right = 13f + (initialIndex + 1) * slotWidth
+                motion.syncTarget(initialIndex, left, right, animate)
+                assertEquals(left, motion.left.value, 0f)
+                assertEquals(right, motion.right.value, 0f)
+                org.junit.Assert.assertFalse(motion.useAnimatedBounds(initialIndex))
+                assertTrue(animatedTargets.isEmpty())
+            }
+            val nextIndex = initialIndex + 1
+            assertTrue(motion.useAnimatedBounds(nextIndex))
+            motion.syncTarget(nextIndex, 200f, 280f, animate)
+            motion.syncTarget(nextIndex, 180f, 260f, animate)
+            motion.syncTarget(initialIndex, 3f, 83f, animate)
+            assertEquals(listOf(200f to 280f, 180f to 260f, 3f to 83f), animatedTargets)
+            assertTrue(motion.useAnimatedBounds(initialIndex))
+        }
+    }
+
+    @Test
     fun sidebarSelectionFollowsTheCurrentPageAndItsNearestListedAncestor() {
         val routes = listOf(
             com.melox.player.ui.AppRoute.PLAYLISTS,

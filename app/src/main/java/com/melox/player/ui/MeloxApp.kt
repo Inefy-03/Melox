@@ -1988,10 +1988,12 @@ fun MeloxApp(
             ),
         ) {
             val bottomSheetBackdrop = rememberBlurBackdrop()
+            val useBottomSearch = com.melox.player.ui.theme.LocalOs4Style.current &&
+                requestedBottomBarStyle == BottomBarStyle.OS4 && !landscape
             // Overlay content is composed by the root popup host.
             CompositionLocalProvider(
                 LocalBottomSheetBlurBackdrop provides bottomSheetBackdrop,
-                LocalBottomSearchActions provides bottomSearchActions.takeIf { requestedBottomBarStyle == BottomBarStyle.OS4 && !landscape },
+                LocalBottomSearchActions provides bottomSearchActions.takeIf { useBottomSearch },
             ) {
                 Scaffold(
                     modifier = Modifier.customPageBackground(),
@@ -2005,13 +2007,12 @@ fun MeloxApp(
                 ) {
                     val searchDestination = desiredNavBackStack.lastOrNull()?.entryContentKey()
                     val currentSearchAction = bottomSearchActions.values.firstOrNull {
-                        it.owner == searchDestination && it.active.value
+                        useBottomSearch && it.owner == searchDestination && it.active.value
                     }
                     val searchDestinationKey = searchDestination to navigationPresentationPage.takeIf { currentRoute == AppRoute.ROOT }
                     var preparedSearchDestination by remember { mutableStateOf<Pair<String?, Int?>?>(null) }
-                    val destinationHasSearch = when (currentRoute) {
-                        AppRoute.ROOT -> navigationPresentationPage == SONGS_TAB_INDEX ||
-                            (navigationPresentationPage == LIBRARY_TAB_INDEX && !com.melox.player.ui.theme.LocalOs4Style.current)
+                    val destinationHasSearch = useBottomSearch && when (currentRoute) {
+                        AppRoute.ROOT -> navigationPresentationPage == SONGS_TAB_INDEX
                         AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS,
                         AppRoute.FOLDER_DETAIL, AppRoute.INTERNAL_STORAGE, AppRoute.PLAYLIST_DETAIL -> true
                         else -> false

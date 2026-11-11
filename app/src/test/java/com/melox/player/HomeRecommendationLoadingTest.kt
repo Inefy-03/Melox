@@ -108,7 +108,7 @@ class HomeRecommendationLoadingTest {
     }
 
     @Test
-    fun nonHomeStartupPreparesTwoCompleteCardsAndHomeEntryOnlyAddsLookAhead() = runBlocking {
+    fun startupSelectsThirtyCardsAndKeepsThemThroughHomeEntryAndLibraryChanges() = runBlocking {
         val library = mutableStateOf(emptyList<MusicTrack>())
         val active = mutableStateOf(false)
         val firstResources = CompletableDeferred<Unit>()
@@ -129,24 +129,26 @@ class HomeRecommendationLoadingTest {
             SideEffect { rendered = value }
         }) {
             frame(0)
-            library.value = tracks(8)
+            library.value = tracks(40)
             frame(16)
             withTimeout(5_000) { repeat(2) { preparing.receive() } }
             assertNull(rendered)
             firstResources.complete(Unit)
-            until { rendered?.tracks?.size == 2 }
+            until { rendered?.tracks?.size == 30 }
             val prefix = rendered!!.tracks
             repeat(3) { frame(64L + it * 16) }
-            assertEquals(2, probes.size)
+            assertEquals(32, probes.size)
             active.value = true
-            until { rendered?.tracks?.size == 4 }
-            assertEquals(prefix, rendered!!.tracks.take(2))
+            library.value = tracks(60).reversed()
+            repeat(6) { frame(128L + it * 16) }
+            assertEquals(prefix, rendered!!.tracks)
+            assertEquals(32, probes.size)
             assertTrue(probes.values.all { it.get() == 1 })
         }
     }
 
     @Test
-    fun backgroundWideWindowPreparesItsVisibleScreenWithoutHomeLookAhead() = runBlocking {
+    fun aSmallLibraryStopsAtItsActualSize() = runBlocking {
         var rendered: HomeRecommendations? = null
         withArtworkComposition(content = {
             val value = rememberHomeRecommendationSelection(
@@ -155,9 +157,9 @@ class HomeRecommendationLoadingTest {
             )
             SideEffect { rendered = value }
         }) {
-            until { rendered?.tracks?.size == 6 }
+            until { rendered?.tracks?.size == 12 }
             repeat(3) { frame(100L + it * 16) }
-            assertEquals(6, rendered!!.tracks.size)
+            assertEquals(12, rendered!!.tracks.size)
         }
     }
 

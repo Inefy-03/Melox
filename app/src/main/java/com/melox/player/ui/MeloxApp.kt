@@ -45,6 +45,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -322,13 +325,9 @@ private const val LIBRARY_TAB_COUNT = 3
 
 internal fun rootPagerUserScrollEnabled(
     selectedPage: Int,
-    homeRecommendationPage: Int,
-    homeRecommendationPageCount: Int,
     homeRecommendationGestureActive: Boolean,
 ): Boolean = selectedPage != HOME_TAB_INDEX ||
-    !homeRecommendationGestureActive ||
-    homeRecommendationPage <= 0 ||
-    homeRecommendationPage >= homeRecommendationPageCount - 1
+    !homeRecommendationGestureActive
 
 internal fun shouldTriggerTabSwitchHaptic(
     enabled: Boolean,
@@ -547,7 +546,6 @@ fun MeloxApp(
         initialPage = initialRootPage,
         pageCount = { ROOT_TAB_COUNT },
     )
-    var homeRecommendationPage by remember { mutableIntStateOf(0) }
     var homeRecommendationGestureActive by remember { mutableStateOf(false) }
     val libraryPagerState = rememberPagerState(pageCount = { LIBRARY_TAB_COUNT })
     val playerPagerState = rememberPlayerPagerState(pagerState)
@@ -1456,6 +1454,12 @@ fun MeloxApp(
                 },
             ) {
             // Each page owns its top bar so the title moves with the Pager, like the Miuix demo.
+            val rootPageNestedScroll = if (requestedBottomBarStyle == BottomBarStyle.OS4 && !landscape) {
+                // Let the root scrollable settle edge drags handed off by its preview rows.
+                remember { object : NestedScrollConnection { } }
+            } else {
+                PagerDefaults.pageNestedScrollConnection(pagerState, Orientation.Horizontal)
+            }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -1464,11 +1468,10 @@ fun MeloxApp(
                     .trackFixedWallpaperMotion(),
                 userScrollEnabled = !(landscape && requestedBottomBarStyle == BottomBarStyle.OS4) && rootPagerUserScrollEnabled(
                     selectedPage = playerPagerState.selectedPage,
-                    homeRecommendationPage = homeRecommendationPage,
-                    homeRecommendationPageCount = homeRecommendations?.tracks?.size ?: 0,
                     homeRecommendationGestureActive = homeRecommendationGestureActive,
                 ),
                 verticalAlignment = Alignment.Top,
+                pageNestedScrollConnection = rootPageNestedScroll,
                 overscrollEffect = null,
                 key = { it },
             ) { page ->
@@ -1516,7 +1519,6 @@ fun MeloxApp(
                                     },
                                 )
                             },
-                            onRecommendationPageChanged = { page -> homeRecommendationPage = page },
                             onRecommendationGestureActiveChanged = { active ->
                                 homeRecommendationGestureActive = active
                             },
@@ -3546,9 +3548,9 @@ internal fun LibrarySearchButton(
     } else onSearchClick
     if (publishBottomSearchAction(bottomActionActive, visible || LocalGlassSearchPage.current?.transitionActive == true, visible, contentDescription, !collapsing, effectiveOnSearchClick)) return
     if (LocalOs4LandscapeNavigation.current != null) {
+        val searchHapticFeedback = LocalHapticFeedback.current
         val searchPage = LocalGlassSearchPage.current
         val materialProgress = top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext.current?.materialProgress
-        val searchHapticFeedback = LocalHapticFeedback.current
         SideEffect { searchPage?.materialProgress = materialProgress }
         val buttonAlpha = androidx.compose.animation.core.animateFloatAsState(
             targetValue = if (visible) 0f else 1f,

@@ -7,6 +7,9 @@ import top.yukonga.miuix.kmp.icon.extended.RecordingTape
 import com.melox.player.ui.component.os4.glassIcon
 
 import android.Manifest
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.melox.player.ui.theme.SettingsHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -229,6 +232,7 @@ import java.io.File
 import java.io.IOException
 import java.util.zip.CRC32
 import java.util.zip.CheckedOutputStream
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -295,27 +299,151 @@ class UiLogicTest {
     }
 
     @Test
-    fun libraryPreviewColumnsUse240DpWidthWithinTwoToFourColumns() {
-        val cases = mapOf(524 to 2, 775 to 2, 776 to 3, 1027 to 3, 1028 to 4, 1600 to 4)
+    fun libraryPreviewColumnsUse280DpWidthWithinFiveToSevenColumns() {
+        val cases = mapOf(320 to 5, 1479 to 5, 1480 to 5, 1771 to 5, 1772 to 6, 2063 to 6, 2064 to 7, 2400 to 7)
         cases.forEach { (width, columns) ->
             assertEquals(columns, com.melox.player.ui.screen.library.libraryPreviewColumnCount(true, width.dp))
         }
-        assertEquals(1, com.melox.player.ui.screen.library.libraryPreviewColumnCount(false, 1200.dp))
+        assertEquals(3, com.melox.player.ui.screen.library.libraryPreviewColumnCount(false, 1200.dp))
     }
 
     @Test
     fun libraryOverviewRowsRespectOrientationLimitsAndReadingOrder() {
         assertEquals(
-            listOf(listOf(0, 3, 6, 9, 12), listOf(1, 4, 7, 10, 13), listOf(2, 5, 8, 11, 14)),
-            com.melox.player.ui.screen.library.libraryPreviewColumns(20, true, 800.dp),
+            List(5) { column -> List(5) { row -> row * 5 + column } },
+            com.melox.player.ui.screen.library.libraryPreviewColumns(40, true, 1000.dp),
         )
         assertEquals(emptyList<List<Int>>(), com.melox.player.ui.screen.library.libraryPreviewColumns(0, true, 1028.dp))
         assertEquals(listOf(listOf(0)), com.melox.player.ui.screen.library.libraryPreviewColumns(1, true, 1028.dp))
-        assertEquals(listOf(listOf(0, 1, 2, 3)), com.melox.player.ui.screen.library.libraryPreviewColumns(8, false, 400.dp))
         assertEquals(
-            listOf(listOf(0, 4, 8, 12, 16), listOf(1, 5, 9, 13, 17), listOf(2, 6, 10, 14, 18), listOf(3, 7, 11, 15, 19)),
-            com.melox.player.ui.screen.library.libraryPreviewColumns(24, true, 1028.dp),
+            listOf(listOf(0, 3, 6), listOf(1, 4, 7), listOf(2, 5)),
+            com.melox.player.ui.screen.library.libraryPreviewColumns(8, false, 400.dp),
         )
+        assertEquals(
+            listOf(listOf(0, 3, 6, 9), listOf(1, 4, 7, 10), listOf(2, 5, 8, 11)),
+            com.melox.player.ui.screen.library.libraryPreviewColumns(20, false, 400.dp),
+        )
+        assertEquals(
+            List(7) { column -> List(5) { row -> row * 7 + column } },
+            com.melox.player.ui.screen.library.libraryPreviewColumns(40, true, 2100.dp),
+        )
+    }
+
+    @Test
+    fun previewHistoryRecordsInertialImpactsAndKeepsBothEdgesAfterRestoration() {
+        val handoff = com.melox.player.ui.component.HorizontalEdgeHandoff()
+        assertFalse(handoff.shouldHandleDrag(12f, canHandoff = true))
+        assertFalse(handoff.shouldBounceInertia(0f, canHandoff = true))
+        assertEquals(0, handoff.reachedEdges)
+        assertTrue(handoff.shouldBounceInertia(320f, canHandoff = true))
+        assertEquals(0, handoff.reachedEdges)
+        handoff.recordInertialImpact(320f)
+        assertFalse(handoff.shouldHandleDrag(12f, canHandoff = true))
+        assertFalse(handoff.shouldBounceInertia(320f, canHandoff = true))
+        assertTrue(handoff.shouldBounceInertia(-320f, canHandoff = true))
+        handoff.recordInertialImpact(-320f)
+
+        val restored = com.melox.player.ui.component.HorizontalEdgeHandoff(handoff.reachedEdges)
+        assertFalse(restored.shouldHandleDrag(12f, canHandoff = true))
+        assertFalse(restored.shouldHandleDrag(-12f, canHandoff = true))
+        repeat(3) {
+            assertTrue(restored.shouldHandleDrag(12f, canHandoff = false))
+            assertTrue(restored.shouldHandleDrag(-12f, canHandoff = false))
+            assertTrue(restored.shouldBounceInertia(320f, canHandoff = false))
+            assertTrue(restored.shouldBounceInertia(-320f, canHandoff = false))
+        }
+    }
+
+    @Test
+    fun inertialFlingFeedsBoundaryVelocityToReboundAndOnlySnapsAfterNaturalRest() = runBlocking {
+        val handoff = com.melox.player.ui.component.HorizontalEdgeHandoff()
+        var decayRemaining = 320f
+        var boundaryRemainder = -3f
+        var reboundVisible = true
+        val reboundVelocities = mutableListOf<Float>()
+        val snapVelocities = mutableListOf<Float>()
+        val decay = object : androidx.compose.foundation.gestures.FlingBehavior {
+            override suspend fun androidx.compose.foundation.gestures.ScrollScope.performFling(initialVelocity: Float): Float {
+                assertEquals(10f + boundaryRemainder, scrollBy(10f), 0f)
+                return decayRemaining
+            }
+        }
+        val snap = object : androidx.compose.foundation.gestures.TargetedFlingBehavior {
+            override suspend fun androidx.compose.foundation.gestures.ScrollScope.performFling(
+                initialVelocity: Float,
+                onRemainingDistanceUpdated: (Float) -> Unit,
+            ): Float {
+                snapVelocities += initialVelocity
+                onRemainingDistanceUpdated(0f)
+                return 0f
+            }
+        }
+        val effect = object : androidx.compose.foundation.OverscrollEffect {
+            override val isInProgress: Boolean
+                get() = reboundVisible && reboundVelocities.lastOrNull()?.let { it != 0f } == true
+            override val node = object : androidx.compose.ui.Modifier.Node() { }
+            override fun applyToScroll(
+                delta: Offset,
+                source: androidx.compose.ui.input.nestedscroll.NestedScrollSource,
+                performScroll: (Offset) -> Offset,
+            ): Offset = performScroll(delta)
+
+            override suspend fun applyToFling(
+                velocity: androidx.compose.ui.unit.Velocity,
+                performFling: suspend (androidx.compose.ui.unit.Velocity) -> androidx.compose.ui.unit.Velocity,
+            ) {
+                reboundVelocities += (velocity - performFling(velocity)).x
+            }
+        }
+        val scrollState = androidx.compose.foundation.gestures.ScrollableState { pixels ->
+            pixels + boundaryRemainder
+        }
+        val scope = object : androidx.compose.foundation.gestures.ScrollScope {
+            override fun scrollBy(pixels: Float): Float = error("Fling must stay inside its owning scroll state")
+        }
+        val behavior = com.melox.player.ui.component.HorizontalEdgeFlingBehavior(
+            scrollState, decay, snap, effect, handoff, physicalDirection = -1f, canHandoff = true,
+        )
+        assertEquals(0f, with(behavior) { scope.performFling(1000f) }, 0f)
+        assertEquals(listOf(-320f), reboundVelocities)
+        assertTrue(snapVelocities.isEmpty())
+        assertEquals(320f, with(behavior) { scope.performFling(1000f) }, 0f)
+        assertEquals(listOf(-320f, 0f), reboundVelocities)
+        decayRemaining = 0.8f
+        boundaryRemainder = 0f
+        assertEquals(0f, with(behavior) { scope.performFling(1000f) }, 0f)
+        assertEquals(listOf(0f), snapVelocities)
+
+        val freshHistory = com.melox.player.ui.component.HorizontalEdgeHandoff()
+        val naturalStop = com.melox.player.ui.component.HorizontalEdgeFlingBehavior(
+            scrollState, decay, snap, effect, freshHistory, physicalDirection = -1f, canHandoff = true,
+        )
+        assertEquals(0f, with(naturalStop) { scope.performFling(1000f) }, 0f)
+        assertEquals(0, freshHistory.reachedEdges)
+        assertEquals(listOf(0f, 0f), snapVelocities)
+        assertFalse(freshHistory.shouldHandleDrag(12f, canHandoff = true))
+        assertFalse(freshHistory.shouldHandleDrag(-12f, canHandoff = true))
+
+        handoff.parentDragActive = true
+        val reboundsBeforeHandoff = reboundVelocities.size
+        assertEquals(1000f, with(behavior) { scope.performFling(1000f) }, 0f)
+        assertEquals(reboundsBeforeHandoff, reboundVelocities.size)
+        handoff.parentDragActive = false
+
+        reboundVisible = false
+        boundaryRemainder = -3f
+        val clock = androidx.compose.runtime.BroadcastFrameClock()
+        val invisibleImpact = async(clock) {
+            with(naturalStop) { scope.performFling(1000f) }
+        }
+        repeat(5) { frame ->
+            kotlinx.coroutines.yield()
+            clock.sendFrame(frame * 16_000_000L)
+            kotlinx.coroutines.yield()
+        }
+        kotlinx.coroutines.withTimeout(5000) { invisibleImpact.await() }
+        assertEquals(0, freshHistory.reachedEdges)
+
     }
 
     @Test
@@ -450,47 +578,42 @@ class UiLogicTest {
     }
 
     @Test
-    fun rootPagerOnlyYieldsAnActiveRecommendationGestureOnInteriorPages() {
-        assertTrue(
-            rootPagerUserScrollEnabled(
-                selectedPage = 0,
-                homeRecommendationPage = 0,
-                homeRecommendationPageCount = 4,
-                homeRecommendationGestureActive = true,
-            ),
+    fun rootPagerYieldsAllActiveRecommendationGestures() {
+        assertFalse(rootPagerUserScrollEnabled(selectedPage = 0, homeRecommendationGestureActive = true))
+        assertTrue(rootPagerUserScrollEnabled(selectedPage = 0, homeRecommendationGestureActive = false))
+        assertTrue(rootPagerUserScrollEnabled(selectedPage = 1, homeRecommendationGestureActive = true))
+        assertTrue(rootPagerUserScrollEnabled(selectedPage = 1, homeRecommendationGestureActive = false))
+    }
+
+    @Test
+    fun hapticFeedbackDefaultsOnAndGatesEveryFeedbackTypeAtDispatchTime() {
+        assertTrue(AppSettings().hapticFeedbackEnabled)
+        var enabled = true
+        val received = mutableListOf<HapticFeedbackType>()
+        val delegate = object : HapticFeedback {
+            override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+                received += hapticFeedbackType
+            }
+        }
+        val feedback = SettingsHapticFeedback(delegate) { enabled }
+        val effects = listOf(
+            HapticFeedbackType.ContextClick,
+            HapticFeedbackType.LongPress,
+            HapticFeedbackType.SegmentTick,
+            HapticFeedbackType.TextHandleMove,
+            HapticFeedbackType.GestureEnd,
+            HapticFeedbackType.GestureThresholdActivate,
+            HapticFeedbackType.ToggleOn,
+            HapticFeedbackType.Confirm,
         )
-        assertFalse(
-            rootPagerUserScrollEnabled(
-                selectedPage = 0,
-                homeRecommendationPage = 1,
-                homeRecommendationPageCount = 4,
-                homeRecommendationGestureActive = true,
-            ),
-        )
-        assertTrue(
-            rootPagerUserScrollEnabled(
-                selectedPage = 0,
-                homeRecommendationPage = 3,
-                homeRecommendationPageCount = 4,
-                homeRecommendationGestureActive = true,
-            ),
-        )
-        assertTrue(
-            rootPagerUserScrollEnabled(
-                selectedPage = 0,
-                homeRecommendationPage = 1,
-                homeRecommendationPageCount = 4,
-                homeRecommendationGestureActive = false,
-            ),
-        )
-        assertTrue(
-            rootPagerUserScrollEnabled(
-                selectedPage = 1,
-                homeRecommendationPage = 1,
-                homeRecommendationPageCount = 4,
-                homeRecommendationGestureActive = true,
-            ),
-        )
+        effects.forEach(feedback::performHapticFeedback)
+        assertEquals(effects, received)
+        enabled = false
+        effects.forEach(feedback::performHapticFeedback)
+        assertEquals(effects, received)
+        enabled = true
+        effects.forEach(feedback::performHapticFeedback)
+        assertEquals(effects + effects, received)
     }
 
     @Test

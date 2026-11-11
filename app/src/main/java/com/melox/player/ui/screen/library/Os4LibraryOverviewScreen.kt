@@ -1,12 +1,16 @@
 package com.melox.player.ui.screen.library
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
+import androidx.compose.foundation.gestures.snapping.SnapPosition
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -22,6 +26,7 @@ import com.melox.player.data.library.AlbumGridStyle
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.FolderGroup
 import com.melox.player.ui.component.LazyColumn
+import com.melox.player.ui.component.rememberHorizontalEdgeScroll
 import com.melox.player.ui.component.PageCard
 import com.melox.player.ui.component.library.ArtistArtwork
 import com.melox.player.ui.component.overScrollVertical
@@ -157,19 +162,35 @@ private fun LibraryPreviewCards(
 ) {
     val groups = libraryPreviewColumns(count, landscape, availableWidth)
     val columns = libraryPreviewColumnCount(landscape, availableWidth)
-    val contentWidth = (availableWidth - 32.dp).coerceAtLeast(0.dp)
-    val rowWidth = if (landscape) contentWidth.coerceAtLeast(492.dp) else contentWidth
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = LibraryPreviewBottomPadding)
-            .horizontalScroll(rememberScrollState()).width(rowWidth),
+    val endPadding = if (landscape) 16.dp else 20.dp
+    val contentWidth = (availableWidth - 16.dp - endPadding).coerceAtLeast(0.dp)
+    val columnWidth = if (landscape) {
+        ((contentWidth - 12.dp * (columns - 1)) / columns).coerceAtLeast(280.dp)
+    } else {
+        contentWidth
+    }
+    val state = rememberLazyListState()
+    val snapLayout = remember(state) { SnapLayoutInfoProvider(state, SnapPosition.Start) }
+    val flingBehavior = rememberSnapFlingBehavior(snapLayout)
+    val edgeScroll = rememberHorizontalEdgeScroll(state, flingBehavior, canHandoff = !landscape)
+    LazyRow(
+        state = state,
+        modifier = modifier.fillMaxWidth().padding(bottom = LibraryPreviewBottomPadding).then(edgeScroll.modifier),
+        overscrollEffect = null,
+        contentPadding = PaddingValues(start = 16.dp, end = endPadding),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
+        flingBehavior = edgeScroll.flingBehavior,
     ) {
-        groups.forEach { indices ->
-            PageCard(Modifier.weight(1f), insideMargin = PaddingValues(0.dp)) {
-                indices.forEach { content(it) }
+        items(columns) { column ->
+            val indices = groups.getOrNull(column)
+            if (indices == null) {
+                Spacer(Modifier.width(columnWidth))
+            } else {
+                PageCard(Modifier.width(columnWidth), insideMargin = PaddingValues(0.dp)) {
+                    indices.forEach { content(it) }
+                }
             }
         }
-        repeat(columns - groups.size) { Spacer(Modifier.weight(1f)) }
     }
 }
 
@@ -208,10 +229,10 @@ internal fun libraryPreviewColumnCount(landscape: Boolean, availableWidth: Dp): 
     if (landscape) responsiveGridColumnCount(
         availableWidth = availableWidth,
         horizontalPadding = 32.dp,
-        minimumCellWidth = 240.dp,
-        minimumColumns = 2,
-        maximumColumns = 4,
-    ) else 1
+        minimumCellWidth = 280.dp,
+        minimumColumns = 5,
+        maximumColumns = 7,
+    ) else 3
 
 internal fun libraryPreviewColumns(
     count: Int,

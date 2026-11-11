@@ -41,7 +41,6 @@ class HomeStartupLayoutTest {
                                     tracks = if (stage.value == 0) emptyList() else tracks,
                                     recommendations = if (stage.value < 2) null else HomeRecommendations(
                                         tracks = tracks,
-                                        requestMore = {},
                                         artworkTrackIds = emptySet(),
                                     ),
                                     playlists = emptyList(),
@@ -53,7 +52,6 @@ class HomeStartupLayoutTest {
                                     onCreatePlaylist = {},
                                     onPlaylistClick = {},
                                     onRecommendationClick = { _, _ -> },
-                                    onRecommendationPageChanged = {},
                                     onRecommendationGestureActiveChanged = {},
                                     scrollBehavior = MiuixScrollBehavior(),
                                     listState = listState,

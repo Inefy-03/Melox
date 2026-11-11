@@ -27,17 +27,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import com.melox.player.ui.component.rememberHorizontalEdgeScroll
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -115,7 +116,6 @@ import kotlin.random.Random
 
 data class HomeRecommendations(
     val tracks: List<MusicTrack>,
-    val requestMore: () -> Unit,
     val artworkTrackIds: Set<Long>,
 )
 
@@ -132,7 +132,6 @@ fun HomeScreen(
     onCreatePlaylist: () -> Unit,
     onPlaylistClick: (LocalPlaylist) -> Unit,
     onRecommendationClick: (MusicTrack, List<MusicTrack>) -> Unit,
-    onRecommendationPageChanged: (Int) -> Unit,
     onRecommendationGestureActiveChanged: (Boolean) -> Unit,
     scrollBehavior: ScrollBehavior,
     listState: LazyListState,
@@ -196,34 +195,32 @@ fun HomeScreen(
                         val pagerState = rememberPagerState(
                             pageCount = { recommendationTracks.size },
                         )
-                        var previousPage by remember(pagerState) {
-                            mutableIntStateOf(pagerState.currentPage)
-                        }
-                        LaunchedEffect(pagerState.currentPage) {
-                            onRecommendationPageChanged(pagerState.currentPage)
-                            if (pagerState.currentPage > previousPage) {
-                                recommendations.requestMore()
-                            }
-                            previousPage = pagerState.currentPage
-                        }
                         DisposableEffect(pagerState) {
                             onDispose {
-                                onRecommendationPageChanged(0)
                                 currentOnRecommendationGestureActiveChanged(false)
                             }
                         }
+                        val edgeScroll = rememberHorizontalEdgeScroll(
+                            scrollState = pagerState,
+                            snap = PagerDefaults.flingBehavior(
+                                state = pagerState,
+                            ),
+                            canHandoff = false,
+                        )
                         HorizontalPager(
                             state = pagerState,
                             pageSize = PageSize.Fixed(artworkSize),
                             contentPadding = PaddingValues(
                                 horizontal = HomeRecommendationHorizontalContentPadding,
                             ),
+                            flingBehavior = edgeScroll.flingBehavior,
                             pageSpacing = HomeRecommendationPageSpacing,
                             beyondViewportPageCount = HomeRecommendationPrefetchCount,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = HomeRecommendationSectionBottomSpacing)
                                 .height(artworkSize + HomeRecommendationInfoHeight)
+                                .then(edgeScroll.modifier)
                                 .pointerInput(Unit) {
                                     awaitEachGesture {
                                         val down = awaitFirstDown(
@@ -579,60 +576,35 @@ internal fun rememberHomeRecommendationSelection(
     val currentPrepareTrack by rememberUpdatedState(prepareTrack)
     val sources = remember(tracks) { homeRecommendationSources(tracks) }
     var selectionComplete by rememberSaveable { mutableStateOf(false) }
-    var requestedRecommendationCount by rememberSaveable {
-        mutableIntStateOf(HomePriorityRecommendationCount)
-    }
     var selectedTrackIds by rememberSaveable { mutableStateOf(LongArray(0)) }
     var artworkTrackIds by rememberSaveable { mutableStateOf(LongArray(0)) }
-    val requestMore = remember {
-        { requestedRecommendationCount += 1 }
-    }
     val selectedTracks = remember(tracks, selectedTrackIds) {
         val tracksById = tracks.associateBy(MusicTrack::id)
         selectedTrackIds.map { trackId -> tracksById[trackId] }.filterNotNull()
     }
 
-    LaunchedEffect(selectionComplete, active, initialRecommendationCount) {
-        if (selectionComplete) {
-            requestedRecommendationCount = maxOf(
-                requestedRecommendationCount,
-                if (active) initialRecommendationCount else
-                    (initialRecommendationCount - HomeRecommendationPrefetchCount)
-                        .coerceAtLeast(HomePriorityRecommendationCount),
-            )
-        }
+    val preparationCount = if (active) initialRecommendationCount else {
+        (initialRecommendationCount - HomeRecommendationPrefetchCount)
+            .coerceAtLeast(HomePriorityRecommendationCount)
     }
-    LaunchedEffect(
-        sources,
-        requestedRecommendationCount,
-        preparationKey,
-    ) {
-        if (tracks.isEmpty()) {
-            selectedTrackIds = LongArray(0)
-            artworkTrackIds = LongArray(0)
-            selectionComplete = false
-            return@LaunchedEffect
-        }
+    LaunchedEffect(sources, preparationKey, preparationCount) {
+        if (tracks.isEmpty()) return@LaunchedEffect
         val probe = currentProbeArtwork
         val prepare = currentPrepareTrack
-        val initialSelection = !selectionComplete
-        val previousSelection = selectedTrackIds.toSet()
         val selected = withContext(Dispatchers.Default) {
-            val selection = loader.select(
-                tracks = tracks,
-                count = requestedRecommendationCount,
-                probeBatchSize = if (initialSelection) {
-                    HomePriorityRecommendationProbeBatchSize
-                } else {
-                    HomeRecommendationProbeBatchSize
-                },
-                probeArtwork = probe,
-            )
+            val selection = if (selectionComplete) {
+                HomeRecommendationSelection(selectedTracks, artworkTrackIds.toSet())
+            } else {
+                loader.select(
+                    tracks = tracks,
+                    count = HomeRecommendationLimit,
+                    probeBatchSize = HomeRecommendationProbeBatchSize,
+                    probeArtwork = probe,
+                )
+            }
             coroutineScope {
-                // Recheck the first screen and warm new cards, not the entire swipe history.
-                selection.tracks.filterIndexed { index, track ->
-                    index < initialRecommendationCount || track.id !in previousSelection
-                }.map { track ->
+                // Warm the visible cards; the rest prepare as they enter the carousel.
+                selection.tracks.take(preparationCount).map { track ->
                     async { prepare(track, track.id in selection.artworkTrackIds) }
                 }.awaitAll()
             }
@@ -645,9 +617,9 @@ internal fun rememberHomeRecommendationSelection(
     }
 
     return when {
-        tracks.isEmpty() -> HomeRecommendations(emptyList(), requestMore, emptySet())
+        tracks.isEmpty() -> HomeRecommendations(emptyList(), emptySet())
         !selectionComplete -> null
-        else -> HomeRecommendations(selectedTracks, requestMore, artworkTrackIds.toSet())
+        else -> HomeRecommendations(selectedTracks, artworkTrackIds.toSet())
     }
 }
 
@@ -959,7 +931,7 @@ private val HomeRecommendationReflectionGradientColors = intArrayOf(
 )
 
 private const val HomePriorityRecommendationCount = 2
-private const val HomePriorityRecommendationProbeBatchSize = 2
+private const val HomeRecommendationLimit = 30
 private const val HomeRecommendationProbeBatchSize = 8
 private const val HomeRecommendationPrefetchCount = 2
 private val HomeRecommendationArtworkSize = 220.dp

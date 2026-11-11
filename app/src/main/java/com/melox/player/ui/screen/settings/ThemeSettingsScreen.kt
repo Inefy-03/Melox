@@ -82,7 +82,7 @@ fun ThemeSettingsScreen(
     onShowSongListDurationChange: (Boolean) -> Unit,
     onPredictiveBackChange: (Boolean) -> Unit,
     onNavigationTransitionStyleChange: (NavigationTransitionStyle) -> Unit,
-    onTabSwitchHapticsEnabledChange: (Boolean) -> Unit,
+    onHapticFeedbackEnabledChange: (Boolean) -> Unit,
     onOpenMainBackground: () -> Unit,
     onOpenInterfaceStyle: () -> Unit,
 ) {
@@ -124,8 +124,8 @@ fun ThemeSettingsScreen(
     var predictiveBackChecked by remember(settings.predictiveBackEnabled) {
         mutableStateOf(settings.predictiveBackEnabled)
     }
-    var tabSwitchHapticsChecked by remember(settings.tabSwitchHapticsEnabled) {
-        mutableStateOf(settings.tabSwitchHapticsEnabled)
+    var hapticFeedbackChecked by remember(settings.hapticFeedbackEnabled) {
+        mutableStateOf(settings.hapticFeedbackEnabled)
     }
     var navigationTransitionStyle by remember(settings.navigationTransitionStyle) {
         mutableStateOf(settings.navigationTransitionStyle)
@@ -469,11 +469,12 @@ fun ThemeSettingsScreen(
                             )
                         }
                         SwitchPreference(
-                            title = stringResource(R.string.settings_tab_switch_haptics_title),
-                            checked = tabSwitchHapticsChecked,
+                            title = stringResource(R.string.settings_haptic_feedback_title),
+                            summary = stringResource(R.string.settings_haptic_feedback_summary),
+                            checked = hapticFeedbackChecked,
                             onCheckedChange = { checked ->
-                                tabSwitchHapticsChecked = checked
-                                onTabSwitchHapticsEnabledChange(checked)
+                                hapticFeedbackChecked = checked
+                                onHapticFeedbackEnabledChange(checked)
                             },
                         )
                     }

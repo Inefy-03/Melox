@@ -1,6 +1,5 @@
 package com.melox.player.ui.screen.playlist
 
-import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
@@ -44,7 +43,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -188,7 +186,6 @@ fun PlaylistDetailScreen(
     )
     val currentPersistedDisplayedTracks by rememberUpdatedState(persistedDisplayedTracks)
     val hapticFeedback = LocalHapticFeedback.current
-    val view = LocalView.current
     val playlistReorderState = rememberReorderableLazyListState(
         lazyListState = listState,
         scrollThresholdPadding = PaddingValues(
@@ -529,8 +526,8 @@ fun PlaylistDetailScreen(
                                 rowContent(
                                     Modifier.longPressDraggableHandle(
                                         onDragStarted = {
-                                            view.performHapticFeedback(
-                                                HapticFeedbackConstants.LONG_PRESS,
+                                            hapticFeedback.performHapticFeedback(
+                                                HapticFeedbackType.LongPress,
                                             )
                                             draggedEntryId = entryId
                                             dragBaselineEntryIds = currentCanonicalEntryIds

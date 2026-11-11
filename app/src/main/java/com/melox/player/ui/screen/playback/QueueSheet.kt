@@ -1,6 +1,5 @@
 package com.melox.player.ui.screen.playback
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +41,6 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -231,7 +229,6 @@ fun QueueSheet(
     val currentOnMove by rememberUpdatedState(onMove)
     val density = LocalDensity.current
     val hapticFeedback = LocalHapticFeedback.current
-    val view = LocalView.current
     val queueReorderState = rememberReorderableLazyListState(queueListState) { from, to ->
         val fromIndex = draftQueue.indexOfFirst { item -> item.queueSlotKey() == from.key }
         val toIndex = draftQueue.indexOfFirst { item -> item.queueSlotKey() == to.key }
@@ -474,8 +471,8 @@ fun QueueSheet(
                                 .longPressDraggableHandle(
                                     enabled = playNextExitKey == null,
                                     onDragStarted = {
-                                        view.performHapticFeedback(
-                                            HapticFeedbackConstants.LONG_PRESS,
+                                        hapticFeedback.performHapticFeedback(
+                                            HapticFeedbackType.LongPress,
                                         )
                                         draggedKey = slotKey
                                         dragStartIndex = draftQueue.indexOfFirst { queueItem ->

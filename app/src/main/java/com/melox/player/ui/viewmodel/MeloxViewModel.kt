@@ -955,9 +955,9 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setTabSwitchHapticsEnabled(enabled: Boolean) {
+    fun setHapticFeedbackEnabled(enabled: Boolean) {
         viewModelScope.launch {
-            settingsRepository.setTabSwitchHapticsEnabled(enabled)
+            settingsRepository.setHapticFeedbackEnabled(enabled)
         }
     }
 

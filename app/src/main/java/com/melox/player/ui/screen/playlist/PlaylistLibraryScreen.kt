@@ -1,6 +1,5 @@
 package com.melox.player.ui.screen.playlist
 
-import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,7 +34,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -88,7 +86,6 @@ fun PlaylistLibraryScreen(
     var baselineIds by remember { mutableStateOf<List<String>?>(null) }
     val currentPlaylists by rememberUpdatedState(playlists)
     val currentOnMovePlaylists by rememberUpdatedState(onMovePlaylists)
-    val view = LocalView.current
     val hapticFeedback = LocalHapticFeedback.current
     val moveEarlierLabel = stringResource(R.string.playlist_move_earlier)
     val moveLaterLabel = stringResource(R.string.playlist_move_later)
@@ -253,8 +250,8 @@ fun PlaylistLibraryScreen(
                                     modifier = Modifier
                                         .longPressDraggableHandle(
                                             onDragStarted = {
-                                                view.performHapticFeedback(
-                                                    HapticFeedbackConstants.LONG_PRESS,
+                                                hapticFeedback.performHapticFeedback(
+                                                    HapticFeedbackType.LongPress,
                                                 )
                                                 draggedPlaylistId = playlist.id
                                                 baselineIds = currentPlaylists.map(LocalPlaylist::id)

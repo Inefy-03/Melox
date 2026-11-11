@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import com.melox.player.ui.usesMiuixSmallTopAppBar
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import com.melox.player.ui.component.os4.TopBarButtonHaptics
 import com.melox.player.ui.component.os4.SmallTopAppBar
 import com.melox.player.ui.component.os4.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -60,9 +61,9 @@ internal fun AdaptiveTopAppBar(
             bandBrush = if (LocalGlassTopBackdrop.current != null) top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.bandBrush(MiuixTheme.colorScheme.surface)
                 else androidx.compose.ui.graphics.SolidColor(color),
             bandOverhang = if (LocalTopBarBlurSettings.current.blurEnabled) top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.BandOverhang else 0.dp,
-            navigationIcon = navigationIcon,
+            navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
             actions = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { actions() }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }
             }, bottomContent = bottomContent,
         )
     } else if (usesMiuixSmallTopAppBar()) {

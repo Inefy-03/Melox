@@ -82,7 +82,7 @@ internal fun SmallTopAppBar(
                     modifier = if (inlineTitle && navigation != null) Modifier.widthIn(max = navigation.leadingContentMaxWidth) else Modifier,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    navigationIcon()
+                    TopBarButtonHaptics { navigationIcon() }
                     AnimatedVisibility(
                         visibleState = inlineTitleVisibility,
                         modifier = Modifier.weight(1f, fill = false),
@@ -100,11 +100,11 @@ internal fun SmallTopAppBar(
                 }
             },
             actions = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { actions() }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }
             }, bottomContent = bottomContent,
         )
     } else {
-        MiuixSmallTopAppBar(title = title, modifier = modifier, color = color, titleColor = titleColor, subtitle = subtitle, subtitleColor = subtitleColor, navigationIcon = navigationIcon, actions = actions, scrollBehavior = scrollBehavior, defaultWindowInsetsPadding = defaultWindowInsetsPadding, titlePadding = titlePadding, navigationIconPadding = navigationIconPadding, actionIconPadding = actionIconPadding, bottomContent = bottomContent)
+        MiuixSmallTopAppBar(title = title, modifier = modifier, color = color, titleColor = titleColor, subtitle = subtitle, subtitleColor = subtitleColor, navigationIcon = { TopBarButtonHaptics { navigationIcon() } }, actions = { TopBarButtonHaptics { actions() } }, scrollBehavior = scrollBehavior, defaultWindowInsetsPadding = defaultWindowInsetsPadding, titlePadding = titlePadding, navigationIconPadding = navigationIconPadding, actionIconPadding = actionIconPadding, bottomContent = bottomContent)
     }
 }
 

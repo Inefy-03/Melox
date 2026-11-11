@@ -1924,7 +1924,7 @@ fun MeloxApp(
         val hapticFeedback = LocalHapticFeedback.current
         val onNavigationTabSelected: (Int) -> Unit = { selectedTab ->
             val shouldHaptic = shouldTriggerTabSwitchHaptic(
-                enabled = settings.tabSwitchHapticsEnabled,
+                enabled = settings.hapticFeedbackEnabled,
                 selectedPage = playerPagerState.selectedPage,
                 targetPage = selectedTab,
             )
@@ -2282,8 +2282,8 @@ fun MeloxApp(
                                                                 viewModel::setPredictiveBackEnabled,
                                                             onNavigationTransitionStyleChange =
                                                                 viewModel::setNavigationTransitionStyle,
-                                                            onTabSwitchHapticsEnabledChange =
-                                                                viewModel::setTabSwitchHapticsEnabled,
+                                                            onHapticFeedbackEnabledChange =
+                                                                viewModel::setHapticFeedbackEnabled,
                                                             onOpenInterfaceStyle = {
                                                                 interfaceStyleListState.requestScrollToItem(0)
                                                                 interfaceStyleScrollBehavior.state.heightOffset = 0f
@@ -3548,6 +3548,7 @@ internal fun LibrarySearchButton(
     if (LocalOs4LandscapeNavigation.current != null) {
         val searchPage = LocalGlassSearchPage.current
         val materialProgress = top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext.current?.materialProgress
+        val searchHapticFeedback = LocalHapticFeedback.current
         SideEffect { searchPage?.materialProgress = materialProgress }
         val buttonAlpha = androidx.compose.animation.core.animateFloatAsState(
             targetValue = if (visible) 0f else 1f,
@@ -3563,7 +3564,10 @@ internal fun LibrarySearchButton(
             outsets = shadowOutsets
         }) {
             top.yukonga.miuix.kmp.glass.GlassIconButton(
-                onClick = effectiveOnSearchClick,
+                onClick = {
+                    searchHapticFeedback.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    effectiveOnSearchClick()
+                },
                 enabled = !visible && !collapsing,
                 size = top.yukonga.miuix.kmp.basic.IconButtonDefaults.MinHeight,
                 modifier = if (visible) Modifier.clearAndSetSemantics { } else Modifier,

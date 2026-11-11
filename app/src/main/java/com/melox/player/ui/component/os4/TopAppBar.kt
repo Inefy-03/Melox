@@ -76,12 +76,12 @@ internal fun TopAppBar(
             titleAlpha = { titleColor.alpha * searchTitleAlpha() },
             bandOverhang = if (LocalTopBarBlurSettings.current.blurEnabled) GlassTopAppBarDefaults.BandOverhang else 0.dp,
             bandBrush = if (backdrop != null) GlassTopAppBarDefaults.bandBrush(MiuixTheme.colorScheme.surface) else SolidColor(color),
-            navigationIcon = navigationIcon,
+            navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
             actions = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { actions() }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }
             }, bottomContent = bottomContent,
         )
     } else {
-        MiuixTopAppBar(title = title, modifier = modifier, color = color, titleColor = titleColor, largeTitle = largeTitle, largeTitleColor = largeTitleColor, subtitle = subtitle, subtitleColor = subtitleColor, navigationIcon = navigationIcon, actions = actions, scrollBehavior = scrollBehavior, defaultWindowInsetsPadding = defaultWindowInsetsPadding, titlePadding = titlePadding, navigationIconPadding = navigationIconPadding, actionIconPadding = actionIconPadding, bottomContent = bottomContent)
+        MiuixTopAppBar(title = title, modifier = modifier, color = color, titleColor = titleColor, largeTitle = largeTitle, largeTitleColor = largeTitleColor, subtitle = subtitle, subtitleColor = subtitleColor, navigationIcon = { TopBarButtonHaptics { navigationIcon() } }, actions = { TopBarButtonHaptics { actions() } }, scrollBehavior = scrollBehavior, defaultWindowInsetsPadding = defaultWindowInsetsPadding, titlePadding = titlePadding, navigationIconPadding = navigationIconPadding, actionIconPadding = actionIconPadding, bottomContent = bottomContent)
     }
 }

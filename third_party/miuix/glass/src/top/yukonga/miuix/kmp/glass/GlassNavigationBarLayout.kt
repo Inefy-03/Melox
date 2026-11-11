@@ -3,15 +3,20 @@
 
 package top.yukonga.miuix.kmp.glass
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.runtime.*
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
@@ -21,7 +26,8 @@ import androidx.compose.ui.unit.constrainWidth
  *
  * The action's measured width and [spacing] are reserved before measuring [content], so both fit
  * within the same constraints and are centered as a group. A null [trailingAction] reserves no
- * space. Placement follows the current layout direction.
+ * space after its exit animation completes. Width, spacing, scale and opacity animate together.
+ * Placement follows the current layout direction.
  *
  * @param modifier Modifier applied to the combined layout.
  * @param spacing Space between the capsule and the action.
@@ -38,28 +44,38 @@ internal fun GlassNavigationBarLayout(
     val density = LocalDensity.current
     val shadowOutsets = remember(density) { with(density) { popupShadowOutsets(GlassShadows.Regular) } }
     val retainedAction = remember { mutableStateOf(trailingAction) }
-    SideEffect { if (trailingAction != null) retainedAction.value = trailingAction }
     val actionProgress = animateFloatAsState(
         targetValue = if (trailingAction != null) 1f else 0f,
         animationSpec = GlassMotion.navShowHide(),
         label = "glassNavigationAction",
     )
+    SideEffect {
+        if (trailingAction != null || actionProgress.value == 0f) retainedAction.value = trailingAction
+    }
     val presentedAction = trailingAction ?: retainedAction.value.takeIf { actionProgress.value > 0f }
     Layout(
         modifier = modifier,
         content = {
             Box(propagateMinConstraints = true) { content() }
             if (presentedAction != null) {
-                Box(Modifier.graphicsLayer {
-                    // Alpha uses an offscreen layer; preserve the full shadow beyond button bounds.
-                    outsets = shadowOutsets
-                    val fraction = actionProgress.value.coerceIn(0f, 1f)
-                    scaleX = fraction
-                    scaleY = fraction
-                    alpha = fraction
-                }.then(if (trailingAction == null) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
-                    awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
-                } else Modifier)) { presentedAction() }
+                Box(
+                    Modifier.focusProperties { canFocus = trailingAction != null }.graphicsLayer {
+                        // Preserve the icon button shadow outside the offscreen alpha layer.
+                        outsets = shadowOutsets
+                        val fraction = actionProgress.value.coerceIn(0f, 1f)
+                        scaleX = fraction
+                        scaleY = fraction
+                        alpha = fraction
+                    }.then(
+                        if (trailingAction == null) {
+                            Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
+                                awaitPointerEventScope { while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() } }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
+                ) { presentedAction() }
             }
         },
     ) { measurables, constraints ->

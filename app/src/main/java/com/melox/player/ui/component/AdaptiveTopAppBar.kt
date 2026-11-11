@@ -58,9 +58,6 @@ internal fun AdaptiveTopAppBar(
             backdrop = LocalGlassTopBackdrop.current,
             overlapDistance = rememberTopBarOverlapDistance(scrollBehavior),
             progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
-            bandBrush = if (LocalGlassTopBackdrop.current != null) top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.bandBrush(MiuixTheme.colorScheme.surface)
-                else androidx.compose.ui.graphics.SolidColor(color),
-            bandOverhang = if (LocalTopBarBlurSettings.current.blurEnabled) top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.BandOverhang else 0.dp,
             navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
             actions = {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }

@@ -20,7 +20,7 @@ import com.melox.player.ui.theme.LocalOs4Style
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 internal fun Modifier.stableTopAppBarInsets(color: Color): Modifier =
-    if (LocalOs4Style.current) background(color) else
+    if (LocalOs4Style.current) this else
         background(color).stableTopAppBarContentInsets()
 
 // Keep Glass backgrounds outside the reserved inset while moving only foreground controls.

@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.Dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.glass.*
-import androidx.compose.ui.graphics.SolidColor
 import com.melox.player.ui.theme.LocalOs4Style
 import com.melox.player.ui.component.LocalGlassTopBackdrop
 import com.melox.player.ui.component.LocalTopBarBlurSettings
@@ -74,8 +73,6 @@ internal fun TopAppBar(
             progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
             defaultWindowInsetsPadding = defaultWindowInsetsPadding,
             titleAlpha = { titleColor.alpha * searchTitleAlpha() },
-            bandOverhang = if (LocalTopBarBlurSettings.current.blurEnabled) GlassTopAppBarDefaults.BandOverhang else 0.dp,
-            bandBrush = if (backdrop != null) GlassTopAppBarDefaults.bandBrush(MiuixTheme.colorScheme.surface) else SolidColor(color),
             navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
             actions = {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }

@@ -96,9 +96,15 @@ width and weighted icon spacing follow that same progress. The search header use
 the upstream window-level Back handling; ordinary page navigation is suspended while
 search is open. The original top bar uses the example's fade, scale and blur helpers.
 
-Navigation indicator springs use slot coordinates and project to pixels during layout.
-Capsule width changes therefore do not retarget selection springs; drag input converts
-its pixel bounds into slots, preserving the official edge springs and drag semantics.
+NavigationBar behavior is synchronized with upstream commit
+`ca674992c9645395cdb0d5109d66504ff53d018c` (2026-11-10). The navigation
+icon slot is 25 dp without internal padding. Dynamic themes tint the selected
+content and indicator with primary. Indicator edges animate in pixels, including
+capsule width changes. Hit regions are frozen for each gesture and pointer deltas
+exclude capsule placement motion. Release settles against the current geometry.
+The trailing action releases retained content after exit and blocks focus and
+pointer input during exit. Existing Glass material types and Melox's leading
+action, variable-width destinations and shared indicator adapters are retained.
 
 Bottom playback/navigation remain composed through search mode, as in the Glass
 example. Both fade with the example's rememberGlassSearchBarAlpha curve driven by
@@ -185,3 +191,7 @@ The UI patch `top-app-bar-state-observation.patch` makes the collapse limit
 snapshot-observable. Native cached title visibility now refreshes when rotation
 or title measurement changes the limit without changing the current offset.
 The app regression test reproduces the stale derived visibility with the prior AAR.
+
+The navigation indicator draws the selected destination directly until its first
+valid measurement has initialized both pixel edges. Startup selection therefore
+uses the configured destination immediately, before selection springs are enabled.

@@ -161,6 +161,7 @@ internal fun PlayerScaffold(
     searchOpen: Boolean = false,
     sidebarShortcutItems: List<NavigationItem> = emptyList(),
     selectedSidebarShortcut: Int? = null,
+    selectedSidebarPrimaryTab: Int? = null,
     onSidebarShortcutSelected: (Int) -> Unit = {},
     content: @Composable (PaddingValues, navigationRailExpanded: Boolean) -> Unit,
 ) {
@@ -241,7 +242,7 @@ internal fun PlayerScaffold(
 
     if (landscape && effectiveStyle == BottomBarStyle.OS4) {
         Os4LandscapePlayerScaffold(
-            navigationItems = navigationItems, selectedTab = selectedTab, onTabSelected = onTabSelected,
+            navigationItems = navigationItems, selectedTab = selectedSidebarPrimaryTab ?: selectedTab, onTabSelected = onTabSelected,
             showNavigation = showNavigation || showNavigationRailOnSecondary,
             smallPlayerBar = smallPlayerBar, blurEnabled = blurEnabled, isDark = isDark,
             miniPlayer = miniPlayer, refreshSignal = backdropRefreshSignal,

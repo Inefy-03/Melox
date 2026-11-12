@@ -381,6 +381,12 @@ internal fun selectedSidebarShortcut(
 ): Int? = destinations.asReversed()
     .firstNotNullOfOrNull { destination -> sidebarRoutes.indexOf(destination.route).takeIf { it >= 0 } }
 
+internal fun sidebarShortcutPrimaryPage(route: AppRoute?): Int? = when (route) {
+    AppRoute.PLAYLISTS -> HOME_TAB_INDEX
+    AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS -> LIBRARY_TAB_INDEX
+    else -> null
+}
+
 internal fun synchronizeAppNavBackStack(
     backStack: NavBackStack,
     destinations: List<AppNavDestination>,
@@ -2022,6 +2028,7 @@ fun MeloxApp(
                     }
                     val pageNavigationHideMotion = if (currentRoute == AppRoute.ROOT) null
                         else secondaryPageEnterMotion(settings.navigationTransitionStyle)
+                    val sidebarSelection = selectedSidebarShortcut(desiredNavBackStack, sidebarRoutes)
                     val pageScaffoldContent: @Composable () -> Unit = {
                     PlayerScaffold(
                             playerNavigationOffset = {
@@ -2044,7 +2051,8 @@ fun MeloxApp(
                                 NavigationItem(artistsTitle, MiuixIcons.Contacts),
                                 NavigationItem(foldersTitle, MiuixIcons.Folder),
                             ),
-                            selectedSidebarShortcut = selectedSidebarShortcut(desiredNavBackStack, sidebarRoutes),
+                            selectedSidebarShortcut = sidebarSelection,
+                            selectedSidebarPrimaryTab = sidebarShortcutPrimaryPage(sidebarSelection?.let { sidebarRoutes[it] }),
                             onSidebarShortcutSelected = { index ->
                                 val target = sidebarRoutes[index]
                                 if (currentRoute != target) {

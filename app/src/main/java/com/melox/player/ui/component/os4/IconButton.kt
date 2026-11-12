@@ -49,7 +49,7 @@ internal fun IconButton(
             onClick = onClickWithHaptic,
             modifier = modifier,
             content = content,
-            size = maxOf(minHeight, minWidth),
+            size = if (topBarButtonHaptics) top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ButtonSize else maxOf(minHeight, minWidth),
             // The root scene includes this button; only the separate wallpaper layer is safe here.
             backdrop = if (com.melox.player.ui.component.LocalGlassTopBackdrop.current == null) LocalPageSurfaceBackdrop.current else null,
         )

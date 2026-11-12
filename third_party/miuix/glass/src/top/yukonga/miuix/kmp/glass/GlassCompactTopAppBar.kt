@@ -14,6 +14,8 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+internal val LocalGlassCompactTitleStartProgress = staticCompositionLocalOf { 0f }
+
 /** Native small-bar geometry without clipping the Glass controls' shadow halo. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -44,10 +46,12 @@ internal fun GlassCompactTopAppBar(
             it.heightOffset = 0f
         }
     }
+    val titleStartProgress = LocalGlassCompactTitleStartProgress.current.coerceIn(0f, 1f)
     Layout(
         modifier = modifier.then(if (defaultWindowInsetsPadding) Modifier.windowInsetsPadding(
             WindowInsets.displayCutout.union(WindowInsets.navigationBars).only(WindowInsetsSides.Horizontal),
-        ) else Modifier),
+        ) else Modifier)
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
         content = {
             Box(Modifier.padding(start = GlassTopAppBarDefaults.HorizontalPadding)) { navigationIcon() }
             Row(Modifier.padding(end = GlassTopAppBarDefaults.HorizontalPadding), content = actions)
@@ -70,7 +74,8 @@ internal fun GlassCompactTopAppBar(
             leading.placeRelative(0, center - leading.height / 2)
             trailing.placeRelative(constraints.maxWidth - trailing.width, center - trailing.height / 2)
             val titleX = ((constraints.maxWidth - heading.width) / 2).coerceIn(leading.width, (constraints.maxWidth - trailing.width - heading.width).coerceAtLeast(leading.width))
-            heading.placeRelative(titleX, center - heading.height / 2)
+            val startX = (leading.width + 12.dp.roundToPx()).coerceAtMost((constraints.maxWidth - trailing.width - heading.width).coerceAtLeast(leading.width))
+            heading.placeRelative((titleX + (startX - titleX) * titleStartProgress).toInt(), center - heading.height / 2)
             if (subtitle.isNotEmpty()) summary.placeRelative((constraints.maxWidth - summary.width) / 2, center + heading.height / 2)
             bottom.placeRelative(0, contentTop)
         }

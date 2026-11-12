@@ -69,3 +69,19 @@ internal fun navigationSlotAt(position: Float, widths: List<Float>): Float {
     }
     return 0f
 }
+
+/** Interpolates the held width between destination centers without a jump at hit boundaries. */
+internal fun navigationDragWidth(position: Float, widths: List<Float>): Float {
+    if (widths.isEmpty()) return 0f
+    var center = widths.first() / 2f
+    if (position <= center) return widths.first()
+    for (index in 1..widths.lastIndex) {
+        val nextCenter = center + (widths[index - 1] + widths[index]) / 2f
+        if (position <= nextCenter) {
+            val fraction = ((position - center) / (nextCenter - center).coerceAtLeast(1f)).coerceIn(0f, 1f)
+            return widths[index - 1] + (widths[index] - widths[index - 1]) * fraction
+        }
+        center = nextCenter
+    }
+    return widths.last()
+}

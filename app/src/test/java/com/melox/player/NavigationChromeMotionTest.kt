@@ -21,29 +21,57 @@ import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 
 class NavigationChromeMotionTest {
     @Test
-    fun glassIndicatorKeepsEveryStartupMeasurementAtItsDefaultDestination() = kotlinx.coroutines.runBlocking {
-        for (initialIndex in 0..2) {
-            val motion = top.yukonga.miuix.kmp.glass.GlassNavigationIndicatorMotion(initialIndex)
-            val animatedTargets = mutableListOf<Pair<Float, Float>>()
-            val animate: (Float, Float) -> Unit = { left, right -> animatedTargets += left to right }
-            org.junit.Assert.assertFalse(motion.useAnimatedBounds(initialIndex))
-            for (width in listOf(20f, 48f, 360f, 284f)) {
-                val slotWidth = (width - 16f) / 4f
-                val left = 3f + initialIndex * slotWidth
-                val right = 13f + (initialIndex + 1) * slotWidth
-                motion.syncTarget(initialIndex, left, right, animate)
-                assertEquals(left, motion.left.value, 0f)
-                assertEquals(right, motion.right.value, 0f)
-                org.junit.Assert.assertFalse(motion.useAnimatedBounds(initialIndex))
-                assertTrue(animatedTargets.isEmpty())
-            }
-            val nextIndex = initialIndex + 1
-            assertTrue(motion.useAnimatedBounds(nextIndex))
-            motion.syncTarget(nextIndex, 200f, 280f, animate)
-            motion.syncTarget(nextIndex, 180f, 260f, animate)
-            motion.syncTarget(initialIndex, 3f, 83f, animate)
-            assertEquals(listOf(200f to 280f, 180f to 260f, 3f to 83f), animatedTargets)
-            assertTrue(motion.useAnimatedBounds(initialIndex))
+    fun glassIndicatorStartsAtTheSuppliedDefaultDestinationThenAnimates() = kotlinx.coroutines.runBlocking {
+        for (initialIndex in 0..3) {
+            val motion = top.yukonga.miuix.kmp.glass.GlassNavigationIndicatorMotion()
+            val targets = mutableListOf<Pair<Float, Float>>()
+            val animate: (Float, Float) -> Unit = { left, right -> targets += left to right }
+            org.junit.Assert.assertFalse(motion.useAnimatedBounds())
+            val left = 3f + initialIndex * 80f
+            val right = left + 90f
+            motion.syncTarget(left, right, animate)
+            assertEquals(left, motion.left.value, 0f)
+            assertEquals(right, motion.right.value, 0f)
+            assertTrue(motion.useAnimatedBounds())
+            assertTrue(targets.isEmpty())
+            motion.syncTarget(left + 10f, right + 10f, animate)
+            assertEquals(left, motion.left.value, 0f)
+            assertEquals(right, motion.right.value, 0f)
+            assertEquals(listOf(left + 10f to right + 10f), targets)
+        }
+    }
+
+    @Test
+    fun glassIndicatorKeepsItsFirstDragAndReleaseOnAnimatedBounds() = kotlinx.coroutines.runBlocking {
+        val motion = top.yukonga.miuix.kmp.glass.GlassNavigationIndicatorMotion()
+        motion.syncTarget(3f, 83f) { _, _ -> error("Startup must snap") }
+        assertTrue(motion.useAnimatedBounds())
+        motion.left.snapTo(18f)
+        motion.right.snapTo(98f)
+        val targets = mutableListOf<Pair<Float, Float>>()
+        motion.syncTarget(3f, 83f) { left, right -> targets += left to right }
+        assertEquals(18f, motion.left.value, 0f)
+        assertEquals(98f, motion.right.value, 0f)
+        assertEquals(listOf(3f to 83f), targets)
+        motion.syncTarget(83f, 163f) { left, right -> targets += left to right }
+        assertEquals(18f, motion.left.value, 0f)
+        assertTrue(motion.useAnimatedBounds())
+    }
+
+    @Test
+    fun draggedGlassIndicatorWidthIsContinuousAcrossVariableAndEqualSlots() {
+        val widths = listOf(70f, 96f, 58f)
+        fun width(x: Float) = top.yukonga.miuix.kmp.glass.navigationDragWidth(x, widths)
+        assertEquals(70f, width(-100f), 0f)
+        assertEquals(70f, width(35f), 0f)
+        assertEquals(96f, width(118f), 0f)
+        assertEquals(58f, width(195f), 0f)
+        assertEquals(58f, width(300f), 0f)
+        for (boundary in listOf(70f, 166f)) {
+            assertEquals(width(boundary - 0.001f), width(boundary + 0.001f), 0.002f)
+        }
+        for (position in -10..400) {
+            assertEquals(80f, top.yukonga.miuix.kmp.glass.navigationDragWidth(position.toFloat(), listOf(80f, 80f, 80f)), 0f)
         }
     }
 
@@ -63,6 +91,8 @@ class NavigationChromeMotionTest {
         routes.forEachIndexed { index, route ->
             assertEquals(index, selected(com.melox.player.ui.AppRoute.ROOT, route))
         }
+        assertEquals(listOf(0, 2, 2, 2), routes.map { com.melox.player.ui.sidebarShortcutPrimaryPage(it) })
+        org.junit.Assert.assertNull(com.melox.player.ui.sidebarShortcutPrimaryPage(null))
         assertEquals(1, selected(com.melox.player.ui.AppRoute.ROOT, com.melox.player.ui.AppRoute.ALBUMS, com.melox.player.ui.AppRoute.ALBUM_DETAIL))
         assertEquals(2, selected(com.melox.player.ui.AppRoute.ROOT, com.melox.player.ui.AppRoute.ARTISTS, com.melox.player.ui.AppRoute.ARTIST_DETAIL, com.melox.player.ui.AppRoute.ALBUM_DETAIL))
         org.junit.Assert.assertNull(selected(com.melox.player.ui.AppRoute.ROOT, com.melox.player.ui.AppRoute.ALBUM_DETAIL))
@@ -91,8 +121,6 @@ class NavigationChromeMotionTest {
             secondary.value = false
             frame(32)
             org.junit.Assert.assertSame(initialToken, token)
-        assertEquals(listOf(0, 2, 2, 2), routes.map { com.melox.player.ui.sidebarShortcutPrimaryPage(it) })
-        org.junit.Assert.assertNull(com.melox.player.ui.sidebarShortcutPrimaryPage(null))
             org.junit.Assert.assertFalse(capturedRoute)
             assertEquals(1, created)
         }
@@ -131,35 +159,6 @@ class NavigationChromeMotionTest {
         assertTrue(!inline(1f, 0f, title = ""))
     }
 
-    @Test
-    fun landscapeCapsuleReboundsOnlyWhenCollapsingSidebar() {
-        assertEquals(200f, Os4NavigationReboundMotion.stiffness, 0f)
-        assertEquals(0.8f, Os4NavigationReboundMotion.dampingRatio, 0f)
-        val motion = TargetBasedAnimation(Os4NavigationReboundMotion, Dp.VectorConverter, 12.dp, 400.dp)
-        val positions = (0..motion.durationNanos step 8_000_000L).map { motion.getValueFromNanos(it).value }
-        val peak = positions.max()
-        assertTrue("Horizontal settle should overshoot to the right", peak > 400.2f)
-        assertTrue("The reference rebound should stay subtle", peak < 407f)
-        val peakMillis = positions.indices.maxBy { positions[it] } * 8
-        assertTrue("Reference reaches its peak about 400 ms after travel begins", peakMillis in 350..450)
-        assertTrue("Return should continue beyond the size morph", motion.durationNanos > 600_000_000L)
-        assertEquals(400f, motion.getValueFromNanos(motion.durationNanos).value, 0.001f)
-        val expansion = TargetBasedAnimation(Os4NavigationSidebarMotion, Dp.VectorConverter, 400.dp, 12.dp)
-        val expansionPositions = (0..300 step 4).map { expansion.getValueFromNanos(it * 1_000_000L).value }
-        assertTrue(expansionPositions.all { it in 12f..400f })
-        assertTrue(expansionPositions.zipWithNext().all { (before, after) -> after <= before })
-        assertEquals(12f, expansionPositions.last(), 0.001f)
-        assertEquals(0.696f, com.melox.player.ui.os4SidebarHeightMotion(true, 696.dp).visibilityThreshold!!.value, 0.0001f)
-        val bottom = TargetBasedAnimation(com.melox.player.ui.os4SidebarHeightMotion(true, 696.dp), Dp.VectorConverter, 44.dp, 740.dp)
-        val bottomPositions = (0..bottom.durationNanos step 8_000_000L).map { bottom.getValueFromNanos(it).value }
-        assertTrue("Only the expanding sidebar bottom should overshoot", bottomPositions.max() > 740f)
-        assertEquals(740f, bottom.getValueFromNanos(bottom.durationNanos).value, 0.001f)
-    }
-
-    @Test
-    fun measuredNavigationSlotsKeepHitTestingAndSpringEdgesAligned() {
-        val widths = listOf(70f, 96f, 58f)
-        val edges = listOf(0f, 70f, 166f, 224f)
     @Test
     fun landscapeCascadeKeepsBothDirectionsOrderedAndRetargetable() {
         val entering = List(7) { index ->
@@ -202,6 +201,41 @@ class NavigationChromeMotionTest {
         assertEquals(0f, labelOut.getValueFromNanos(labelOut.durationNanos), 0f)
     }
 
+    @Test
+    fun landscapeCapsuleReboundsOnlyWhenCollapsingSidebar() {
+        assertEquals(200f, Os4NavigationReboundMotion.stiffness, 0f)
+        assertEquals(0.8f, Os4NavigationReboundMotion.dampingRatio, 0f)
+        val motion = TargetBasedAnimation(Os4NavigationReboundMotion, Dp.VectorConverter, 12.dp, 400.dp)
+        val positions = (0..motion.durationNanos step 8_000_000L).map { motion.getValueFromNanos(it).value }
+        val peak = positions.max()
+        assertTrue("Horizontal settle should overshoot to the right", peak > 400.2f)
+        assertTrue("The reference rebound should stay subtle", peak < 407f)
+        val peakMillis = positions.indices.maxBy { positions[it] } * 8
+        assertTrue("Reference reaches its peak about 400 ms after travel begins", peakMillis in 350..450)
+        assertTrue("Return should continue beyond the size morph", motion.durationNanos > 600_000_000L)
+        assertEquals(400f, motion.getValueFromNanos(motion.durationNanos).value, 0.001f)
+        val expansion = TargetBasedAnimation(Os4NavigationSidebarMotion, Dp.VectorConverter, 400.dp, 12.dp)
+        val expansionPositions = (0..300 step 4).map { expansion.getValueFromNanos(it * 1_000_000L).value }
+        assertTrue(expansionPositions.all { it in 12f..400f })
+        assertTrue(expansionPositions.zipWithNext().all { (before, after) -> after <= before })
+        assertEquals(12f, expansionPositions.last(), 0.001f)
+        assertEquals(0.696f, com.melox.player.ui.os4SidebarHeightMotion(true, 696.dp).visibilityThreshold!!.value, 0.0001f)
+        val bottom = TargetBasedAnimation(com.melox.player.ui.os4SidebarHeightMotion(true, 696.dp), Dp.VectorConverter, 44.dp, 740.dp)
+        val bottomPositions = (0..bottom.durationNanos step 8_000_000L).map { bottom.getValueFromNanos(it).value }
+        assertTrue("Only the expanding sidebar bottom should overshoot", bottomPositions.max() > 740f)
+        assertTrue("The rebound must fit inside the reference bottom clearance", bottomPositions.max() < 748f)
+        val bottomPeakMillis = bottomPositions.indices.maxBy { bottomPositions[it] } * 8
+        assertTrue(bottomPeakMillis in 350..420)
+        val heightExit = TargetBasedAnimation(com.melox.player.ui.os4SidebarHeightMotion(false, 696.dp), Dp.VectorConverter, 740.dp, 44.dp)
+        assertTrue(heightExit.getValueFromNanos(100_000_000L).value < 320f)
+        assertEquals(44f, heightExit.getValueFromNanos(heightExit.durationNanos).value, 0.001f)
+        assertEquals(740f, bottom.getValueFromNanos(bottom.durationNanos).value, 0.001f)
+    }
+
+    @Test
+    fun measuredNavigationSlotsKeepHitTestingAndSpringEdgesAligned() {
+        val widths = listOf(70f, 96f, 58f)
+        val edges = listOf(0f, 70f, 166f, 224f)
         edges.forEachIndexed { slot, position ->
             assertEquals(position, top.yukonga.miuix.kmp.glass.navigationSlotPosition(slot.toFloat(), widths), 0.001f)
             assertEquals(slot.toFloat(), top.yukonga.miuix.kmp.glass.navigationSlotAt(position, widths), 0.001f)
@@ -223,12 +257,6 @@ class NavigationChromeMotionTest {
 
     @Test
     fun sidebarDestinationsSwitchImmediately() {
-        assertTrue("The rebound must fit inside the reference bottom clearance", bottomPositions.max() < 748f)
-        val bottomPeakMillis = bottomPositions.indices.maxBy { bottomPositions[it] } * 8
-        assertTrue(bottomPeakMillis in 350..420)
-        val heightExit = TargetBasedAnimation(com.melox.player.ui.os4SidebarHeightMotion(false, 696.dp), Dp.VectorConverter, 740.dp, 44.dp)
-        assertTrue(heightExit.getValueFromNanos(100_000_000L).value < 320f)
-        assertEquals(44f, heightExit.getValueFromNanos(heightExit.durationNanos).value, 0.001f)
         val motion = ImmediateNavigationTransition.motion.programmatic as NavSettleSpec.Tween
         assertEquals(0, motion.durationMillis)
         assertEquals(top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection.None, ImmediateNavigationTransition.dismissDirection)

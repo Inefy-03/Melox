@@ -266,7 +266,7 @@ fun GlassNavigationBar(
     }
 
     val scope = rememberCoroutineScope()
-    val indicatorMotion = remember { GlassNavigationIndicatorMotion(index) }
+    val indicatorMotion = remember { GlassNavigationIndicatorMotion() }
     val left = indicatorMotion.left
     val right = indicatorMotion.right
     fun animateIndicator(
@@ -289,7 +289,7 @@ fun GlassNavigationBar(
     val targetRight = contentStart + overhang + navigationSlotPosition(index + 1f, spans)
     LaunchedEffect(targetLeft, targetRight, dragging.value) {
         if (barWidth <= contentStart + contentInset || dragging.value) return@LaunchedEffect
-        indicatorMotion.syncTarget(index, targetLeft, targetRight) { newLeft, newRight ->
+        indicatorMotion.syncTarget(targetLeft, targetRight) { newLeft, newRight ->
             animateIndicator(newLeft, newRight)
         }
     }
@@ -412,7 +412,7 @@ fun GlassNavigationBar(
                                             dragging.value = true
                                         }
                                         val next = indexAt(selectionX)
-                                        val chipW = currentSpans[next] + overhang * 2f
+                                        val chipW = navigationDragWidth(selectionX - contentStart, currentSpans) + overhang * 2f
                                         val maxLeft = (width - chipW).coerceAtLeast(0f)
                                         val chipLeft = (x - grabOffset).coerceIn(with(density) { leadingWidth.toPx() }.coerceAtMost(maxLeft), maxLeft)
                                         val target = navigationDragTarget(chipLeft, chipW, width, delta, next != current)
@@ -455,8 +455,8 @@ fun GlassNavigationBar(
                         val initialLeft = contentStart - overhang + navigationSlotPosition(index.toFloat(), initialSpans)
                         val initialRight = contentStart + overhang + navigationSlotPosition(index + 1f, initialSpans)
                         val bounds = navigationIndicatorBounds(
-                            if (indicatorMotion.useAnimatedBounds(index)) left.value else initialLeft,
-                            if (indicatorMotion.useAnimatedBounds(index)) right.value else initialRight,
+                            if (indicatorMotion.useAnimatedBounds()) left.value else initialLeft,
+                            if (indicatorMotion.useAnimatedBounds()) right.value else initialRight,
                             constraints.maxWidth.toFloat(),
                             contentStart - overhang,
                             contentInset - overhang,
@@ -597,25 +597,20 @@ fun GlassNavigationIndicator(
     )
 }
 
-/** Keeps startup geometry attached to its selected destination until selection actually changes. */
-internal class GlassNavigationIndicatorMotion(initialIndex: Int) {
+/** Positions the first measured selection directly, then keeps all movement on the same springs. */
+internal class GlassNavigationIndicatorMotion {
     val left = Animatable(0f)
     val right = Animatable(0f)
-    private var lastIndex = initialIndex
     private var initialized by mutableStateOf(false)
-    private var selectionChanged by mutableStateOf(false)
 
-    fun useAnimatedBounds(index: Int): Boolean = initialized && (selectionChanged || index != lastIndex)
+    fun useAnimatedBounds(): Boolean = initialized
 
     suspend fun syncTarget(
-        index: Int,
         targetLeft: Float,
         targetRight: Float,
         animate: (Float, Float) -> Unit,
     ) {
-        if (index != lastIndex) selectionChanged = true
-        lastIndex = index
-        if (!initialized || !selectionChanged) {
+        if (!initialized) {
             left.snapTo(targetLeft)
             right.snapTo(targetRight)
             initialized = true

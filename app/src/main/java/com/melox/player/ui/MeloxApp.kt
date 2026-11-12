@@ -3561,17 +3561,12 @@ internal fun LibrarySearchButton(
         val searchPage = LocalGlassSearchPage.current
         val materialProgress = top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext.current?.materialProgress
         SideEffect { searchPage?.materialProgress = materialProgress }
-        val buttonAlpha = androidx.compose.animation.core.animateFloatAsState(
-            targetValue = if (visible) 0f else 1f,
-            animationSpec = tween(400, easing = androidx.compose.animation.core.LinearEasing),
-            label = "landscapeSearchButtonAlpha",
-        )
         val density = LocalDensity.current
         val shadowOutsets = remember(density) {
             with(density) { popupShadowOutsets(top.yukonga.miuix.kmp.glass.GlassShadows.Regular) }
         }
-        Box(Modifier.graphicsLayer {
-            alpha = buttonAlpha.value
+        Box(Modifier.onGloballyPositioned { searchPage?.buttonBounds = it.boundsInRoot() }.graphicsLayer {
+            alpha = if (searchPage?.overlayPresentation?.value == true) 0f else 1f
             outsets = shadowOutsets
         }) {
             top.yukonga.miuix.kmp.glass.GlassIconButton(
@@ -3580,8 +3575,9 @@ internal fun LibrarySearchButton(
                     effectiveOnSearchClick()
                 },
                 enabled = !visible && !collapsing,
-                size = top.yukonga.miuix.kmp.basic.IconButtonDefaults.MinHeight,
-                modifier = if (visible) Modifier.clearAndSetSemantics { } else Modifier,
+                size = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ButtonSize,
+                modifier = (searchPage?.let { Modifier.then(top.yukonga.miuix.kmp.glass.GlassPopupAnchorElement(it.buttonAnchor)) } ?: Modifier)
+                    .then(if (visible) Modifier.clearAndSetSemantics { } else Modifier),
             ) {
                 Icon(imageVector = MiuixIcons.Search, contentDescription = contentDescription)
             }

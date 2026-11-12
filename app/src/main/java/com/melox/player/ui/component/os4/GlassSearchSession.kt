@@ -27,7 +27,10 @@ internal fun showGlassSearchResults(expanded: Boolean, query: String): Boolean =
 internal class GlassSearchPage {
     var session: GlassSearchSession? by mutableStateOf(null)
     var materialProgress: State<Float>? by mutableStateOf(null)
+    val buttonAnchor = top.yukonga.miuix.kmp.glass.GlassPopupAnchor()
+    var buttonBounds: Rect? = null
     var fieldBounds: Rect? = null
+    var overlayPresentation: State<Boolean>? by mutableStateOf(null)
     var transitionActive by mutableStateOf(false)
     val isExpanded: Boolean get() = session?.expanded?.value == true
 }

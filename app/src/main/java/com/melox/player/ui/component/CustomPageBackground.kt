@@ -276,7 +276,11 @@ internal fun PageScaffold(
                 }
                 }
             }
-            if (!wideOs4) searchPage.session?.let { GlassSearchHeader(it, searchPage) }
+            searchPage.session?.let { session ->
+                CompositionLocalProvider(LocalWideTopBackdrop provides wideTopBackdrop) {
+                    GlassSearchHeader(session, searchPage)
+                }
+            }
         }
     }
 }

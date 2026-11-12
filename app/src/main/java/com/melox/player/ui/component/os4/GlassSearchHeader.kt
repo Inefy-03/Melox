@@ -9,6 +9,9 @@ import androidx.compose.runtime.State
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.ui.graphics.LayerOutsets
 import kotlin.math.abs
+import top.yukonga.miuix.kmp.glass.*
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.systemBars
 import top.yukonga.miuix.kmp.glass.GlassShadows
 import top.yukonga.miuix.kmp.glass.GlassDefaults
 import androidx.compose.runtime.CompositionLocalProvider
@@ -54,16 +57,25 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.clip
+import kotlin.math.roundToInt
+import top.yukonga.miuix.kmp.glass.GlassPopupDefaults
+import top.yukonga.miuix.kmp.glass.GlassMotion
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import com.melox.player.ui.component.LocalWideTopBackdrop
 import com.melox.player.ui.component.LocalTopBarBlurSettings
 import top.yukonga.miuix.kmp.glass.GlassShape
-import top.yukonga.miuix.kmp.glass.glassPanel
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.SolidColor
@@ -121,23 +133,33 @@ internal fun GlassSearchHeader(
 ) {
     val wide = com.melox.player.ui.LocalOs4LandscapeNavigation.current != null
     val onDismissRequest = session.onDismiss.value
+    var fieldSlotBounds by remember { mutableStateOf<Rect?>(null) }
     val transitionState = remember { MutableTransitionState(false) }
-    transitionState.targetState = expanded
+    transitionState.targetState = expanded && (!wide || (fieldSlotBounds != null && page.buttonBounds != null))
     val transition = rememberTransition(transitionState, label = "glassSearch")
     val progress = transition.animateFloat(
         transitionSpec = {
-            if (wide) tween(400, easing = LinearEasing)
+            if (wide) GlassMotion.transformBounds(targetState)
             else tween(400, easing = SearchModeEasing)
         },
         label = "glassSearchGeometry",
+    ) { if (it) 1f else 0f }
+    val iconProgress = transition.animateFloat(
+        transitionSpec = { GlassMotion.transformIconMaterial(targetState) },
+        label = "glassSearchAnchorIcon",
+    ) { if (it) 1f else 0f }
+    val contentProgress = transition.animateFloat(
+        transitionSpec = { GlassMotion.transformContentMaterial(targetState) },
+        label = "glassSearchContent",
     ) { if (it) 1f else 0f }
     val cancelAlpha = transition.animateFloat(
         transitionSpec = { tween(150, delayMillis = if (targetState) 100 else 0, easing = LinearEasing) },
         label = "glassSearchCancelMaterial",
     ) { if (it) 1f else 0f }
     val searchBackdrop = LocalWideTopBackdrop.current.takeIf { LocalTopBarBlurSettings.current.blurEnabled }
-    val searchMaterial = GlassTopAppBarDefaults.buttonMaterial()
-    val searchStroke = GlassTopAppBarDefaults.buttonStroke()
+    val searchVisuals = GlassPopupDefaults.visuals()
+    val fraction = progress.value.coerceIn(0f, 1f)
+    val searchShape = GlassShape(22.dp)
     val query = session.query.value
     val showResults = showGlassSearchResults(expanded, query)
     val focusRequester = remember { FocusRequester() }
@@ -148,6 +170,13 @@ internal fun GlassSearchHeader(
     val wideSearchWidth = with(density) { LocalWindowInfo.current.containerSize.width.toDp() } * 0.21f
     val statusBarHeight = WindowInsets.statusBarsIgnoringVisibility.getTop(density)
     val active = expanded || transition.currentState || transition.isRunning
+    val overlayPresentation = remember(page, transition) {
+        derivedStateOf {
+            (transition.targetState || transition.currentState || transition.isRunning) &&
+                fieldSlotBounds != null && page.buttonBounds != null
+        }
+    }
+    SideEffect { if (wide) page.overlayPresentation = overlayPresentation }
     LaunchedEffect(expanded, session) {
         if (expanded) {
             session.onFocusedChange.value(true)
@@ -162,6 +191,7 @@ internal fun GlassSearchHeader(
     androidx.compose.runtime.DisposableEffect(page) {
         onDispose {
             page.transitionActive = false
+            page.overlayPresentation = null
         }
     }
     SideEffect { page.transitionActive = active }
@@ -177,7 +207,7 @@ internal fun GlassSearchHeader(
     val colors = MiuixTheme.colorScheme
     Box(
         modifier = modifier
-            .then(if (wide) Modifier.fillMaxWidth() else Modifier.fillMaxSize())
+            .then(if (wide) Modifier.fillMaxWidth().graphicsLayer { alpha = if (overlayPresentation.value) 1f else 0f } else Modifier.fillMaxSize())
             .onPreviewKeyEvent {
                 if (it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
                     onDismissRequest()
@@ -199,14 +229,15 @@ internal fun GlassSearchHeader(
                 .align(Alignment.TopEnd)
                 .then(if (wide) Modifier.padding(end = 52.dp).then(Modifier.widthIn(max = wideSearchWidth.coerceAtMost(320.dp))) else Modifier)
                 .fillMaxWidth()
-                .graphicsLayer { alpha = progress.value }
-                .windowInsetsPadding(WindowInsets.statusBarsIgnoringVisibility)
+                .graphicsLayer { alpha = if (wide) 1f else progress.value }
+                .windowInsetsPadding(if (wide) WindowInsets.statusBarsIgnoringVisibility.union(WindowInsets.systemBars) else WindowInsets.statusBarsIgnoringVisibility)
                 .then(if (wide) Modifier else Modifier.imePadding()),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = GlassTopAppBarDefaults.HorizontalPadding, vertical = 4.dp)
+                    .onPlaced { fieldSlotBounds = Rect(it.positionInRoot(), Size(it.size.width.toFloat(), it.size.height.toFloat())) }
                     .graphicsLayer { translationY = if (wide) 0f else -statusBarHeight * (1f - progress.value) },
             ) {
                 BasicTextField(
@@ -221,11 +252,25 @@ internal fun GlassSearchHeader(
                     modifier = Modifier
                         .fillMaxWidth()
                         .layout { measurable, constraints ->
-                            val endSpace = if (wide) 0 else (54.dp.toPx() * progress.value).toInt()
-                            val width = (constraints.maxWidth - endSpace).coerceAtLeast(0)
-                            val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+                            val fraction = progress.value.coerceIn(0f, 1f)
+                            val endSpace = if (wide) 0 else (54.dp.toPx() * fraction).toInt()
+                            val targetWidth = (constraints.maxWidth - endSpace).coerceAtLeast(0)
+                            val button = page.buttonBounds
+                            val startWidth = button?.width ?: GlassTopAppBarDefaults.ButtonSize.toPx()
+                            val width = if (wide) {
+                                (startWidth + (targetWidth - startWidth) * fraction).roundToInt().coerceIn(0, targetWidth)
+                            } else targetWidth
+                            val height = 44.dp.roundToPx()
+                            val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width, minHeight = height, maxHeight = height))
                             layout(constraints.maxWidth, placeable.height) {
-                                placeable.placeRelative(0, 0)
+                                val slot = fieldSlotBounds
+                                if (wide && button != null && slot != null) {
+                                    val x = if (direction == LayoutDirection.Ltr) button.right - slot.left - width else button.left - slot.left
+                                    val y = button.center.y - slot.top - placeable.height / 2f
+                                    placeable.place(x.roundToInt(), y.roundToInt())
+                                } else {
+                                    placeable.placeRelative(if (wide) constraints.maxWidth - width else 0, 0)
+                                }
                             }
                         }
                         .height(44.dp)
@@ -234,31 +279,54 @@ internal fun GlassSearchHeader(
                         .onGloballyPositioned { page.fieldBounds = it.boundsInRoot() },
                     decorationBox = { field ->
                         Box(Modifier.fillMaxSize()) {
-                            if (wide) Box(
-                                Modifier.matchParentSize()
-                                    .graphicsLayer { alpha = page.materialProgress?.value ?: 0f }
-                                    .glassPanel(
-                                        backdrop = searchBackdrop,
-                                        shape = GlassShape(22.dp),
-                                        material = searchMaterial,
-                                        stroke = null,
-                                        shadow = null,
-                                        shading = false,
-                                        fallback = Modifier,
-                                    ),
-                            )
+                            if (wide) {
+                                val anchor = page.buttonAnchor.surface
+                                Box(
+                                    Modifier.matchParentSize().graphicsLayer {
+                                        alpha = transformPanelAlpha(
+                                            visualAlpha = 1f,
+                                            floating = page.buttonAnchor.surfaceFloating || page.buttonAnchor.surfaceAlpha > 0f,
+                                            anchorAlpha = page.buttonAnchor.surfaceAlpha,
+                                            geometryProgress = fraction,
+                                            iconMaterial = iconProgress.value.coerceIn(0f, 1f),
+                                        )
+                                    }.glassShadow(searchShape, searchVisuals.shadow),
+                                ) {
+                                    if (anchor != null && fraction < 1f) GlassPopupBackground(
+                                        backdrop = anchor.backdrop,
+                                        shape = searchShape,
+                                        visuals = searchVisuals.copy(
+                                            style = anchor.style, material = anchor.material, stroke = anchor.stroke,
+                                            containerColor = anchor.fill, alpha = 1f,
+                                        ),
+                                        underlayMaterial = anchor.underlayMaterial,
+                                    )
+                                    GlassPopupBackground(
+                                        backdrop = searchBackdrop ?: anchor?.backdrop,
+                                        shape = searchShape,
+                                        visuals = searchVisuals,
+                                        modifier = Modifier.graphicsLayer { alpha = if (anchor != null) fraction else 1f },
+                                    )
+                                }
+                            }
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(
-                                        colors.surfaceContainerHigh.copy(alpha = if (wide) 0.8f else 1f),
-                                        CircleShape,
-                                    )
-                                    .padding(horizontal = if (wide) 12.dp else 16.dp),
+                                    .graphicsLayer {
+                                        if (wide) {
+                                            val content = contentProgress.value.coerceIn(0f, 1f)
+                                            alpha = content
+                                            val blur = GlassMotion.TRANSFORM_BLUR_PX * (1f - content)
+                                            renderEffect = if (blur > 0.5f) BlurEffect(blur, blur, TileMode.Decal) else null
+                                        }
+                                    }
+                                    .clip(if (wide) searchShape else CircleShape)
+                                    .then(if (wide) Modifier else Modifier.background(colors.surfaceContainerHigh, CircleShape))
+                                    .padding(horizontal = if (wide) (10f + 2f * progress.value.coerceIn(0f, 1f)).dp else 16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Icon(glassSearchIcon, contentDescription = null, modifier = Modifier.size(if (wide) 20.dp else 24.dp), tint = colors.disabledOnSurface)
+                                Icon(glassSearchIcon, contentDescription = null, modifier = Modifier.size(if (wide) 20.dp else 28.dp), tint = colors.disabledOnSurface)
                                 Box(Modifier.weight(1f)) {
                                     if (query.isEmpty()) Text(session.label.value, color = colors.disabledOnSurface, style = MiuixTheme.textStyles.body1)
                                     field()
@@ -268,20 +336,21 @@ internal fun GlassSearchHeader(
                                         session.onQueryChange.value("")
                                         focusRequester.requestFocus()
                                     }, modifier = Modifier.size(24.dp)) {
-                                        Icon(glassCloseIcon, contentDescription = stringResource(R.string.search_clear), modifier = Modifier.size(16.dp), tint = colors.disabledOnSurface)
+                                        Icon(glassCloseIcon, contentDescription = stringResource(R.string.search_clear), modifier = Modifier.size(16.dp * (7f / 6f)), tint = colors.disabledOnSurface)
                                     }
                                 }
                             }
-                            if (wide) Box(
-                                Modifier.matchParentSize()
-                                    .graphicsLayer { alpha = page.materialProgress?.value ?: 0f }
-                                    .glassPanel(
-                                        backdrop = null,
-                                        shape = GlassShape(22.dp),
-                                        stroke = searchStroke,
-                                        shadow = null,
-                                        fallback = Modifier,
-                                    ),
+                            if (wide) Icon(
+                                glassSearchIcon,
+                                contentDescription = null,
+                                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 10.dp)
+                                    .size(24.dp).graphicsLayer {
+                                        val icon = iconProgress.value.coerceIn(0f, 1f)
+                                        alpha = 1f - icon
+                                        val blur = GlassMotion.TRANSFORM_BLUR_PX * icon
+                                        renderEffect = if (blur > 0.5f) BlurEffect(blur, blur, TileMode.Decal) else null
+                                    },
+                                tint = colors.onSurface,
                             )
                         }
                     },

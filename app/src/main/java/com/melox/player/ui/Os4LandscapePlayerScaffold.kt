@@ -39,18 +39,18 @@ import com.melox.player.model.BottomBarStyle
 import com.melox.player.ui.component.FixedPageBackgroundHost
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.GlassSearchHeader
-import com.melox.player.ui.component.os4.GlassSearchPage
-import com.melox.player.ui.component.os4.GlassSearchSession
 import com.melox.player.ui.component.os4.WideGlassSearchHost
 import com.melox.player.ui.component.os4.LocalWideGlassSearchHost
 import com.melox.player.ui.component.os4.dismissWideSearchOnOutsideTap
-import com.melox.player.ui.component.LocalWideTopBackdrop
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import com.melox.player.ui.component.os4.IconButton
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.glass.*
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+
 private val Os4TopNavigationIcon = ImageVector.Builder(
     name = "TopNavigation", defaultWidth = 24.dp, defaultHeight = 24.dp,
     viewportWidth = 24f, viewportHeight = 24f,
@@ -111,12 +111,12 @@ private val Os4SidebarIcon = ImageVector.Builder(
     }
 }.build()
 
-import top.yukonga.miuix.kmp.glass.*
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-
 internal val Os4NavigationReboundMotion = spring<Dp>(stiffness = 200f, dampingRatio = 0.8f)
 internal val Os4NavigationSidebarMotion = tween<Dp>(
+    durationMillis = 300,
+    easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f),
+)
+
 internal val Os4SidebarHeightExpandMotion = spring<Dp>(stiffness = 220f, dampingRatio = 0.83f)
 internal val Os4SidebarHeightCollapseMotion = spring<Dp>(stiffness = 462.25f, dampingRatio = 0.97f)
 internal fun os4SidebarHeightMotion(expanded: Boolean, distance: Dp): SpringSpec<Dp> {
@@ -138,10 +138,6 @@ internal fun os4NavigationItemMotion(index: Int, expanded: Boolean): SpringSpec<
     val frequency = (if (expanded) 26.75f else 21.5f) / (1f + 0.03f * index)
     return spring(stiffness = frequency * frequency, dampingRatio = 0.97f, visibilityThreshold = 0.001f)
 }
-
-    durationMillis = 300,
-    easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f),
-)
 
 internal class Os4LandscapeNavigation(
     val labels: List<String>,
@@ -178,16 +174,6 @@ internal fun Os4LandscapePlayerScaffold(
     val backdrop = rememberBlurBackdrop()
     val searchHost = remember { WideGlassSearchHost() }
     var searchCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    var retainedSearch by remember { mutableStateOf<Pair<GlassSearchPage, GlassSearchSession>?>(null) }
-    val expandedSearchPage = searchHost.expandedPage
-    LaunchedEffect(expandedSearchPage, expandedSearchPage?.session) {
-        expandedSearchPage?.session?.let { retainedSearch = expandedSearchPage to it }
-    }
-    LaunchedEffect(expandedSearchPage, retainedSearch?.first?.transitionActive) {
-        if (expandedSearchPage == null && retainedSearch?.first?.transitionActive == false) {
-            retainedSearch = null
-        }
-    }
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val itemContentPadding = 14.dp
@@ -302,12 +288,6 @@ internal fun Os4LandscapePlayerScaffold(
                             leadingActionWidth = leadingActionWidth,
                             leadingAction = {
                                 GlassIconButton(onClick = { expanded = true }, modifier = Modifier.offset(x = 2.dp), size = collapsedHeight - GlassNavigationBarDefaults.IndicatorPaddingVertical * 2, surfaceAlpha = 0f, shadow = null) {
-                        val lastPrimaryRowBottom = 3.dp +
-                            (61.dp + 46.dp * primaryItems.lastIndex) + 42.dp
-                        val dividerGap = 12.dp
-                        val dividerY = lastPrimaryRowBottom + dividerGap
-                        val shortcutsTop = dividerY + DividerDefaults.Thickness + dividerGap
-                        val shortcutScrollOffset = with(density) { shortcutScrollState.value.toDp() }
                                     Icon(Os4SidebarIcon, stringResource(R.string.navigation_expand), Modifier.size(24.dp))
                                 }
                             },
@@ -322,6 +302,12 @@ internal fun Os4LandscapePlayerScaffold(
                                 fallback = Modifier.clip(GlassShape(radius)).background(MiuixTheme.colorScheme.surfaceContainer),
                             ).clip(GlassShape(radius)).selectableGroup(),
                     ) {
+                        val lastPrimaryRowBottom = 3.dp +
+                            (61.dp + 46.dp * primaryItems.lastIndex) + 42.dp
+                        val dividerGap = 12.dp
+                        val dividerY = lastPrimaryRowBottom + dividerGap
+                        val shortcutsTop = dividerY + DividerDefaults.Thickness + dividerGap
+                        val shortcutScrollOffset = with(density) { shortcutScrollState.value.toDp() }
                         val slot = selectedTab.coerceIn(0, primaryItems.lastIndex).toFloat()
                         val leading = slot.toInt()
                         val fraction = slot - leading
@@ -366,21 +352,8 @@ internal fun Os4LandscapePlayerScaffold(
                             ).width(sidebarWidth - 42.dp).graphicsLayer { alpha = shortcutLabelAlpha },
                         )
                         val sidebarSettled = expanded && itemProgress.all { it == 1f }
-                                val globalIndex = primaryItems.size + index
-                                val rowProgress = itemProgress[globalIndex]
-                                val labelWidth = sourceWidths[globalIndex] - destinationPadding
-                                val textInset = ((sourceWidths[globalIndex] * widthRatio - labelWidth) / 2).coerceAtLeast(0.dp)
-                                val sourceX = sourceStarts[globalIndex] + textInset - itemContentPadding - itemIconSlotWidth
-                                val rowX = sourceX + (itemHorizontalMargin - sourceX) * rowProgress
-                                val targetY = shortcutsTop + 46.dp * index - shortcutScrollOffset
-                                val rowY = 3.dp + (targetY - 3.dp) * rowProgress
                         Column(
                             Modifier.offset(x = itemHorizontalMargin, y = shortcutsTop)
-                                        .graphicsLayer {
-                                            translationX = (rowX - itemHorizontalMargin).toPx()
-                                            translationY = if (sidebarSettled) 0f else
-                                                (rowY - shortcutsTop - 46.dp * index).toPx()
-                                        }
                                 .width(itemWidth)
                                 .then(
                                     if (sidebarSettled) {
@@ -393,10 +366,21 @@ internal fun Os4LandscapePlayerScaffold(
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             shortcutItems.forEachIndexed { index, item ->
-                            val rowProgress = itemProgress[index]
-                            val tabStart = sourceStarts[index]
+                                val globalIndex = primaryItems.size + index
+                                val rowProgress = itemProgress[globalIndex]
+                                val labelWidth = sourceWidths[globalIndex] - destinationPadding
+                                val textInset = ((sourceWidths[globalIndex] * widthRatio - labelWidth) / 2).coerceAtLeast(0.dp)
+                                val sourceX = sourceStarts[globalIndex] + textInset - itemContentPadding - itemIconSlotWidth
+                                val rowX = sourceX + (itemHorizontalMargin - sourceX) * rowProgress
+                                val targetY = shortcutsTop + 46.dp * index - shortcutScrollOffset
+                                val rowY = 3.dp + (targetY - 3.dp) * rowProgress
                                 Row(
                                     Modifier.fillMaxWidth().height(42.dp)
+                                        .graphicsLayer {
+                                            translationX = (rowX - itemHorizontalMargin).toPx()
+                                            translationY = if (sidebarSettled) 0f else
+                                                (rowY - shortcutsTop - 46.dp * index).toPx()
+                                        }
                                         .clip(GlassShape(21.dp))
                                         .selectable(expanded && selectedShortcut == index, role = Role.Tab, onClick = { onShortcutSelected(index) })
                                         .padding(horizontal = itemContentPadding),
@@ -409,6 +393,8 @@ internal fun Os4LandscapePlayerScaffold(
                             }
                         }
                         primaryItems.forEachIndexed { index, item ->
+                            val rowProgress = itemProgress[index]
+                            val tabStart = sourceStarts[index]
                             val collapsedTabWidth = measuredTabWidths[index]
                             val labelWidth = tabWidths[index] - destinationPadding
                             val collapsedTextInset = ((collapsedTabWidth - labelWidth) / 2).coerceAtLeast(0.dp)
@@ -440,15 +426,7 @@ internal fun Os4LandscapePlayerScaffold(
                         }
                     }
                 }
-                retainedSearch?.let { (page, session) ->
-                    CompositionLocalProvider(LocalWideTopBackdrop provides backdrop) {
-                        GlassSearchHeader(
-                            session = session,
-                            page = page,
-                            expanded = expandedSearchPage === page && page.session === session && page.isExpanded,
-                        )
-                    }
-                }
+
             }
         }
     }

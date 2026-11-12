@@ -17,3 +17,6 @@ internal fun responsiveGridColumnCount(
 }
 
 private val GridSpacing = 12.dp
+
+internal fun isCompactLandscapeGrid(windowWidth: Dp, windowHeight: Dp): Boolean =
+    windowWidth > windowHeight && windowHeight > 0.dp && windowHeight < 600.dp

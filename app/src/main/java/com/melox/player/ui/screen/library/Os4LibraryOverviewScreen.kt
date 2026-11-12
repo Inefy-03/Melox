@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.platform.LocalDensity
+import com.melox.player.ui.component.library.isCompactLandscapeGrid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -68,6 +70,7 @@ internal fun Os4LibraryOverviewScreen(
 ) {
     val window = LocalWindowInfo.current.containerSize
     val landscape = window.width > window.height
+    val compactLandscape = with(LocalDensity.current) { isCompactLandscapeGrid(window.width.toDp(), window.height.toDp()) }
     val direction = LocalLayoutDirection.current
     BoxWithConstraints(modifier.fillMaxSize()) {
         val availableWidth = maxWidth - contentPadding.calculateStartPadding(direction) -
@@ -75,7 +78,7 @@ internal fun Os4LibraryOverviewScreen(
         val columns = albumGridColumnCount(
             gridStyle, landscape, false,
             maxWidth - contentPadding.calculateStartPadding(direction) - contentPadding.calculateEndPadding(direction),
-            os4 = true, horizontalPadding = 32.dp,
+            os4 = true, horizontalPadding = 32.dp, compactLandscape = compactLandscape,
         )
         val albumRows = if (gridStyle == AlbumGridStyle.TWO_SMALL) 3 else 2
         LazyColumn(
@@ -165,7 +168,7 @@ private fun LibraryPreviewCards(
     val endPadding = if (landscape) 16.dp else 20.dp
     val contentWidth = (availableWidth - 16.dp - endPadding).coerceAtLeast(0.dp)
     val columnWidth = if (landscape) {
-        ((contentWidth - 12.dp * (columns - 1)) / columns).coerceAtLeast(280.dp)
+        ((contentWidth - 12.dp * (columns - 1)) / columns).coerceAtLeast(360.dp)
     } else {
         contentWidth
     }
@@ -205,7 +208,9 @@ private fun LibraryPreviewRow(
     val direction = LocalLayoutDirection.current
     BasicComponent(
         modifier = modifier,
-        startAction = artwork,
+        startAction = {
+            Box(Modifier.padding(end = 8.dp)) { artwork() }
+        },
         endActions = {
             Row(Modifier.padding(end = 8.dp).align(Alignment.CenterVertically).weight(1f, fill = false)) {
                 Text(songCount.toString(), style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
@@ -229,7 +234,7 @@ internal fun libraryPreviewColumnCount(landscape: Boolean, availableWidth: Dp): 
     if (landscape) responsiveGridColumnCount(
         availableWidth = availableWidth,
         horizontalPadding = 32.dp,
-        minimumCellWidth = 280.dp,
+        minimumCellWidth = 360.dp,
         minimumColumns = 5,
         maximumColumns = 7,
     ) else 3

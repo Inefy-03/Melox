@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import com.melox.player.ui.component.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.platform.LocalDensity
+import com.melox.player.ui.component.library.isCompactLandscapeGrid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -95,6 +97,7 @@ fun AlbumLibraryScreen(
     }
 
     val windowSize = LocalWindowInfo.current.containerSize
+    val compactLandscape = with(LocalDensity.current) { isCompactLandscapeGrid(windowSize.width.toDp(), windowSize.height.toDp()) }
     val os4Landscape = com.melox.player.ui.theme.LocalOs4Style.current && windowSize.width > windowSize.height
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val gridContentPadding = PaddingValues(
@@ -111,6 +114,7 @@ fun AlbumLibraryScreen(
                     navigationRailExpanded = navigationRailExpanded,
                     availableWidth = maxWidth,
                     os4 = os4Landscape,
+                    compactLandscape = compactLandscape,
                 ),
             ),
             modifier = Modifier
@@ -205,6 +209,7 @@ internal fun albumGridColumnCount(
     availableWidth: Dp,
     os4: Boolean = false,
     horizontalPadding: Dp = 40.dp,
+    compactLandscape: Boolean = false,
 ): Int {
     if (!landscape) return gridStyle.columns
 
@@ -213,8 +218,12 @@ internal fun albumGridColumnCount(
         else -> 5
     }
     val minimumCellWidth = when (gridStyle) {
-        AlbumGridStyle.TWO_SMALL -> if (os4) 200.dp else 140.dp
-        AlbumGridStyle.THREE -> if (os4) 160.dp else 120.dp
+        AlbumGridStyle.TWO_SMALL -> when {
+            !os4 -> 140.dp
+            compactLandscape -> 160.dp
+            else -> 200.dp
+        }
+        AlbumGridStyle.THREE -> if (os4 && !compactLandscape) 160.dp else 120.dp
     }
     return responsiveGridColumnCount(
         availableWidth = availableWidth,

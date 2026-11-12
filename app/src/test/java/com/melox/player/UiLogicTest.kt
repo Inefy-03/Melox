@@ -299,8 +299,8 @@ class UiLogicTest {
     }
 
     @Test
-    fun libraryPreviewColumnsUse280DpWidthWithinFiveToSevenColumns() {
-        val cases = mapOf(320 to 5, 1479 to 5, 1480 to 5, 1771 to 5, 1772 to 6, 2063 to 6, 2064 to 7, 2400 to 7)
+    fun libraryPreviewColumnsUse360DpWidthWithinFiveToSevenColumns() {
+        val cases = mapOf(320 to 5, 1879 to 5, 1880 to 5, 2251 to 5, 2252 to 6, 2623 to 6, 2624 to 7, 3000 to 7)
         cases.forEach { (width, columns) ->
             assertEquals(columns, com.melox.player.ui.screen.library.libraryPreviewColumnCount(true, width.dp))
         }
@@ -325,7 +325,7 @@ class UiLogicTest {
         )
         assertEquals(
             List(7) { column -> List(5) { row -> row * 7 + column } },
-            com.melox.player.ui.screen.library.libraryPreviewColumns(40, true, 2100.dp),
+            com.melox.player.ui.screen.library.libraryPreviewColumns(40, true, 2700.dp),
         )
     }
 
@@ -3064,6 +3064,9 @@ class UiLogicTest {
         assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 560.dp))
         assertEquals(5, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 720.dp))
         assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 840.dp))
+        assertTrue(com.melox.player.ui.component.library.isCompactLandscapeGrid(1000.dp, 599.dp))
+        assertFalse(com.melox.player.ui.component.library.isCompactLandscapeGrid(1000.dp, 600.dp))
+        assertFalse(com.melox.player.ui.component.library.isCompactLandscapeGrid(500.dp, 900.dp))
         assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 451.dp, os4 = true))
         assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 452.dp, os4 = true))
         assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 371.dp, os4 = true))
@@ -3077,6 +3080,19 @@ class UiLogicTest {
         assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 716.dp, os4 = true))
         assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, os4 = true))
         assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, os4 = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 451.dp, os4 = true, compactLandscape = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 452.dp, os4 = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 371.dp, os4 = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 372.dp, os4 = true, compactLandscape = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, true, 840.dp, os4 = true, compactLandscape = true))
+        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 840.dp, os4 = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, false, false, 400.dp, os4 = true, compactLandscape = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 543.dp, os4 = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 544.dp, os4 = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 555.dp, os4 = true, compactLandscape = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 556.dp, os4 = true, compactLandscape = true))
+        assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, os4 = true, compactLandscape = true))
+        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, os4 = true, compactLandscape = true))
         assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 400.dp))
         assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 535.dp))
         assertEquals(3, homePlaylistGridColumnCount(landscape = false, availableWidth = 536.dp))

@@ -65,7 +65,10 @@ internal fun SmallTopAppBar(
                 overlapDistance = rememberTopBarOverlapDistance(scrollBehavior),
                 progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
                 defaultWindowInsetsPadding = defaultWindowInsetsPadding,
-                titleAlpha = { (if (inlineTitle) 1f else titleColor.alpha) * searchTitleAlpha() },
+                titleAlpha = {
+                    val navigationAlpha = if (inlineTitleEnabled) 1f else navigation?.titleAlpha?.invoke() ?: 1f
+                    (if (inlineTitle) 1f else titleColor.alpha) * searchTitleAlpha() * navigationAlpha
+                },
                 navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
                 actions = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }

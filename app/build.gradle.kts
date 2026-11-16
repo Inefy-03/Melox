@@ -79,7 +79,7 @@ android {
     defaultConfig {
         applicationId = "com.melox.player"
         minSdk = 28
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 9
         versionName = appVersionName
 

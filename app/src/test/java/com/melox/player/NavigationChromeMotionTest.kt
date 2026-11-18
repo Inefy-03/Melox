@@ -3,8 +3,16 @@ package com.melox.player
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.TargetBasedAnimation
 import androidx.compose.animation.core.VectorConverter
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.melox.player.data.library.AlbumGroup
+import com.melox.player.data.library.ArtistGroup
+import com.melox.player.ui.AppNavDestination
+import com.melox.player.ui.AppRoute
+import com.melox.player.ui.missingLibraryDetailCount
+import com.melox.player.ui.rememberLibraryDetailForExit
 import com.melox.player.ui.Os4NavigationSidebarMotion
 import com.melox.player.ui.Os4NavigationReboundMotion
 import com.melox.player.ui.os4NavigationItemMotion
@@ -144,6 +152,45 @@ class NavigationChromeMotionTest {
         org.junit.Assert.assertSame(parent, stack.last())
         com.melox.player.ui.synchronizeAppNavBackStack(stack, listOf(root.copy()))
         org.junit.Assert.assertSame(root, stack.single())
+    }
+
+    @Test
+    fun deletingTheFinalTrackSkipsOnlyMissingDetailsAtTheTopOfTheStack() {
+        val root = AppNavDestination(AppRoute.ROOT, depth = 0)
+        val library = AppNavDestination(AppRoute.ARTISTS, depth = 1)
+        val artist = AppNavDestination(AppRoute.ARTIST_DETAIL, "artist", depth = 2)
+        val album = AppNavDestination(AppRoute.ALBUM_DETAIL, "album", depth = 3)
+        val destinations = listOf(root, library, artist, album)
+        val albums = listOf(AlbumGroup("album", null, null, null, emptyList()))
+        val artists = listOf(ArtistGroup("artist", null, emptyList(), albumCount = 1))
+
+        assertEquals(0, destinations.missingLibraryDetailCount(albums, artists))
+        assertEquals(1, destinations.missingLibraryDetailCount(emptyList(), artists))
+        assertEquals(2, destinations.missingLibraryDetailCount(emptyList(), emptyList()))
+        assertEquals(1, destinations.dropLast(1).missingLibraryDetailCount(albums, emptyList()))
+        assertEquals(0, destinations.missingLibraryDetailCount(albums, emptyList()))
+    }
+
+    @Test
+    fun aMissingDetailKeepsItsLastContentUntilItsEntryChanges() = kotlinx.coroutines.runBlocking {
+        val contentKey = mutableStateOf("album")
+        val detail = mutableStateOf<String?>("initial")
+        var rendered: String? = null
+        withArtworkComposition(content = {
+            val content = rememberLibraryDetailForExit(contentKey.value, detail.value)
+            SideEffect { rendered = content }
+        }) {
+            frame(0)
+            assertEquals("initial", rendered)
+            detail.value = "updated"
+            frame(16)
+            detail.value = null
+            frame(32)
+            assertEquals("updated", rendered)
+            contentKey.value = "another-album"
+            frame(48)
+            assertEquals(null, rendered)
+        }
     }
 
     @Test

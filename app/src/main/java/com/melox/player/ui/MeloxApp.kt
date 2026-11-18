@@ -375,6 +375,27 @@ private fun AppNavDestination.entryContentKey(): String =
     if (route == AppRoute.INTERNAL_STORAGE) "melox:${route.name}:$depth:$contentKey"
     else "melox:${route.name}:$depth"
 
+internal fun List<AppNavDestination>.missingLibraryDetailCount(
+    albums: List<AlbumGroup>,
+    artists: List<ArtistGroup>,
+): Int = lastIndex - indexOfLast { destination ->
+    when (destination.route) {
+        AppRoute.ALBUM_DETAIL -> albums.any { it.key == destination.contentKey }
+        AppRoute.ARTIST_DETAIL -> artists.any { it.key == destination.contentKey }
+        else -> true
+    }
+}
+
+/** Keep drawing the last available detail until NavDisplay removes its entry. */
+@Composable
+internal fun <T : Any> rememberLibraryDetailForExit(contentKey: String?, detail: T?): T? {
+    var lastDetail by remember(contentKey) { mutableStateOf<T?>(null) }
+    if (detail != null) {
+        SideEffect { lastDetail = detail }
+    }
+    return detail ?: lastDetail
+}
+
 internal fun selectedSidebarShortcut(
     destinations: List<AppNavDestination>,
     sidebarRoutes: List<AppRoute>,
@@ -1875,60 +1896,66 @@ fun MeloxApp(
         Snapshot.withMutableSnapshot {
             synchronizeAppNavBackStack(navBackStack, desiredNavBackStack)
         }
+        fun popRoute() {
+            val previousRoute = currentRoute
+            if (currentRoute == AppRoute.INTERNAL_STORAGE) {
+                val trail = internalStorageDirectoryTrail(internalStoragePath)
+                val parent = trail.getOrNull(trail.lastIndex - 1)
+                if (parent == null) currentRoute = standaloneLibraryParent else internalStoragePath = parent
+            } else if (
+                currentRoute == AppRoute.ALBUM_DETAIL &&
+                albumParentRoute == AppRoute.ARTIST_DETAIL &&
+                albumParentArtistKey != null
+            ) {
+                returnToAlbumParentArtist(null)
+            } else if (
+                currentRoute == AppRoute.ARTIST_DETAIL &&
+                artistParentRoute == AppRoute.ALBUM_DETAIL &&
+                artistParentAlbumKey != null
+            ) {
+                returnToArtistParentAlbum(null)
+            } else if (
+                currentRoute == AppRoute.BLOCKED_FOLDERS ||
+                currentRoute == AppRoute.HIDDEN_SONGS
+            ) {
+                currentRoute = AppRoute.SCAN_SETTINGS
+            } else if (currentRoute == AppRoute.LYRICS_INTERFACE) {
+                currentRoute = AppRoute.LYRICS_SETTINGS
+            } else if (
+                currentRoute == AppRoute.MAIN_BACKGROUND ||
+                currentRoute == AppRoute.INTERFACE_STYLE
+            ) {
+                currentRoute = AppRoute.THEME_SETTINGS
+            } else if (currentRoute == AppRoute.SPONSOR) {
+                currentRoute = AppRoute.ABOUT
+            } else if (
+                currentRoute == AppRoute.PLAYLIST_DETAIL &&
+                playlistParentRoute == AppRoute.PLAYLISTS
+            ) {
+                currentRoute = AppRoute.PLAYLISTS
+            } else {
+                currentRoute = when (currentRoute) {
+                    AppRoute.ALBUM_DETAIL, AppRoute.ARTIST_DETAIL, AppRoute.FOLDER_DETAIL -> standaloneLibraryParent
+                    else -> AppRoute.ROOT
+                }
+            }
+            // Miuix consumes the pop synchronously before releasing predictive gesture ownership.
+            if (currentRoute != previousRoute && navBackStack.size > 1) {
+                navBackStack.removeAt(navBackStack.lastIndex)
+            }
+        }
         val navigateBack = {
             Snapshot.withMutableSnapshot {
-                val previousRoute = currentRoute
-                if (detailSelectionActive) {
-                    detailSelectionExitRequest += 1
-                } else if (showQueue) {
-                    showQueue = false
-                } else if (currentRoute == AppRoute.INTERNAL_STORAGE) {
-                    val trail = internalStorageDirectoryTrail(internalStoragePath)
-                    val parent = trail.getOrNull(trail.lastIndex - 1)
-                    if (parent == null) currentRoute = standaloneLibraryParent else internalStoragePath = parent
-                } else if (
-                    currentRoute == AppRoute.ALBUM_DETAIL &&
-                    albumParentRoute == AppRoute.ARTIST_DETAIL &&
-                    albumParentArtistKey != null
-                ) {
-                    returnToAlbumParentArtist(null)
-                } else if (
-                    currentRoute == AppRoute.ARTIST_DETAIL &&
-                    artistParentRoute == AppRoute.ALBUM_DETAIL &&
-                    artistParentAlbumKey != null
-                ) {
-                    returnToArtistParentAlbum(null)
-                } else if (
-                    currentRoute == AppRoute.BLOCKED_FOLDERS ||
-                    currentRoute == AppRoute.HIDDEN_SONGS
-                ) {
-                    currentRoute = AppRoute.SCAN_SETTINGS
-                } else if (currentRoute == AppRoute.LYRICS_INTERFACE) {
-                    currentRoute = AppRoute.LYRICS_SETTINGS
-                } else if (
-                    currentRoute == AppRoute.MAIN_BACKGROUND ||
-                    currentRoute == AppRoute.INTERFACE_STYLE
-                ) {
-                    currentRoute = AppRoute.THEME_SETTINGS
-                } else if (currentRoute == AppRoute.SPONSOR) {
-                    currentRoute = AppRoute.ABOUT
-                } else if (
-                    currentRoute == AppRoute.PLAYLIST_DETAIL &&
-                    playlistParentRoute == AppRoute.PLAYLISTS
-                ) {
-                    currentRoute = AppRoute.PLAYLISTS
-                } else {
-                    currentRoute = when (currentRoute) {
-                        AppRoute.ALBUM_DETAIL, AppRoute.ARTIST_DETAIL, AppRoute.FOLDER_DETAIL -> standaloneLibraryParent
-                        else -> AppRoute.ROOT
-                    }
-                }
-                // Miuix consumes the pop synchronously before releasing predictive gesture ownership.
-                if (currentRoute != previousRoute && navBackStack.size > 1) {
-                    navBackStack.removeAt(navBackStack.lastIndex)
+                when {
+                    detailSelectionActive -> detailSelectionExitRequest += 1
+                    showQueue -> showQueue = false
+                    else -> popRoute()
                 }
             }
         }
+        val missingLibraryDetails = if (uiState.settingsLoaded && uiState.scanStatus !is ScanStatus.Scanning) {
+            desiredNavBackStack.missingLibraryDetailCount(uiState.albums, uiState.artists)
+        } else 0
         val hapticFeedback = LocalHapticFeedback.current
         val onNavigationTabSelected: (Int) -> Unit = { selectedTab ->
             val shouldHaptic = shouldTriggerTabSwitchHaptic(
@@ -2233,6 +2260,20 @@ fun MeloxApp(
                                         ) NavSwipeDirection.None else null,
                                     ) { route ->
                                         val transitionScope = LocalNavTransitionScope.current
+                                        if (missingLibraryDetails > 0 && route == desiredNavBackStack.last()) {
+                                            LaunchedEffect(route, missingLibraryDetails, transitionScope) {
+                                                // Let an active back gesture commit or cancel before popping.
+                                                snapshotFlow {
+                                                    !transitionScope.isRunning && transitionScope.relativeDepth == 0f
+                                                }.first { it }
+                                                Snapshot.withMutableSnapshot {
+                                                    if (currentRoute == route.route && navBackStack.lastOrNull() == route) {
+                                                        detailSelectionActive = false
+                                                        repeat(missingLibraryDetails) { popRoute() }
+                                                    }
+                                                }
+                                            }
+                                        }
                                         LaunchedEffect(route.route, sidebarEntryRoute, transitionScope) {
                                             if (route.route != sidebarEntryRoute) return@LaunchedEffect
                                             snapshotFlow {
@@ -2546,7 +2587,7 @@ fun MeloxApp(
                                                                 it.key == route.contentKey
                                                             }
                                                         }
-                                                        album?.let {
+                                                        rememberLibraryDetailForExit(route.contentKey, album)?.let {
                                                             AlbumDetailScreen(
                                                                 album = it,
                                                                 artistGroups = uiState.artists,
@@ -2597,7 +2638,7 @@ fun MeloxApp(
                                                                 it.key == route.contentKey
                                                             }
                                                         }
-                                                        artist?.let {
+                                                        rememberLibraryDetailForExit(route.contentKey, artist)?.let {
                                                             ArtistDetailScreen(
                                                                 artist = it,
                                                                 artistGroups = uiState.artists,

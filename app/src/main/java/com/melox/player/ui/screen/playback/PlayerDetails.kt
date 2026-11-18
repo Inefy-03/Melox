@@ -2,11 +2,7 @@ package com.melox.player.ui.screen.playback
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.painterResource
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.More
-import top.yukonga.miuix.kmp.icon.extended.Playlist
-import top.yukonga.miuix.kmp.icon.extended.Translate
+import com.melox.player.ui.icon.*
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
@@ -68,11 +64,7 @@ import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.blur
 import top.yukonga.miuix.kmp.blur.drawBackdrop
 import com.melox.player.ui.component.Icon
-import androidx.compose.ui.res.painterResource
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.More
-import top.yukonga.miuix.kmp.icon.extended.Playlist
-import top.yukonga.miuix.kmp.icon.extended.Translate
+import com.melox.player.ui.icon.*
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.IconButtonDefaults
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
@@ -211,9 +203,9 @@ internal fun PlayerDetails(
                     enabled = !immersiveMode,
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_player_sleep_timer),
+                        imageVector = GlassIcons.TimeLapse,
                         contentDescription = stringResource(R.string.playback_sleep_timer),
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(28.dp),
                         tint = secondaryControlColor,
                     )
                 }
@@ -222,24 +214,24 @@ internal fun PlayerDetails(
                     enabled = !immersiveMode,
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_player_audio_settings),
+                        imageVector = GlassIcons.Audio,
                         contentDescription = stringResource(R.string.playback_audio_settings),
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(28.dp),
                         tint = secondaryControlColor,
                     )
                 }
                 PlayerIconButton(
-                    icon = MiuixIcons.Playlist,
+                    icon = GlassIcons.Playlist,
                     description = stringResource(R.string.open_queue),
-                    size = 24.dp,
+                    size = 28.dp,
                     tint = secondaryControlColor,
                     enabled = !immersiveMode,
                     onClick = onOpenQueue,
                 )
                 PlayerIconButton(
-                    icon = MiuixIcons.More,
+                    icon = GlassIcons.More,
                     description = stringResource(R.string.track_actions),
-                    size = 23.dp,
+                    size = 28.dp,
                     tint = secondaryControlColor,
                     enabled = !immersiveMode,
                     onClick = onOpenTrackActions,
@@ -355,7 +347,7 @@ private fun PlaybackModeButton(
         Icon(
             painter = painterResource(icon),
             contentDescription = stringResource(description),
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(25.dp),
             tint = tint,
         )
     }
@@ -559,9 +551,9 @@ internal fun PlayerLyricActionsRow(
             enabled = enabled,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_player_lyrics_settings),
+                imageVector = GlassIcons.EditSubtitle,
                 contentDescription = stringResource(R.string.player_settings_open),
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(28.dp),
                 tint = secondaryControlColor,
             )
         }
@@ -577,8 +569,9 @@ internal fun PlayerLyricActionsRow(
             },
         ) {
             Icon(
-                imageVector = MiuixIcons.Translate,
+                imageVector = GlassIcons.Translate,
                 contentDescription = stringResource(R.string.lyrics_translation),
+                modifier = Modifier.size(28.dp),
                 tint = if (showLyricsTranslation) secondaryControlColor
                     else emphasisControlColor.copy(alpha = 0.3f),
             )

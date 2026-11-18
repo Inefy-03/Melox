@@ -147,8 +147,8 @@ internal fun MiniPlayer(
         else miniPlayerArtworkMetadataSpacing(isNormal, chrome.usesSmallPlayerBar)
     val controlSize = miniPlayerControlSize()
     val playPauseIconSize = 22.dp
-    val controlIconSize = 24.dp
-    val titleStyle = if (isOs4) {
+    val controlIconSize = 28.dp
+    val titleStyle = if (isGlass) {
         androidx.compose.ui.text.lerp(
             MiuixTheme.textStyles.subtitle,
             MiuixTheme.textStyles.body1,

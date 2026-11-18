@@ -190,6 +190,7 @@ data class AppSettings(
     val dynamicColorEnabled: Boolean = false,
     val dynamicColorSource: DynamicColorSource = DynamicColorSource.PLAYBACK_ARTWORK,
     val customBackgroundId: String? = null,
+    val customBackgroundEnabled: Boolean = true,
     val customBackgroundBlurPercent: Int = DEFAULT_CUSTOM_BACKGROUND_BLUR_PERCENT,
     val customBackgroundDimPercent: Int = 0,
     val customBackgroundCardBlurPercent: Int = DEFAULT_CUSTOM_BACKGROUND_CARD_BLUR_PERCENT,

@@ -8,6 +8,8 @@ import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
 import android.view.PixelCopy
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -39,8 +41,9 @@ import androidx.test.filters.SdkSuppress
 import com.melox.player.model.AppSettings
 import com.melox.player.model.LocalPlaylist
 import com.melox.player.ui.LibrarySearchBar
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.FixedPageBackgroundHost
+import com.melox.player.ui.component.LocalRootPageWallpaperFixed
 import com.melox.player.ui.component.LocalFixedPageBackground
 import com.melox.player.ui.component.trackFixedWallpaperMotion
 import com.melox.player.ui.component.LocalCustomPageBackground
@@ -72,7 +75,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class FixedWallpaperRenderingTest {
     @Test
-    fun nestedPanesCoverRetainedPagesAndKeepWindowWallpaperAcrossResizesAndReloads() {
+    fun pagesUseTheirOwnWallpaperCropAcrossResizesAndReloads() {
         val split = mutableStateOf(false)
         val railWidth = mutableStateOf(48.dp)
         val viewportHeight = mutableStateOf(180.dp)
@@ -121,6 +124,15 @@ class FixedWallpaperRenderingTest {
                                                         }
                                                     }
                                                 }
+                                            } else {
+                                                // Reference the official page-local Image crop at the same pane size.
+                                                Row(Modifier.fillMaxSize()) {
+                                                    Box(Modifier.width(railWidth.value).fillMaxHeight())
+                                                    Box(Modifier.weight(1f).fillMaxHeight().background(MiuixTheme.colorScheme.surface)) {
+                                                        if (loaded.value) Image(bitmap = image, contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -152,7 +164,7 @@ class FixedWallpaperRenderingTest {
                                             val y = (bounds.top + bounds.height * yFraction).toInt()
                                             for (channel in listOf(AndroidColor::red, AndroidColor::green, AndroidColor::blue)) {
                                                 assertEquals(
-                                                    "Pane crop shifted at x=$x y=$y width=$width height=$height image=$hasImage",
+                                                    "Page-local wallpaper differs at x=$x y=$y width=$width height=$height image=$hasImage",
                                                     channel(reference.getPixel(x, y)).toFloat(),
                                                     channel(actual.getPixel(x, y)).toFloat(),
                                                     3f,
@@ -203,7 +215,7 @@ class FixedWallpaperRenderingTest {
                                     val backdrop = rememberBlurBackdrop()
                                     PageScaffold(
                                         topBar = {
-                                            BlurredBar(backdrop, blurEnabled.value) {
+                                            TopBarBackdrop(backdrop = backdrop) {
                                                 SmallTopAppBar(
                                                     title = "",
                                                     color = backdrop.miuixBarColor(),
@@ -469,7 +481,7 @@ class FixedWallpaperRenderingTest {
     }
 
     @Test
-    fun sharpBarsSampleTheFixedWallpaperWithBlurDisabled() {
+    fun sharpBarsRevealPageWallpaperWithBlurDisabled() {
         checkMovingSample(blurEnabled = false, sampleCard = false)
     }
 
@@ -480,14 +492,14 @@ class FixedWallpaperRenderingTest {
     }
 
     @Test
-    fun topBarWallpaperResamplesDuringEdgeMotionWithUnchangedPagerProgress() {
-        checkMovingSample(blurEnabled = false, sampleCard = false, constantPagerProgress = true)
+    fun rootWallpaperStaysFixedDuringEdgeMotionWithUnchangedPagerProgress() {
+        checkMovingSample(blurEnabled = false, sampleCard = false, constantPagerProgress = true, fixedWallpaper = true)
     }
 
     @Test
     @SdkSuppress(minSdkVersion = 33)
-    fun blurredMaterialResamplesDuringEdgeMotionWithUnchangedPagerProgress() {
-        checkMovingSample(blurEnabled = true, sampleCard = true, constantPagerProgress = true)
+    fun rootBlurredMaterialSamplesFixedWallpaperDuringEdgeMotion() {
+        checkMovingSample(blurEnabled = true, sampleCard = true, constantPagerProgress = true, fixedWallpaper = true)
     }
 
     @Test
@@ -559,6 +571,7 @@ class FixedWallpaperRenderingTest {
         blurEnabled: Boolean,
         sampleCard: Boolean,
         constantPagerProgress: Boolean = false,
+        fixedWallpaper: Boolean = false,
     ) {
         val movement = mutableFloatStateOf(0f)
         val cardCenter = mutableStateOf(0f)
@@ -576,30 +589,37 @@ class FixedWallpaperRenderingTest {
                             MeloxTheme(AppSettings()) {
                                 CompositionLocalProvider(
                                     LocalCustomPageBackground provides source.asImageBitmap(),
+                                    LocalRootPageWallpaperFixed provides fixedWallpaper,
                                     LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled, false),
                                 ) {
                                     FixedPageBackgroundHost(
                                         modifier = Modifier.fillMaxSize(),
                                         refreshSignal = { if (constantPagerProgress) 0f else movement.floatValue },
                                     ) {
-                                        // A cached moving ancestor reproduces the pager's layer handoff.
-                                        Box(
-                                            Modifier.fillMaxSize().graphicsLayer {
-                                                translationX = movement.floatValue * size.width
-                                            }.trackFixedWallpaperMotion(),
-                                        ) {
-                                            PageScaffold(
-                                                topBar = { Box(Modifier.fillMaxWidth().height(80.dp)) },
+                                        // An opaque navigation container must not hide the exposed wallpaper.
+                                        Box(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.surface)) {
+                                            FixedPageBackgroundHost(
+                                                Modifier.fillMaxSize(),
+                                                refreshSignal = { movement.floatValue },
                                             ) {
                                                 Box(
-                                                    Modifier.fillMaxSize()
-                                                        .background(Color.Green)
-                                                        .onSizeChanged { cardCenter.value = it.height / 2f },
-                                                    contentAlignment = Alignment.Center,
+                                                    Modifier.fillMaxSize().graphicsLayer {
+                                                        translationX = movement.floatValue * size.width
+                                                    }.trackFixedWallpaperMotion(),
                                                 ) {
-                                                    if (sampleCard) {
-                                                        PageCard(Modifier.fillMaxWidth().height(80.dp)) {
-                                                            Box(Modifier.fillMaxWidth().height(80.dp))
+                                                    PageScaffold(
+                                                        topBar = { Box(Modifier.fillMaxWidth().height(80.dp)) },
+                                                    ) {
+                                                        Box(
+                                                            Modifier.fillMaxSize()
+                                                                .onSizeChanged { cardCenter.value = it.height / 2f },
+                                                            contentAlignment = Alignment.Center,
+                                                        ) {
+                                                            if (sampleCard) {
+                                                                PageCard(Modifier.fillMaxWidth().height(80.dp)) {
+                                                                    Box(Modifier.fillMaxWidth().height(80.dp))
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -623,11 +643,18 @@ class FixedWallpaperRenderingTest {
                         scenario.onActivity { movement.floatValue = offset }
                         val after = copyFrame(scenario, view)
                         try {
+                            if (fixedWallpaper && offset != 0f) {
+                                val exposedX = if (offset > 0f) before.width / 10 else before.width * 9 / 10
+                                assertEquals("Exposed rebound region must show the fixed wallpaper",
+                                    before.getPixel(exposedX, 10), after.getPixel(exposedX, 10))
+                            }
                             for (sampleX in listOf(x, before.width * 65 / 100)) {
                                 val actual = after.getPixel(sampleX, y)
-                                val reference = before.getPixel(sampleX, y)
+                                val sourceX = if (fixedWallpaper) sampleX else
+                                    (sampleX - offset * before.width).toInt().coerceIn(0, before.width - 1)
+                                val reference = before.getPixel(sourceX, y)
                                 for (channel in listOf(AndroidColor::red, AndroidColor::green, AndroidColor::blue)) {
-                                    assertEquals("Sample moved with its parent at offset $offset", channel(reference).toFloat(), channel(actual).toFloat(), 5f)
+                                    assertEquals("Wallpaper sample has incorrect motion at offset $offset (fixed=$fixedWallpaper)", channel(reference).toFloat(), channel(actual).toFloat(), 5f)
                                 }
                             }
                         } finally {

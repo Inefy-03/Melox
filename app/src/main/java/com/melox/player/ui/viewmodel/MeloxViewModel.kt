@@ -839,6 +839,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun deleteCustomBackground(): Boolean = settingsRepository.deleteCustomBackground()
 
+    fun setCustomBackgroundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setCustomBackgroundEnabled(enabled)
+        }
+    }
+
     fun setCustomBackgroundDimPercent(percent: Int) {
         viewModelScope.launch {
             settingsRepository.setCustomBackgroundDimPercent(percent)

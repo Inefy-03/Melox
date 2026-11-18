@@ -392,6 +392,7 @@
     <string name="settings_lyrics_title">歌词</string>
     <string name="settings_custom_background_title">主界面背景</string>
     <string name="settings_background_choose_image">选择图片</string>
+    <string name="settings_background_show_image">显示图片</string>
     <string name="settings_background_dim">壁纸压暗</string>
     <string name="settings_background_card_blur">Card模糊</string>
     <string name="settings_background_card_blur_disabled_summary">模糊未开启</string>

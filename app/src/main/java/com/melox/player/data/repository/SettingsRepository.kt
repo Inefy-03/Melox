@@ -93,6 +93,7 @@ class SettingsRepository(context: Context) {
                     ?: ThemeMode.SYSTEM,
                 dynamicColorEnabled = preferences[Keys.DynamicColorEnabled] ?: false,
                 customBackgroundId = preferences[Keys.CustomBackgroundId]?.takeIf(::isCustomBackgroundId),
+                customBackgroundEnabled = preferences[Keys.CustomBackgroundEnabled] ?: true,
                 customBackgroundBlurPercent = resolveCustomBackgroundBlurPercent(
                     preferences[Keys.CustomBackgroundBlurPercent],
                     preferences[Keys.LegacyCustomBackgroundBlurEnabled],
@@ -261,6 +262,7 @@ class SettingsRepository(context: Context) {
                 dataStore.edit { preferences ->
                     previousId = preferences[Keys.CustomBackgroundId]
                     preferences[Keys.CustomBackgroundId] = id
+                    preferences[Keys.CustomBackgroundEnabled] = true
                 }
             } catch (error: CancellationException) {
                 customBackgroundRepository.deleteImage(id)
@@ -280,6 +282,7 @@ class SettingsRepository(context: Context) {
             try {
                 dataStore.edit { preferences ->
                     previousId = preferences.remove(Keys.CustomBackgroundId)
+                    preferences.remove(Keys.CustomBackgroundEnabled)
                     preferences.remove(Keys.LegacyCustomBackgroundBlurEnabled)
                     preferences.remove(Keys.CustomBackgroundBlurPercent)
                     preferences.remove(Keys.CustomBackgroundDimPercent)
@@ -292,6 +295,10 @@ class SettingsRepository(context: Context) {
             previousId?.let { customBackgroundRepository.deleteImage(it) }
             true
         }
+    }
+
+    suspend fun setCustomBackgroundEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.CustomBackgroundEnabled] = enabled }
     }
 
     suspend fun setCustomBackgroundBlurPercent(percent: Int) {
@@ -680,6 +687,7 @@ class SettingsRepository(context: Context) {
         val ThemeMode = stringPreferencesKey("theme_mode")
         val DynamicColorEnabled = booleanPreferencesKey("dynamic_color_enabled")
         val CustomBackgroundId = stringPreferencesKey("custom_background_id")
+        val CustomBackgroundEnabled = booleanPreferencesKey("custom_background_enabled")
         val LegacyCustomBackgroundBlurEnabled = booleanPreferencesKey("custom_background_blur_enabled")
         val CustomBackgroundBlurPercent = intPreferencesKey("custom_background_blur_percent")
         val CustomBackgroundDimPercent = intPreferencesKey("custom_background_dim_percent")

@@ -159,6 +159,7 @@ internal fun rememberCustomPageBackground(
     prepared: LoadedCustomBackground?,
     blurPercentOverride: Int? = null,
 ): ImageBitmap? {
+    if (!settings.customBackgroundEnabled) return null
     val id = settings.customBackgroundId ?: return null
     val percent = normalizeCustomBackgroundBlurPercent(blurPercentOverride ?: settings.customBackgroundBlurPercent)
     val preparedImage = remember(prepared?.rendered) { prepared?.rendered?.asImageBitmap() }

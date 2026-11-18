@@ -7,13 +7,11 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -67,6 +65,7 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -79,6 +78,7 @@ internal fun MainBackgroundScreen(
     onBack: () -> Unit,
     onImageChange: suspend (Uri) -> Boolean,
     onDeleteImage: suspend () -> Boolean,
+    onBackgroundEnabledChange: (Boolean) -> Unit,
     onBlurPercentChange: (Int) -> Unit,
     onDimPercentChange: (Int) -> Unit,
     onCardBlurPercentChange: (Int) -> Unit,
@@ -154,46 +154,62 @@ internal fun MainBackgroundScreen(
                                 imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                             },
                         )
-                        AnimatedVisibility(visible = settings.customBackgroundId != null) {
-                            Column {
-                                TappableSliderPreference(
-                                    title = stringResource(R.string.settings_custom_background_blur_title),
-                                    value = blurPercent.toFloat(),
-                                    valueText = stringResource(R.string.settings_percent_value, blurPercent),
-                                    valueRange = 0f..100f,
-                                    steps = 99,
-                                    onValueChange = { value ->
-                                        val percent = normalizeCustomBackgroundBlurPercent(value.roundToInt())
-                                        if (percent != blurPercent) {
-                                            blurPercent = percent
-                                            onBlurPercentChange(percent)
-                                        }
-                                    },
-                                )
-                                TappableSliderPreference(
-                                    title = stringResource(R.string.settings_background_dim),
-                                    value = dimPercent.toFloat(),
-                                    valueText = stringResource(R.string.settings_percent_value, dimPercent),
-                                    valueRange = 0f..MAX_CUSTOM_BACKGROUND_DIM_PERCENT.toFloat(),
-                                    steps = MAX_CUSTOM_BACKGROUND_DIM_PERCENT - 1,
-                                    onValueChange = { value ->
-                                        val percent = normalizeCustomBackgroundDimPercent(value.roundToInt())
-                                        if (percent != dimPercent) {
-                                            dimPercent = percent
-                                            onDimPercentChange(percent)
-                                        }
-                                    },
-                                )
-                            }
+                        if (settings.customBackgroundId != null) {
+                            SwitchPreference(
+                                title = stringResource(R.string.settings_background_show_image),
+                                checked = settings.customBackgroundEnabled,
+                                enabled = !importingImage && !deletingImage,
+                                onCheckedChange = onBackgroundEnabledChange,
+                            )
+                            BasicComponent(
+                                title = stringResource(R.string.settings_background_delete),
+                                titleColor = BasicComponentDefaults.titleColor(color = MiuixTheme.colorScheme.primary),
+                                enabled = !importingImage && !deletingImage,
+                                onClick = { showDeleteDialog = true },
+                            )
                         }
                     }
                 }
                 if (settings.customBackgroundId != null) {
+                    item(key = "wallpaper_adjustments") {
+                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 12.dp)) {
+                            TappableSliderPreference(
+                                title = stringResource(R.string.settings_custom_background_blur_title),
+                                enabled = settings.customBackgroundEnabled,
+                                value = blurPercent.toFloat(),
+                                valueText = stringResource(R.string.settings_percent_value, blurPercent),
+                                valueRange = 0f..100f,
+                                steps = 99,
+                                onValueChange = { value ->
+                                    val percent = normalizeCustomBackgroundBlurPercent(value.roundToInt())
+                                    if (percent != blurPercent) {
+                                        blurPercent = percent
+                                        onBlurPercentChange(percent)
+                                    }
+                                },
+                            )
+                            TappableSliderPreference(
+                                title = stringResource(R.string.settings_background_dim),
+                                enabled = settings.customBackgroundEnabled,
+                                value = dimPercent.toFloat(),
+                                valueText = stringResource(R.string.settings_percent_value, dimPercent),
+                                valueRange = 0f..MAX_CUSTOM_BACKGROUND_DIM_PERCENT.toFloat(),
+                                steps = MAX_CUSTOM_BACKGROUND_DIM_PERCENT - 1,
+                                onValueChange = { value ->
+                                    val percent = normalizeCustomBackgroundDimPercent(value.roundToInt())
+                                    if (percent != dimPercent) {
+                                        dimPercent = percent
+                                        onDimPercentChange(percent)
+                                    }
+                                },
+                            )
+                        }
+                    }
                     item(key = "card_blur") {
                         Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 12.dp)) {
                             TappableSliderPreference(
                                 title = stringResource(R.string.settings_background_card_blur),
-                                enabled = cardBlurEnabled,
+                                enabled = settings.customBackgroundEnabled && cardBlurEnabled,
                                 summary = if (cardBlurEnabled) null else stringResource(R.string.settings_background_card_blur_disabled_summary),
                                 value = cardBlurPercent.toFloat(),
                                 valueText = stringResource(R.string.settings_percent_value, cardBlurPercent),
@@ -209,6 +225,7 @@ internal fun MainBackgroundScreen(
                             )
                             TappableSliderPreference(
                                 title = stringResource(R.string.settings_background_card_opacity),
+                                enabled = settings.customBackgroundEnabled,
                                 value = cardOpacityPercent.toFloat(),
                                 valueText = stringResource(R.string.settings_percent_value, cardOpacityPercent),
                                 valueRange = MIN_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT.toFloat()..MAX_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT.toFloat(),
@@ -220,16 +237,6 @@ internal fun MainBackgroundScreen(
                                         onCardOpacityPercentChange(percent)
                                     }
                                 },
-                            )
-                        }
-                    }
-                    item(key = "delete_background") {
-                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(top = 12.dp)) {
-                            BasicComponent(
-                                title = stringResource(R.string.settings_background_delete),
-                                titleColor = BasicComponentDefaults.titleColor(color = MiuixTheme.colorScheme.primary),
-                                enabled = !importingImage && !deletingImage,
-                                onClick = { showDeleteDialog = true },
                             )
                         }
                     }

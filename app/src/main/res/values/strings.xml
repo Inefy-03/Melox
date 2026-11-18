@@ -405,6 +405,7 @@
     <string name="settings_lyrics_title">Lyrics</string>
     <string name="settings_custom_background_title">Main screen background</string>
     <string name="settings_background_choose_image">Choose image</string>
+    <string name="settings_background_show_image">Show image</string>
     <string name="settings_background_dim">Wallpaper dimming</string>
     <string name="settings_background_card_blur">Card blur</string>
     <string name="settings_background_card_blur_disabled_summary">Blur is not enabled</string>

@@ -1,8 +1,5 @@
 package com.melox.player
 
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import com.melox.player.data.repository.customBackgroundBlurRadius
 import com.melox.player.data.repository.customBackgroundBlurInputMaxEdge
@@ -18,11 +15,8 @@ import com.melox.player.model.normalizeCustomBackgroundCardBlurPercent
 import com.melox.player.model.normalizeCustomBackgroundCardOpacityPercent
 import com.melox.player.model.resolveCustomBackgroundBlurPercent
 import com.melox.player.ui.component.pageSurfaceBlurEnabled
-import com.melox.player.ui.component.customBackgroundCropSize
-import com.melox.player.ui.component.customBackgroundCropOffset
 import com.melox.player.ui.component.wallpaperTopBarVisible
 import com.melox.player.ui.component.topBarContainerColor
-import com.melox.player.ui.component.tabSelectedContainerColor
 import com.melox.player.ui.component.pageCardBlurRadius
 import com.melox.player.ui.component.pageCardSurfaceAlpha
 import com.melox.player.ui.component.pageCardBackgroundColor
@@ -126,20 +120,6 @@ class CustomBackgroundTest {
             for (hasBackdrop in listOf(false, true)) {
                 val expected = if (hasImage || hasBackdrop) Color.Transparent else Color.White
                 assertEquals(expected, topBarContainerColor(hasImage, hasBackdrop, Color.White))
-            }
-        }
-    }
-
-    @Test
-    fun wallpaperSelectedTabsKeepTheThemeHueWithProgressiveTabOpacity() {
-        val base = Color(0xFF7457AA)
-        for (hasImage in listOf(false, true)) {
-            for (progressive in listOf(false, true)) {
-                val selected = tabSelectedContainerColor(hasImage, progressive, base)
-                assertEquals(if (hasImage || progressive) 0.8f else 1f, selected.alpha, 0.005f)
-                assertEquals(base.red, selected.red, 0.001f)
-                assertEquals(base.green, selected.green, 0.001f)
-                assertEquals(base.blue, selected.blue, 0.001f)
             }
         }
     }
@@ -300,6 +280,7 @@ class CustomBackgroundTest {
     fun defaultsPreserveTheOriginalBackgroundAndStartAtZeroPercent() {
         val settings = AppSettings()
         assertEquals(null, settings.customBackgroundId)
+        assertTrue(settings.customBackgroundEnabled)
         assertEquals(0, settings.customBackgroundBlurPercent)
     }
 
@@ -353,29 +334,4 @@ class CustomBackgroundTest {
         assertEquals(0, customBackgroundBlurRadius(Int.MIN_VALUE))
     }
 
-    @Test
-    fun pageCropFillsPortraitAndLandscapeWithoutStretching() {
-        assertEquals(IntSize(1200, 600), customBackgroundCropSize(800, 400, 300f, 600f))
-        assertEquals(IntSize(600, 1200), customBackgroundCropSize(400, 800, 600f, 300f))
-        assertEquals(IntSize.Zero, customBackgroundCropSize(0, 800, 600f, 300f))
-    }
-
-    @Test
-    fun topBarUsesThePageCropRatherThanRecenteringIntoTheBarHeight() {
-        for ((image, viewport) in listOf(
-            IntSize(800, 400) to Size(300f, 600f),
-            IntSize(400, 800) to Size(600f, 300f),
-            IntSize(400, 800) to Size(300f, 600f),
-        )) {
-            val destination = customBackgroundCropSize(image.width, image.height, viewport.width, viewport.height)
-            val pageOffset = customBackgroundCropOffset(destination, viewport)
-            // Both expanded and collapsed bars sample the same full-page origin.
-            for (barHeight in listOf(56f, 200f)) {
-                val barOffset = customBackgroundCropOffset(destination, Size(viewport.width, barHeight))
-                assertTrue(pageOffset != barOffset)
-            }
-        }
-        assertEquals(IntOffset(0, -450), customBackgroundCropOffset(IntSize(600, 1200), Size(600f, 300f)))
-        assertEquals(IntOffset(-450, 0), customBackgroundCropOffset(IntSize(1200, 600), Size(300f, 600f)))
-    }
 }

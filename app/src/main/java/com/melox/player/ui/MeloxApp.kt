@@ -2289,6 +2289,7 @@ fun MeloxApp(
                                                             onBack = navigateBack,
                                                             onImageChange = viewModel::setCustomBackground,
                                                             onDeleteImage = viewModel::deleteCustomBackground,
+                                                            onBackgroundEnabledChange = viewModel::setCustomBackgroundEnabled,
                                                             onDimPercentChange = {
                                                                 customBackgroundDimPreview = it
                                                                 viewModel.setCustomBackgroundDimPercent(it)
@@ -2480,7 +2481,7 @@ fun MeloxApp(
 
                                                     AppRoute.ABOUT -> AboutScreen(
                                                         bottomContentPadding = routeBottomPadding,
-                                                        customBackgroundSelected = settings.customBackgroundId != null,
+                                                        customBackgroundSelected = settings.customBackgroundEnabled && settings.customBackgroundId != null,
                                                         onBack = navigateBack,
                                                         onOpenSponsor = {
                                                             currentRoute = AppRoute.SPONSOR

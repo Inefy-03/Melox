@@ -7,6 +7,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.melox.player.data.repository.SettingsRepository
+import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.CoverShape
 import com.melox.player.model.LyricAnimationMode
 import com.melox.player.model.NavigationTransitionStyle
@@ -48,28 +49,33 @@ class MeloxInstrumentedTest {
         try {
             repository.setThemeMode(ThemeMode.DARK)
             repository.setDynamicColorEnabled(true)
+            repository.setCustomBackgroundEnabled(false)
             repository.setShowSongListArtwork(false)
             repository.setCircularArtwork(true)
             repository.setShowSongListFileName(true)
             repository.setBlurEnabled(false)
             repository.setProgressiveTopBarBlurEnabled(true)
             repository.setHideBottomBar(true)
-            repository.setFloatingBottomBar(true)
-            repository.setLiquidGlass(true)
+            repository.setBottomBarStyle(BottomBarStyle.LIQUID_GLASS)
             repository.setPredictiveBackEnabled(true)
             repository.setNavigationTransitionStyle(NavigationTransitionStyle.AOSP)
 
             val restored = repository.loadSettings()
             assertEquals(ThemeMode.DARK, restored.themeMode)
             assertEquals(true, restored.dynamicColorEnabled)
+            assertEquals(false, restored.customBackgroundEnabled)
+            assertEquals(original.customBackgroundId, restored.customBackgroundId)
+            assertEquals(original.customBackgroundBlurPercent, restored.customBackgroundBlurPercent)
+            assertEquals(original.customBackgroundDimPercent, restored.customBackgroundDimPercent)
+            assertEquals(original.customBackgroundCardBlurPercent, restored.customBackgroundCardBlurPercent)
+            assertEquals(original.customBackgroundCardOpacityPercent, restored.customBackgroundCardOpacityPercent)
             assertEquals(false, restored.showSongListArtwork)
             assertEquals(true, restored.circularArtwork)
             assertEquals(true, restored.showSongListFileName)
             assertEquals(false, restored.blurEnabled)
             assertEquals(true, restored.progressiveTopBarBlurEnabled)
             assertEquals(true, restored.hideBottomBar)
-            assertEquals(true, restored.floatingBottomBar)
-            assertEquals(true, restored.liquidGlass)
+            assertEquals(BottomBarStyle.LIQUID_GLASS, restored.bottomBarStyle)
             assertEquals(true, restored.predictiveBackEnabled)
             assertEquals(
                 NavigationTransitionStyle.AOSP,
@@ -84,6 +90,7 @@ class MeloxInstrumentedTest {
         } finally {
             repository.setThemeMode(original.themeMode)
             repository.setDynamicColorEnabled(original.dynamicColorEnabled)
+            repository.setCustomBackgroundEnabled(original.customBackgroundEnabled)
             repository.setShowSongListArtwork(original.showSongListArtwork)
             repository.setCoverShape(original.coverShape)
             repository.setShowSongListFileName(original.showSongListFileName)
@@ -92,8 +99,7 @@ class MeloxInstrumentedTest {
                 original.progressiveTopBarBlurEnabled,
             )
             repository.setHideBottomBar(original.hideBottomBar)
-            repository.setFloatingBottomBar(original.floatingBottomBar)
-            repository.setLiquidGlass(original.liquidGlass)
+            repository.setBottomBarStyle(original.bottomBarStyle)
             repository.setPredictiveBackEnabled(original.predictiveBackEnabled)
             repository.setNavigationTransitionStyle(original.navigationTransitionStyle)
         }

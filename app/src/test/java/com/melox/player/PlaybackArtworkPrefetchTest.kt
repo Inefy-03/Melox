@@ -3,7 +3,7 @@ package com.melox.player
 import androidx.compose.runtime.mutableStateOf
 import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
-import com.melox.player.ui.playbackArtworkPrefetchItems
+import com.melox.player.ui.screen.playback.playbackArtworkPrefetchItems
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch

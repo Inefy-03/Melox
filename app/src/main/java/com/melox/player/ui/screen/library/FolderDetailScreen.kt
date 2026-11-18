@@ -45,8 +45,8 @@ import com.melox.player.data.library.filterMusicTracks
 import com.melox.player.data.library.sortMusicTracks
 import com.melox.player.model.MusicTrack
 import com.melox.player.model.ScanStatus
-import com.melox.player.ui.LibrarySearchBar
-import com.melox.player.ui.LibrarySearchButton
+import com.melox.player.ui.component.library.LibrarySearchBar
+import com.melox.player.ui.component.library.LibrarySearchButton
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding

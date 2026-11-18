@@ -40,7 +40,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SdkSuppress
 import com.melox.player.model.AppSettings
 import com.melox.player.model.LocalPlaylist
-import com.melox.player.ui.LibrarySearchBar
+import com.melox.player.ui.component.library.LibrarySearchBar
 import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.FixedPageBackgroundHost
 import com.melox.player.ui.component.LocalRootPageWallpaperFixed

@@ -13,34 +13,14 @@ import com.melox.player.model.LyricsTranslationLanguage
 import com.melox.player.model.LyricAnimationMode
 import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.AlbumSortConfig
-import com.melox.player.data.library.AlbumSortField
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.ArtistSortConfig
-import com.melox.player.data.library.ArtistSortField
 import com.melox.player.data.library.FolderGroup
 import com.melox.player.data.library.InternalStorageHierarchy
 import com.melox.player.data.library.buildInternalStorageHierarchy
 import com.melox.player.data.library.FolderSortConfig
-import com.melox.player.data.library.FolderSortField
 import com.melox.player.data.library.MusicSortConfig
-import com.melox.player.data.library.MusicSortField
-import com.melox.player.data.library.albumSectionKey
-import com.melox.player.data.library.buildAlbumGroups
-import com.melox.player.data.library.buildArtistGroups
-import com.melox.player.data.library.buildFolderGroups
-import com.melox.player.data.library.createMusicSortKeys
-import com.melox.player.data.library.filterAlbums
-import com.melox.player.data.library.filterArtists
-import com.melox.player.data.library.filterFolders
-import com.melox.player.data.library.filterMusicTracks
-import com.melox.player.data.library.artistSectionKey
-import com.melox.player.data.library.folderSectionKey
-import com.melox.player.data.library.sortAlbums
-import com.melox.player.data.library.sortArtists
-import com.melox.player.data.library.sortFolders
-import com.melox.player.data.library.sortMusicTracks
 import com.melox.player.data.library.hiddenFolderDisplayPaths
-import com.melox.player.data.library.isMusicFolderHidden
 import com.melox.player.data.library.normalizeHiddenFolderPath
 import com.melox.player.data.library.normalizedHiddenFolderPaths
 import com.melox.player.data.library.visibleMusicTracks
@@ -48,7 +28,6 @@ import com.melox.player.data.repository.MusicRepository
 import com.melox.player.data.repository.CustomBackgroundRepository
 import com.melox.player.data.repository.LyricsRepository
 import com.melox.player.data.repository.LyricsRequest
-import com.melox.player.data.repository.LyricsReadException
 import com.melox.player.data.repository.PlaylistRepository
 import com.melox.player.data.repository.SettingsRepository
 import com.melox.player.data.library.MusicLibraryUpdates
@@ -65,7 +44,6 @@ import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DefaultHomePage
 import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.LocalPlaylist
-import com.melox.player.model.LyricsDocument
 import com.melox.player.model.LyricsFormatPriority
 import com.melox.player.model.LyricsSourcePriority
 import com.melox.player.model.MusicTrack
@@ -83,17 +61,13 @@ import com.melox.player.playback.PlaybackController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -122,221 +96,15 @@ data class AppUiState(
     val scanGeneration: Long,
 )
 
-data class MusicPresentationState(
-    val items: List<MusicTrack> = emptyList(),
-    val queueItems: List<MusicTrack> = emptyList(),
-    val sectionIndexMap: Map<String, Int> = emptyMap(),
-    val query: String = "",
-    val sortConfig: MusicSortConfig = MusicSortConfig(),
-)
-
-internal fun musicPresentations(
-    tracks: Flow<List<MusicTrack>>,
-    requests: Flow<MusicPresentationRequest>,
-): Flow<MusicPresentationState> = channelFlow {
-    var previousTracks: List<MusicTrack>? = null
-    var previousSortConfig: MusicSortConfig? = null
-    var queueItems: List<MusicTrack> = emptyList()
-    var sectionIndexMap: Map<String, Int> = emptyMap()
-    combine(tracks, requests) { library, request -> library to request }
-        .collectLatest { (library, request) ->
-            withContext(Dispatchers.Default) {
-                if (previousTracks !== library || previousSortConfig != request.sortConfig) {
-                    val sorted = if (request.sortConfig == MusicSortConfig()) {
-                        library
-                    } else {
-                        sortMusicTracks(library, request.sortConfig)
-                    }
-                    currentCoroutineContext().ensureActive()
-                    val indices = if (request.sortConfig.field in setOf(
-                            MusicSortField.TITLE, MusicSortField.ARTIST, MusicSortField.FILE_NAME,
-                        )
-                    ) {
-                        buildMap {
-                            sorted.forEachIndexed { index, track ->
-                                currentCoroutineContext().ensureActive()
-                                val key = when (request.sortConfig.field) {
-                                    MusicSortField.ARTIST -> createMusicSortKeys(track.artist).section
-                                    MusicSortField.FILE_NAME -> createMusicSortKeys(track.fileName).section
-                                    else -> track.titleSectionKey
-                                }
-                                putIfAbsent(key, index)
-                            }
-                        }
-                    } else emptyMap()
-                    previousTracks = library
-                    previousSortConfig = request.sortConfig
-                    queueItems = sorted
-                    sectionIndexMap = indices
-                }
-                val items = filterMusicTracks(queueItems, request.query)
-                currentCoroutineContext().ensureActive()
-                send(MusicPresentationState(
-                    items = items,
-                    queueItems = queueItems,
-                    sectionIndexMap = if (request.query.isBlank()) sectionIndexMap else emptyMap(),
-                    query = request.query,
-                    sortConfig = request.sortConfig,
-                ))
-            }
-        }
-}
-
-internal fun LyricsRequest.hasSameLyricsContentTarget(other: LyricsRequest): Boolean =
-    mediaId == other.mediaId && contentUri == other.contentUri
-
-internal fun shouldShowLyricsLoading(
-    previousRequest: LyricsRequest?,
-    request: LyricsRequest,
-): Boolean = previousRequest?.hasSameLyricsContentTarget(request) != true
-
-internal fun shouldPublishLyricsResolution(
-    previousRequest: LyricsRequest?,
-    request: LyricsRequest,
-    previousDocument: LyricsDocument?,
-    document: LyricsDocument?,
-): Boolean = shouldShowLyricsLoading(previousRequest, request) || previousDocument != document
-
-internal fun Flow<LyricsRequest?>.resolveLyricsStates(
-    loadDocument: suspend (LyricsRequest) -> LyricsDocument?,
-): Flow<LyricsUiState> = channelFlow {
-    var previousRequest: LyricsRequest? = null
-    var previousDocument: LyricsDocument? = null
-    collectLatest { request ->
-        if (request == null) {
-            send(LyricsUiState.Unavailable)
-            previousRequest = null
-            previousDocument = null
-            return@collectLatest
-        }
-
-        val showLoading = shouldShowLyricsLoading(previousRequest, request)
-        if (showLoading) send(LyricsUiState.Loading)
-
-        val document = try {
-            loadDocument(request)
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (exception: Exception) {
-            val previousSourceConfirmedAbsent = exception is LyricsReadException &&
-                previousDocument?.source?.let { it !in exception.failedSources } == true
-            if (showLoading || previousSourceConfirmedAbsent) {
-                send(LyricsUiState.Unavailable)
-                previousDocument = null
-            }
-            previousRequest = request
-            return@collectLatest
-        }
-        currentCoroutineContext().ensureActive()
-        if (
-            shouldPublishLyricsResolution(
-                previousRequest = previousRequest,
-                request = request,
-                previousDocument = previousDocument,
-                document = document,
-            )
-        ) {
-            send(document?.let { LyricsUiState.Available(it, request.mediaId) }
-                ?: LyricsUiState.Unavailable)
-        }
-        previousRequest = request
-        previousDocument = document
-    }
-}
-
-data class AlbumPresentationState(
-    val items: List<AlbumGroup> = emptyList(),
-    val sectionIndexMap: Map<String, Int> = emptyMap(),
-    val query: String = "",
-    val sortConfig: AlbumSortConfig = AlbumSortConfig(),
-)
-
-data class ArtistPresentationState(
-    val items: List<ArtistGroup> = emptyList(),
-    val sectionIndexMap: Map<String, Int> = emptyMap(),
-    val query: String = "",
-    val sortConfig: ArtistSortConfig = ArtistSortConfig(),
-)
-
-data class FolderPresentationState(
-    val items: List<FolderGroup> = emptyList(),
-    val sectionIndexMap: Map<String, Int> = emptyMap(),
-    val query: String = "",
-    val sortConfig: FolderSortConfig = FolderSortConfig(),
-)
-
 data class PlaylistUiState(
     val playlists: List<LocalPlaylist> = emptyList(),
     val readableContentUris: Set<String> = emptySet(),
     val loaded: Boolean = false,
 )
 
-internal data class LibraryProjection(
-    val tracks: List<MusicTrack> = emptyList(),
-    val albums: List<AlbumGroup> = emptyList(),
-    val artists: List<ArtistGroup> = emptyList(),
-    val folders: List<FolderGroup> = emptyList(),
-)
-
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-internal fun visibleLibraryProjections(
-    tracks: Flow<List<MusicTrack>>,
-    hiddenPaths: Flow<List<String>>,
-    hiddenTrackUris: Flow<Set<String>> = kotlinx.coroutines.flow.flowOf(emptySet()),
-): Flow<LibraryProjection> = combine(tracks, hiddenPaths, hiddenTrackUris) { allTracks, paths, uris ->
-    Triple(allTracks, paths, uris)
-}.mapLatest { (allTracks, paths, uris) ->
-    withContext(Dispatchers.Default) {
-        val visibleTracks = visibleMusicTracks(allTracks, paths, uris)
-        currentCoroutineContext().ensureActive()
-        val albums = buildAlbumGroups(visibleTracks)
-        currentCoroutineContext().ensureActive()
-        val artists = buildArtistGroups(visibleTracks)
-        currentCoroutineContext().ensureActive()
-        val folders = buildFolderGroups(visibleTracks)
-        currentCoroutineContext().ensureActive()
-        LibraryProjection(visibleTracks, albums, artists, folders)
-    }
-}
-
-internal fun FolderPresentationState.withHiddenFolders(paths: List<String>): FolderPresentationState {
-    if (paths.isEmpty()) return this
-    val prefixes = normalizedHiddenFolderPaths(paths)
-    val visibleFolders = items.filterNot { isMusicFolderHidden(it.path, prefixes) }
-    if (visibleFolders.size == items.size) return this
-    val indices = if (query.isBlank() && sortConfig.field == FolderSortField.NAME) {
-        buildMap {
-            visibleFolders.forEachIndexed { index, folder ->
-                putIfAbsent(folderSectionKey(folder), index)
-            }
-        }
-    } else emptyMap()
-    return copy(items = visibleFolders, sectionIndexMap = indices)
-}
-
 private data class LoadedSettings(
     val value: AppSettings = AppSettings(),
     val loaded: Boolean = false,
-)
-
-internal data class MusicPresentationRequest(
-    val query: String = "",
-    val sortConfig: MusicSortConfig = MusicSortConfig(),
-)
-
-private data class AlbumPresentationRequest(
-    val query: String = "",
-    val sortConfig: AlbumSortConfig = AlbumSortConfig(),
-)
-
-private data class ArtistPresentationRequest(
-    val query: String = "",
-    val sortConfig: ArtistSortConfig = ArtistSortConfig(),
-)
-
-private data class FolderPresentationRequest(
-    val query: String = "",
-    val sortConfig: FolderSortConfig = FolderSortConfig(),
 )
 
 /** Coordinates appearance persistence, runtime-permission state, and local music scans. */
@@ -566,98 +334,24 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     )
         .stateIn(viewModelScope, SharingStarted.Eagerly, MusicPresentationState())
 
-    val albumPresentation: StateFlow<AlbumPresentationState> = combine(
-        library,
-        albumPresentationRequest,
-    ) { projection, request ->
-        val items = sortAlbums(
-            filterAlbums(projection.albums, request.query),
-            request.sortConfig,
-        )
-        val columns = request.sortConfig.gridStyle.columns
-        val sectionIndexMap = if (
-            request.query.isBlank() &&
-            (
-                request.sortConfig.field == AlbumSortField.ALBUM ||
-                    request.sortConfig.field == AlbumSortField.ALBUM_ARTIST
-            )
-        ) {
-            buildMap {
-                items.forEachIndexed { index, album ->
-                    val key = albumSectionKey(album, request.sortConfig.field)
-                    putIfAbsent(key, index - index % columns)
-                }
-            }
-        } else {
-            emptyMap()
-        }
-        AlbumPresentationState(
-            items = items,
-            sectionIndexMap = sectionIndexMap,
-            query = request.query,
-            sortConfig = request.sortConfig,
-        )
-    }
+    val albumPresentation: StateFlow<AlbumPresentationState> = albumPresentations(
+        library = library,
+        requests = albumPresentationRequest,
+    )
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, AlbumPresentationState())
 
-    val artistPresentation: StateFlow<ArtistPresentationState> = combine(
-        library,
-        artistPresentationRequest,
-    ) { projection, request ->
-        val items = sortArtists(
-            filterArtists(projection.artists, request.query),
-            request.sortConfig,
-        )
-        val sectionIndexMap = if (
-            request.query.isBlank() &&
-            request.sortConfig.field == ArtistSortField.NAME
-        ) {
-            buildMap {
-                items.forEachIndexed { index, artist ->
-                    putIfAbsent(artistSectionKey(artist), index)
-                }
-            }
-        } else {
-            emptyMap()
-        }
-        ArtistPresentationState(
-            items = items,
-            sectionIndexMap = sectionIndexMap,
-            query = request.query,
-            sortConfig = request.sortConfig,
-        )
-    }
+    val artistPresentation: StateFlow<ArtistPresentationState> = artistPresentations(
+        library = library,
+        requests = artistPresentationRequest,
+    )
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, ArtistPresentationState())
 
-    val folderPresentation: StateFlow<FolderPresentationState> = combine(
-        library,
-        folderPresentationRequest,
-    ) { projection, request ->
-        val items = sortFolders(
-            filterFolders(projection.folders, request.query),
-            request.sortConfig,
-        )
-        val sectionIndexMap = if (
-            request.query.isBlank() &&
-            request.sortConfig.field == FolderSortField.NAME
-        ) {
-            buildMap {
-                items.forEachIndexed { index, folder ->
-                    putIfAbsent(folderSectionKey(folder), index)
-                }
-            }
-        } else {
-            emptyMap()
-        }
-        FolderPresentationState(
-            items = items,
-            sectionIndexMap = sectionIndexMap,
-            query = request.query,
-            sortConfig = request.sortConfig,
-        )
-    }
+    val folderPresentation: StateFlow<FolderPresentationState> = folderPresentations(
+        library = library,
+        requests = folderPresentationRequest,
+    )
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, FolderPresentationState())
 

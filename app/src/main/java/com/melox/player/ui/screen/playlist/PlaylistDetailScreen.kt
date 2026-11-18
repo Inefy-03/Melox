@@ -57,8 +57,8 @@ import com.melox.player.data.playlist.sortPlaylistTracks
 import com.melox.player.model.LocalPlaylist
 import com.melox.player.model.MusicTrack
 import com.melox.player.model.ResolvedPlaylistTrack
-import com.melox.player.ui.LibrarySearchBar
-import com.melox.player.ui.LibrarySearchButton
+import com.melox.player.ui.component.library.LibrarySearchBar
+import com.melox.player.ui.component.library.LibrarySearchButton
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding

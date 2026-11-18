@@ -15,7 +15,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.melox.player.model.AppSettings
 import com.melox.player.model.NavigationTransitionStyle
-import com.melox.player.ui.LibrarySearchBar
+import com.melox.player.ui.component.library.LibrarySearchBar
 import com.melox.player.ui.component.LocalTopBarBlurSettings
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.TopBarBlurSettings

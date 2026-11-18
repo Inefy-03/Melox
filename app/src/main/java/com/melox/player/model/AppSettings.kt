@@ -2,6 +2,7 @@ package com.melox.player.model
 
 import com.melox.player.data.playlist.PlaylistSortConfig
 import com.melox.player.data.library.MusicSortConfig
+import com.melox.player.data.library.AlbumGridStyle
 
 /** Selects which auxiliary translation language is shown beside lyrics. */
 enum class LyricsTranslationLanguage {
@@ -253,7 +254,7 @@ data class AppSettings(
     val musicSortDescending: Boolean = false,
     val albumSortFieldOrdinal: Int = 0,
     val albumSortDescending: Boolean = false,
-    val albumGridStyleOrdinal: Int = 0,
+    val albumGridStyleOrdinal: Int = AlbumGridStyle.THREE.ordinal,
     val artistSortFieldOrdinal: Int = 0,
     val artistSortDescending: Boolean = false,
     val folderSortFieldOrdinal: Int = 0,

@@ -126,6 +126,7 @@
     <string name="album_sort_action">Sort albums</string>
     <string name="album_grid_two_small">Small cover</string>
     <string name="album_grid_three">Large cover</string>
+    <string name="album_view">View</string>
     <string name="album_sort_album">Album name</string>
     <string name="album_sort_album_artist">Album artist</string>
     <string name="album_sort_song_count">Song count</string>

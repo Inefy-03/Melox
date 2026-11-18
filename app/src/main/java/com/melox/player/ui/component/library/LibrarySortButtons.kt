@@ -36,11 +36,12 @@ fun AlbumSortButton(
         AlbumSortField.SONG_COUNT to stringResource(R.string.album_sort_song_count),
         AlbumSortField.YEAR to stringResource(R.string.album_sort_year),
     )
-    if (LocalOs4Style.current) {
-        OverlayIconDropdownMenu(
-            modifier = modifier,
-            entries = listOf(
-                DropdownEntry(gridStyles.map { (gridStyle, label) ->
+    OverlayIconDropdownMenu(
+        modifier = modifier,
+        entries = listOf(
+            DropdownEntry(listOf(DropdownItem(
+                text = stringResource(R.string.album_view),
+                children = gridStyles.map { (gridStyle, label) ->
                     DropdownItem(text = label, selected = config.gridStyle == gridStyle,
                         onClick = { onConfigChange(config.copy(gridStyle = gridStyle)) })
                 },

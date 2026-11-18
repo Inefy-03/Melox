@@ -45,7 +45,7 @@ enum class AlbumGridStyle(val columns: Int) {
 data class AlbumSortConfig(
     val field: AlbumSortField = AlbumSortField.ALBUM,
     val descending: Boolean = false,
-    val gridStyle: AlbumGridStyle = AlbumGridStyle.TWO_SMALL,
+    val gridStyle: AlbumGridStyle = AlbumGridStyle.THREE,
 )
 
 enum class ArtistSortField {

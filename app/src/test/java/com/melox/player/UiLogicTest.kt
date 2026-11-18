@@ -3073,7 +3073,10 @@ class UiLogicTest {
 
     @Test
     fun albumGridStylesKeepLegacySelectionsAndExpectedColumnCounts() {
-        assertEquals(AlbumGridStyle.TWO_SMALL, AlbumSortConfig().gridStyle)
+        assertEquals(AlbumGridStyle.THREE, AlbumSortConfig().gridStyle)
+        assertEquals(AlbumGridStyle.THREE.ordinal, AppSettings().albumGridStyleOrdinal)
+        assertEquals(AlbumGridStyle.THREE.ordinal, resolveAlbumGridStyleOrdinal(null, null))
+        assertEquals(AlbumGridStyle.THREE.ordinal, resolveAlbumGridStyleOrdinal(-1, null))
         assertEquals(
             listOf(2, 3),
             AlbumGridStyle.entries.map(AlbumGridStyle::columns),
@@ -3119,32 +3122,44 @@ class UiLogicTest {
         assertTrue(com.melox.player.ui.component.library.isCompactLandscapeGrid(1000.dp, 599.dp))
         assertFalse(com.melox.player.ui.component.library.isCompactLandscapeGrid(1000.dp, 600.dp))
         assertFalse(com.melox.player.ui.component.library.isCompactLandscapeGrid(500.dp, 900.dp))
-        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 451.dp, os4 = true))
-        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 452.dp, os4 = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 371.dp, os4 = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 372.dp, os4 = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, true, 840.dp, os4 = true))
-        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 840.dp, os4 = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, false, false, 400.dp, os4 = true))
-        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 663.dp, os4 = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 664.dp, os4 = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 715.dp, os4 = true))
-        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 716.dp, os4 = true))
-        assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, os4 = true))
-        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, os4 = true))
-        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 451.dp, os4 = true, compactLandscape = true))
-        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 452.dp, os4 = true, compactLandscape = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 371.dp, os4 = true, compactLandscape = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 372.dp, os4 = true, compactLandscape = true))
-        assertEquals(4, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, true, 840.dp, os4 = true, compactLandscape = true))
-        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 840.dp, os4 = true, compactLandscape = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, false, false, 400.dp, os4 = true, compactLandscape = true))
-        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 543.dp, os4 = true, compactLandscape = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 544.dp, os4 = true, compactLandscape = true))
-        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 555.dp, os4 = true, compactLandscape = true))
-        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 556.dp, os4 = true, compactLandscape = true))
-        assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, os4 = true, compactLandscape = true))
-        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, os4 = true, compactLandscape = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 451.dp, spaciousCells = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 452.dp, spaciousCells = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 371.dp, spaciousCells = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 372.dp, spaciousCells = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, true, 840.dp, spaciousCells = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 840.dp, spaciousCells = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, false, false, 400.dp, spaciousCells = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 663.dp, spaciousCells = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 664.dp, spaciousCells = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 715.dp, spaciousCells = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 716.dp, spaciousCells = true))
+        assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, spaciousCells = true))
+        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, spaciousCells = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 451.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 452.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 371.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 372.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, true, 840.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, true, 840.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, false, false, 400.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(2, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 543.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 544.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(3, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 555.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(4, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 556.dp, spaciousCells = true, compactLandscape = true))
+        for ((style, width, expected) in listOf(
+            Triple(AlbumGridStyle.TWO_SMALL, 535.dp, 2),
+            Triple(AlbumGridStyle.TWO_SMALL, 536.dp, 3),
+            Triple(AlbumGridStyle.THREE, 547.dp, 3),
+            Triple(AlbumGridStyle.THREE, 548.dp, 4),
+            Triple(AlbumGridStyle.THREE, 840.dp - 262.dp, 4),
+        )) {
+            assertEquals(expected, albumGridColumnCount(
+                style, true, false, width, spaciousCells = true,
+                horizontalPadding = 32.dp, compactLandscape = true,
+            ))
+        }
+        assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, spaciousCells = true, compactLandscape = true))
+        assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, spaciousCells = true, compactLandscape = true))
         assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 400.dp))
         assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 535.dp))
         assertEquals(3, homePlaylistGridColumnCount(landscape = false, availableWidth = 536.dp))

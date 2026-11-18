@@ -560,7 +560,7 @@ fun MeloxApp(
     }
     var albumSortDescending by rememberSaveable { mutableStateOf(false) }
     var albumGridStyleOrdinal by rememberSaveable {
-        mutableIntStateOf(AlbumGridStyle.TWO_SMALL.ordinal)
+        mutableIntStateOf(AlbumGridStyle.THREE.ordinal)
     }
     var artistSortFieldOrdinal by rememberSaveable {
         mutableIntStateOf(ArtistSortField.NAME.ordinal)
@@ -645,7 +645,7 @@ fun MeloxApp(
         },
         descending = albumSortDescending,
         gridStyle = AlbumGridStyle.entries.getOrElse(albumGridStyleOrdinal) {
-            AlbumGridStyle.TWO_SMALL
+            AlbumGridStyle.THREE
         },
     )
     val artistSortConfig = ArtistSortConfig(

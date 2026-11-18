@@ -813,7 +813,8 @@ internal fun resolveAlbumGridStyleOrdinal(
     storedStyleOrdinal == AlbumGridStyle.TWO_SMALL.ordinal -> AlbumGridStyle.TWO_SMALL.ordinal
     storedStyleOrdinal == LEGACY_ALBUM_GRID_THREE_ORDINAL -> AlbumGridStyle.THREE.ordinal
     legacyColumns == AlbumGridStyle.THREE.columns -> AlbumGridStyle.THREE.ordinal
-    else -> AlbumGridStyle.TWO_SMALL.ordinal
+    legacyColumns == AlbumGridStyle.TWO_SMALL.columns -> AlbumGridStyle.TWO_SMALL.ordinal
+    else -> AlbumGridStyle.THREE.ordinal
 }
 
 internal fun migrateLegacyLyricFontScale(storedScale: Float): Float =

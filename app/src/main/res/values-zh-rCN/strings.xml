@@ -124,6 +124,7 @@
     <string name="album_sort_action">专辑排序</string>
     <string name="album_grid_two_small">小封面</string>
     <string name="album_grid_three">大封面</string>
+    <string name="album_view">视图</string>
     <string name="album_sort_album">专辑名</string>
     <string name="album_sort_album_artist">专辑艺术家</string>
     <string name="album_sort_song_count">歌曲数</string>

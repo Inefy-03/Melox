@@ -780,6 +780,14 @@ fun MeloxApp(
         focusManager.clearFocus(force = true)
         softwareKeyboardController?.hide()
     }
+    LaunchedEffect(playerTransition.isMounted) {
+        if (playerTransition.isMounted) {
+            songSearchFocused = false
+            secondarySearchFocused.forEach { it.value = false }
+            focusManager.clearFocus(force = true)
+            softwareKeyboardController?.hide()
+        }
+    }
     var previousRootPage by remember { mutableIntStateOf(playerPagerState.selectedPage) }
     LaunchedEffect(playerPagerState) {
         // A tab tap changes selection once; intermediate pages must not repeat IME work.

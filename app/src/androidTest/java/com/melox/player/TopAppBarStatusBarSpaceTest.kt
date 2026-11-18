@@ -19,9 +19,8 @@ import androidx.core.view.drawToBitmap
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.PageScaffold
-import com.melox.player.ui.component.stableTopAppBarInsets
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -30,9 +29,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import com.melox.player.ui.component.SmallTopAppBar
+import com.melox.player.ui.component.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.lightColorScheme
 
 @RunWith(AndroidJUnit4::class)
 class TopAppBarStatusBarSpaceTest {
@@ -57,13 +57,12 @@ class TopAppBarStatusBarSpaceTest {
                 controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
                 view = ComposeView(activity).apply {
                     setContent {
-                        MiuixTheme {
+                        MiuixTheme(colors = lightColorScheme(surface = barColor)) {
                             PageScaffold(
                                 topBar = {
-                                    BlurredBar(backdrop = null, blurEnabled = false) {
+                                    TopBarBackdrop(backdrop = null) {
                                         val modifier = Modifier
                                             .onGloballyPositioned { barBounds.set(it.boundsInRoot()) }
-                                            .stableTopAppBarInsets(barColor)
                                         if (small) {
                                             SmallTopAppBar(
                                                 title = "Status bar space",

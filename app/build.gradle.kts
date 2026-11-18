@@ -42,7 +42,7 @@ val releaseSigningValues = listOf(
 val releaseSigningConfigured = localPropertiesFile.isFile &&
     releaseKeystoreFile?.isFile == true &&
     releaseSigningValues.all { (_, value) -> !value.isNullOrBlank() }
-val appVersionName = "2.0.0-beta2-" + ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+val appVersionName = "2.0.0-beta3-" + ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
     .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.equals("assemble", ignoreCase = true) ||
@@ -74,13 +74,15 @@ android {
     sourceSets.getByName("main").kotlin.directories.add("../third_party/miuix/glass/src")
 
     namespace = "com.melox.player"
-    compileSdk = 37
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
 
     defaultConfig {
         applicationId = "com.melox.player"
         minSdk = 28
         targetSdk = 37
-        versionCode = 9
+        versionCode = 10
         versionName = appVersionName
 
         ndk {

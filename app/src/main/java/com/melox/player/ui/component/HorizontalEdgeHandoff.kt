@@ -15,6 +15,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -24,6 +28,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Velocity
 import kotlin.math.abs
@@ -167,5 +172,21 @@ internal fun rememberHorizontalEdgeScroll(
                 .nestedScroll(connection, dispatcher),
             flingBehavior = HorizontalEdgeFlingBehavior(scrollState, decay, snap, effect, handoff, physicalDirection, canHandoff),
         )
+    }
+}
+
+// Let horizontal rows scroll through their parent's content insets.
+@Composable
+internal fun Modifier.expandHorizontalScrollViewport(padding: PaddingValues): Modifier {
+    val direction = LocalLayoutDirection.current
+    val start = padding.calculateStartPadding(direction)
+    val end = padding.calculateEndPadding(direction)
+    return layout { measurable, constraints ->
+        val startPx = start.roundToPx()
+        val extraWidth = startPx + end.roundToPx()
+        val placeable = measurable.measure(constraints.offset(horizontal = extraWidth))
+        layout(placeable.width - extraWidth, placeable.height) {
+            placeable.placeRelative(-startPx, 0)
+        }
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 internal val FloatingNavigationRailInset = 76.dp
 
 internal val LocalFloatingNavigationRailInset = staticCompositionLocalOf { 0.dp }
+internal val LocalClippedNavigationRailInset = staticCompositionLocalOf { 0.dp }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -33,7 +34,6 @@ internal fun LandscapeFloatingPlayerScaffold(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
     showNavigation: Boolean,
-    smallPlayerBar: Boolean,
     blurEnabled: Boolean,
     liquidGlassSupported: Boolean,
     isDark: Boolean,
@@ -43,17 +43,17 @@ internal fun LandscapeFloatingPlayerScaffold(
     val backdrop = rememberBlurBackdrop()
     FixedPageBackgroundHost(Modifier.fillMaxSize(), refreshSignal = { 1f }) {
         CompositionLocalProvider(LocalFloatingNavigationRailInset provides if (showNavigation) FloatingNavigationRailInset else 0.dp) {
-        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))) {
+        Box(Modifier.fillMaxSize()) {
             Scaffold(
                 modifier = Modifier.fillMaxSize(), containerColor = Color.Transparent,
                 bottomBar = {
-                    Box(Modifier.fillMaxWidth().padding(start = if (showNavigation) FloatingNavigationRailInset else 0.dp).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)).padding(start = if (showNavigation) FloatingNavigationRailInset else 0.dp).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
                         Box(Modifier.widthIn(max = 720.dp).fillMaxWidth()) {
                             miniPlayer(MiniPlayerChrome(
                                 style = BottomBarStyle.LIQUID_GLASS, backdrop = backdrop,
                                 blurActive = blurEnabled && liquidGlassSupported,
                                 liquidGlassActive = blurEnabled && liquidGlassSupported,
-                                isDark = isDark, smallPlayerBar = smallPlayerBar,
+                                isDark = isDark,
                             ))
                         }
                     }
@@ -62,7 +62,8 @@ internal fun LandscapeFloatingPlayerScaffold(
                 Box(Modifier.fillMaxSize().then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)) { content(padding) }
             }
             AnimatedVisibility(
-                modifier = Modifier.align(Alignment.CenterStart),
+                modifier = Modifier.align(Alignment.CenterStart)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                 visible = showNavigation,
                 enter = fadeIn() + expandHorizontally(clip = false),
                 exit = fadeOut() + shrinkHorizontally(clip = false),

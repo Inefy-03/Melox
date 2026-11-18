@@ -1,5 +1,7 @@
 package com.melox.player.ui.screen.home
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.graphics.Bitmap
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -7,6 +9,7 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.graphics.Shader
+import com.melox.player.ui.icon.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -38,11 +41,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +64,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.melox.player.R
 import com.melox.player.model.LocalPlaylist
 import com.melox.player.model.MusicTrack
@@ -71,7 +71,6 @@ import com.melox.player.model.ScanStatus
 import com.melox.player.ui.component.home.HOME_RECOMMENDATION_ARTWORK_SIZE_PX
 import com.melox.player.ui.component.home.rememberHomeRecommendationReflection
 import com.melox.player.ui.component.home.loadHomeRecommendationReflection
-import com.melox.player.ui.component.library.PlaybackArtwork
 import com.melox.player.ui.component.library.PlaybackArtworkFrame
 import com.melox.player.ui.component.library.extractArtworkColor
 import com.melox.player.ui.component.library.createArtworkCacheKey
@@ -98,16 +97,13 @@ import com.melox.player.ui.component.PageCard
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
-import com.melox.player.ui.component.os4.Icon
+import com.melox.player.ui.component.Icon
 import com.melox.player.ui.icon.ChevronForwardDemibold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.ChevronForward
-import top.yukonga.miuix.kmp.icon.extended.Create
-import top.yukonga.miuix.kmp.icon.extended.RecordingTape
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
+import com.melox.player.ui.component.expandHorizontalScrollViewport
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import kotlin.math.ceil
@@ -148,7 +144,8 @@ fun HomeScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val playlistGridColumns = homePlaylistGridColumnCount(
             landscape = landscape,
-            availableWidth = maxWidth,
+            availableWidth = maxWidth - contentPadding.calculateStartPadding(layoutDirection) -
+                contentPadding.calculateEndPadding(layoutDirection),
         )
         LazyColumn(
             state = listState,
@@ -211,12 +208,14 @@ fun HomeScreen(
                             state = pagerState,
                             pageSize = PageSize.Fixed(artworkSize),
                             contentPadding = PaddingValues(
-                                horizontal = HomeRecommendationHorizontalContentPadding,
+                                start = contentPadding.calculateStartPadding(layoutDirection) + HomeRecommendationHorizontalContentPadding,
+                                end = contentPadding.calculateEndPadding(layoutDirection) + HomeRecommendationHorizontalContentPadding,
                             ),
                             flingBehavior = edgeScroll.flingBehavior,
                             pageSpacing = HomeRecommendationPageSpacing,
                             beyondViewportPageCount = HomeRecommendationPrefetchCount,
                             modifier = Modifier
+                                .expandHorizontalScrollViewport(contentPadding)
                                 .fillMaxWidth()
                                 .padding(bottom = HomeRecommendationSectionBottomSpacing)
                                 .height(artworkSize + HomeRecommendationInfoHeight)
@@ -342,7 +341,7 @@ private fun HomeEmptyPlaylistCard(
         cornerRadius = 20.dp,
     ) {
         HomeEmptyCardContent(
-            imageVector = MiuixIcons.RecordingTape,
+            imageVector = GlassIcons.RecentTasks,
             title = stringResource(R.string.home_playlist_empty_title),
             description = stringResource(R.string.home_playlist_empty_description),
         )
@@ -392,7 +391,7 @@ private fun HomeEmptyRecommendationState(
             cornerRadius = 20.dp,
         ) {
             HomeEmptyCardContent(
-                imageVector = MiuixIcons.Create,
+                imageVector = GlassIcons.Wallpaper,
                 title = if (scanStatus is ScanStatus.Error) {
                     stringResource(R.string.music_scan_failed)
                 } else if (hasScannedMusic) {
@@ -657,8 +656,7 @@ internal fun HomeSectionTitle(
         )
         if (onClick != null) {
             Icon(
-                imageVector = if (com.melox.player.ui.theme.LocalOs4Style.current)
-                    com.melox.player.ui.icon.GlassIcons.ChevronForwardDemibold else MiuixIcons.Demibold.ChevronForward,
+                imageVector = com.melox.player.ui.icon.GlassIcons.ChevronForwardDemibold,
                 contentDescription = stringResource(stringRes),
                 modifier = Modifier.size(16.dp),
                 tint = MiuixTheme.colorScheme.onSurfaceVariantActions,

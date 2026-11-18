@@ -459,11 +459,10 @@
     <string name="lyrics_translation_language_all">All translations</string>
     <string name="playback_audio_settings">Audio settings</string>
     <string name="lyrics_translation_open">Open lyrics translation</string>
-    <string name="settings_theme_style_title">Theme style</string>
     <string name="settings_bottom_bar_style_title">Bottom bar style</string>
     <string name="settings_bottom_bar_ios_like">iOS-like</string>
-    <string name="settings_style_os3">OS3</string>
-    <string name="settings_style_os4">OS4</string>
-    <string name="settings_glass_styles_unsupported">OS4 and iOS-like require Android 13 or later</string>
+    <string name="settings_bottom_bar_original">Original</string>
+    <string name="settings_bottom_bar_glass">Glass</string>
+    <string name="settings_glass_styles_unsupported">iOS-like navigation requires Android 13 or later</string>
     <string name="library_preview_empty_description">Scan music to populate your library</string>
 </resources>

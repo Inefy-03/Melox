@@ -12,19 +12,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.captionBar
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -38,15 +45,21 @@ import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.glass.internal.drawGlassStroke
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import kotlin.math.roundToInt
 
 /**
@@ -55,7 +68,7 @@ import kotlin.math.roundToInt
  * @property minWidth Minimum panel width.
  * @property maxWidth Maximum panel width.
  * @property maxHeight Maximum panel height before content scrolls.
- * @property safeMargin Minimum margin from the window edges.
+ * @property safeMargin Minimum margin from the window's safe area and the popup host edges.
  */
 @Immutable
 data class GlassPopupSizing(
@@ -101,15 +114,16 @@ class GlassPopupPlacement internal constructor(
 )
 
 /**
- * Aligns the popup to the anchor's end edge and clamps it to the page margins.
+ * Aligns the popup to the anchor's end edge and clamps it to the window's safe margins.
  * Opens upward when there is insufficient space below and more space above.
- * All bounds, sizes and margins use the same coordinate space and pixel units.
+ * A top-edge anchor may use the margin space, but never cross the safe-area boundary.
+ * All bounds, sizes and margins use window coordinates and pixel units.
  */
 internal fun placeGlassPopup(
     anchor: Rect,
     size: Size,
     margin: Float,
-    page: Size,
+    window: Rect,
     direction: LayoutDirection,
 ): GlassPopupPlacement {
     val endAlignedLeft = if (direction == LayoutDirection.Ltr) {
@@ -117,14 +131,38 @@ internal fun placeGlassPopup(
     } else {
         anchor.left
     }
+    val minLeft = window.left + margin
     val left = endAlignedLeft
-        .coerceIn(margin, (page.width - size.width - margin).coerceAtLeast(margin))
-    val below = page.height - margin - anchor.top
-    val above = anchor.bottom - margin
+        .coerceIn(minLeft, (window.right - size.width - margin).coerceAtLeast(minLeft))
+    val minTop = minOf(window.top + margin, anchor.top).coerceAtLeast(window.top)
+    val below = window.bottom - margin - anchor.top
+    val above = anchor.bottom - minTop
     val alignTop = size.height <= below || below >= above
     val wanted = if (alignTop) anchor.top else anchor.bottom - size.height
-    val top = wanted.coerceIn(margin, (page.height - size.height - margin).coerceAtLeast(margin))
+    val top = wanted.coerceIn(minTop, (window.bottom - size.height - margin).coerceAtLeast(minTop))
     return GlassPopupPlacement(Rect(left, top, left + size.width, top + size.height), alignTop)
+}
+
+/** Safe area of the window in window coordinates, excluding the display cutout and system bars. */
+@Composable
+internal fun rememberGlassWindowBounds(): IntRect {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val displayCutout = WindowInsets.displayCutout
+    val statusBars = WindowInsets.statusBars
+    val navigationBars = WindowInsets.navigationBars
+    val captionBar = WindowInsets.captionBar
+    val containerSize = LocalWindowInfo.current.containerSize
+    return remember(layoutDirection, density, displayCutout, statusBars, navigationBars, captionBar, containerSize) {
+        with(density) {
+            IntRect(
+                left = displayCutout.getLeft(this, layoutDirection),
+                top = statusBars.getTop(this),
+                right = containerSize.width - displayCutout.getRight(this, layoutDirection),
+                bottom = containerSize.height - navigationBars.getBottom(this) - captionBar.getBottom(this),
+            )
+        }
+    }
 }
 
 /**
@@ -140,8 +178,9 @@ internal fun placeGlassPopup(
  * @param contentPadding Padding around the rows.
  * @param panelLayer Layer properties applied to the whole panel.
  * @param overlay Drawn over the panel and its rows, inside the silhouette.
- * @param frame Current panel bounds and corner radius, given the final panel size and page size.
- * @param contentLayer Row layer properties, given the final panel size and current bounds.
+ * @param frame Current panel bounds and corner radius, given the final panel size and the window
+ *   safe area. Bounds use window coordinates; the surface maps them into its own host.
+ * @param contentLayer Row layer properties, given the final panel size and current window bounds.
  * @param reveal Optional opening clip, such as [popupClipReveal].
  * @param onMeasured Called with the final panel size on each measurement.
  * @param interactive Whether the panel's rows can receive input and accessibility actions.
@@ -158,7 +197,7 @@ internal fun GlassPopupSurface(
     contentPadding: PaddingValues,
     panelLayer: GraphicsLayerScope.() -> Unit,
     overlay: DrawScope.() -> Unit,
-    frame: Density.(end: Size, page: Size) -> GlassPopupFrame,
+    frame: Density.(end: Size, windowBounds: Rect) -> GlassPopupFrame,
     contentLayer: GraphicsLayerScope.(end: Size, rect: Rect) -> Unit,
     modifier: Modifier = Modifier,
     reveal: Modifier = Modifier,
@@ -169,6 +208,11 @@ internal fun GlassPopupSurface(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+    val windowRect = rememberGlassWindowBounds().run {
+        Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+    }
+    // Window-coordinate placement must be shifted into this host's space, like ListPopupLayout.
+    val hostOrigin = remember { mutableStateOf(Offset.Zero) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -196,17 +240,26 @@ internal fun GlassPopupSurface(
         with(density) { popupShadowOutsets(visuals.shadow) }
     }
     val measured = remember { MeasuredPanel() }
+    // Intrinsic traversals depend only on content, constraints and child count, not on the
+    // animated bounds that re-measure the panel each frame.
+    val intrinsics = remember { PopupIntrinsicCache() }
+    val contentToken = remember(content) { Any() }
     val shape = remember(measured) {
         val corner = MeasuredCorner(measured)
         GlassShape(corner, corner, corner, corner)
     }
 
     Layout(
+        // Outside the placement modifier so it reports the host origin, not the panel offset.
         modifier = modifier
+            .onGloballyPositioned { hostOrigin.value = it.positionInWindow() }
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(constraints)
                 layout(constraints.maxWidth, constraints.maxHeight) {
-                    placeable.place(measured.rect.left.roundToInt(), measured.rect.top.roundToInt())
+                    placeable.place(
+                        (measured.rect.left - hostOrigin.value.x).roundToInt(),
+                        (measured.rect.top - hostOrigin.value.y).roundToInt(),
+                    )
                 }
             }
             .graphicsLayer {
@@ -256,9 +309,13 @@ internal fun GlassPopupSurface(
         val widest = sizing.maxWidth.roundToPx().coerceAtMost((constraints.maxWidth - safeInset).coerceAtLeast(0))
         val narrowest = sizing.minWidth.roundToPx().coerceAtMost(widest)
         val tallest = sizing.maxHeight.roundToPx().coerceAtMost((constraints.maxHeight - safeInset).coerceAtLeast(0))
-        val width = measurables[1].maxIntrinsicWidth(tallest).coerceIn(narrowest, widest)
+        val width = intrinsics.width(contentToken, widest, tallest, measurables.size) {
+            measurables[1].maxIntrinsicWidth(tallest)
+        }.coerceIn(narrowest, widest)
         val viewportHeight = if (scrollable) {
-            measurables[1].minIntrinsicHeight(width).coerceAtMost(tallest)
+            intrinsics.height(contentToken, width, tallest, measurables.size) {
+                measurables[1].minIntrinsicHeight(width)
+            }.coerceAtMost(tallest)
         } else {
             tallest
         }
@@ -267,12 +324,23 @@ internal fun GlassPopupSurface(
         )
         measured.end = Size(foreground.width.toFloat(), foreground.height.toFloat())
         onMeasured?.invoke(measured.end)
-        val page = Size(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
-        val current = frame(measured.end, page)
+        // Stay inside the in-page host too; wide layouts clip the pane around it.
+        val origin = hostOrigin.value
+        val hostRight = origin.x + constraints.maxWidth
+        val hostBottom = origin.y + constraints.maxHeight
+        val placementBounds = Rect(
+            left = maxOf(windowRect.left, origin.x),
+            top = maxOf(windowRect.top, origin.y),
+            right = minOf(windowRect.right, hostRight).coerceAtLeast(windowRect.left),
+            bottom = minOf(windowRect.bottom, hostBottom).coerceAtLeast(windowRect.top),
+        )
+        val current = frame(measured.end, placementBounds)
         measured.rect = current.rect
         measured.cornerRadius = current.cornerRadius
         val panelWidth = current.rect.width.roundToInt().coerceAtLeast(0)
         val panelHeight = current.rect.height.roundToInt().coerceAtLeast(0)
+        val localLeft = current.rect.left - origin.x
+        val localTop = current.rect.top - origin.y
         // Material and rim follow the animated silhouette; rows retain their settled size.
         val background = measurables[0].measure(Constraints.fixed(panelWidth, panelHeight))
         layout(panelWidth, panelHeight) {
@@ -281,8 +349,8 @@ internal fun GlassPopupSurface(
                 transformOrigin = TransformOrigin(0f, 0f)
                 contentLayer(measured.end, measured.rect)
                 // Use this frame's bounds, including the scroll viewport, without rounding its motion.
-                translationX = measured.rect.left - measured.rect.left.roundToInt()
-                translationY = measured.rect.top - measured.rect.top.roundToInt()
+                translationX = localLeft - localLeft.roundToInt()
+                translationY = localTop - localTop.roundToInt()
             }
         }
     }
@@ -299,7 +367,7 @@ internal fun BoxScope.GlassPopupBackground(
 ) {
     Box(
         modifier = Modifier.matchParentSize().then(modifier).then(
-            if (backdrop == null) {
+            if (backdrop == null || !isRuntimeShaderSupported()) {
                 Modifier.background(visuals.containerColor).drawWithContent {
                     drawContent()
                     visuals.stroke?.let { drawGlassStroke(shape, layoutDirection, it, visuals.alpha) }
@@ -342,6 +410,39 @@ internal fun Density.popupShadowOutsets(shadow: GlassShadow?): LayerOutsets {
         right = (reach + x).coerceAtLeast(0f).toDp(),
         bottom = (reach + y).coerceAtLeast(0f).toDp(),
     )
+}
+
+/** Panel intrinsic sizing reused across the frames of one popup transition. */
+private class PopupIntrinsicCache {
+    private var token: Any? = null
+    private var widest = -1
+    private var tallest = -1
+    private var children = -1
+    private var intrinsicWidth = 0
+    private var heightWidth = -1
+    private var intrinsicHeight = 0
+
+    fun width(token: Any?, widest: Int, tallest: Int, children: Int, compute: () -> Int): Int {
+        if (token === this.token && widest == this.widest && tallest == this.tallest && children == this.children) {
+            return intrinsicWidth
+        }
+        this.token = token
+        this.widest = widest
+        this.tallest = tallest
+        this.children = children
+        intrinsicWidth = compute()
+        heightWidth = -1
+        return intrinsicWidth
+    }
+
+    fun height(token: Any?, width: Int, tallest: Int, children: Int, compute: () -> Int): Int {
+        if (token === this.token && width == heightWidth && tallest == this.tallest && children == this.children) {
+            return intrinsicHeight
+        }
+        heightWidth = width
+        intrinsicHeight = compute()
+        return intrinsicHeight
+    }
 }
 
 /**

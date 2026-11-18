@@ -6,8 +6,10 @@ package top.yukonga.miuix.kmp.glass.internal
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.LayoutDirection
-import top.yukonga.miuix.kmp.blur.BackdropEffectScope
-import top.yukonga.miuix.kmp.blur.runtimeShaderEffect
+import top.yukonga.miuix.kmp.upstream.blur.BackdropEffectScope
+import top.yukonga.miuix.kmp.upstream.blur.runtimeShaderEffect
+import top.yukonga.miuix.kmp.upstream.material.RuntimeShader
+import top.yukonga.miuix.kmp.glass.GlassColorLayer
 import top.yukonga.miuix.kmp.glass.GlassColorBlendMode
 import top.yukonga.miuix.kmp.glass.GlassDefaults
 import top.yukonga.miuix.kmp.glass.GlassMaterial
@@ -35,11 +37,11 @@ internal fun BackdropEffectScope.glassEffect(
     val height = size.height
     if (width <= 0f || height <= 0f) return
 
-    val scale = downscaleFactor.toFloat()
+    val scale = downscaleFactor
     val paddedWidth = width + padding * 2f
     val paddedHeight = height + padding * 2f
-    val textureWidth = (paddedWidth.toInt() / downscaleFactor).coerceAtLeast(1).toFloat()
-    val textureHeight = (paddedHeight.toInt() / downscaleFactor).coerceAtLeast(1).toFloat()
+    val textureWidth = (paddedWidth / downscaleFactor).coerceAtLeast(1f)
+    val textureHeight = (paddedHeight / downscaleFactor).coerceAtLeast(1f)
 
     val halfMin = min(width, height) * 0.5f
     val isLtr = layoutDirection == LayoutDirection.Ltr
@@ -147,23 +149,31 @@ internal fun BackdropEffectScope.colorBlendEffect(
     alpha: Float,
     key: String = GLASS_COLOR_BLEND_SHADER_KEY,
 ) {
-    val layers = listOfNotNull(material.first, material.second, material.third)
+    val first = material.first
+    val second = material.second
+    val third = material.third
+    val count = 1 + (if (second != null) 1 else 0) + (if (third != null) 1 else 0)
     val surfaceAlpha = alpha.coerceIn(0f, 1f)
     runtimeShaderEffect(key, GLASS_COLOR_BLEND_SHADER, "child") {
-        layers.forEachIndexed { index, layer ->
-            val color = layer.color
-            setFloatUniform("in_blend$index", color.red, color.green, color.blue, color.alpha * surfaceAlpha)
-        }
-        for (index in layers.size until 3) {
-            setFloatUniform("in_blend$index", 0f, 0f, 0f, 0f)
-        }
+        setFloatUniform("in_blend0", first.color.red, first.color.green, first.color.blue, first.color.alpha * surfaceAlpha)
+        setLayerUniform(1, second, surfaceAlpha)
+        setLayerUniform(2, third, surfaceAlpha)
         setFloatUniform(
             "in_blendMode",
-            layers[0].mode.id,
-            layers.getOrNull(1)?.mode?.id ?: 0f,
-            layers.getOrNull(2)?.mode?.id ?: 0f,
-            layers.size.toFloat(),
+            first.mode.id,
+            second?.mode?.id ?: 0f,
+            third?.mode?.id ?: 0f,
+            count.toFloat(),
         )
+    }
+}
+
+/** Writes one optional colour layer, or clears the slot when [layer] is absent. */
+private fun RuntimeShader.setLayerUniform(index: Int, layer: GlassColorLayer?, surfaceAlpha: Float) {
+    if (layer == null) {
+        setFloatUniform("in_blend$index", 0f, 0f, 0f, 0f)
+    } else {
+        setFloatUniform("in_blend$index", layer.color.red, layer.color.green, layer.color.blue, layer.color.alpha * surfaceAlpha)
     }
 }
 

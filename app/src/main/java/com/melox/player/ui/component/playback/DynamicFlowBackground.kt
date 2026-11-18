@@ -54,7 +54,7 @@ import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
-import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 
 private const val DYNAMIC_FLOW_FRAME_INTERVAL_NANOS = 1_000_000_000L / 30
 internal const val DYNAMIC_FLOW_DEFAULT_SPEED_TENTHS = 10

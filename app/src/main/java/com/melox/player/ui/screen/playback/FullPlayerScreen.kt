@@ -1,5 +1,7 @@
 package com.melox.player.ui.screen.playback
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -7,10 +9,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -18,10 +17,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.MarqueeSpacing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -37,36 +34,28 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.BlendMode
@@ -75,25 +64,20 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -103,7 +87,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.geometry.Rect
 import com.melox.player.model.LyricsTranslationLanguage
 import com.melox.player.model.LyricAnimationMode
@@ -113,8 +96,6 @@ import com.melox.player.data.library.displayArtistName
 import com.melox.player.model.MusicTrack
 import com.melox.player.model.LyricsUiState
 import com.melox.player.model.isDuetForMedia
-import com.melox.player.model.LyricsDocument
-import com.melox.player.model.PlaybackMode
 import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
@@ -123,14 +104,9 @@ import com.melox.player.model.withTrackMetadata
 import com.melox.player.ui.usesMiuixSmallTopAppBar
 import com.melox.player.ui.screen.settings.LyricsInterfacePreferences
 import com.melox.player.ui.screen.settings.LyricsTranslationPreferences
-import com.melox.player.ui.isMiuixWideLayout
-import com.melox.player.ui.component.library.PlaybackArtworkFrame
-import com.melox.player.ui.component.library.PLAYBACK_ARTWORK_SHADOW_BLUR_RADIUS
 import com.melox.player.ui.component.library.TrackActionsOverlay
 import com.melox.player.ui.component.bottomSheetCardColor
-import com.melox.player.ui.component.bottomSheetGlassModifier
 import com.melox.player.ui.component.bottomSheetMaterialColor
-import com.melox.player.ui.component.library.formatDuration
 import com.melox.player.ui.component.playback.ArtworkTransitionState
 import com.melox.player.ui.component.playback.BlurredArtworkBackground
 import com.melox.player.ui.component.playback.DynamicFlowBackground
@@ -138,29 +114,16 @@ import com.melox.player.ui.component.playback.DynamicFlowBackgroundState
 import com.melox.player.ui.component.playback.PLAYER_FULL_ARTWORK_CORNER_RADIUS
 import com.melox.player.ui.component.playback.PLAYER_FULL_ARTWORK_REQUEST_SIZE
 import com.melox.player.ui.component.playback.PLAYER_TRACK_ARTWORK_CROSSFADE_DURATION_MILLIS
-import com.melox.player.ui.component.playback.PLAYER_TRACK_ARTWORK_CROSSFADE_EASING
 import com.melox.player.ui.component.playback.rememberPlaybackArtworkResource
-import com.melox.player.ui.component.playback.playerControlIconTransition
 import com.melox.player.ui.component.playback.recordPlayerLayer
-import com.melox.player.ui.component.playback.WeightedCrossfadeFrame
-import com.melox.player.ui.component.playback.weightedCrossfadeFrames
 import com.melox.player.ui.component.playback.rememberPlayerSheetVerticalDragModifier
 import com.melox.player.ui.component.liquid.rememberCombinedBackdrop
-import com.melox.player.ui.component.playback.artworkInsetRect
-import com.melox.player.ui.component.playback.fittedArtworkRect
 import kotlin.math.abs
-import kotlin.math.roundToLong
 import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
-import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
-import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.Text
@@ -168,11 +131,8 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Notes
 import top.yukonga.miuix.kmp.icon.extended.NotesFill
-import top.yukonga.miuix.kmp.icon.extended.More
-import top.yukonga.miuix.kmp.icon.extended.Playlist
-import top.yukonga.miuix.kmp.icon.extended.Tune
-import com.melox.player.ui.component.os4.OverlayBottomSheet
-import com.melox.player.ui.component.os4.OverlayDialog
+import com.melox.player.ui.component.OverlayBottomSheet
+import com.melox.player.ui.component.OverlayDialog
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
@@ -1392,7 +1352,6 @@ private fun PlayerSettingsSheet(
         .calculateBottomPadding()
     OverlayBottomSheet(
         show = show,
-        modifier = bottomSheetGlassModifier(),
         backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.player_settings),
         enableWindowDim = true,
@@ -1420,7 +1379,6 @@ private fun PlayerSettingsSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .overScrollVertical(
-                    nestedScrollToParent = false,
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
@@ -1447,7 +1405,6 @@ private fun LyricsTranslationSheet(
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     OverlayBottomSheet(
         show = show,
-        modifier = bottomSheetGlassModifier(),
         backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.lyrics_translation),
         enableWindowDim = true,
@@ -1456,7 +1413,6 @@ private fun LyricsTranslationSheet(
         Column(
             modifier = Modifier.fillMaxWidth()
                 .overScrollVertical(
-                    nestedScrollToParent = false,
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)

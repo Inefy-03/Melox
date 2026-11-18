@@ -1,15 +1,14 @@
 package com.melox.player.ui
 
+import androidx.compose.runtime.setValue
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -18,17 +17,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.AnimationState
-import androidx.compose.animation.core.animateTo
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -50,22 +42,12 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.isImeVisible
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -73,7 +55,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.withFrameNanos
@@ -83,7 +64,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -99,20 +79,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import top.yukonga.miuix.kmp.glass.popupShadowOutsets
-import androidx.compose.ui.semantics.CollectionInfo
-import androidx.compose.ui.semantics.CollectionItemInfo
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.collectionInfo
-import androidx.compose.ui.semantics.collectionItemInfo
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -125,7 +94,7 @@ import com.melox.player.model.LyricsTranslationLanguage
 import com.melox.player.model.LyricAnimationMode
 import com.melox.player.model.isDuetForMedia
 import com.melox.player.R
-import com.melox.player.ui.component.os4.*
+import com.melox.player.ui.component.*
 import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
 import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.MusicSortConfig
@@ -154,7 +123,7 @@ import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.ScanStatus
 import com.melox.player.model.MusicTrack
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.animation.InteractiveHighlight
 import com.melox.player.ui.component.playback.playerSheetBarAlpha
 import com.melox.player.ui.component.LocalBottomSheetBlurBackdrop
@@ -165,8 +134,7 @@ import com.melox.player.ui.component.LocalPageCardBlurRadius
 import com.melox.player.ui.component.pageCardBlurRadius
 import com.melox.player.ui.component.LocalPageCardSurfaceAlpha
 import com.melox.player.ui.component.pageCardSurfaceAlpha
-import com.melox.player.ui.component.topBarContainerColor
-import com.melox.player.ui.component.tabSelectedContainerColor
+import com.melox.player.ui.component.LocalRootPageWallpaperFixed
 import com.melox.player.ui.component.FixedPageBackgroundHost
 import com.melox.player.ui.component.trackFixedWallpaperMotion
 import com.melox.player.ui.component.refreshFixedWallpaperSample
@@ -174,10 +142,8 @@ import com.melox.player.ui.component.rememberCustomPageBackground
 import com.melox.player.ui.component.customPageBackground
 import com.melox.player.ui.component.customPageContainerColor
 import com.melox.player.ui.component.PageScaffold
-import com.melox.player.ui.component.expandedTopBarBottomContentGap
 import com.melox.player.ui.component.TopBarBlurSettings
 import com.melox.player.ui.component.miuixBarColor
-import com.melox.player.ui.component.stableTopAppBarInsets
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
 import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
@@ -223,7 +189,7 @@ import com.melox.player.ui.component.playback.rememberDynamicFlowBackgroundState
 import com.melox.player.ui.component.playback.rememberPlayerSheetTransitionState
 import com.melox.player.ui.navigation.PredictiveNavDisplay
 import com.melox.player.ui.navigation.ImmediateNavigationTransition
-import com.melox.player.ui.screen.library.Os4LibraryOverviewScreen
+import com.melox.player.ui.screen.library.LibraryOverviewScreen
 import com.melox.player.data.library.sortAlbums
 import com.melox.player.data.library.sortArtists
 import com.melox.player.data.library.sortFolders
@@ -273,42 +239,33 @@ import com.melox.player.ui.screen.settings.HiddenSongsScreen
 import com.melox.player.ui.component.library.LocalSongListFileNameVisible
 import com.melox.player.ui.component.library.LocalSongListDurationVisible
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SearchBar
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import com.melox.player.ui.component.os4.SmallTopAppBar
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.SmallTopAppBar
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.NavigationRailDefaults
-import top.yukonga.miuix.kmp.basic.Text
-import com.melox.player.ui.component.os4.TopAppBar
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import com.melox.player.ui.component.TopAppBar
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.icon.basic.SearchCleanup
 import top.yukonga.miuix.kmp.icon.extended.Search
 import androidx.compose.runtime.snapshots.Snapshot
 import top.yukonga.miuix.kmp.nav.core.NavBackStack
 import top.yukonga.miuix.kmp.nav.core.NavKey
 import top.yukonga.miuix.kmp.nav.core.LocalNavTransitionScope
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Album
 import top.yukonga.miuix.kmp.icon.extended.Contacts
 import top.yukonga.miuix.kmp.icon.extended.RecordingTape
 import top.yukonga.miuix.kmp.icon.extended.Folder
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.MiuixPopupHost
 import top.yukonga.miuix.kmp.utils.overScrollHorizontal
-import kotlin.math.abs
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -574,7 +531,6 @@ fun MeloxApp(
         pageCount = { ROOT_TAB_COUNT },
     )
     var homeRecommendationGestureActive by remember { mutableStateOf(false) }
-    val libraryPagerState = rememberPagerState(pageCount = { LIBRARY_TAB_COUNT })
     val playerPagerState = rememberPlayerPagerState(pagerState)
     // A tab tap owns presentation until its scroll settles; swipes follow the visible page.
     val navigationPresentationPage = if (playerPagerState.isNavigating) playerPagerState.selectedPage else pagerState.currentPage
@@ -596,14 +552,8 @@ fun MeloxApp(
     var songSearchFocused by remember { mutableStateOf(false) }
     var selectedSongUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var songsSelectionMode by remember { mutableStateOf(false) }
-    val librarySearchQueryState = rememberSaveable { mutableStateOf("") }
-    var librarySearchQuery by librarySearchQueryState
     val secondarySearchQuery = List(LIBRARY_TAB_COUNT) { rememberSaveable { mutableStateOf("") } }
-    val librarySearchVisibleState = rememberSaveable { mutableStateOf(false) }
-    var librarySearchVisible by librarySearchVisibleState
     val secondarySearchVisible = List(LIBRARY_TAB_COUNT) { rememberSaveable { mutableStateOf(false) } }
-    val librarySearchFocusedState = remember { mutableStateOf(false) }
-    var librarySearchFocused by librarySearchFocusedState
     val secondarySearchFocused = List(LIBRARY_TAB_COUNT) { remember { mutableStateOf(false) } }
     var albumSortFieldOrdinal by rememberSaveable {
         mutableIntStateOf(AlbumSortField.ALBUM.ordinal)
@@ -760,26 +710,15 @@ fun MeloxApp(
             artistSortDescending = settings.artistSortDescending
             folderSortFieldOrdinal = settings.folderSortFieldOrdinal
             folderSortDescending = settings.folderSortDescending
-            libraryPagerState.scrollToPage(
-                settings.libraryTabIndex.coerceIn(0, LIBRARY_TAB_COUNT - 1),
-            )
             libraryPreferencesHydrated = true
         }
-    }
-    LaunchedEffect(libraryPreferencesHydrated, libraryPagerState) {
-        if (!libraryPreferencesHydrated) return@LaunchedEffect
-        snapshotFlow { libraryPagerState.settledPage }
-            .distinctUntilChanged()
-            .collectLatest(viewModel::setLibraryTabIndex)
     }
     LaunchedEffect(songSearchQuery, musicSortConfig) {
         viewModel.updateMusicPresentation(songSearchQuery, musicSortConfig)
     }
-    val independentLibrarySearch = settings.themeStyle == com.melox.player.model.ThemeStyle.OS4 &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-    val albumSearchQuery = if (independentLibrarySearch) secondarySearchQuery[LIBRARY_ALBUMS_TAB_INDEX].value else librarySearchQuery
-    val artistSearchQuery = if (independentLibrarySearch) secondarySearchQuery[LIBRARY_ARTISTS_TAB_INDEX].value else librarySearchQuery
-    val folderSearchQuery = if (independentLibrarySearch) secondarySearchQuery[LIBRARY_FOLDERS_TAB_INDEX].value else librarySearchQuery
+    val albumSearchQuery = secondarySearchQuery[LIBRARY_ALBUMS_TAB_INDEX].value
+    val artistSearchQuery = secondarySearchQuery[LIBRARY_ARTISTS_TAB_INDEX].value
+    val folderSearchQuery = secondarySearchQuery[LIBRARY_FOLDERS_TAB_INDEX].value
     LaunchedEffect(albumSearchQuery, albumSortConfig) {
         viewModel.updateAlbumPresentation(albumSearchQuery, albumSortConfig)
     }
@@ -837,18 +776,19 @@ fun MeloxApp(
     val focusManager = LocalFocusManager.current
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
     val dismissLibrarySearchFocus = {
-        librarySearchFocused = false
+        secondarySearchFocused.forEach { it.value = false }
         focusManager.clearFocus(force = true)
         softwareKeyboardController?.hide()
     }
-    var previousRootPage by remember { mutableIntStateOf(pagerState.currentPage) }
-    LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.currentPage }
+    var previousRootPage by remember { mutableIntStateOf(playerPagerState.selectedPage) }
+    LaunchedEffect(playerPagerState) {
+        // A tab tap changes selection once; intermediate pages must not repeat IME work.
+        snapshotFlow { playerPagerState.selectedPage }
             .distinctUntilChanged()
             .collectLatest { currentPage ->
                 if (currentPage == previousRootPage) return@collectLatest
                 songSearchFocused = false
-                librarySearchFocused = false
+                secondarySearchFocused.forEach { it.value = false }
                 previousRootPage = currentPage
                 focusManager.clearFocus(force = true)
                 softwareKeyboardController?.hide()
@@ -916,15 +856,12 @@ fun MeloxApp(
         val rootScope = rememberCoroutineScope()
         val homeListState = rememberLazyListState()
         val songsListState = rememberLazyListState()
-        val albumsGridState = rememberLazyGridState()
-        val artistsListState = rememberLazyListState()
-        val foldersListState = rememberLazyListState()
         val secondaryAlbumsGridState = rememberLazyGridState()
         val secondaryArtistsListState = rememberLazyListState()
         val secondaryFoldersListState = rememberLazyListState()
         val secondaryLibraryScrollBehaviors = List(LIBRARY_TAB_COUNT) { index ->
             rememberSearchTopBarScrollBehavior(
-                if (independentLibrarySearch) secondarySearchVisible[index].value else librarySearchVisible,
+                secondarySearchVisible[index].value,
             )
         }
         val themeSettingsListState = rememberLazyListState()
@@ -965,7 +902,7 @@ fun MeloxApp(
         val rootIndexBottomSpacing = if (miniPlayerUsesNormalChrome) 12.dp else 6.dp
         val homeScrollBehavior = MiuixScrollBehavior()
         val songsScrollBehavior = rememberSearchTopBarScrollBehavior(songSearchVisible)
-        val libraryScrollBehavior = rememberSearchTopBarScrollBehavior(librarySearchVisible)
+        val libraryScrollBehavior = rememberSearchTopBarScrollBehavior(false)
         val settingsScrollBehavior = MiuixScrollBehavior()
         val themeSettingsScrollBehavior = MiuixScrollBehavior()
         val interfaceStyleScrollBehavior = MiuixScrollBehavior()
@@ -1100,19 +1037,18 @@ fun MeloxApp(
         val libraryOverviewListState = rememberLazyListState()
         val libraryContent: @Composable (PaddingValues, Boolean, Int?, () -> Unit) -> Unit =
             { outerPadding, navigationRailExpanded, section, onBack ->
-                val overview = section == null && com.melox.player.ui.theme.LocalOs4Style.current
-                val independentSection = section.takeIf { independentLibrarySearch }
-                var librarySearchQuery by (independentSection?.let { secondarySearchQuery[it] } ?: librarySearchQueryState)
-                var librarySearchVisible by (independentSection?.let { secondarySearchVisible[it] } ?: librarySearchVisibleState)
-                var librarySearchFocused by (independentSection?.let { secondarySearchFocused[it] } ?: librarySearchFocusedState)
+                val overview = section == null
+                var librarySearchQuery by secondarySearchQuery[section ?: LIBRARY_ALBUMS_TAB_INDEX]
+                var librarySearchVisible by secondarySearchVisible[section ?: LIBRARY_ALBUMS_TAB_INDEX]
+                var librarySearchFocused by secondarySearchFocused[section ?: LIBRARY_ALBUMS_TAB_INDEX]
                 val pageLibraryScrollBehavior = if (section == null) {
                     libraryScrollBehavior
                 } else {
                     secondaryLibraryScrollBehaviors[section]
                 }
-                val pageFoldersListState = if (section == null) foldersListState else secondaryFoldersListState
-                val pageArtistsListState = if (section == null) artistsListState else secondaryArtistsListState
-                val pageAlbumsGridState = if (section == null) albumsGridState else secondaryAlbumsGridState
+                val pageFoldersListState = secondaryFoldersListState
+                val pageArtistsListState = secondaryArtistsListState
+                val pageAlbumsGridState = secondaryAlbumsGridState
                 LaunchedEffect(pendingAlbumGridReset, albumSortConfig.gridStyle, currentRoute) {
                     val pageRoute = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
                     val pendingGridStyle = pendingAlbumGridReset ?: return@LaunchedEffect
@@ -1131,7 +1067,7 @@ fun MeloxApp(
                         if (section != null) {
                             IconButton(onClick = onBack) {
                                 Icon(
-                                    com.melox.player.ui.component.os4.navigationBackIcon(),
+                                    com.melox.player.ui.component.navigationBackIcon(),
                                     stringResource(R.string.back),
                                 )
                             }
@@ -1144,10 +1080,10 @@ fun MeloxApp(
                     actions = {
                         if (!overview) {
                             LibrarySearchButton(
-                                bottomActionActive = section != null || navigationPresentationPage == LIBRARY_TAB_INDEX,
+                                bottomActionActive = true,
                                 visible = librarySearchVisible,
                                 scrollBehavior = pageLibraryScrollBehavior,
-                                contentDescription = when (section ?: libraryPagerState.currentPage) {
+                                contentDescription = when (section) {
                                     LIBRARY_ARTISTS_TAB_INDEX ->
                                         stringResource(R.string.artist_search_hint)
                                     LIBRARY_FOLDERS_TAB_INDEX ->
@@ -1165,7 +1101,7 @@ fun MeloxApp(
                                     }
                                 },
                             )
-                            when (section ?: libraryPagerState.currentPage) {
+                            when (section) {
                                 LIBRARY_ARTISTS_TAB_INDEX -> ArtistSortButton(
                                     config = artistSortConfig,
                                     onConfigChange = { config ->
@@ -1204,39 +1140,18 @@ fun MeloxApp(
                     bottomContent = {
                         if (!overview) {
                             Column {
-                                if (section == null) {
-                                    Box(
-                                        modifier = Modifier.height(
-                                            expandedTopBarBottomContentGap(
-                                                pageLibraryScrollBehavior,
-                                                12.dp,
-                                            ),
-                                        ),
-                                    )
-                                    LibraryTabRow(
-                                        tabs = libraryTabs,
-                                        selectedTabIndex = libraryPagerState.targetPage,
-                                        onTabSelected = { selectedTab ->
-                                            rootScope.launch {
-                                                libraryPagerState.animateScrollToPage(selectedTab)
-                                            }
-                                            viewModel.setLibraryTabIndex(selectedTab)
-                                        },
-                                        blurred = settings.blurEnabled,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 20.dp),
-                                    )
-                                    Box(modifier = Modifier.height(6.dp))
-                                }
+
                                 LibrarySearchBar(
                                     visible = librarySearchVisible,
                                     focused = librarySearchFocused,
-                                    backEnabled = if (section != null) currentRoute == libraryRoutes[section]
-                                    else currentRoute == AppRoute.ROOT && pagerState.currentPage == LIBRARY_TAB_INDEX,
+                                    backEnabled = currentRoute == libraryRoutes[section],
                                     query = librarySearchQuery,
+                                    resultsQuery = when (section) {
+                                        LIBRARY_ARTISTS_TAB_INDEX -> artistPresentation.query
+                                        LIBRARY_FOLDERS_TAB_INDEX -> folderPresentation.query
+                                        else -> albumPresentation.query
+                                    },
                                     label = stringResource(R.string.search_hint),
-                                    topPadding = 6.dp,
                                     onQueryChange = { query -> librarySearchQuery = query },
                                     onFocusedChange = { librarySearchFocused = it },
                                     onVisibleChange = { visible ->
@@ -1252,7 +1167,7 @@ fun MeloxApp(
                     },
                 ) { contentPadding, _, indexTopPadding ->
                     if (overview) {
-                        Os4LibraryOverviewScreen(
+                        LibraryOverviewScreen(
                             albums = remember(uiState.albums, albumSortConfig) { sortAlbums(uiState.albums, albumSortConfig) },
                             artists = remember(uiState.artists, artistSortConfig) { sortArtists(uiState.artists, artistSortConfig) },
                             folders = remember(uiState.folders, folderSortConfig) { sortFolders(uiState.folders, folderSortConfig) },
@@ -1261,9 +1176,6 @@ fun MeloxApp(
                             scrollBehavior = pageLibraryScrollBehavior,
                             contentPadding = contentPadding,
                             onOpenSection = { index ->
-                                librarySearchVisible = false
-                                librarySearchFocused = false
-                                librarySearchQuery = ""
                                 currentRoute = libraryRoutes[index]
                             },
                             onAlbumClick = { album ->
@@ -1314,7 +1226,7 @@ fun MeloxApp(
                                         ),
                                         onAlbumClick = { album ->
                                             dismissLibrarySearchFocus()
-                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            standaloneLibraryParent = libraryRoutes[section]
                                             selectedAlbumKey = album.key
                                             albumParentRoute = AppRoute.ROOT
                                             albumParentArtistKey = null
@@ -1337,7 +1249,7 @@ fun MeloxApp(
                                         sortConfig = artistPresentation.sortConfig,
                                         onArtistClick = { artist ->
                                             dismissLibrarySearchFocus()
-                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            standaloneLibraryParent = libraryRoutes[section]
                                             openTrackArtist(artist)
                                         },
                                         scrollBehavior = pageLibraryScrollBehavior,
@@ -1355,13 +1267,13 @@ fun MeloxApp(
                                         sortConfig = folderPresentation.sortConfig,
                                         onFolderClick = { folder ->
                                             dismissLibrarySearchFocus()
-                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            standaloneLibraryParent = libraryRoutes[section]
                                             selectedFolderKey = folder.key
                                             currentRoute = AppRoute.FOLDER_DETAIL
                                         },
                                         onOpenInternalStorage = {
                                             dismissLibrarySearchFocus()
-                                            standaloneLibraryParent = section?.let { libraryRoutes[it] } ?: AppRoute.ROOT
+                                            standaloneLibraryParent = libraryRoutes[section]
                                             internalStoragePath = INTERNAL_STORAGE_ROOT
                                             currentRoute = AppRoute.INTERNAL_STORAGE
                                         },
@@ -1376,18 +1288,9 @@ fun MeloxApp(
                                     )
                                 }
                             }
-                            if (section == null) {
-                                HorizontalPager(
-                                    state = libraryPagerState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    userScrollEnabled = false,
-                                    key = { it },
-                                ) { renderLibrarySection(it) }
-                            } else {
-                                renderLibrarySection(section)
-                            }
+                            renderLibrarySection(checkNotNull(section))
 
-                            when (section ?: libraryPagerState.currentPage) {
+                            when (section) {
                                 LIBRARY_ALBUMS_TAB_INDEX -> if (
                                     albumPresentation.items.isNotEmpty() &&
                                     librarySearchQuery.isBlank() &&
@@ -1476,12 +1379,11 @@ fun MeloxApp(
             FixedPageBackgroundHost(
                 modifier = Modifier.fillMaxSize(),
                 refreshSignal = {
-                    pagerState.currentPage + pagerState.currentPageOffsetFraction +
-                        libraryPagerState.currentPage + libraryPagerState.currentPageOffsetFraction
+                    pagerState.currentPage + pagerState.currentPageOffsetFraction
                 },
             ) {
             // Each page owns its top bar so the title moves with the Pager, like the Miuix demo.
-            val rootPageNestedScroll = if (requestedBottomBarStyle == BottomBarStyle.OS4 && !landscape) {
+            val rootPageNestedScroll = if (requestedBottomBarStyle == BottomBarStyle.GLASS && !landscape) {
                 // Let the root scrollable settle edge drags handed off by its preview rows.
                 remember { object : NestedScrollConnection { } }
             } else {
@@ -1493,15 +1395,22 @@ fun MeloxApp(
                     .fillMaxSize()
                     .overScrollHorizontal()
                     .trackFixedWallpaperMotion(),
-                userScrollEnabled = !(landscape && requestedBottomBarStyle == BottomBarStyle.OS4) && rootPagerUserScrollEnabled(
+                userScrollEnabled = !(landscape && requestedBottomBarStyle == BottomBarStyle.GLASS) && rootPagerUserScrollEnabled(
                     selectedPage = playerPagerState.selectedPage,
                     homeRecommendationGestureActive = homeRecommendationGestureActive,
                 ),
                 verticalAlignment = Alignment.Top,
+                // Match the official example: keep every root page ready before navigation.
+                beyondViewportPageCount = ROOT_TAB_COUNT - 1,
+                flingBehavior = PagerDefaults.flingBehavior(
+                    state = pagerState,
+                    snapAnimationSpec = PlayerPagerNavigationSpringSpec,
+                ),
                 pageNestedScrollConnection = rootPageNestedScroll,
                 overscrollEffect = null,
                 key = { it },
             ) { page ->
+                CompositionLocalProvider(LocalRootPageWallpaperFixed provides true) {
                 when (page) {
                     HOME_TAB_INDEX -> PlayerPage(
                         title = homeTitle,
@@ -1652,11 +1561,8 @@ fun MeloxApp(
                                 focused = songSearchFocused,
                                 backEnabled = pagerState.currentPage == SONGS_TAB_INDEX,
                                 query = songSearchQuery,
+                                resultsQuery = musicPresentation.query,
                                 label = stringResource(R.string.search_hint),
-                                topPadding = expandedTopBarBottomContentGap(
-                                    songsScrollBehavior,
-                                    12.dp,
-                                ),
                                 onQueryChange = { songSearchQuery = it },
                                 onFocusedChange = { songSearchFocused = it },
                                 onVisibleChange = { visible ->
@@ -1743,6 +1649,7 @@ fun MeloxApp(
                     }
 
                     else -> Unit
+                }
                 }
             }
             }
@@ -1964,13 +1871,13 @@ fun MeloxApp(
                 targetPage = selectedTab,
             )
             if (shouldHaptic) hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentTick)
-            val wideOs4 = landscape && requestedBottomBarStyle == BottomBarStyle.OS4
+            val wideSidebar = landscape && requestedBottomBarStyle == BottomBarStyle.GLASS
             Snapshot.withMutableSnapshot {
-                if (wideOs4 && currentRoute != AppRoute.ROOT) sidebarEntryRoute = AppRoute.ROOT
+                if (wideSidebar && currentRoute != AppRoute.ROOT) sidebarEntryRoute = AppRoute.ROOT
                 if (navBackStack.size > 1) navBackStack.subList(1, navBackStack.size).clear()
                 currentRoute = AppRoute.ROOT
             }
-            if (wideOs4) playerPagerState.snapToPage(selectedTab)
+            if (wideSidebar) playerPagerState.snapToPage(selectedTab)
             else playerPagerState.animateToPage(selectedTab)
         }
         var customBackgroundBlurPreview by remember(settings.customBackgroundId) {
@@ -2020,9 +1927,12 @@ fun MeloxApp(
                 progressiveEnabled = settings.progressiveTopBarBlurEnabled,
             ),
         ) {
+            FixedPageBackgroundHost(
+                modifier = Modifier.fillMaxSize(),
+                refreshSignal = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
+            ) {
             val bottomSheetBackdrop = rememberBlurBackdrop()
-            val useBottomSearch = com.melox.player.ui.theme.LocalOs4Style.current &&
-                requestedBottomBarStyle == BottomBarStyle.OS4 && !landscape
+            val useBottomSearch = requestedBottomBarStyle == BottomBarStyle.GLASS && !landscape
             // Overlay content is composed by the root popup host.
             CompositionLocalProvider(
                 LocalBottomSheetBlurBackdrop provides bottomSheetBackdrop,
@@ -2111,10 +2021,7 @@ fun MeloxApp(
                             blurEnabled = settings.blurEnabled,
                             backdropRefreshKey = currentRoute,
                             backdropPagingSignal = {
-                                pagerState.currentPage +
-                                    pagerState.currentPageOffsetFraction +
-                                    libraryPagerState.currentPage +
-                                    libraryPagerState.currentPageOffsetFraction
+                                pagerState.currentPage + pagerState.currentPageOffsetFraction
                             },
                             miniPlayer = { chrome ->
                                 MiniPlayerHost(
@@ -2252,7 +2159,7 @@ fun MeloxApp(
                                     entry<AppNavDestination>(
                                         contentKey = AppNavDestination::entryContentKey,
                                         transition = if (
-                                            landscape && shouldUseImmediateOs4Navigation(windowWidth, windowHeight, requestedBottomBarStyle) &&
+                                            landscape && shouldUseImmediateSidebarNavigation(windowWidth, windowHeight, requestedBottomBarStyle) &&
                                             sidebarEntryRoute != null
                                         ) ImmediateNavigationTransition else null,
                                         swipeDismiss = if (currentRoute == AppRoute.INTERNAL_STORAGE &&
@@ -2305,7 +2212,6 @@ fun MeloxApp(
                                                             scrollBehavior =
                                                                 themeSettingsScrollBehavior,
                                                             onBack = navigateBack,
-                                                            onThemeStyleChange = viewModel::setThemeStyle,
                                                             onThemeModeChange =
                                                                 viewModel::setThemeMode,
                                                             onImmersiveModeChange =
@@ -3108,9 +3014,9 @@ fun MeloxApp(
                         playback = compactPlayback,
                         artworkState = artworkState,
                         transition = playerTransition,
-                        collapsedCornerRadius = if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
+                        collapsedCornerRadius = if (miniPlayerChrome?.style == BottomBarStyle.GLASS) {
                             if (settings.circularArtwork) miniPlayerChrome!!.artworkSize / 2
-                            else miniPlayerChrome!!.os4ArtworkCornerRadius
+                            else miniPlayerChrome!!.glassArtworkCornerRadius
                         } else miniPlayerArtworkCornerRadius(
                             normalChrome = miniPlayerUsesNormalChrome,
                             smallPlayerBar = renderedSmallPlayerBar,
@@ -3197,6 +3103,7 @@ fun MeloxApp(
             }
         }
     }
+        }
 }
 }
 
@@ -3566,38 +3473,10 @@ internal fun LibrarySearchButton(
     onClick: () -> Unit,
     bottomActionActive: Boolean = true,
 ) {
-    val scope = rememberCoroutineScope()
     val currentOnClick by rememberUpdatedState(onClick)
-    var collapsing by remember { mutableStateOf(false) }
-    val onSearchClick: () -> Unit = {
-            collapsing = true
-            scope.launch {
-                try {
-                    val state = scrollBehavior.state
-                    val limit = state.heightOffsetLimit
-                    if (limit != -Float.MAX_VALUE && limit < 0f) {
-                        if (state.heightOffset > limit) {
-                            AnimationState(initialValue = state.heightOffset).animateTo(
-                                targetValue = limit,
-                                animationSpec = scrollBehavior.snapAnimationSpec ?: tween(200),
-                            ) {
-                                state.heightOffset = value
-                            }
-                        }
-                        state.heightOffset = limit
-                        state.contentOffset = limit
-                    }
-                    currentOnClick()
-                } finally {
-                    collapsing = false
-                }
-            }
-        }
-    val effectiveOnSearchClick: () -> Unit = if (com.melox.player.ui.theme.LocalOs4Style.current) {
-        { currentOnClick() }
-    } else onSearchClick
-    if (publishBottomSearchAction(bottomActionActive, visible || LocalGlassSearchPage.current?.transitionActive == true, visible, contentDescription, !collapsing, effectiveOnSearchClick)) return
-    if (LocalOs4LandscapeNavigation.current != null) {
+    val effectiveOnSearchClick: () -> Unit = { currentOnClick() }
+    if (publishBottomSearchAction(bottomActionActive, visible || LocalGlassSearchPage.current?.transitionActive == true, visible, contentDescription, true, effectiveOnSearchClick)) return
+    if (LocalLandscapeNavigation.current != null) {
         val searchHapticFeedback = LocalHapticFeedback.current
         val searchPage = LocalGlassSearchPage.current
         val materialProgress = top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext.current?.materialProgress
@@ -3615,7 +3494,7 @@ internal fun LibrarySearchButton(
                     searchHapticFeedback.performHapticFeedback(HapticFeedbackType.ContextClick)
                     effectiveOnSearchClick()
                 },
-                enabled = !visible && !collapsing,
+                enabled = !visible,
                 size = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ButtonSize,
                 modifier = (searchPage?.let { Modifier.then(top.yukonga.miuix.kmp.glass.GlassPopupAnchorElement(it.buttonAnchor)) } ?: Modifier)
                     .then(if (visible) Modifier.clearAndSetSemantics { } else Modifier),
@@ -3627,98 +3506,13 @@ internal fun LibrarySearchButton(
     }
     IconButton(
         onClick = effectiveOnSearchClick,
-        enabled = !collapsing,
+        enabled = true,
         holdDownState = visible,
     ) {
         Icon(
             imageVector = MiuixIcons.Search,
             contentDescription = contentDescription,
         )
-    }
-}
-
-@Composable
-private fun LibraryTabRow(
-    tabs: List<String>,
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-    blurred: Boolean = false,
-) {
-    val hasWallpaper = LocalCustomPageBackground.current != null
-    val progressiveBlurActive = blurred &&
-        LocalTopBarBlurSettings.current.progressiveEnabled &&
-        isRuntimeShaderSupported()
-    Row(
-        modifier = modifier
-            .height(38.dp)
-            .background(
-                topBarContainerColor(hasWallpaper, blurred, MiuixTheme.colorScheme.surface),
-            )
-            .semantics {
-                collectionInfo = CollectionInfo(rowCount = 1, columnCount = tabs.size)
-            },
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        tabs.forEachIndexed { index, tab ->
-            val selected = selectedTabIndex == index
-            val interactionSource = remember { MutableInteractionSource() }
-            val outlineColor = MiuixTheme.colorScheme.outline
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .then(
-                        if (selected) {
-                            Modifier.squircleBackground(
-                                color = tabSelectedContainerColor(
-                                    hasWallpaper, progressiveBlurActive, MiuixTheme.colorScheme.surfaceContainer,
-                                ),
-                                cornerRadius = 12.dp,
-                            )
-                        } else {
-                            Modifier.squircleBorder(
-                                width = { 1.dp },
-                                color = { outlineColor },
-                                cornerRadius = 12.dp,
-                            )
-                        },
-                    )
-                    .selectable(
-                        selected = selected,
-                        onClick = {
-                            if (!selected) onTabSelected(index)
-                        },
-                        role = Role.Tab,
-                        interactionSource = interactionSource,
-                        indication = null,
-                    )
-                    .semantics {
-                        collectionItemInfo = CollectionItemInfo(
-                            rowIndex = 0,
-                            rowSpan = 1,
-                            columnIndex = index,
-                            columnSpan = 1,
-                        )
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = tab,
-                    color = if (selected) {
-                        MiuixTheme.colorScheme.onBackground
-                    } else {
-                        MiuixTheme.colorScheme.onSurfaceVariantSummary
-                    },
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
     }
 }
 
@@ -3729,12 +3523,12 @@ internal fun LibrarySearchBar(
     focused: Boolean,
     query: String,
     label: String,
-    topPadding: Dp = 0.dp,
     onQueryChange: (String) -> Unit,
     onFocusedChange: (Boolean) -> Unit,
     onVisibleChange: (Boolean) -> Unit,
     backEnabled: Boolean = true,
     onBackRequest: (() -> Unit)? = null,
+    resultsQuery: String = query,
 ) {
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val ordinaryBackOwner = LocalOrdinaryBackDispatcherOwner.current
@@ -3750,112 +3544,9 @@ internal fun LibrarySearchBar(
             onVisibleChange(false)
         }
     }
-    if (registerGlassSearchSession(visible && backEnabled, query, label, onQueryChange, onFocusedChange) { onVisibleChange(false) }) {
-        return
-    }
-    val hasWallpaper = LocalCustomPageBackground.current != null
-    val topBarBlurSettings = LocalTopBarBlurSettings.current
-    val progressiveBlurActive = topBarBlurSettings.blurEnabled &&
-        topBarBlurSettings.progressiveEnabled &&
-        isRuntimeShaderSupported()
-    val clearSearchContentDescription = stringResource(R.string.search_clear)
-    val imeVisible = WindowInsets.isImeVisible
-    val searchFocusManager = LocalFocusManager.current
-    var imeWasVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(focused, imeVisible) {
-        if (!focused) {
-            imeWasVisible = false
-        } else if (shouldClearSearchFocusAfterImeDismissed(
-                searchFocused = focused,
-                imeVisible = imeVisible,
-                imeWasVisible = imeWasVisible,
-            )
-        ) {
-            imeWasVisible = false
-            searchFocusManager.clearFocus(force = true)
-            onFocusedChange(false)
-        } else if (imeVisible) {
-            imeWasVisible = true
-        }
-    }
-    val contentBackOwner = if (onBackRequest != null) searchBackOwner
-        else checkNotNull(LocalNavigationEventDispatcherOwner.current)
-    CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides contentBackOwner) {
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(200)) +
-                expandVertically(animationSpec = tween(250)),
-            exit = fadeOut(animationSpec = tween(150)) +
-                shrinkVertically(animationSpec = tween(200)),
-        ) {
-            val handleExpandedChange: (Boolean) -> Unit = { expanded ->
-                if (expanded) {
-                    onFocusedChange(true)
-                } else {
-                    onVisibleChange(false)
-                }
-            }
-            SearchBar(
-                inputField = {
-                    InputField(
-                        query = query,
-                        onQueryChange = { newQuery ->
-                            // Miuix clears its query when input focus is dismissed.
-                            // A visible search field may deliberately remain unfocused
-                            // while another root page is selected, so retain its query.
-                            if (focused || newQuery.isNotEmpty() || query.isEmpty()) {
-                                onQueryChange(newQuery)
-                            }
-                        },
-                        onSearch = onQueryChange,
-                        expanded = visible && focused,
-                        onExpandedChange = onFocusedChange,
-                        label = label,
-                        color = MiuixTheme.colorScheme.surfaceContainerHigh.copy(
-                            alpha = if (hasWallpaper || progressiveBlurActive) 0.8f else 1f,
-                        ),
-                        trailingIcon = {
-                            AnimatedVisibility(
-                                visible = query.isNotEmpty(),
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(start = 8.dp, end = 16.dp),
-                                    contentAlignment = Alignment.CenterStart,
-                                ) {
-                                    Icon(
-                                        modifier = Modifier
-                                            .clip(CircleShape)
-                                            .clickable { onQueryChange("") },
-                                        imageVector = MiuixIcons.Basic.SearchCleanup,
-                                        tint = MiuixTheme.colorScheme.onSurfaceContainerHighest,
-                                        contentDescription = clearSearchContentDescription,
-                                    )
-                                }
-                            }
-                        },
-                    )
-                },
-                onExpandedChange = handleExpandedChange,
-                expanded = visible,
-                insideMargin = DpSize(16.dp, 0.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = topPadding, bottom = 6.dp),
-            ) {}
-        }
-        if (onBackRequest != null) {
-            androidx.navigationevent.compose.NavigationBackHandler(
-                state = androidx.navigationevent.compose.rememberNavigationEventState(
-                    androidx.navigationevent.NavigationEventInfo.None,
-                ),
-                isBackEnabled = visible && backEnabled &&
-                    lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
-                onBackCompleted = onBackRequest,
-            )
-        }
-    }
+    registerGlassSearchSession(
+        visible && backEnabled, query, label, onQueryChange, onFocusedChange, resultsQuery,
+    ) { onVisibleChange(false) }
 }
 
 internal fun shouldClearSearchFocusAfterImeDismissed(
@@ -3876,7 +3567,7 @@ private fun PlayerPage(
     bottomContent: @Composable () -> Unit = {},
     content: @Composable (PaddingValues, ScrollBehavior, indexTopPadding: androidx.compose.ui.unit.Dp) -> Unit,
 ) {
-    val landscapeNavigation = LocalOs4LandscapeNavigation.current.takeIf { isRootPage }
+    val landscapeNavigation = LocalLandscapeNavigation.current.takeIf { isRootPage }
     val replaceTitle = landscapeNavigation?.labels?.contains(title) == true
     val layoutDirection = LocalLayoutDirection.current
     var topBarCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -3884,14 +3575,10 @@ private fun PlayerPage(
 
     PageScaffold(
             topBar = {
-            BlurredBar(
-                backdrop = topBarBackdrop,
-                blurEnabled = topBarBackdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
+            TopBarBackdrop(backdrop = topBarBackdrop) {
                 val topBarColor = topBarBackdrop.miuixBarColor()
                 if (!isRootPage) {
-                    com.melox.player.ui.component.AdaptiveTopAppBar(
+                    com.melox.player.ui.component.TopAppBar(
                         title = title,
                         scrollBehavior = scrollBehavior,
                         color = topBarColor,
@@ -3903,7 +3590,7 @@ private fun PlayerPage(
                     SmallTopAppBar(
                         title = title,
                         inlineTitleEnabled = !replaceTitle,
-                        modifier = Modifier.stableTopAppBarInsets(topBarColor),
+                        modifier = Modifier,
                         color = topBarColor,
                         navigationIcon = navigationIcon,
                         actions = actions,
@@ -3913,7 +3600,7 @@ private fun PlayerPage(
                 } else {
                     TopAppBar(
                         title = title,
-                        modifier = Modifier.stableTopAppBarInsets(topBarColor),
+                        modifier = Modifier,
                         color = topBarColor,
                         navigationIcon = navigationIcon,
                         actions = actions,

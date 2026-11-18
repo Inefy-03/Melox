@@ -1,10 +1,11 @@
 package com.melox.player.ui.screen.playlist
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
-import com.melox.player.ui.theme.LocalOs4Style
-import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import com.melox.player.ui.component.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import androidx.compose.foundation.layout.Box
@@ -28,13 +29,10 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
@@ -61,8 +59,8 @@ import com.melox.player.model.MusicTrack
 import com.melox.player.model.ResolvedPlaylistTrack
 import com.melox.player.ui.LibrarySearchBar
 import com.melox.player.ui.LibrarySearchButton
-import com.melox.player.ui.component.AdaptiveTopAppBar
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopAppBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
 import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
 import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
@@ -82,26 +80,21 @@ import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.playlist.PlaylistNameDialog
 import com.melox.player.ui.component.playlist.PlaylistSortButton
 import com.melox.player.ui.component.rememberBlurBackdrop
+import com.melox.player.ui.component.rememberGlassBlurBackdrop
+import top.yukonga.miuix.kmp.upstream.blur.layerBackdrop as glassLayerBackdrop
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.ListPopupDefaults
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import com.melox.player.ui.component.PageScaffold
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import com.melox.player.ui.component.os4.navigationBackIcon
+import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.icon.extended.Music
-import com.melox.player.ui.component.os4.OverlayDialog
-import top.yukonga.miuix.kmp.overlay.OverlayListPopup
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.melox.player.ui.component.OverlayDialog
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
@@ -143,6 +136,8 @@ fun PlaylistDetailScreen(
     val scrollBehavior = rememberSearchTopBarScrollBehavior(searchVisible)
     var backdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
+    var locationCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val locationBackdrop = rememberGlassBlurBackdrop(captureCoordinates = { locationCaptureCoordinates })
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
@@ -305,12 +300,8 @@ fun PlaylistDetailScreen(
 
     PageScaffold(
         topBar = {
-            BlurredBar(
-                backdrop = backdrop,
-                blurEnabled = backdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
-                AdaptiveTopAppBar(
+            TopBarBackdrop(backdrop = backdrop) {
+                TopAppBar(
                     title = if (selectionMode) {
                         if (selectedEntryIds.isEmpty()) {
                             stringResource(R.string.selection_choose_songs)
@@ -335,7 +326,7 @@ fun PlaylistDetailScreen(
                                 }
                             },
                             defaultNavigationIcon = {
-                                Row(horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     IconButton(onClick = onBack) {
                                         Icon(
                                             imageVector = navigationBackIcon(),
@@ -439,6 +430,9 @@ fun PlaylistDetailScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(locationBackdrop?.let {
+                        Modifier.onGloballyPositioned { coordinates -> locationCaptureCoordinates = coordinates }.glassLayerBackdrop(it)
+                    } ?: Modifier)
                     .scrollEndHaptic()
                     .overScrollVertical()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -585,8 +579,8 @@ fun PlaylistDetailScreen(
                 listState = listState,
                 scrollBehavior = scrollBehavior,
                 miniPlayerBounds = miniPlayerBounds,
-                playerContentBounds = playerContentBounds,
                 contentPadding = padding,
+                backdrop = locationBackdrop,
             )
         }
     }
@@ -686,57 +680,12 @@ private fun RowScope.PlaylistActionsButton(
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    if (LocalOs4Style.current) {
-        OverlayIconDropdownMenu(
-            entry = DropdownEntry(listOf(
-                DropdownItem(text = stringResource(R.string.playlist_rename), onClick = onRename),
-                DropdownItem(text = stringResource(R.string.playlist_delete), onClick = onDelete),
-            )),
-        ) {
-            Icon(MiuixIcons.More, stringResource(R.string.playlist_more_actions), Modifier.size(24.dp))
-        }
-        return
-    }
-    var showPopup by remember { mutableStateOf(false) }
-    Box {
-        OverlayListPopup(
-            show = showPopup,
-            popupPositionProvider = ListPopupDefaults.ContextMenuPositionProvider,
-            alignment = PopupPositionProvider.Align.TopEnd,
-            onDismissRequest = { showPopup = false },
-        ) {
-            ListPopupColumn {
-                DropdownImpl(
-                    text = stringResource(R.string.playlist_rename),
-                    optionSize = 2,
-                    isSelected = false,
-                    index = 0,
-                    onSelectedIndexChange = {
-                        showPopup = false
-                        onRename()
-                    },
-                )
-                DropdownImpl(
-                    text = stringResource(R.string.playlist_delete),
-                    optionSize = 2,
-                    isSelected = false,
-                    index = 1,
-                    onSelectedIndexChange = {
-                        showPopup = false
-                        onDelete()
-                    },
-                )
-            }
-        }
-        IconButton(
-            onClick = { showPopup = true },
-            holdDownState = showPopup,
-        ) {
-            Icon(
-                imageVector = MiuixIcons.More,
-                contentDescription = stringResource(R.string.playlist_more_actions),
-                modifier = Modifier.size(24.dp),
-            )
-        }
+    OverlayIconDropdownMenu(
+        entry = DropdownEntry(listOf(
+            DropdownItem(text = stringResource(R.string.playlist_rename), onClick = onRename),
+            DropdownItem(text = stringResource(R.string.playlist_delete), onClick = onDelete),
+        )),
+    ) {
+        Icon(MiuixIcons.More, stringResource(R.string.playlist_more_actions), Modifier.size(24.dp))
     }
 }

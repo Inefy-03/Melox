@@ -5,8 +5,8 @@ import android.graphics.Paint
 import android.graphics.Shader
 import android.os.Build
 import androidx.annotation.RequiresApi
-import top.yukonga.miuix.kmp.shader.RuntimeShader
-import top.yukonga.miuix.kmp.shader.asComposeShader
+import top.yukonga.miuix.kmp.material.RuntimeShader
+import top.yukonga.miuix.kmp.material.asComposeShader
 
 /** Final-output noise is never enlarged with the working bitmap or fed into frame history. */
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)

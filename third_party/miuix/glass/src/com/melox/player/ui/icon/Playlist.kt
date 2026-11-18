@@ -16,13 +16,13 @@ internal val GlassIcons.Playlist: ImageVector
         if (_playlistRegular != null) return _playlistRegular!!
         _playlistRegular = ImageVector.Builder(
             name = "Playlist.Glass.Regular",
-            defaultWidth = 24.0f.dp,
-            defaultHeight = 24.0f.dp,
-            viewportWidth = 1142.9f,
-            viewportHeight = 1142.9f,
+            defaultWidth = 28.0f.dp,
+            defaultHeight = 28.0f.dp,
+            viewportWidth = 1333.3833f,
+            viewportHeight = 1333.3833f,
             autoMirror = false,
         ).apply {
-            group(scaleY = -1.0f, translationX = 0.0f, translationY = 1142.9f) {
+            group(scaleY = -1.0f, translationX = 95.2417f, translationY = 1238.1417f) {
                 addPath(
                     pathData = listOf(
                         PathNode.MoveTo(378.4f, 880.7f),

@@ -16,13 +16,13 @@ internal val GlassIcons.Music: ImageVector
         if (_musicRegular != null) return _musicRegular!!
         _musicRegular = ImageVector.Builder(
             name = "Music.Glass.Regular",
-            defaultWidth = 24.0f.dp,
-            defaultHeight = 24.0f.dp,
-            viewportWidth = 1142.9f,
-            viewportHeight = 1142.9f,
+            defaultWidth = 28.0f.dp,
+            defaultHeight = 28.0f.dp,
+            viewportWidth = 1333.3833f,
+            viewportHeight = 1333.3833f,
             autoMirror = false,
         ).apply {
-            group(scaleY = -1.0f, translationX = 0.0f, translationY = 1142.9f) {
+            group(scaleY = -1.0f, translationX = 95.2417f, translationY = 1238.1417f) {
                 addPath(
                     pathData = listOf(
                         PathNode.MoveTo(405.4f, 284.4f),
@@ -82,27 +82,6 @@ internal val GlassIcons.Music: ImageVector
                         PathNode.QuadTo(282.4f, 134.4f, 317.9f, 154.4f),
                         PathNode.QuadTo(353.4f, 174.4f, 376.4f, 208.4f),
                         PathNode.QuadTo(399.4f, 242.4f, 405.4f, 284.4f),
-                        PathNode.Close,
-                        PathNode.MoveTo(159.4f, 300.4f),
-                        PathNode.QuadTo(159.4f, 333.4f, 183.4f, 357.4f),
-                        PathNode.QuadTo(207.4f, 381.4f, 240.4f, 381.4f),
-                        PathNode.QuadTo(273.4f, 381.4f, 297.4f, 357.4f),
-                        PathNode.QuadTo(321.4f, 333.4f, 321.4f, 300.4f),
-                        PathNode.QuadTo(321.4f, 281.4f, 311.4f, 262.9f),
-                        PathNode.QuadTo(301.4f, 244.4f, 282.9f, 231.9f),
-                        PathNode.QuadTo(264.4f, 219.4f, 240.4f, 219.4f),
-                        PathNode.QuadTo(207.4f, 219.4f, 183.4f, 243.4f),
-                        PathNode.QuadTo(159.4f, 267.4f, 159.4f, 300.4f),
-                        PathNode.Close,
-                        PathNode.MoveTo(790.4f, 300.4f),
-                        PathNode.QuadTo(790.4f, 333.4f, 813.9f, 357.4f),
-                        PathNode.QuadTo(837.4f, 381.4f, 871.4f, 381.4f),
-                        PathNode.QuadTo(904.4f, 381.4f, 927.9f, 357.4f),
-                        PathNode.QuadTo(951.4f, 333.4f, 951.4f, 300.4f),
-                        PathNode.QuadTo(951.4f, 267.4f, 927.9f, 243.9f),
-                        PathNode.QuadTo(904.4f, 220.4f, 871.4f, 220.4f),
-                        PathNode.QuadTo(837.4f, 220.4f, 813.9f, 243.9f),
-                        PathNode.QuadTo(790.4f, 267.4f, 790.4f, 300.4f),
                         PathNode.Close,
                     ),
                     fill = SolidColor(Color.Black),

@@ -445,11 +445,10 @@
     <string name="lyrics_translation_language_all">全部译文</string>
     <string name="playback_audio_settings">音频设置</string>
     <string name="lyrics_translation_open">打开歌词翻译</string>
-    <string name="settings_theme_style_title">主题风格</string>
     <string name="settings_bottom_bar_style_title">底栏样式</string>
     <string name="settings_bottom_bar_ios_like">iOS-like</string>
-    <string name="settings_style_os3">OS3</string>
-    <string name="settings_style_os4">OS4</string>
-    <string name="settings_glass_styles_unsupported">OS4 和 iOS-like 需要 Android 13 及以上</string>
+    <string name="settings_bottom_bar_original">Original</string>
+    <string name="settings_bottom_bar_glass">Glass</string>
+    <string name="settings_glass_styles_unsupported">iOS-like底栏需要 Android 13 及以上</string>
     <string name="library_preview_empty_description">扫描音乐后将在此显示</string>
 </resources>

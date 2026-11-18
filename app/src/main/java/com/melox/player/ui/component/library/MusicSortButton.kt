@@ -1,33 +1,19 @@
 package com.melox.player.ui.component.library
 
-import com.melox.player.ui.theme.LocalOs4Style
-import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import com.melox.player.ui.component.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.data.library.MusicSortConfig
 import com.melox.player.data.library.MusicSortField
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.ListPopupDefaults
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
+import com.melox.player.ui.component.Icon
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Sort
-import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 
 @Composable
 fun MusicSortButton(
@@ -35,7 +21,6 @@ fun MusicSortButton(
     onConfigChange: (MusicSortConfig) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showPopup by remember { mutableStateOf(false) }
     val sortEntries = listOf(
         MusicSortField.TITLE to stringResource(R.string.music_sort_title),
         MusicSortField.ARTIST to stringResource(R.string.music_sort_artist),
@@ -44,76 +29,20 @@ fun MusicSortButton(
         MusicSortField.DATE_ADDED to stringResource(R.string.music_sort_date_added),
         MusicSortField.DURATION to stringResource(R.string.music_sort_duration),
     )
-    if (LocalOs4Style.current) {
-        OverlayIconDropdownMenu(
-            modifier = modifier,
-            entries = listOf(
-                DropdownEntry(sortEntries.map { (field, label) ->
-                    DropdownItem(text = label, selected = config.field == field,
-                        onClick = { onConfigChange(config.copy(field = field)) })
-                }),
-                DropdownEntry(listOf(DropdownItem(
-                    text = stringResource(R.string.music_sort_descending), selected = config.descending,
-                    onClick = { onConfigChange(config.copy(descending = !config.descending)) },
-                ))),
-            ),
-            collapseOnSelection = true,
-        ) {
-            Icon(MiuixIcons.Sort, stringResource(R.string.music_sort_action), Modifier.size(24.dp))
-        }
-        return
-    }
-
-    val optionSize = sortEntries.size + 1
-
-    Box(modifier = modifier) {
-        OverlayListPopup(
-            show = showPopup,
-            popupPositionProvider = ListPopupDefaults.ContextMenuPositionProvider,
-            alignment = PopupPositionProvider.Align.TopEnd,
-            onDismissRequest = { showPopup = false },
-        ) {
-            ListPopupColumn {
-                sortEntries.forEachIndexed { index, (field, label) ->
-                    DropdownImpl(
-                        text = label,
-                        optionSize = optionSize,
-                        isSelected = config.field == field,
-                        index = index,
-                        onSelectedIndexChange = {
-                            onConfigChange(config.copy(field = field))
-                            showPopup = false
-                        },
-                    )
-                }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                    thickness = 1.5.dp,
-                )
-
-                DropdownImpl(
-                    text = stringResource(R.string.music_sort_descending),
-                    optionSize = optionSize,
-                    isSelected = config.descending,
-                    index = sortEntries.size,
-                    onSelectedIndexChange = {
-                        onConfigChange(config.copy(descending = !config.descending))
-                        showPopup = false
-                    },
-                )
-            }
-        }
-
-        IconButton(
-            onClick = { showPopup = true },
-            holdDownState = showPopup,
-        ) {
-            Icon(
-                imageVector = MiuixIcons.Sort,
-                contentDescription = stringResource(R.string.music_sort_action),
-                modifier = Modifier.size(24.dp),
-            )
-        }
+    OverlayIconDropdownMenu(
+        modifier = modifier,
+        entries = listOf(
+            DropdownEntry(sortEntries.map { (field, label) ->
+                DropdownItem(text = label, selected = config.field == field,
+                    onClick = { onConfigChange(config.copy(field = field)) })
+            }),
+            DropdownEntry(listOf(DropdownItem(
+                text = stringResource(R.string.music_sort_descending), selected = config.descending,
+                onClick = { onConfigChange(config.copy(descending = !config.descending)) },
+            ))),
+        ),
+        collapseOnSelection = true,
+    ) {
+        Icon(MiuixIcons.Sort, stringResource(R.string.music_sort_action), Modifier.size(24.dp))
     }
 }

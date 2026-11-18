@@ -16,13 +16,13 @@ internal val GlassIcons.ChevronForwardDemibold: ImageVector
         if (_chevronForwardDemibold != null) return _chevronForwardDemibold!!
         _chevronForwardDemibold = ImageVector.Builder(
             name = "ChevronForward.Glass.Demibold",
-            defaultWidth = 24.0f.dp,
-            defaultHeight = 24.0f.dp,
-            viewportWidth = 1142.9f,
-            viewportHeight = 1142.9f,
+            defaultWidth = 28.0f.dp,
+            defaultHeight = 28.0f.dp,
+            viewportWidth = 1333.3833f,
+            viewportHeight = 1333.3833f,
             autoMirror = true,
         ).apply {
-            group(scaleY = -1.0f, translationX = 85.7f, translationY = 1142.9f) {
+            group(scaleY = -1.0f, translationX = 180.9417f, translationY = 1238.1417f) {
                 addPath(
                     pathData = listOf(
                         PathNode.MoveTo(320.5f, 1077.6f),

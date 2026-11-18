@@ -1,7 +1,8 @@
 package com.melox.player.ui.screen.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,10 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
@@ -44,19 +43,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.melox.player.BuildConfig
 import com.melox.player.R
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.effect.AboutEffectBackground
 import com.melox.player.ui.component.rememberBlurBackdrop
-import com.melox.player.ui.component.stableTopAppBarInsets
 import com.melox.player.ui.component.PageCard as Card
-import com.melox.player.ui.component.LocalTopBarWallpaperVisible
 import com.melox.player.ui.component.LocalCustomPageBackground
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
-import com.melox.player.ui.component.os4.SmallTopAppBar
+import com.melox.player.ui.component.TopAppBar
+import com.melox.player.ui.component.LocalPageSurfaceBackdrop
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
@@ -65,8 +63,7 @@ import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import com.melox.player.ui.component.os4.navigationBackIcon
+import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
@@ -98,35 +95,19 @@ fun AboutScreen(
             }
         }
     }
-    val collapsed by remember {
-        derivedStateOf { scrollProgress == 1f }
-    }
     var topBarBackdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarBackdropCaptureCoordinates })
-    val hasCustomBackground = customBackgroundSelected || LocalCustomPageBackground.current != null
-    val barBackdrop = if (collapsed || hasCustomBackground) topBarBackdrop else null
-    val barColor = if (collapsed && barBackdrop == null) {
-        MiuixTheme.colorScheme.surface
-    } else {
-        Color.Transparent
-    }
 
     PageScaffold(
         topBar = {
-            BlurredBar(
-                backdrop = barBackdrop,
-                blurEnabled = barBackdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
-                val topBarColor = if (LocalTopBarWallpaperVisible.current) Color.Transparent else barColor
-                SmallTopAppBar(
+            TopBarBackdrop(backdrop = topBarBackdrop) {
+                TopAppBar(
                     title = stringResource(R.string.settings_about_title),
-                    modifier = Modifier.stableTopAppBarInsets(topBarColor),
+                    expandable = false,
+                    modifier = Modifier,
                     scrollBehavior = scrollBehavior,
-                    color = topBarColor,
-                    titleColor = MiuixTheme.colorScheme.onSurface.copy(
-                        alpha = ((scrollProgress - 0.35f) / 0.65f).coerceIn(0f, 1f),
-                    ),
+                    titleColor = MiuixTheme.colorScheme.onSurface,
+                    glassTitleAlpha = { ((scrollProgress - 0.35f) / 0.65f).coerceIn(0f, 1f) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
@@ -173,8 +154,10 @@ private fun AboutContent(
     val versionName = BuildConfig.VERSION_NAME.ifBlank { "1.0.0" }
     var headerHeight by remember { mutableStateOf(190.dp) }
     var contentBackdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val contentBackdrop = rememberBlurBackdrop(captureCoordinates = { contentBackdropCaptureCoordinates })
     val customBackgroundVisible = LocalCustomPageBackground.current != null
+    val effectBackdrop = rememberBlurBackdrop(includeCustomBackground = false,
+        captureCoordinates = { contentBackdropCaptureCoordinates })
+    val contentBackdrop = if (customBackgroundVisible) LocalPageSurfaceBackdrop.current else effectBackdrop
     val isDark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
     val logoBlend = remember(isDark) {
         if (isDark) {
@@ -209,7 +192,7 @@ private fun AboutContent(
         modifier = Modifier.fillMaxSize(),
         useCustomBackground = customBackgroundSelected,
         backgroundModifier =
-            contentBackdrop?.let { Modifier.onGloballyPositioned { coordinates -> contentBackdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier,
+            effectBackdrop?.let { Modifier.onGloballyPositioned { coordinates -> contentBackdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier,
         alpha = { 1f - scrollProgress() },
     ) {
         AboutHeader(
@@ -234,10 +217,7 @@ private fun AboutContent(
                 top = padding.calculateTopPadding() +
                     if (customBackgroundSelected || customBackgroundVisible) 12.dp else 0.dp,
                 end = padding.calculateEndPadding(layoutDirection),
-                bottom = maxOf(
-                    padding.calculateBottomPadding(),
-                    bottomContentPadding,
-                ),
+                bottom = maxOf(padding.calculateBottomPadding(), bottomContentPadding),
             ),
             overscrollEffect = null,
         ) {
@@ -338,11 +318,11 @@ private fun AboutHeader(
             .onSizeChanged { onHeightChanged(it.height) },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val iconProgress = ((scrollProgress() - 0.35f) / 0.15f).coerceIn(0f, 1f)
         Box(
             modifier = Modifier
                 .requiredSize(112.dp)
                 .graphicsLayer {
+                    val iconProgress = ((scrollProgress() - 0.35f) / 0.15f).coerceIn(0f, 1f)
                     alpha = 1f - iconProgress
                     scaleX = 1f - iconProgress * 0.05f
                     scaleY = 1f - iconProgress * 0.05f
@@ -352,8 +332,7 @@ private fun AboutHeader(
             Image(
                 painter = painterResource(R.drawable.ic_launcher_monochrome),
                 contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier
-                    .requiredSize(200.dp)
+                modifier = Modifier.requiredSize(200.dp)
                     .aboutHeaderBlur(
                         backdrop = backdrop,
                         cornerRadius = 24.dp,
@@ -363,12 +342,12 @@ private fun AboutHeader(
             )
         }
 
-        val nameProgress = ((scrollProgress() - 0.20f) / 0.15f).coerceIn(0f, 1f)
         Text(
             text = stringResource(R.string.app_name),
             modifier = Modifier
                 .padding(top = 12.dp, bottom = 5.dp)
                 .graphicsLayer {
+                    val nameProgress = ((scrollProgress() - 0.20f) / 0.15f).coerceIn(0f, 1f)
                     alpha = 1f - nameProgress
                     scaleX = 1f - nameProgress * 0.05f
                     scaleY = 1f - nameProgress * 0.05f
@@ -383,12 +362,12 @@ private fun AboutHeader(
             fontSize = 35.sp,
         )
 
-        val versionProgress = ((scrollProgress() - 0.05f) / 0.15f).coerceIn(0f, 1f)
         Text(
             text = stringResource(R.string.about_version, versionName),
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
+                    val versionProgress = ((scrollProgress() - 0.05f) / 0.15f).coerceIn(0f, 1f)
                     alpha = 1f - versionProgress
                     scaleX = 1f - versionProgress * 0.05f
                     scaleY = 1f - versionProgress * 0.05f

@@ -8,6 +8,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
 import top.yukonga.miuix.kmp.blur.Backdrop
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.glass.internal.drawGlassStroke
 
 /**
@@ -36,7 +37,7 @@ fun Modifier.glassPanel(
     shadow: GlassShadow? = GlassShadows.Regular,
     shading: Boolean = true,
     fallback: Modifier = Modifier.clip(shape),
-): Modifier = if (backdrop == null) {
+): Modifier = if (backdrop == null || !isRuntimeShaderSupported()) {
     this
         .graphicsLayer { this.alpha = alpha }
         .glassShadow(shape, shadow)

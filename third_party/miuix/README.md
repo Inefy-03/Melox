@@ -1,17 +1,13 @@
 # Miuix Native Rail Inset Patch
 
-Melox uses a local Android UI patch based on pinned Miuix Glass commit `b7a5f08f`.
-`0.9.4.3-melox` is a Melox patch version, not an upstream release. Other Miuix
-modules and the UI artifact's transitive dependencies remain at their original
-versions.
+Melox consumes Miuix `0.9.5-beta01` from Maven Central. The UI Android artifact
+is substituted with `0.9.5-beta01-melox`, rebuilt from the same release tag
+with the rail inset overload and observable top-bar collapse limit.
 
-- Upstream: [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix)
-- Base commit: `b7a5f08f` (2026-11-07)
-- License: Apache-2.0; see [LICENSE](LICENSE)
-- Source changes: [navigation-rail-insets.patch](navigation-rail-insets.patch)
-- Original dependency metadata: [upstream-ui-android.pom](upstream-ui-android.pom)
-- Bundled AAR SHA-256:
-  `8eb07acf3b58dcab63bb627ee09a73d8c91a3009fe4be2701ecafa4e5503368e`
+- Upstream release [v0.9.5-beta01](https://github.com/compose-miuix-ui/miuix/releases/tag/v0.9.5-beta01)
+- License [Apache-2.0](LICENSE)
+- Source patch [navigation-rail-insets.patch](navigation-rail-insets.patch)
+- Release dependency metadata [upstream-ui-android-0.9.5-beta01.pom](upstream-ui-android-0.9.5-beta01.pom)
 
 The new stateful `NavigationRail` overload requires `statusBarInsets` and accepts
 optional `contentBottomInsets`. The top input replaces the existing inner
@@ -26,6 +22,15 @@ mini-player surface top; it adds no outer rail padding/background.
 The source patch also documents the API in English/Chinese and exercises the
 new overload in upstream demo/example code with the original inset behavior.
 
+## Upstream Source Audit (2026-11-18)
+
+Audited upstream [`6d2554a8`](https://github.com/compose-miuix-ui/miuix/commit/6d2554a850b8960e2616c968263ff64beb5ffb03)
+after the existing `bf8281e2` pin. This commit updates BuildConfig release metadata:
+library version 0.9.4 to 0.9.5, example version 1.0.9 to 1.1.0, and compile SDK
+minor version 0 to 2. All 50 selected upstream source hashes and all 50 transformed
+local hashes were verified against this commit. The manifest records this audit.
+
+
 ## Rebuild
 
 Requirements: Python 3, Git, JDK 21 and the Android SDK/toolchain configured for
@@ -38,28 +43,24 @@ python3 third_party/miuix/rebuild.py /path/to/miuix
 The script reads that clone without changing it, exports the pinned source to
 a temporary directory, verifies the original rail source hash, applies the
 patch, builds the Android AAR and updates this directory's local Maven artifact.
-It copies only `sdk.dir` from Melox's local configuration when present. The
-isolated build omits demo/baseline-profile projects and their profile-generation
-dependency; it does not alter library implementation or dependency versions.
-No remote publication is performed. Ordinary Melox builds consume the bundled
-AAR and do not require the upstream checkout or a rebuild.
+It copies only `sdk.dir` from Melox's local configuration when present.
+The isolated build omits demo and baseline-profile generation projects.
+The packaged UI AAR carries the official Beta 01 dependency metadata.
+Ordinary Melox builds consume the bundled AAR.
 
 ## Compatibility
 
-The source build uses Gradle 9.9 from the upstream checkout, with Compose
-1.12.0, Kotlin 2.4.20 and AGP 9.4.1 pinned to Melox's toolchain. The existing
-rail source patch is applied without the obsolete upstream demo/doc hunks.
-The backport adds the upstream overlay surface hooks required by Glass.
-ThemeController, MiuixTheme and Android DynamicColors are retained from 0.9.4
-alongside material-color-utilities 5.0.1 to preserve existing palette behavior.
-Other Miuix modules remain at 0.9.4. App compilation and tests are required
-after rebuilding; device checks are needed for rendering and gestures.
+Miuix Beta 01 requires Android compile SDK 37.2. The Melox app targets API 37
+with minimum API 28. The original public Beta 01 UI entry points are retained.
+`verify_binary_compat.py BASELINE_AAR CANDIDATE_AAR DEPENDENCY_AAR...`
+checks dependent AAR references against the patched UI.
 
-The original 0.9.4 OverlayDialog JVM entry point is retained through
-`overlay-dialog-binary-compat.patch`, because published preference popups
-still reference it. `verify_binary_compat.py BASELINE_AAR CANDIDATE_AAR
-DEPENDENCY_AAR...` checks the retained modules for missing UI method calls.
-Exclude the replaced UI artifact itself from the dependency arguments.
+The Android app consumes the official Blur, Material, Nav, Icons and Preference
+artifacts. iOS-like follows the Beta 01 example's Lens and Vibrancy sources
+and uses Material's tilt sensor and Axial stroke model. The navigation body
+and mini player use 4 dp blur and a 24 dp lens. The selected capsule applies
+the example's press-scaled lens, depth and chromatic dispersion. Melox compiles
+the selected Glass component sources for its layout and popup adapters.
 
 The bundled Glass top bar uses statusBarsIgnoringVisibility when measuring its
 progressive band. Melox reserves that same inset on foreground content, so both
@@ -68,17 +69,16 @@ at 25 dp within the upstream 28 dp slots. App adapters preserve custom/no-feedba
 icon controls and use the upstream example's 8 dp spacing for grouped Glass controls.
 
 The app BackIcon adapter includes the pinned miuix-glass-icons Regular
-ChevronBackward path with its original license notice; OS3 uses the existing Back icon.
+ChevronBackward path with its original license notice for the unified interface.
 
-GlassIconDropdownMenu and GlassTransformPopup accept an optional coordinateOrigin
-(default zero) for hosting in Miuix PopupLayout. Anchor and icon bounds are converted
-to host coordinates, as in upstream GlassDropdownPreference; secondary menus use
-the same conversion. App menu anchors mark only the icon as transform content.
+Glass popup anchors and submenu rows use window coordinates. Each popup surface
+subtracts its host's window origin and intersects the system safe area with the
+host pane. App menu anchors mark only the icon as transform content.
 
-The blur artifact `miuix-blur-android:0.9.4.1-melox` is built from the original
-v0.9.4 blur sources. `progressive-blur-downsample.patch` caps both progressive
+The historical blur artifact `miuix-blur-android:0.9.4.1-melox` was built from
+the original v0.9.4 blur sources. `progressive-blur-downsample.patch` caps both progressive
 sampling branches at exponent 3 (1/8 resolution) without reducing blur radii or
-changing ordinary blur. `rebuild.py` reproduces both local UI and blur AARs.
+changing ordinary blur. The current rebuild generates the Beta 01 UI AAR.
 GlassTransformPopup reports dismissal only after all transition channels settle;
 menu hosts start the morph after PopupLayout's asynchronous mount. GlassIconButton
 adds an enabled argument so the independent navigation search preserves disabled
@@ -105,6 +105,87 @@ exclude capsule placement motion. Release settles against the current geometry.
 The trailing action releases retained content after exit and blocks focus and
 pointer input during exit. Existing Glass material types and Melox's leading
 action, variable-width destinations and shared indicator adapters are retained.
+
+## Official Portrait Glass Navigation
+
+OS4 portrait navigation uses the official GlassNavigationBar, layout, indicator,
+press/motion helpers, GlassIconButton, and their material/blur dependency chain
+from commit `ac0af4671bc9e4489d0960685a46a5b1ffd557da` (2026-11-16).
+The 50 selected sources are audited against main at
+`189ef10a624d47fc82d68c718f2f53a92cbda11d`, checked on 2026-11-17.
+Source and transformed SHA-256 hashes are recorded in
+[portrait-glass-sources.json](portrait-glass-sources.json).
+
+These files live under `top.yukonga.miuix.kmp.upstream` to keep portrait dependencies
+separate from the existing landscape, toolbar, popup and mini-player backports.
+Complete sources use package relocation and bind common expect functions to their
+Android actual implementations. Three file-scoped lint annotations preserve the
+upstream API-33 effect boundary inside Melox's API-28 module and the default static
+shader-cache lifetime. The existing runtime support checks remain unchanged. Supporting top-bar
+button defaults/context and popup anchor/surface data are extracted from official
+files; those selections are recorded in the manifest. Navigation, rendering and
+material algorithms are unchanged.
+
+Os4PortraitPlayerScaffold follows the example's GlassPage integration: native
+visibility animation, 54 dp height, 25 dp destination icons, 12 dp action spacing,
+and a 54 dp search button with its 28 dp Regular vector and Float shadow.
+The page uses the example's width cap, 20 dp top spacing and safe-bottom spacing
+of at least 24 dp (system bottom inset plus 8 dp when larger). Horizontal margins
+remain Melox's 16 dp by explicit user requirement rather than the example's 24 dp.
+The mini player, destination callbacks, search state and full-player translation
+remain application-owned. The original 8 dp mini-player bottom padding supplies
+the player-to-navigation gap, with no additional Column spacing. Search keeps hidden chrome from accepting input.
+
+Portrait tap/drag previews the indicator and commits once on release; cancellation
+restores selection. Native visibility replaces Melox's slide/expand wrapper.
+Landscape continues using the existing leading-action and variable-width navigation
+with press/drag selection (`selectOnRelease = false`); its sources and styling are
+unchanged by the portrait integration.
+
+## Glass Top Controls and Menus
+
+Toolbar controls and the popup chain follow the Miuix Glass demo at commit
+`ac0af4671bc9e4489d0960685a46a5b1ffd557da` (2026-11-16). GlassIconButton is
+extracted into its upstream source file. Material opacity affects the colour
+layers and stroke independently of visibility; unsupported runtime shaders use
+the opaque fallback path. Popup anchors retain material opacity separately from
+live visibility, and intrinsic panel measurements are cached during transitions.
+
+The app uses the demo's 28 dp Regular toolbar vectors inside the existing 44 dp
+buttons and keeps the 8 dp action spacing. Back, Search, Tune, SettingsOutline, More, Add, SelectAll,
+Close and Ok vectors are copied from that commit with their original headers.
+The sort entry uses Glass Tune; the landscape settings button uses Glass
+SettingsOutline at 28 dp inside its 44 dp button. Glass sidebar destination icons
+keep the user-requested 28 dp size, and the upper-left toggle stays
+24 dp. Row horizontal content padding is 12 dp, aligning the 28 dp row icons
+with the upper-left control at a 38 dp center within the panel. The icon-to-label
+gap remains 12 dp. Sidebar shortcuts keep RecentTasks,
+Item, Contacts and FolderFill. Music, Album, Contacts and FolderFill navigation
+vectors are copied from the Regular weight at `3a980f7c` into NavigationIcons.kt,
+retaining the official 28 dp canvas and inset. Music and Contacts retain Melox's
+solid silhouettes by omitting the upstream interior cutouts. Other screen icon variants remain
+unchanged; the sidebar no longer compensates for legacy 24 dp canvases.
+
+All three navigation styles share Glass HomeFill, Music, Album and SettingsFill
+vectors for their four primary destinations. OS3 uses the official non-floating
+NavigationBar and NavigationRail sizes of 26 dp and 28 dp. Both orientations of
+iOS-like navigation keep the demo's 22 dp icons. Glass bottom items use the
+25 dp GlassNavigationBar default; Glass sidebar items keep 28 dp by user requirement. The iOS-like
+navigation renders the supplied vectors directly. Navigation choices do not
+change toolbar icons.
+
+The menu's tick and submenu arrow use the
+upstream Basic.Check and Basic.ArrowRight directly, bypassing the app's Glass
+icon substitutions. Leading menu symbols retain app-owned icon selection.
+Popup sizing remains 200–288 dp wide, with a 24 dp radius and 44 dp minimum rows.
+
+The backport retains the existing material packages, Int backdrop downscale API,
+disabled controls, preference-item availability, and close-completion callbacks
+for Miuix PopupLayout. Shared preference dropdown callers also report window
+bounds, keeping their anchors compatible with the updated popup surface.
+The landscape search adapter retains its prior opacity contract through the
+existing transform helper. Landscape sidebar/top navigation hosts, selection and
+motion are unchanged; the sidebar icon slot follows its icon size plus the 12 dp gap.
 
 Bottom playback/navigation remain composed through search mode, as in the Glass
 example. Both fade with the example's rememberGlassSearchBarAlpha curve driven by
@@ -196,3 +277,51 @@ The navigation indicator draws the initial selected destination directly across
 startup width measurements and trailing-action changes. Both edges snap to each
 new startup geometry. Selection springs become active when the selected
 destination changes, retaining their normal width-change and drag behavior.
+
+## Unified application interface (2026-11-17)
+
+Application Glass adapters now live in ui/component without a theme switch.
+Navigation retains Glass, Original, and iOS-like as three separate choices.
+The app targets API 37 with minimum API 28. Glass layout stays active without
+runtime shaders, using the component opaque fallback and resting segmented tabs.
+The bundled portrait source references match upstream commit 189ef10a;
+existing UI/blur/nav patches and palette behavior are retained.
+
+## Glass Source Synchronization (2026-11-17)
+
+Audited all six commits after `3a980f7c`, through
+[`63d51cdf`](https://github.com/compose-miuix-ui/miuix/commit/63d51cdfe18488b18027b791a2e09799fcdd6665).
+Used implementations receive the segmented-tab drag/morph interaction, title blur,
+fallback band gradient and icon-button material-state optimizations. Both the
+legacy material adapter and the relocated portrait IconButton are synchronized.
+The native Glass rail badge changes, new floating components and iOS Scaffold fix
+do not enter Melox's active Android implementation.
+
+`top-app-bar-glass-sync.patch` updates the basic title layout required by the
+Glass top bar. The original public BlurTopAppBar signature is retained for binary
+callers. UI patch version is `0.9.4.4-melox`. Theme and rail patches still apply.
+The fallback band overhang changes from 28 to 36 dp, peak alpha from 1 to 0.9,
+and title blur from 12 to 8 dp, with compact-title blur capped at 4 dp. The
+inner fade follows the official 36 dp value, giving a total fade height of 72 dp.
+
+## Additional Upstream Blur Sync (2026-11-17)
+
+The relocated upstream blur dependency chain is synchronized through
+`d45ca1813089b38ba8d6b4daf4a2949eefa52dbe`, covering nine additional commits
+published during the sync. It includes the two-level progressive stack, normalized
+gradient uniforms, Android ramp blend/unpremultiplication fusion, sharp-band and
+downscale optimizations, center/color/noise sampling changes and the 100 dp maximum
+blur radius. Android actual functions remain bound directly in the app namespace.
+The retained 0.9.4 compatibility blur artifact has its separate pinned source patch.
+
+## Progressive Blur Follow-up (2026-11-17)
+
+Audited three commits after `d45ca181` through
+[`189ef10a`](https://github.com/compose-miuix-ui/miuix/commit/189ef10a624d47fc82d68c718f2f53a92cbda11d).
+The used relocated blur chain receives `76504ab0`: native-resolution sharp
+coverage, a 50/50 progressive level split, premultiplied intermediate passes,
+normalized Gaussian sampling and specialized shader variants for the two axes.
+The source manifest records all 50 source and transformed hashes at this pin.
+About follows `7188729e` with an always-collapsed top bar. Its header artwork
+and title-opacity animation remain page-owned. GlassPage popup hosting is already
+represented by Melox's root-Scaffold popup adapters.

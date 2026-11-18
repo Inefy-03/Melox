@@ -1,5 +1,7 @@
 package com.melox.player.ui.screen.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -24,10 +26,8 @@ import com.melox.player.ui.component.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -43,9 +43,9 @@ import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.AppSettings
 import com.melox.player.model.ScanStatus
-import com.melox.player.ui.component.AdaptiveTopAppBar
+import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.expandedTopBarBottomContentGap
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import top.yukonga.miuix.kmp.basic.BasicComponent
@@ -54,8 +54,8 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import com.melox.player.ui.component.PageCard as Card
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
@@ -64,10 +64,10 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import com.melox.player.ui.component.os4.navigationBackIcon
+import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.More
-import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
-import com.melox.player.ui.component.os4.OverlayDialog
+import com.melox.player.ui.component.OverlayIconDropdownMenu
+import com.melox.player.ui.component.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.LocalContentColor
@@ -139,12 +139,8 @@ fun ScanMusicScreen(
 
     PageScaffold(
             topBar = {
-            BlurredBar(
-                backdrop = topBarBackdrop,
-                blurEnabled = topBarBackdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
-                AdaptiveTopAppBar(
+            TopBarBackdrop(backdrop = topBarBackdrop) {
+                TopAppBar(
                     title = stringResource(R.string.scan_music_page_title),
                     color = topBarBackdrop.miuixBarColor(),
                     scrollBehavior = scrollBehavior,

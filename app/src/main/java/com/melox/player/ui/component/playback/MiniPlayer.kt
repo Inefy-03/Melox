@@ -1,5 +1,7 @@
 package com.melox.player.ui.component.playback
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
@@ -24,14 +26,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -81,7 +81,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import com.melox.player.ui.component.os4.Icon
+import com.melox.player.ui.component.Icon
 import top.yukonga.miuix.kmp.basic.IconButtonDefaults
 import top.yukonga.miuix.kmp.basic.DividerDefaults
 import top.yukonga.miuix.kmp.basic.Text
@@ -129,21 +129,22 @@ internal fun MiniPlayer(
     val item = playback.currentItem
     val hasItem = item != null
     val isNormal = chrome.style == BottomBarStyle.NORMAL
-    val isSmallFloating = chrome.smallPlayerBar && !isNormal
-    val isOs4 = chrome.style == BottomBarStyle.OS4
+    val isSmallFloating = chrome.usesSmallPlayerBar && !isNormal
+    val isGlass = chrome.style == BottomBarStyle.GLASS
+    val isGlassLayout = isGlass && !chrome.useIosLikeLayout
     val surfaceCornerRadius = chrome.cornerRadius
-    val artworkCornerRadius = if (isOs4) {
-        if (circularArtwork) chrome.artworkSize / 2 else chrome.os4ArtworkCornerRadius
+    val artworkCornerRadius = if (isGlassLayout) {
+        if (circularArtwork) chrome.artworkSize / 2 else chrome.glassArtworkCornerRadius
     } else {
-        miniPlayerArtworkCornerRadius(isNormal, chrome.smallPlayerBar, circularArtwork)
+        miniPlayerArtworkCornerRadius(isNormal, chrome.usesSmallPlayerBar, circularArtwork)
     }
     val normalOutlineColor = DividerDefaults.DividerColor.copy(
         alpha = NORMAL_BAR_STROKE_ALPHA,
     )
     val playerHeight = chrome.height
     val artworkSize = chrome.artworkSize
-    val metadataSpacing = if (isOs4) 4.dp + 4.dp * chrome.contentFraction
-        else miniPlayerArtworkMetadataSpacing(isNormal, chrome.smallPlayerBar)
+    val metadataSpacing = if (isGlassLayout) 4.dp + 4.dp * chrome.contentFraction
+        else miniPlayerArtworkMetadataSpacing(isNormal, chrome.usesSmallPlayerBar)
     val controlSize = miniPlayerControlSize()
     val playPauseIconSize = 22.dp
     val controlIconSize = 24.dp
@@ -158,7 +159,7 @@ internal fun MiniPlayer(
     } else {
         MiuixTheme.textStyles.body1
     }
-    val artistStyle = if (isOs4) {
+    val artistStyle = if (isGlass) {
         androidx.compose.ui.text.lerp(
             MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
             MiuixTheme.textStyles.footnote1,
@@ -275,20 +276,21 @@ internal fun MiniPlayer(
                 modifier = Modifier
                     .matchParentSize()
                     .then(
-                        if (isOs4) Modifier.glassShadow(GlassShape(surfaceCornerRadius), GlassShadows.Float)
+                        if (isGlass) Modifier.glassShadow(GlassShape(surfaceCornerRadius), GlassShadows.Float)
                         else if (isNormal) Modifier else Modifier.miuixFloatingBarShadow(
                             cornerRadius = surfaceCornerRadius,
                             isDark = chrome.isDark,
                         ),
                     )
                     .then(
-                        if (chrome.style == BottomBarStyle.OS4) Modifier
+                        if (chrome.style == BottomBarStyle.GLASS) Modifier
                         else Modifier.squircleClip(surfaceCornerRadius),
                     )
                     .miniPlayerSurface(
                         cornerRadius = surfaceCornerRadius,
                         style = chrome.style,
                         backdrop = chrome.backdrop,
+                        glassBackdrop = chrome.glassBackdrop,
                         blurActive = chrome.blurActive,
                         liquidGlassActive = chrome.liquidGlassActive,
                         isDark = chrome.isDark,
@@ -331,6 +333,7 @@ internal fun MiniPlayer(
                                 cornerRadius = surfaceCornerRadius,
                                 style = chrome.style,
                                 backdrop = chrome.backdrop,
+                                glassBackdrop = chrome.glassBackdrop,
                                 blurActive = chrome.blurActive,
                                 liquidGlassActive = true,
                                 isDark = chrome.isDark,
@@ -369,12 +372,12 @@ internal fun MiniPlayer(
                         else Modifier,
                     )
                     .padding(
-                        start = if (isOs4) chrome.os4ArtworkStartPadding
-                        else miniPlayerArtworkStartPadding(isNormal, chrome.smallPlayerBar, circularArtwork),
+                        start = if (isGlassLayout) chrome.glassArtworkStartPadding
+                        else miniPlayerArtworkStartPadding(isNormal, chrome.usesSmallPlayerBar, circularArtwork),
                         end = when {
-                            isOs4 -> 7.dp
+                            isGlassLayout -> 7.dp
                             isSmallFloating -> 8.dp
-                            chrome.smallPlayerBar -> (playerHeight - controlSize) / 2
+                            chrome.usesSmallPlayerBar -> (playerHeight - controlSize) / 2
                             else -> 10.dp
                         },
                     ),
@@ -420,7 +423,7 @@ internal fun MiniPlayer(
                 Row(
                     // Keep the former 54 dp surface's control centers relative to its bottom edge.
                     modifier = Modifier
-                        .offset(y = if (isOs4) (-1).dp else 0.dp)
+                        .offset(y = if (isGlassLayout) (-1).dp else 0.dp)
                         .onGloballyPositioned { coordinates ->
                             onPlayerControlsBoundsChanged(layoutBounds(coordinates))
                         },
@@ -430,7 +433,7 @@ internal fun MiniPlayer(
                     val playPausePress = rememberPlayerControlPressFeedback(hasItem)
                     PlayerControlIconButton(
                         modifier = Modifier
-                            .offset(x = if (isOs4 || chrome.smallPlayerBar) 0.dp else (-6).dp)
+                            .offset(x = if (isGlassLayout || chrome.usesSmallPlayerBar) 0.dp else (-6).dp)
                             .then(playPausePress.modifier),
                         enabled = hasItem,
                         onClick = onTogglePlayPause,
@@ -462,7 +465,7 @@ internal fun MiniPlayer(
                         }
                     }
                     PlayerControlIconButton(
-                        modifier = Modifier.offset(x = if (isOs4) 0.dp else miniPlayerQueueOffset(isNormal, chrome.smallPlayerBar)),
+                        modifier = Modifier.offset(x = if (isGlassLayout) 0.dp else miniPlayerQueueOffset(isNormal, chrome.usesSmallPlayerBar)),
                         onClick = onOpenQueue,
                         minWidth = controlSize,
                         minHeight = controlSize,
@@ -771,7 +774,7 @@ private val MiniMetadataLabelSpacing = 12.dp
 private const val MiniMetadataReturnDurationMillis = 160
 
 internal fun miniPlayerHeight(style: BottomBarStyle, smallPlayerBar: Boolean): Dp =
-    if (style == BottomBarStyle.OS4) {
+    if (style == BottomBarStyle.GLASS) {
         52.dp
     } else if (style == BottomBarStyle.NORMAL) {
         if (smallPlayerBar) 54.dp else 68.dp

@@ -5,6 +5,10 @@ package com.melox.player.ui.component.liquid
 
 // Adapted from Kyant0/AndroidLiquidGlass — https://github.com/Kyant0/AndroidLiquidGlass (Apache 2.0).
 
+import top.yukonga.miuix.kmp.material.EdgeStroke
+import top.yukonga.miuix.kmp.material.drawEdgeStroke
+import top.yukonga.miuix.kmp.material.EdgeLightSource
+import top.yukonga.miuix.kmp.material.EdgePeak
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
@@ -89,7 +93,7 @@ import kotlin.math.sign
 import kotlin.math.sin
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BadgedBox
-import com.melox.player.ui.component.os4.Icon
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.Backdrop
@@ -102,14 +106,9 @@ import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.blur
 import top.yukonga.miuix.kmp.blur.drawBackdrop
-import top.yukonga.miuix.kmp.blur.effect
-import top.yukonga.miuix.kmp.blur.highlight.BloomStroke
-import top.yukonga.miuix.kmp.blur.highlight.Highlight
-import top.yukonga.miuix.kmp.blur.highlight.LightPosition
-import top.yukonga.miuix.kmp.blur.highlight.LightSource
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.blur.sensor.rememberDeviceTilt
+import top.yukonga.miuix.kmp.material.sensor.rememberDeviceTilt
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -119,27 +118,29 @@ import top.yukonga.miuix.kmp.utils.platform
 
 private val LocalIosTabScale = staticCompositionLocalOf { { 1f } }
 
-private val iosIndicatorSpecular: Highlight = Highlight(
+private val iosIndicatorSpecular: EdgeStroke = EdgeStroke(
     width = 1.dp,
-    alpha = 1f,
-    style = BloomStroke(
-        color = Color.White.copy(alpha = 0.12f),
-        innerBlurRadius = 2.0.dp,
-        primaryLight = LightSource(
-            position = LightPosition(0.5f, -0.3f, -0.05f),
-            color = Color.White,
-            intensity = 1f,
-        ),
-        secondaryLight = LightSource(
-            position = LightPosition(0.5f, 0.8f, -0.5f),
-            color = Color.White,
-            intensity = 0.4f,
-        ),
-        dualPeak = true,
+    bevel = 2.0.dp,
+    color = Color.White.copy(alpha = 0.12f),
+    primary = EdgeLightSource(
+        x = 0.5f,
+        y = -0.3f,
+        z = -0.05f,
+        color = Color.White,
+        intensity = 1f,
     ),
+    secondary = EdgeLightSource(
+        x = 0.5f,
+        y = 0.8f,
+        z = -0.5f,
+        color = Color.White,
+        intensity = 0.4f,
+    ),
+    // The gravity-rotated lights sweep horizontally, so follow each light's own XY direction.
+    peak = EdgePeak.Axial,
 )
 
-// Mirrors HighlightStyle.kt's LIGHT_REF — keep in sync.
+// Mirrors the edge-stroke shader's LIGHT_REF — keep in sync.
 private const val LIGHT_REF_X = 0.5f
 private const val LIGHT_REF_Y = 0.7f
 private const val GRAVITY_DIR_THRESHOLD_SQ = 0.01f // |g_xy| > 0.1, ≈ 6° tilt
@@ -175,30 +176,31 @@ private fun rememberQuantizedGravityAngle(): State<Float> {
 }
 
 /**
- * [base] with its `dualPeak` primary light rotated to the gravity angle plus [extraDegrees].
+ * [base] with its two lights rotated to the gravity angle plus [extraDegrees]: the primary
+ * leads and the secondary sits 180° opposite, reproducing the removed `dualPeak` two-peak
+ * sweep under [EdgePeak.Axial]. Both keep their own `z`, colour and intensity.
+ *
  * Read `.value` only at draw time (see [rememberQuantizedGravityAngle]); the rotated copy is
  * cached, re-allocating only when the angle crosses a quantization step.
  */
 @Composable
-private fun rememberGravityRotatedHighlight(
-    base: Highlight,
+private fun rememberGravityRotatedStroke(
+    base: EdgeStroke,
     extraDegrees: Float,
-): State<Highlight> {
+): State<EdgeStroke> {
     val gravityAngle = rememberQuantizedGravityAngle()
     return remember(gravityAngle, base, extraDegrees) {
         derivedStateOf {
-            val baseStyle = base.style as BloomStroke
-            val basePrimary = baseStyle.primaryLight
             val rad = gravityAngle.value + (extraDegrees * PI / 180.0).toFloat()
+            val opposite = rad + PI.toFloat()
             base.copy(
-                style = baseStyle.copy(
-                    primaryLight = basePrimary.copy(
-                        position = LightPosition(
-                            x = LIGHT_REF_X + cos(rad),
-                            y = LIGHT_REF_Y + sin(rad),
-                            z = basePrimary.position.z,
-                        ),
-                    ),
+                primary = base.primary.copy(
+                    x = LIGHT_REF_X + cos(rad),
+                    y = LIGHT_REF_Y + sin(rad),
+                ),
+                secondary = base.secondary.copy(
+                    x = LIGHT_REF_X + cos(opposite),
+                    y = LIGHT_REF_Y + sin(opposite),
                 ),
             )
         }
@@ -230,8 +232,8 @@ internal fun rememberIosLikeNavigationBarWidth(
 }
 
 @Composable
-internal fun rememberFloatingBarHighlight(active: Boolean): State<Highlight>? = if (active) {
-    rememberGravityRotatedHighlight(iosIndicatorSpecular, extraDegrees = -45f)
+internal fun rememberFloatingBarHighlight(active: Boolean): State<EdgeStroke>? = if (active) {
+    rememberGravityRotatedStroke(iosIndicatorSpecular, extraDegrees = -45f)
 } else {
     null
 }
@@ -246,7 +248,7 @@ fun LiquidGlassNavigationBar(
     isLiquidGlassActive: Boolean,
     isDark: Boolean,
     modifier: Modifier = Modifier,
-    containerHighlight: State<Highlight>? = null,
+    containerHighlight: State<EdgeStroke>? = null,
     bottomPadding: Dp? = null,
     badge: (Int) -> (@Composable () -> Unit)? = { null },
     vertical: Boolean = false,
@@ -264,7 +266,7 @@ fun LiquidGlassNavigationBar(
             override val offsetResidualY: Float get() = backdrop.offsetResidualY
             override fun DrawScope.drawBackdrop(
                 density: Density, coordinates: LayoutCoordinates?,
-                layerBlock: (GraphicsLayerScope.() -> Unit)?, downscaleFactor: Int,
+                layerBlock: (GraphicsLayerScope.() -> Unit)?, downscaleFactor: Float,
             ) {
                 // LayerBackdrop cancels this rotation before sampling the screen-space scene.
                 // The parent then rotates the control, leaving the sampled background upright.
@@ -283,7 +285,6 @@ fun LiquidGlassNavigationBar(
 
     val tabsBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
-    val containerBlur = rememberGlassContainerBlur()
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val animationScope = rememberCoroutineScope()
     val tabsCount = items.size
@@ -396,12 +397,12 @@ fun LiquidGlassNavigationBar(
 
     // Read .value only inside highlight lambdas (draw phase), never in composition.
     val baseHighlight = if (liquidGlassActive) {
-        containerHighlight ?: rememberGravityRotatedHighlight(iosIndicatorSpecular, extraDegrees = -45f)
+        containerHighlight ?: rememberGravityRotatedStroke(iosIndicatorSpecular, extraDegrees = -45f)
     } else {
         null
     }
     val pillHighlight = if (liquidGlassActive) {
-        rememberGravityRotatedHighlight(iosIndicatorSpecular, extraDegrees = 90f)
+        rememberGravityRotatedStroke(iosIndicatorSpecular, extraDegrees = 90f)
     } else {
         null
     }
@@ -512,16 +513,19 @@ fun LiquidGlassNavigationBar(
                                     backdrop = glassBackdrop,
                                     shape = { pillShape },
                                     effects = {
-                                        // Reserve the lens and press-scale sampling reach at full resolution.
+                                        // 24dp lens refraction + 16dp press-scale reach, raised before blur() reads it.
                                         padding = maxOf(padding, 40.dp.toPx())
                                         vibrancy()
-                                        effect(containerBlur)
+                                        blur(
+                                            4.dp.toPx(),
+                                            4.dp.toPx(),
+                                        )
                                         lens(
                                             refractionHeight = 24.dp.toPx(),
                                             refractionAmount = 24.dp.toPx(),
                                         )
                                     },
-                                    highlight = { baseHighlight.value.copy(alpha = 0.75f) },
+                                    onDrawFront = { drawEdgeStroke(pillShape, baseHighlight.value, alpha = 0.75f) },
                                     layerBlock = {
                                         val width = size.width.coerceAtLeast(1f)
                                         val s = lerp(1f, 1f + 16.dp.toPx() / width, dampedDrag.pressProgress)
@@ -540,7 +544,6 @@ fun LiquidGlassNavigationBar(
                                             BlendColorEntry(surfaceContainer.copy(alpha = 0.6f)),
                                         ),
                                     ),
-                                    highlight = null,
                                 )
                             } else {
                                 Modifier.background(containerColor, pillShape)
@@ -617,7 +620,7 @@ fun LiquidGlassNavigationBar(
                                         chromaticAberration = 0.5f,
                                     )
                                 },
-                                highlight = { pillHighlight.value.copy(alpha = dampedDrag.pressProgress) },
+                                onDrawFront = { drawEdgeStroke(pillShape, pillHighlight.value, alpha = dampedDrag.pressProgress) },
                                 layerBlock = {
                                     scaleX = dampedDrag.scaleX
                                     scaleY = dampedDrag.scaleY

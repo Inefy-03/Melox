@@ -1,0 +1,355 @@
+{
+  "commit": "6d2554a850b8960e2616c968263ff64beb5ffb03",
+  "files": [
+    {
+      "source": "miuix-blur/src/androidMain/kotlin/top/yukonga/miuix/kmp/blur/internal/RenderEffectCompat.android.kt",
+      "target": "blur/internal/RenderEffectCompat.android.kt",
+      "source_sha256": "53ba370ea4e6a877282da54a1a53e84bc164d14a2fb31a9c7a298d3e100603f8",
+      "sha256": "e0171b809171730bd8c823b22e5a60541e179b1edb7500ec007c5e65c876f536",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/Backdrop.kt",
+      "target": "blur/Backdrop.kt",
+      "source_sha256": "c9c32ce00997e67d76768f7899e6a3e33d3028586021cc7fa1cb8234190aeea5",
+      "sha256": "73ddd95fddbbaded964cb881580ceb153585a9875dc416a8eea20a2db4377087",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/BackdropEffectScope.kt",
+      "target": "blur/BackdropEffectScope.kt",
+      "source_sha256": "d0245283129c6faacf07d5d03793807865e05d1e24b4c853484c93d55f40547f",
+      "sha256": "10ad793db15497d4863e85c82b495108ec6125e57167daf047e5c67f3f0c063f",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/BackdropEffects.kt",
+      "target": "blur/BackdropEffects.kt",
+      "source_sha256": "93f0ab1fc6237400bf0f29a3d6af63d6d63ec5f340fba8988754aec9459a8e4b",
+      "sha256": "88011e9b79c9122515dc0e9aadf359407ea29deaa8ff027681b386c7be85f22f",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/BlurDefaults.kt",
+      "target": "blur/BlurDefaults.kt",
+      "source_sha256": "d8d51ea4c602daf3794d794ae7747c2b7019b55b24277811c15a8cb4555653cc",
+      "sha256": "84f34331575a5fbdee0c8cbb6290723565fb85dbee738b872d1950bef2aa3cda",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/DrawBackdropModifier.kt",
+      "target": "blur/DrawBackdropModifier.kt",
+      "source_sha256": "9bdfa69b5cad2bcd318b44b5cd709e6e296e705f4092052f064dbac73ac758a5",
+      "sha256": "2231f2ed76e0c10bdff8d136f852cdecdcfe7533f032ccb8c9afc1829c09d3db",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/LayerBackdrop.kt",
+      "target": "blur/LayerBackdrop.kt",
+      "source_sha256": "d2a50bfeceb2c3aa3f7a7a77309306ed6154a840be94606264d33a8c50d13dbd",
+      "sha256": "1cd0558c495b1a0d006f1941f8c98b396c838c06aa92d417e17101028f80158c",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/LayerBackdropModifier.kt",
+      "target": "blur/LayerBackdropModifier.kt",
+      "source_sha256": "3f40647d2c78d0152021830a5d105e20df06647e36626f764e6b095c20b48560",
+      "sha256": "dbba77395d4249f4d346a493e858b53a40e5f64e83e4c1843dfee3431a070858",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/ProgressiveBlur.kt",
+      "target": "blur/ProgressiveBlur.kt",
+      "source_sha256": "c963b4d485c6397f9f0b4842b81b91b4aea1ff2ae3555a39a0c1afc89d470e4d",
+      "sha256": "b01ae278bfffaad25dc27762b7b71808e8431bb111699b2f535f5e9f134e96fa",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/TextureEffect.kt",
+      "target": "blur/TextureEffect.kt",
+      "source_sha256": "d8b31f6d134d299a97b759607b1703bcd263808dbe574234c54d95692be7e539",
+      "sha256": "26d9e5f7f603252739d160c1af8e385481dcb77c5751e08913d45dd342cdf43a",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/internal/BlurEffect.kt",
+      "target": "blur/internal/BlurEffect.kt",
+      "source_sha256": "e732034a81ef5beec1e2becbb3f8bfe2405f089102204fb24eea8c3bb012d789",
+      "sha256": "e827d77c700cd13708bf1c26db881d6a5bd2d4f814d3988c2bd5319867d6505a",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/internal/InverseLayerScope.kt",
+      "target": "blur/internal/InverseLayerScope.kt",
+      "source_sha256": "52930a84ea1802cb3afcadcc650b922145faa5779f73a57893d508c76d7efa85",
+      "sha256": "20144375dcd51303eadf7ca09cd0a15913e773bc53bff2039a0daa0de9952774",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/internal/LayerRecorder.kt",
+      "target": "blur/internal/LayerRecorder.kt",
+      "source_sha256": "1864ebbd9d2fc71f32138bfc598c7e59f160026e9a64012173b85a8d19e3bd52",
+      "sha256": "202b14456edb3194210513421680b1b146723dacd7a273c8d0fb0d602d7c4b15",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/internal/RenderEffectCompat.kt",
+      "target": "blur/internal/RenderEffectCompat.kt",
+      "source_sha256": "c02a8c98649081ba9b8f51ccbca2c4d4a6101358fa9e335d08deea32144bfb7b",
+      "sha256": "e9bc864381b57568b98afa77bd2916e262e96bd1ba4797c69c4199131de1bb19",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/internal/Shaders.kt",
+      "target": "blur/internal/Shaders.kt",
+      "source_sha256": "9df468fadde72894b33ff74be8215426c89311a7d54ae57bd86c2c009fb6fb19",
+      "sha256": "79e6569741d5ed080aaba8c604404ddd723f4e8ad002e01c26374b0aa5f2a510",
+      "selection": null
+    },
+    {
+      "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/internal/ShapeProvider.kt",
+      "target": "blur/internal/ShapeProvider.kt",
+      "source_sha256": "7935c7bef2299dd5fd45046f016c6340f296a18f3d137de3b4a37ff97b5726b1",
+      "sha256": "947a5d043afda6ab59ae04ffbb6282443a0b43a5adce6fdf1c272aef64fbb228",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/androidMain/kotlin/top/yukonga/miuix/kmp/material/RenderEffect.android.kt",
+      "target": "material/RenderEffect.android.kt",
+      "source_sha256": "0e587c96d685811b97659ce13adcb591ca394bac7aae478abb584e3896eca379",
+      "sha256": "4f6bd79607e2abceac4374b507a64e2981d027462c40900d4b38e159dc4016f4",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/androidMain/kotlin/top/yukonga/miuix/kmp/material/RuntimeShader.android.kt",
+      "target": "material/RuntimeShader.android.kt",
+      "source_sha256": "1c2b925146d10597627535ada31cc9470a361f4963dbef0834f8a5092a54c794",
+      "sha256": "adb404a657c733c59403ee4002fdd2200278bbd059d997478b0fb9bb247e8992",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/EdgeStroke.kt",
+      "target": "material/EdgeStroke.kt",
+      "source_sha256": "65bfb2d499eddf4f675f21d61d036770d9e34105b6b66e352b755fb558b23e2e",
+      "sha256": "5d0d96cdc472d7019a4fba26e62fe54bde62cfd9606fdaa028d921d3455bd29f",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/EdgeStrokeDrawing.kt",
+      "target": "material/EdgeStrokeDrawing.kt",
+      "source_sha256": "42ca4202ab7810efedcec5481541175d7c48e1a3fb26f1b750ccd5305acd1b05",
+      "sha256": "b70c5b4835b4f69dff9f6a5b3b2607e3d3d6004c240bb57041c3660f071c7223",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/EdgeStrokeModifier.kt",
+      "target": "material/EdgeStrokeModifier.kt",
+      "source_sha256": "d4ae85009a0d5c17cd176536b36ec86e866bd1027826e8c61f874a23ca45d397",
+      "sha256": "17bbcdb1be8052836c05aa2bbb2a552c34fb553fd23f87566b77254ccfe2f570",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassDefaults.kt",
+      "target": "material/GlassDefaults.kt",
+      "source_sha256": "fe25deb3e479143b3ae5e396694f856e12305d757f957d49f28c19e5b3f74910",
+      "sha256": "00d9189b770528014807a60b8fae03071efb42bb74fd1e0dae5d454ad100dabf",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassMaterial.kt",
+      "target": "material/GlassMaterial.kt",
+      "source_sha256": "6a369115a143786cb3581114895478cce5c02a10b5a9c74bb10e4cdcb24541b7",
+      "sha256": "7069a8fca7369a1ecc87de5f02d941a776517ac9ecdedd7283fdc4356dc0560b",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassMaterials.kt",
+      "target": "material/GlassMaterials.kt",
+      "source_sha256": "4b79d5ebb0c843d63e1fc43e4e9f1ebeba94eef180604bff811464d31f7943d3",
+      "sha256": "883bfe0dce22f15a51ebf641f087bbd8ee1e09f244179acd7e88ad5a0bd7673e",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassOverlays.kt",
+      "target": "material/GlassOverlays.kt",
+      "source_sha256": "28494143d61d0335f4d5c38d1d68f782e86e86a3a759b0ab2863a592a26736ce",
+      "sha256": "8be7ab6c0804cde98a5841d652681d1f2b26700bd13919444e9f3752176445f3",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassShadow.kt",
+      "target": "material/GlassShadow.kt",
+      "source_sha256": "fff99983c06ec096d66647142006369b076f61b0c2fc2fe8becfe62288f7f22f",
+      "sha256": "58525e5c66a560882b13f8e68cfa4395e38e242f8078c5acdf89ee04e3f6c3de",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassShape.kt",
+      "target": "material/GlassShape.kt",
+      "source_sha256": "7211b70360c4fe53c5d4b1d9e801c4f93ded83dbec30c8c67cd24fa080bcb2a8",
+      "sha256": "5866bd54e02315a78fd02dbb1953c5f0576b3a5e65a3b1c1c744ed4485962fc6",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassStyle.kt",
+      "target": "material/GlassStyle.kt",
+      "source_sha256": "6e2b3cf41bf2ed0b390d4c4a27d848a1159fbffabb594095755e06dcf7f0919c",
+      "sha256": "3aa5d96ea688d3941bfd9e42744f21bc696b93bdf1253cb43ec9262c95199fc5",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/GlassStyles.kt",
+      "target": "material/GlassStyles.kt",
+      "source_sha256": "db0ec29975e9e17219e13da17feb7c7b4e3235c41ddb835b45f3a30fd637a2cb",
+      "sha256": "dd10d5b160e0cb56077ece7050ab1660593599cbef2f7482989a789afabec81f",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/RenderEffect.kt",
+      "target": "material/RenderEffect.kt",
+      "source_sha256": "6eff8e094aeb69f2e7f705d5b7e25dc65d1bd869873ce4d038249dcf87da3536",
+      "sha256": "ab508f2668eaaa1869c998a281855f73a409cce8a2f982554d68c0b8e5b91065",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/RuntimeShader.kt",
+      "target": "material/RuntimeShader.kt",
+      "source_sha256": "2793a9ce78a17fcf1b2a2966412cadd9f0ee7be900af0af9aaefb939c25542f8",
+      "sha256": "5f142d2536d2a335c5fd587b062838509de59eb18228c36578cbbcdd27cfc8ac",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/RuntimeShaderCache.kt",
+      "target": "material/RuntimeShaderCache.kt",
+      "source_sha256": "b7cd450ba21aebeb3106f36f429ff1caf7582889ff04621f92a6700f5bddcbb4",
+      "sha256": "b4a1bd28ef37a7dc0e7034c202ad2122a77b322cc0a36a190e3cf0642a34c226",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/agsl/MaterialAgsl.kt",
+      "target": "material/agsl/MaterialAgsl.kt",
+      "source_sha256": "4b558f626529b147eeaacd5fc1edb292423535f1a2e52608c069ad29e305f536",
+      "sha256": "8c7e20e6c1c3edadec8fe644b21da986aae37c5a0a0e0793db93f03f88fafdb1",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/internal/EdgeStrokeDrawing.kt",
+      "target": "material/internal/EdgeStrokeDrawing.kt",
+      "source_sha256": "b676658ad5ce563140672f9f86666e08a0b86e1c442dcc3abffa82874fa3988e",
+      "sha256": "658f62c0ddb94b884290694e24c6d6c58c16c5d8a96a84977909024c495c63d4",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/internal/EdgeStrokeShader.kt",
+      "target": "material/internal/EdgeStrokeShader.kt",
+      "source_sha256": "8e7049f4e4c6bd9aaf2c977fbcb27085f320a08926997fd4e033e020f26b4a7a",
+      "sha256": "cbd8f0fad45835dd1393149fc8d5a8e6e75ba1c1a286ba01319b54289fc2eb0e",
+      "selection": null
+    },
+    {
+      "source": "miuix-material/src/commonMain/kotlin/top/yukonga/miuix/kmp/material/internal/GlassShaderCore.kt",
+      "target": "material/internal/GlassShaderCore.kt",
+      "source_sha256": "2b9717cb7607ac9d6b99d16a20b5f340a2a2723d7c8404dc3824cc371b446765",
+      "sha256": "036463ac75005474d00fbe5254d35a03500b1b2d5c0f91e0e911eab15614d7c9",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassNavigationBar.kt",
+      "target": "glass/GlassNavigationBar.kt",
+      "source_sha256": "8fa5b2739a60883f2ec40614ef1f32934501db736cf58fbefb5b718a5a06da54",
+      "sha256": "93c0ed819dc01f6d2c542857c9758401e1f6d7f8606be41d0f2007782dbc2125",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassNavigationBarLayout.kt",
+      "target": "glass/GlassNavigationBarLayout.kt",
+      "source_sha256": "f436390ecd5aad90e471d014fec3070cb82e56ed6bb6f2824423aaab14c5d016",
+      "sha256": "d3080c9a0b61801d65c1a4022e872f24fb282dda2627246ef7af2c38d843ead6",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassNavigationIndicator.kt",
+      "target": "glass/GlassNavigationIndicator.kt",
+      "source_sha256": "bcd820be94113210db88b31927772ed1b097eeb093d96ac6e3f881f6db0c7e35",
+      "sha256": "a601da4f1f108bf26850773b4ed54c90aa1e32fbc63e2c26323d4aef172f07ba",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/NavigationDragTarget.kt",
+      "target": "glass/NavigationDragTarget.kt",
+      "source_sha256": "21f9cc5f4192ad838cabe4bd897ef979b459d721eef22e9311e607db4266b8bd",
+      "sha256": "b575d77f1e54f16b9693cce0584efa379244354b708311dae18b8d20f79d82fa",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassMotion.kt",
+      "target": "glass/GlassMotion.kt",
+      "source_sha256": "eef39533c43404696564fd437f0c8a112f7fea6f90e6f8d37d26eeea2ff21964",
+      "sha256": "626961772dc56231ebd7f3fb9bfc4636e20af96b5cc47321bcd8fa778972e70e",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassPress.kt",
+      "target": "glass/GlassPress.kt",
+      "source_sha256": "7b7f85377916138b4a6f1674e516d949afb475131436bd9e994491d983db191c",
+      "sha256": "f5744b335902b731e0c59b3f84d831445971ec2abdb9c3b3bd9c5e3c455f24fd",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/Glass.kt",
+      "target": "glass/Glass.kt",
+      "source_sha256": "29884b6be2941932ca725d77c8adb336fdca7385ee1600723e7076109a767351",
+      "sha256": "007d98d12fe524d0d891c5e557545b0a025abfa08af5742e3d3e7f0664a139fc",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassPanel.kt",
+      "target": "glass/GlassPanel.kt",
+      "source_sha256": "b89623f8dcc3d4b68049822d85533376467e54e9273bbc3a98c5669f27e67341",
+      "sha256": "803f2eb93da1fe5e7e37e050271b1a7b49cdb1496676e56ad55a5343a51b4dcb",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassIconButton.kt",
+      "target": "glass/GlassIconButton.kt",
+      "source_sha256": "e5dec45046eaae70b53a1e05cd71c22c635239b3209910609ec32a3a04e0e8b8",
+      "sha256": "337d1f4e80495e5f1c81b76af945ce34e2715a6fbdc63047cacd358a356246e9",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/internal/GlassShader.kt",
+      "target": "glass/internal/GlassShader.kt",
+      "source_sha256": "2c1e1ea8dd407a43637c6fc82d211b8e069675845861a65f62bd217fa45fc60a",
+      "sha256": "37e470e8a64172be7f9eb5266540a7b8beb4cd581165e1855ce0ecb339d6ba8f",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/internal/GlassUniforms.kt",
+      "target": "glass/internal/GlassUniforms.kt",
+      "source_sha256": "c1b33debf7c40f1b138ea2e3aa20faa8a5895ddfc38389a2270f5bdcfe5750a3",
+      "sha256": "9b7777506d20143814f1d5fe5fcc2bb3ff3605e71f885a4ad8adcc582c5d9426",
+      "selection": null
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassTopAppBar.kt",
+      "target": "glass/GlassTopAppBar.kt",
+      "source_sha256": "a4b3da57039ede25c611a3f66cb660e059295d9dcdb65b718e7abedda4671da2",
+      "sha256": "cbc468d2976baa136b64a122e88d2244be4b878517616e1e1cef1d4eac624da0",
+      "selection": "GlassTopAppBarDefaults button defaults, GlassTopAppBarContext, LocalGlassTopAppBarContext"
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassTransformPopup.kt",
+      "target": "glass/GlassTransformPopup.kt",
+      "source_sha256": "da4950c0c080fc56e46d67e55d8a572d7998d5d2c3f8d34d6ec43ee1be76c1e3",
+      "sha256": "116f02dc2a042c65d4b411c77043e8c389d2477ba084304fe71056e251323b94",
+      "selection": "GlassPopupAnchor, GlassAnchorSurface, GlassPopupAnchorElement"
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassPopupSurface.kt",
+      "target": "glass/GlassPopupSurface.kt",
+      "source_sha256": "c65357b1ad4daad59ccf693cd4f45d2cd009f90483e437054206efd0bc9913c8",
+      "sha256": "e5ec2d442e63472d213b6ada64bd7e896f7ff08b31c67fe4986777ec7c9c9537",
+      "selection": "GlassPopupVisuals, popupShadowOutsets"
+    }
+  ]
+}

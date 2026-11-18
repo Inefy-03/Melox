@@ -17,9 +17,9 @@ import top.yukonga.miuix.kmp.glass.GlassShape
 import top.yukonga.miuix.kmp.glass.GlassStroke
 import top.yukonga.miuix.kmp.glass.GlassStrokeLight
 import top.yukonga.miuix.kmp.glass.GlassStyle
-import top.yukonga.miuix.kmp.shader.RuntimeShader
-import top.yukonga.miuix.kmp.shader.asBrush
-import top.yukonga.miuix.kmp.shader.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.material.RuntimeShader
+import top.yukonga.miuix.kmp.material.asBrush
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.min

@@ -1,7 +1,7 @@
 package com.melox.player.ui.screen.library
 
+import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -54,14 +52,9 @@ import com.melox.player.data.library.buildAlbumDiscSections
 import com.melox.player.data.library.buildAlbumGroups
 import com.melox.player.data.library.displayArtistName
 import com.melox.player.model.MusicTrack
-import com.melox.player.ui.component.BlurredBar
-import com.melox.player.ui.component.LocalCustomPageBackground
-import com.melox.player.ui.component.LocalTopBarBlurSettings
-import com.melox.player.ui.component.topBarContainerColor
-import com.melox.player.ui.component.tabSelectedContainerColor
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
-import com.melox.player.ui.component.stableTopAppBarInsets
 import com.melox.player.ui.component.library.ArtistArtwork
 import com.melox.player.ui.component.library.ArtistListItem
 import com.melox.player.ui.component.library.MusicTrackDescriptionMode
@@ -77,24 +70,17 @@ import com.melox.player.ui.component.library.selectedItemsInDisplayedOrder
 import com.melox.player.ui.component.library.toggleAllTrackSelection
 import com.melox.player.ui.component.library.toggleTrackSelection
 import kotlinx.coroutines.launch
-import com.melox.player.ui.component.PageCard as Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
-import com.melox.player.ui.component.os4.SmallTopAppBar
-import top.yukonga.miuix.kmp.basic.TabRowWithContour
-import top.yukonga.miuix.kmp.basic.TabRowDefaults
+import com.melox.player.ui.component.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
-import com.melox.player.ui.theme.LocalOs4Style
 import top.yukonga.miuix.kmp.blur.Backdrop
-import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRow
 import top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import com.melox.player.ui.component.os4.navigationBackIcon
+import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -105,41 +91,16 @@ private fun LibraryDetailTabs(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     backdrop: Backdrop?,
-    backgroundColor: Color,
-    selectedBackgroundColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    if (LocalOs4Style.current) {
-        val surfaceColor = MiuixTheme.colorScheme.surface
-        val tabBackdrop = backdrop ?: rememberLayerBackdrop { drawRect(surfaceColor) }
-        GlassSegmentedTabRow(
-            tabs = tabs,
-            selectedIndex = selectedIndex,
-            onSelect = onSelect,
-            backdrop = tabBackdrop,
-            modifier = modifier,
-            surfaceAlpha = if (backdrop == null) 0f else LocalGlassTopAppBarContext.current?.materialProgress?.value ?: 1f,
-        )
-    } else {
-        Card(
-            modifier = modifier,
-            insideMargin = PaddingValues(0.dp),
-            colors = CardDefaults.defaultColors(
-                color = backgroundColor,
-                contentColor = MiuixTheme.colorScheme.onSurface,
-            ),
-        ) {
-            TabRowWithContour(
-                tabs = tabs,
-                selectedTabIndex = selectedIndex,
-                onTabSelected = onSelect,
-                colors = TabRowDefaults.tabRowColors(
-                    backgroundColor = backgroundColor,
-                    selectedBackgroundColor = selectedBackgroundColor,
-                ),
-            )
-        }
-    }
+    GlassSegmentedTabRow(
+        tabs = tabs,
+        selectedIndex = selectedIndex,
+        onSelect = onSelect,
+        backdrop = backdrop,
+        modifier = modifier,
+        surfaceAlpha = if (backdrop == null) 0f else LocalGlassTopAppBarContext.current?.materialProgress?.value ?: 1f,
+    )
 }
 
 @Composable
@@ -169,13 +130,6 @@ fun AlbumDetailScreen(
     val layoutDirection = LocalLayoutDirection.current
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
-    val hasWallpaper = LocalCustomPageBackground.current != null
-    val tabRowBackgroundColor = topBarContainerColor(hasWallpaper, backdrop != null, MiuixTheme.colorScheme.surface)
-    val tabSelectedColor = tabSelectedContainerColor(
-        hasWallpaper = hasWallpaper,
-        progressiveBlurActive = backdrop != null && LocalTopBarBlurSettings.current.progressiveEnabled,
-        fallbackColor = MiuixTheme.colorScheme.surfaceContainer,
-    )
     val trackSections = remember(album.tracks) { buildAlbumDiscSections(album.tracks) }
     val orderedTracks = remember(trackSections) { trackSections.flatMap(AlbumDiscSection::tracks) }
     val orderedTrackIndices = remember(orderedTracks) {
@@ -211,11 +165,7 @@ fun AlbumDetailScreen(
     }
     PageScaffold(
             topBar = {
-            BlurredBar(
-                backdrop = backdrop,
-                blurEnabled = backdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
+            TopBarBackdrop(backdrop = backdrop) {
                 SmallTopAppBar(
                     title = if (selectionMode) {
                         if (selectedTrackUris.isEmpty()) {
@@ -229,7 +179,7 @@ fun AlbumDetailScreen(
                     } else {
                         ""
                     },
-                    modifier = Modifier.stableTopAppBarInsets(backdrop.miuixBarColor()),
+                    modifier = Modifier,
                     color = backdrop.miuixBarColor(),
                     scrollBehavior = scrollBehavior,
                     navigationIcon = {
@@ -294,8 +244,6 @@ fun AlbumDetailScreen(
                                     scope.launch { pagerState.animateScrollToPage(page) }
                                 },
                                 backdrop = backdrop,
-                                backgroundColor = tabRowBackgroundColor,
-                                selectedBackgroundColor = tabSelectedColor,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 16.dp, end = 16.dp, bottom = 1.dp),
@@ -504,13 +452,6 @@ fun ArtistDetailScreen(
     val albums = remember(artist.tracks) { buildAlbumGroups(artist.tracks) }
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
-    val hasWallpaper = LocalCustomPageBackground.current != null
-    val tabRowBackgroundColor = topBarContainerColor(hasWallpaper, backdrop != null, MiuixTheme.colorScheme.surface)
-    val tabSelectedColor = tabSelectedContainerColor(
-        hasWallpaper = hasWallpaper,
-        progressiveBlurActive = backdrop != null && LocalTopBarBlurSettings.current.progressiveEnabled,
-        fallbackColor = MiuixTheme.colorScheme.surfaceContainer,
-    )
     var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var selectedTrackUris by remember(artist.key) {
         mutableStateOf<Set<String>>(emptySet())
@@ -538,11 +479,7 @@ fun ArtistDetailScreen(
     }
     PageScaffold(
             topBar = {
-            BlurredBar(
-                backdrop = backdrop,
-                blurEnabled = backdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
+            TopBarBackdrop(backdrop = backdrop) {
                 SmallTopAppBar(
                     title = if (selectionMode) {
                         if (selectedTrackUris.isEmpty()) {
@@ -556,7 +493,7 @@ fun ArtistDetailScreen(
                     } else {
                         ""
                     },
-                    modifier = Modifier.stableTopAppBarInsets(backdrop.miuixBarColor()),
+                    modifier = Modifier,
                     color = backdrop.miuixBarColor(),
                     scrollBehavior = scrollBehavior,
                     navigationIcon = {
@@ -621,8 +558,6 @@ fun ArtistDetailScreen(
                                     scope.launch { pagerState.animateScrollToPage(page) }
                                 },
                                 backdrop = backdrop,
-                                backgroundColor = tabRowBackgroundColor,
-                                selectedBackgroundColor = tabSelectedColor,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(start = 16.dp, end = 16.dp, bottom = 1.dp),

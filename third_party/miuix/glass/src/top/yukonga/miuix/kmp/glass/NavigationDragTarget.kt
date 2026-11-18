@@ -35,12 +35,24 @@ internal fun navigationDragTarget(
     delta: Float,
     changedItem: Boolean,
 ): NavigationDragTarget {
-    val start = left.coerceIn(0f, (containerWidth - width).coerceAtLeast(0f))
+    return navigationDragTarget(left, width, 0f, containerWidth, delta, changedItem)
+}
+
+/** Upstream drag travel bounds, including a reserved leading region when present. */
+internal fun navigationDragTarget(
+    left: Float,
+    width: Float,
+    minLeft: Float,
+    maxRight: Float,
+    delta: Float,
+    changedItem: Boolean,
+): NavigationDragTarget {
+    val start = left.coerceIn(minLeft, (maxRight - width).coerceAtLeast(minLeft))
     val end = start + width
     val trail = if (changedItem) 0f else (abs(delta) * 4f).coerceAtMost(60f)
     return NavigationDragTarget(
-        left = if (delta > 0f && end < containerWidth) start - trail else start,
-        right = if (delta < 0f && start > 0f) end + trail else end,
+        left = if (delta > 0f && end < maxRight) start - trail else start,
+        right = if (delta < 0f && start > minLeft) end + trail else end,
         following = !changedItem,
         movingRight = delta > 0f,
     )

@@ -1,5 +1,7 @@
 package com.melox.player.ui.component
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -9,14 +11,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import com.melox.player.ui.component.os4.*
+import androidx.compose.ui.layout.ContentScale
+import com.melox.player.ui.component.*
 import com.melox.player.ui.LocalFloatingNavigationRailInset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,20 +32,15 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
@@ -49,13 +49,12 @@ import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import com.melox.player.data.repository.CustomBackgroundRepository
 import com.melox.player.data.repository.LoadedCustomBackground
 import com.melox.player.model.AppSettings
 import com.melox.player.model.normalizeCustomBackgroundBlurPercent
-import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
@@ -64,6 +63,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 internal val LocalCustomPageBackground = compositionLocalOf<ImageBitmap?> { null }
 internal val LocalCustomBackgroundDimAlpha = compositionLocalOf { 0f }
 internal val LocalTopBarWallpaperVisible = compositionLocalOf { false }
+internal val LocalRootPageWallpaperFixed = compositionLocalOf { false }
 internal val LocalFixedPageBackground = compositionLocalOf<FixedPageBackground?> { null }
 
 internal class FixedPageBackground(
@@ -95,19 +95,33 @@ internal fun FixedPageBackgroundHost(
     val surfaceColor = MiuixTheme.colorScheme.surface
     val dimAlpha = LocalCustomBackgroundDimAlpha.current
     val currentRefreshSignal by rememberUpdatedState(refreshSignal)
-    val backdrop = parentBackground?.backdrop ?: rememberLayerBackdrop {
-        drawRect(surfaceColor)
-        image?.let { drawCustomPageBackground(it, dimAlpha) }
-    }
+    val backdrop = parentBackground?.backdrop ?: rememberLayerBackdrop()
     val fixedBackground = remember(backdrop, parentBackground) {
         FixedPageBackground(backdrop) {
             currentRefreshSignal() + (parentBackground?.refreshSignal?.invoke() ?: 0f)
         }
     }
     // Keep the pager mounted when an image is selected, removed or still decoding.
-    Box(if (parentBackground == null) modifier.customPageBackground() else modifier) {
-        if (image != null && parentBackground == null) {
-            Box(Modifier.matchParentSize().layerBackdrop(backdrop))
+    Box(modifier) {
+        if (parentBackground == null) {
+            // Match GlassPage's Wallpaper: capture the image separately from page controls.
+            Box(Modifier.matchParentSize().layerBackdrop(backdrop).background(surfaceColor)) {
+                if (image != null) {
+                    Image(
+                        bitmap = image,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    if (dimAlpha > 0f) {
+                        Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = dimAlpha.coerceIn(0f, 1f))))
+                    }
+                }
+            }
+        }
+        if (image != null && parentBackground != null) {
+            // Fill exposed pager edges even when an intervening navigation host is opaque.
+            Box(Modifier.matchParentSize().fixedWallpaperRegion(parentBackground))
         }
         CompositionLocalProvider(LocalFixedPageBackground provides fixedBackground.takeIf { image != null }) {
             content()
@@ -167,16 +181,8 @@ internal fun rememberCustomPageBackground(
 
 @Composable
 internal fun Modifier.customPageBackground(): Modifier {
-    val image = LocalCustomPageBackground.current ?: return this
-    LocalFixedPageBackground.current?.let { return fixedWallpaperRegion(it) }
-    val surfaceColor = MiuixTheme.colorScheme.surface
-    val dimAlpha = LocalCustomBackgroundDimAlpha.current
-    return drawWithCache {
-        onDrawBehind {
-            drawRect(surfaceColor)
-            drawCustomPageBackground(image, dimAlpha)
-        }
-    }
+    val background = LocalFixedPageBackground.current ?: return this
+    return fixedWallpaperRegion(background)
 }
 
 @Composable
@@ -191,9 +197,12 @@ internal fun PageScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val floatingRailInset = LocalFloatingNavigationRailInset.current
-    val wideOs4 = com.melox.player.ui.LocalOs4LandscapeNavigation.current != null
-    var wideCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val wideTopBackdrop = if (wideOs4) rememberBlurBackdrop(captureCoordinates = { wideCaptureCoordinates }) else null
+    val clippedRailInset = com.melox.player.ui.LocalClippedNavigationRailInset.current
+    val wideSidebar = com.melox.player.ui.LocalLandscapeNavigation.current != null
+    val pageBackdrop = rememberLayerBackdrop()
+    val wallpaperBackdrop = rememberLayerBackdrop()
+    val effectsActive = LocalTopBarBlurSettings.current.blurEnabled && isRuntimeShaderSupported()
+    val topBackdrop = pageBackdrop.takeIf { effectsActive }
     val scrollContent = remember { TopBarScrollContent() }
     val searchPage = remember { GlassSearchPage() }
     val wideSearchHost = LocalWideGlassSearchHost.current
@@ -202,48 +211,38 @@ internal fun PageScaffold(
         onDispose { wideSearchHost?.pages?.remove(searchPage) }
     }
     val searchActive = searchPage.isExpanded || searchPage.transitionActive
-    val showSearchResults = !wideOs4 && showGlassSearchResults(
+    val hasSearchQuery = showGlassSearchResults(
         searchPage.isExpanded, searchPage.session?.query?.value.orEmpty(),
     )
-    val hidePageContent = !wideOs4 && searchPage.isExpanded && !showSearchResults
-    val blockPageContent = searchActive && !wideOs4 && !showSearchResults
+    val resultsReady = showGlassSearchResults(
+        searchPage.isExpanded,
+        searchPage.session?.query?.value.orEmpty(),
+        searchPage.session?.resultsQuery?.value.orEmpty(),
+    )
+    val awaitingResults = hasSearchQuery && !resultsReady
+    val showSearchResults = !wideSidebar && hasSearchQuery
+    val hidePageContent = (!wideSidebar && searchPage.isExpanded && !hasSearchQuery) || awaitingResults
+    val blockPageContent = (searchActive && !wideSidebar && !hasSearchQuery) || awaitingResults
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
-    val fixedBackground = LocalFixedPageBackground.current
-    val surfaceBackdrop = rememberPageSurfaceBackdrop()
     val image = LocalCustomPageBackground.current
     val dimAlpha = LocalCustomBackgroundDimAlpha.current
     val surfaceColor = MiuixTheme.colorScheme.surface
-    val statusBarSpace = WindowInsets.statusBarsIgnoringVisibility.only(WindowInsetsSides.Top)
-    BoxWithConstraints(modifier = modifier.onGloballyPositioned { scrollContent.bounds = it.boundsInRoot() }) {
-        val viewportSize = Size(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())
+    val fixedWallpaper = LocalFixedPageBackground.current.takeIf { LocalRootPageWallpaperFixed.current }
+    val surfaceBackdrop = wallpaperBackdrop.takeIf { image != null && effectsActive }
+    val statusBarSpace = WindowInsets.statusBarsIgnoringVisibility
+        .union(WindowInsets.captionBar).union(WindowInsets.displayCutout).only(WindowInsetsSides.Top)
+    Box(modifier = modifier.onGloballyPositioned { scrollContent.bounds = it.boundsInRoot() }) {
         CompositionLocalProvider(LocalPageSurfaceBackdrop provides surfaceBackdrop, LocalGlassSearchPage provides searchPage, LocalTopBarScrollContent provides scrollContent) {
             Scaffold(
-                // Each route must cover retained pages with its matching wallpaper region.
-                modifier = (if (fixedBackground == null) {
-                    Modifier.customPageBackground()
-                } else {
-                    Modifier.fixedWallpaperRegion(fixedBackground)
-                }),
-                containerColor = customPageContainerColor(),
+                containerColor = surfaceColor,
                 contentWindowInsets = WindowInsets.systemBars
                     .union(WindowInsets.displayCutout)
                     .union(statusBarSpace),
                 topBar = {
-                    CompositionLocalProvider(LocalTopBarWallpaperVisible provides (image != null), LocalWideTopBackdrop provides wideTopBackdrop) {
+                    CompositionLocalProvider(LocalTopBarWallpaperVisible provides (image != null), LocalWideTopBackdrop provides topBackdrop) {
                         Box(
-                            Modifier.padding(start = if (wideOs4) 0.dp else floatingRailInset).then(if (fixedBackground != null) {
-                                Modifier.fixedWallpaperRegion(fixedBackground)
-                            } else Modifier.drawWithCache {
-                                onDrawBehind {
-                                    // Reuse the page crop at Miuix's (0, 0) bar origin.
-                                    // Keep the wallpaper base mounted through effect handoff.
-                                    if (image != null) {
-                                        drawRect(surfaceColor)
-                                        drawCustomPageBackground(image, dimAlpha, viewportSize)
-                                    }
-                                }
-                            }),
+                            Modifier.padding(start = clippedRailInset),
                         ) {
                             topBar()
                         }
@@ -251,33 +250,41 @@ internal fun PageScaffold(
                 },
             ) { padding ->
                 val pagePadding = if (showSearchResults) PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
+                    start = padding.calculateStartPadding(layoutDirection) + floatingRailInset,
                     top = with(density) { statusBarSpace.getTop(this).toDp() } + 52.dp,
                     end = padding.calculateEndPadding(layoutDirection),
                     bottom = padding.calculateBottomPadding(),
-                ) else padding
+                ) else PaddingValues(
+                    start = padding.calculateStartPadding(layoutDirection) + floatingRailInset,
+                    top = padding.calculateTopPadding(),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    bottom = padding.calculateBottomPadding(),
+                )
                 // Keep the same filtered list and state underneath the search header.
                 Box(Modifier.fillMaxSize()
                     .then(if (showSearchResults) Modifier.imePadding() else Modifier)
-                    .onGloballyPositioned { wideCaptureCoordinates = it }
-                    .then(wideTopBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)
-                    .padding(start = floatingRailInset).graphicsLayer { alpha = if (hidePageContent) 0f else 1f }
+                    .layerBackdrop(pageBackdrop)
                     .then(if (blockPageContent) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
                         awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
                     } else Modifier)) {
-                if (surfaceBackdrop == null || fixedBackground != null) {
-                    content(pagePadding)
-                } else {
-                    Box(Modifier.fillMaxSize()) {
-                        // Capture only the wallpaper, never the Cards that consume this layer.
-                        Box(Modifier.matchParentSize().layerBackdrop(surfaceBackdrop))
+                    // Root pages sample the stationary window image; secondary pages crop locally.
+                    Box(Modifier.matchParentSize().layerBackdrop(wallpaperBackdrop).background(surfaceColor)
+                        .then(fixedWallpaper?.let { Modifier.fixedWallpaperRegion(it) } ?: Modifier)) {
+                        if (image != null && fixedWallpaper == null) {
+                            Image(bitmap = image, contentDescription = null,
+                                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            if (dimAlpha > 0f) Box(Modifier.matchParentSize()
+                                .background(Color.Black.copy(alpha = dimAlpha.coerceIn(0f, 1f))))
+                        }
+                    }
+                    Box(Modifier.fillMaxSize()
+                        .graphicsLayer { alpha = if (hidePageContent) 0f else 1f }) {
                         content(pagePadding)
                     }
                 }
-                }
             }
             searchPage.session?.let { session ->
-                CompositionLocalProvider(LocalWideTopBackdrop provides wideTopBackdrop) {
+                CompositionLocalProvider(LocalWideTopBackdrop provides topBackdrop) {
                     GlassSearchHeader(session, searchPage)
                 }
             }
@@ -291,37 +298,3 @@ internal fun wallpaperTopBarVisible(
     progressiveEnabled: Boolean,
     runtimeSupported: Boolean,
 ): Boolean = hasBackground && !(blurEnabled && progressiveEnabled && runtimeSupported)
-
-internal fun DrawScope.drawCustomPageBackground(
-    image: ImageBitmap,
-    dimAlpha: Float = 0f,
-    viewportSize: Size = size,
-) {
-    val destination = customBackgroundCropSize(image.width, image.height, viewportSize.width, viewportSize.height)
-    if (destination == IntSize.Zero) return
-    clipRect {
-        drawImage(
-            image = image,
-            dstOffset = customBackgroundCropOffset(destination, viewportSize),
-            dstSize = destination,
-            filterQuality = FilterQuality.Medium,
-        )
-        if (dimAlpha > 0f) drawRect(Color.Black.copy(alpha = dimAlpha.coerceIn(0f, 1f)))
-    }
-}
-
-internal fun customBackgroundCropOffset(destination: IntSize, viewportSize: Size): IntOffset = IntOffset(
-    ((viewportSize.width - destination.width) / 2f).roundToInt(),
-    ((viewportSize.height - destination.height) / 2f).roundToInt(),
-)
-
-internal fun customBackgroundCropSize(
-    imageWidth: Int,
-    imageHeight: Int,
-    pageWidth: Float,
-    pageHeight: Float,
-): IntSize {
-    if (imageWidth <= 0 || imageHeight <= 0 || pageWidth <= 0f || pageHeight <= 0f) return IntSize.Zero
-    val scale = maxOf(pageWidth / imageWidth, pageHeight / imageHeight)
-    return IntSize((imageWidth * scale).roundToInt(), (imageHeight * scale).roundToInt())
-}

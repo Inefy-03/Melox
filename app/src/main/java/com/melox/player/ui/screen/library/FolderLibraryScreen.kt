@@ -1,13 +1,15 @@
 package com.melox.player.ui.screen.library
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 import com.melox.player.ui.component.library.offsetSectionIndices
 
+import com.melox.player.ui.icon.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import top.yukonga.miuix.kmp.utils.SinkFeedback
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -28,10 +30,8 @@ import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -51,17 +51,16 @@ import com.melox.player.data.library.FolderSortField
 import com.melox.player.model.ScanStatus
 import com.melox.player.ui.component.library.AlphabetSections
 import com.melox.player.ui.component.library.AlphabetSideBar
-import com.melox.player.ui.component.os4.Icon
+import com.melox.player.ui.component.Icon
 import com.melox.player.ui.component.PageCard
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import com.melox.player.ui.component.os4.OverlayDialog
+import com.melox.player.ui.component.OverlayDialog
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
-import top.yukonga.miuix.kmp.icon.extended.Folder
 import top.yukonga.miuix.kmp.icon.extended.FolderFill
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
@@ -147,7 +146,7 @@ fun FolderLibraryScreen(
                             query = query,
                             emptyMessageRes = R.string.folder_empty,
                             noSearchResultsRes = R.string.folder_no_search_results,
-                            icon = MiuixIcons.Folder,
+                            icon = GlassIcons.FolderFill,
                         )
                     }
                 }

@@ -1,10 +1,11 @@
 package com.melox.player
 
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Home
-import top.yukonga.miuix.kmp.icon.extended.Album
-import top.yukonga.miuix.kmp.icon.extended.RecordingTape
-import com.melox.player.ui.component.os4.glassIcon
+import top.yukonga.miuix.kmp.icon.extended.*
+import com.melox.player.ui.icon.*
+import com.melox.player.ui.component.glassIcon
+import com.melox.player.ui.component.glassSidebarIcon
+import com.melox.player.ui.component.topBarGlassIcon
 
 import android.Manifest
 import androidx.compose.ui.hapticfeedback.HapticFeedback
@@ -261,27 +262,32 @@ class UiLogicTest {
 
     @Test
     fun glassSearchResultsAreInteractiveOnlyForAnExpandedNonblankQuery() {
-        assertFalse(com.melox.player.ui.component.os4.showGlassSearchResults(false, "song"))
-        assertFalse(com.melox.player.ui.component.os4.showGlassSearchResults(true, ""))
-        assertFalse(com.melox.player.ui.component.os4.showGlassSearchResults(true, "  "))
-        assertTrue(com.melox.player.ui.component.os4.showGlassSearchResults(true, "song"))
+        assertFalse(com.melox.player.ui.component.showGlassSearchResults(false, "song"))
+        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, ""))
+        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "  "))
+        assertTrue(com.melox.player.ui.component.showGlassSearchResults(true, "song"))
+        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "song", ""))
+        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "song", "old"))
+        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "song", "son"))
+        assertTrue(com.melox.player.ui.component.showGlassSearchResults(true, "song", "song"))
+        assertFalse(com.melox.player.ui.component.showGlassSearchResults(false, "song", "song"))
     }
 
     @Test
     fun navigationStyleMigratesLegacyChoicesAndRetainsExplicitOverrides() {
-        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle(null, null, null))
+        assertEquals(BottomBarStyle.GLASS, com.melox.player.model.resolveStoredNavigationStyle(null, null, null))
         assertEquals(BottomBarStyle.LIQUID_GLASS, com.melox.player.model.resolveStoredNavigationStyle(null, "FLOATING", null))
         assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle(null, "LIQUID_GLASS", false))
-        for (style in listOf(BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS, BottomBarStyle.OS4)) {
+        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle(null, "NORMAL", null))
+        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle(null, null, false))
+        for (style in listOf(BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS, BottomBarStyle.GLASS)) {
             assertEquals(style, com.melox.player.model.resolveStoredNavigationStyle(style.name, "NORMAL", false))
         }
         assertEquals(BottomBarStyle.LIQUID_GLASS, com.melox.player.model.resolveStoredNavigationStyle("unknown", null, true))
-        assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.ThemeStyle.OS3.defaultBottomBarStyle)
-        assertEquals(BottomBarStyle.OS4, com.melox.player.model.ThemeStyle.OS4.defaultBottomBarStyle)
-        assertEquals(BottomBarStyle.NORMAL, resolveBottomBarStyle(BottomBarStyle.OS4, liquidGlassSupported = false))
+        assertEquals(BottomBarStyle.GLASS, resolveBottomBarStyle(BottomBarStyle.GLASS, liquidGlassSupported = false))
         assertEquals(BottomBarStyle.NORMAL, com.melox.player.model.resolveStoredNavigationStyle("OS3_FLOATING", null, true))
-        assertFalse(AppSettings(selectedBottomBarStyle = BottomBarStyle.OS4, smallPlayerBar = true).effectiveSmallPlayerBar)
-        val compactPreference = AppSettings(selectedBottomBarStyle = BottomBarStyle.OS4, smallPlayerBar = true)
+        assertFalse(AppSettings(selectedBottomBarStyle = BottomBarStyle.GLASS, smallPlayerBar = true).effectiveSmallPlayerBar)
+        val compactPreference = AppSettings(selectedBottomBarStyle = BottomBarStyle.GLASS, smallPlayerBar = true)
         assertTrue(compactPreference.smallPlayerBar)
         assertTrue(compactPreference.copy(selectedBottomBarStyle = BottomBarStyle.LIQUID_GLASS).effectiveSmallPlayerBar)
         assertTrue(compactPreference.copy(selectedBottomBarStyle = BottomBarStyle.NORMAL).effectiveSmallPlayerBar)
@@ -290,12 +296,43 @@ class UiLogicTest {
     }
 
     @Test
-    fun os4IconMappingUsesRequestedSymbolsAndPreservesHome() {
-        assertEquals(MiuixIcons.Home, glassIcon(MiuixIcons.Home))
+    fun glassIconMappingReplacesEveryOriginalSymbolUsedByTheApp() {
+        val originalIcons = listOf(
+            MiuixIcons.Add, MiuixIcons.AddCircle, MiuixIcons.Album, MiuixIcons.Back,
+            MiuixIcons.ChevronBackward, MiuixIcons.Close, MiuixIcons.Contacts,
+            MiuixIcons.ContactsCircle, MiuixIcons.Create, MiuixIcons.Delete,
+            MiuixIcons.Download, MiuixIcons.Edit, MiuixIcons.Folder, MiuixIcons.FolderFill,
+            MiuixIcons.Hide, MiuixIcons.Home, MiuixIcons.Info, MiuixIcons.More,
+            MiuixIcons.Music, MiuixIcons.Notes, MiuixIcons.NotesFill, MiuixIcons.Playlist,
+            MiuixIcons.RecordingTape, MiuixIcons.Reset, MiuixIcons.Search,
+            MiuixIcons.SelectAll, MiuixIcons.Settings, MiuixIcons.Share,
+            MiuixIcons.Sort, MiuixIcons.Translate, MiuixIcons.Tune,
+        )
+        originalIcons.forEach { original ->
+            val glass = glassIcon(original)
+            assertTrue(original.name, ".Glass." in glass.name)
+            assertEquals(glass.name, glass, glassIcon(glass))
+        }
+        assertEquals("HomeFill.Glass.Regular", glassIcon(MiuixIcons.Home).name)
         assertEquals("AiScan.Glass.Regular", glassIcon(MiuixIcons.Album).name)
-        val recordingTape = glassIcon(MiuixIcons.RecordingTape)
-        assertEquals("RecordingTape.Glass.Regular", recordingTape.name)
-        assertEquals(recordingTape, glassIcon(recordingTape))
+        assertEquals("Tune.Glass.Regular", glassIcon(MiuixIcons.Sort).name)
+        assertEquals("Tune.Glass.Regular", topBarGlassIcon(MiuixIcons.Sort).name)
+        assertEquals("Tune.Glass.Regular", topBarGlassIcon(MiuixIcons.Tune).name)
+        assertEquals(28.dp, topBarGlassIcon(MiuixIcons.Sort).defaultWidth)
+        assertEquals("SettingsOutline.Glass.Regular", topBarGlassIcon(MiuixIcons.Settings).name)
+        assertEquals(28.dp, topBarGlassIcon(MiuixIcons.Settings).defaultWidth)
+        assertEquals("RecentTasks.Glass.Regular", glassSidebarIcon(MiuixIcons.RecordingTape).name)
+        assertEquals("Item.Glass.Regular", glassSidebarIcon(MiuixIcons.Album).name)
+        assertEquals("Contacts.Glass.Regular", glassSidebarIcon(MiuixIcons.Contacts).name)
+        assertEquals("FolderFill.Glass.Regular", glassSidebarIcon(MiuixIcons.Folder).name)
+        listOf(
+            GlassIcons.HomeFill, GlassIcons.NavigationMusic, GlassIcons.NavigationAlbum, GlassIcons.SettingsFill,
+            glassSidebarIcon(MiuixIcons.RecordingTape), glassSidebarIcon(MiuixIcons.Album),
+            glassSidebarIcon(MiuixIcons.Contacts), glassSidebarIcon(MiuixIcons.Folder),
+        ).forEach { icon ->
+            assertEquals(icon.name, 28.dp, icon.defaultWidth)
+            assertEquals(icon.name, 28.dp, icon.defaultHeight)
+        }
     }
 
     @Test
@@ -456,16 +493,32 @@ class UiLogicTest {
         atTop.bounds = androidx.compose.ui.geometry.Rect(600f, 0f, 1200f, 800f)
         page.lists[scrolled] = scrolled
         page.lists[atTop] = atTop
-        assertEquals(180f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f))
-        assertEquals(180f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 90f))
+        assertEquals(180f, page.distance)
+        assertEquals(-180f, page.visualContentOffset(0f))
         scrolled.bounds = androidx.compose.ui.geometry.Rect(-600f, 0f, 0f, 800f)
         atTop.bounds = page.bounds
-        assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, -900f))
-        assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f))
-        assertEquals(0f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f, 48f))
-        assertEquals(48f, com.melox.player.ui.component.topBarOverlapDistance(page.distance, 0f, -48f))
-        assertEquals(228f, com.melox.player.ui.component.topBarOverlapDistance(180f, 0f, -48f))
-        assertEquals(180f, com.melox.player.ui.component.topBarOverlapDistance(180f, 0f, 48f))
+        assertEquals(0f, page.distance)
+        assertEquals(0f, page.visualContentOffset(-900f))
+        val rebound = com.melox.player.ui.component.ScrollContentPosition(
+            androidx.compose.runtime.mutableStateOf({ -48f }))
+        rebound.bounds = page.bounds
+        page.overscrolls[rebound] = rebound
+        assertEquals(-48f, page.overscrollDistance)
+        assertEquals(0f, page.distance)
+        assertEquals(-48f, page.visualContentOffset(-900f))
+
+    }
+
+    @Test
+    fun clearingSearchRestoresTheOriginalViewportAfterQueryRefinement() {
+        val position = com.melox.player.ui.component.library.SearchScrollPosition()
+        assertEquals(null, position.update("", 42, 17))
+        assertEquals(null, position.update("a", 42, 17))
+        assertEquals(null, position.update("ab", 3, 9))
+        assertEquals(42 to 17, position.update("", 0, 0))
+        assertEquals(null, position.update("", 42, 17))
+        assertEquals(null, position.update("new", 8, 24))
+        assertEquals(8 to 24, position.update("  ", 0, 0))
     }
 
     @Test
@@ -646,8 +699,7 @@ class UiLogicTest {
         val settings = AppSettings()
 
         assertEquals(ThemeMode.SYSTEM, settings.themeMode)
-        assertEquals(com.melox.player.model.ThemeStyle.OS4, settings.themeStyle)
-        assertEquals(BottomBarStyle.OS4, settings.bottomBarStyle)
+        assertEquals(BottomBarStyle.GLASS, settings.bottomBarStyle)
         assertFalse(settings.dynamicColorEnabled)
         assertTrue(settings.showSongListArtwork)
         assertTrue(settings.showSongListDuration)
@@ -1768,11 +1820,11 @@ class UiLogicTest {
     }
 
     @Test
-    fun os4NavigationRemainsAvailableOnSecondaryPagesAndPreservesHidePreference() {
+    fun sidebarNavigationRemainsAvailableOnSecondaryPagesAndPreservesHidePreference() {
         for (landscape in listOf(false, true)) {
             assertTrue(shouldShowNavigation(
                 currentRouteIsRoot = false, hideBottomBar = true, landscape = landscape,
-                requestedBottomBarStyle = BottomBarStyle.OS4,
+                requestedBottomBarStyle = BottomBarStyle.GLASS,
             ))
         }
         for (style in listOf(BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS)) {
@@ -1785,7 +1837,7 @@ class UiLogicTest {
                 requestedBottomBarStyle = style,
             ))
         }
-        val settings = AppSettings(hideBottomBar = true, selectedBottomBarStyle = BottomBarStyle.OS4)
+        val settings = AppSettings(hideBottomBar = true, selectedBottomBarStyle = BottomBarStyle.GLASS)
         assertTrue(settings.copy(selectedBottomBarStyle = BottomBarStyle.NORMAL).hideBottomBar)
     }
 
@@ -4272,26 +4324,22 @@ class UiLogicTest {
     }
 
     @Test
-    fun bottomBarBooleansResolveToExpectedNavigationStyle() {
-        assertEquals(BottomBarStyle.NORMAL, AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3).bottomBarStyle)
+    fun glassThemeRetainsAllThreeIndependentNavigationStyles() {
+        assertEquals(BottomBarStyle.GLASS, AppSettings().bottomBarStyle)
+        for (style in listOf(BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS, BottomBarStyle.GLASS)) {
+            assertEquals(style, AppSettings(selectedBottomBarStyle = style).bottomBarStyle)
+        }
         assertEquals(
-            BottomBarStyle.FLOATING,
-            AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3, floatingBottomBar = true).bottomBarStyle,
+            BottomBarStyle.GLASS,
+            com.melox.player.model.resolveStoredNavigationStyle("OS4", null, null),
         )
         assertEquals(
-            BottomBarStyle.LIQUID_GLASS,
-            AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3, floatingBottomBar = true, liquidGlass = true).bottomBarStyle,
+            BottomBarStyle.NORMAL,
+            com.melox.player.model.resolveStoredNavigationStyle("OS3_FLOATING", null, null),
         )
-    }
-
-    @Test
-    fun floatingBottomBarToggleRetainsLiquidGlassPreference() {
-        val settings = AppSettings(themeStyle = com.melox.player.model.ThemeStyle.OS3, floatingBottomBar = false, liquidGlass = true)
-
-        assertEquals(BottomBarStyle.NORMAL, settings.bottomBarStyle)
         assertEquals(
-            BottomBarStyle.LIQUID_GLASS,
-            settings.copy(floatingBottomBar = true).bottomBarStyle,
+            BottomBarStyle.NORMAL,
+            resolveBottomBarStyle(BottomBarStyle.LIQUID_GLASS, liquidGlassSupported = false),
         )
     }
 

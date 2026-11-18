@@ -5,10 +5,19 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.unit.toSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,9 +41,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.basic.FloatingActionButton
-import com.melox.player.ui.component.os4.Icon
+import top.yukonga.miuix.kmp.upstream.glass.GlassIconButton
+import top.yukonga.miuix.kmp.upstream.glass.GlassNavigationBarDefaults
+import top.yukonga.miuix.kmp.upstream.blur.Backdrop
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import com.melox.player.ui.component.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
 import top.yukonga.miuix.kmp.basic.TopAppBarState
@@ -47,64 +60,80 @@ internal fun MusicLocationAction(
     listState: LazyListState,
     scrollBehavior: ScrollBehavior,
     miniPlayerBounds: Rect,
-    playerContentBounds: Rect,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    backdrop: Backdrop? = null,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     var locateJob by remember { mutableStateOf<Job?>(null) }
     val locateActionSize = ButtonDefaults.MinHeight
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn() + scaleIn(),
-        exit = fadeOut() + scaleOut(),
-        modifier = modifier
-            .offset {
-                with(density) {
-                    musicLocationOffset(
-                        miniPlayerBounds,
-                        playerContentBounds,
-                        locateActionSize.toPx(),
-                        12.dp.toPx(),
-                        (contentPadding.calculateEndPadding(layoutDirection) +
-                            TopAppBarDefaults.ActionIconPadding).toPx(),
-                    )
-                }
-            }
-            .then(if (visible) Modifier else Modifier.clearAndSetSemantics {}),
-        label = "musicLocationVisibility",
-    ) {
-        FloatingActionButton(
-            onClick = {
-                if (visible && currentIndex >= 0) {
-                    locateJob?.cancel()
-                    locateJob = scope.launch {
-                        val paddingBeforeCollapse = listState.layoutInfo.beforeContentPadding
-                        val collapsedPadding = paddingBeforeCollapse +
-                            collapseMusicLocationTopBar(scrollBehavior.state).roundToInt()
-                        // Programmatic list scrolling does not dispatch nested scroll to the bar.
-                        snapshotFlow { listState.layoutInfo.beforeContentPadding }
-                            .first { it <= collapsedPadding + 1 }
-                        listState.animateScrollToItem(
-                            currentIndex,
-                            scrollOffset = with(density) { 12.dp.roundToPx() },
+    var actionAreaBounds by remember { mutableStateOf(Rect.Zero) }
+    Box(modifier.fillMaxSize().zIndex(1f).onGloballyPositioned { actionAreaBounds = Rect(it.positionInRoot(), it.size.toSize()) }) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .offset {
+                    with(density) {
+                        musicLocationOffset(
+                            miniPlayerBounds,
+                            actionAreaBounds,
+                            locateActionSize.toPx(),
+                            12.dp.toPx(),
+                            (contentPadding.calculateEndPadding(layoutDirection) +
+                                TopAppBarDefaults.ActionIconPadding).toPx(),
                         )
                     }
                 }
-            },
-            containerColor = CardDefaults.defaultColors().color.copy(alpha = 0.8f),
-            shadowElevation = 0.dp,
-            minWidth = locateActionSize,
-            minHeight = locateActionSize,
+                .then(if (visible) Modifier else Modifier.clearAndSetSemantics {}.pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        do {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { it.consume() }
+                        } while (event.changes.any { it.pressed })
+                    }
+                }),
+            label = "musicLocationVisibility",
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_locate_current_track),
-                contentDescription = stringResource(R.string.locate_current_track),
-                modifier = Modifier.size(24.dp),
-                tint = MiuixTheme.colorScheme.onSurface,
-            )
+            GlassIconButton(
+                onClick = {
+                    if (visible && currentIndex >= 0) {
+                        locateJob?.cancel()
+                        locateJob = scope.launch {
+                            val paddingBeforeCollapse = listState.layoutInfo.beforeContentPadding
+                            val collapsedPadding = paddingBeforeCollapse +
+                                collapseMusicLocationTopBar(scrollBehavior.state).roundToInt()
+                            // Programmatic list scrolling does not dispatch nested scroll to the bar.
+                            snapshotFlow { listState.layoutInfo.beforeContentPadding }
+                                .first { it <= collapsedPadding + 1 }
+                            listState.animateScrollToItem(
+                                currentIndex,
+                                scrollOffset = with(density) { 12.dp.roundToPx() },
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.semantics { role = Role.Button },
+                backdrop = backdrop,
+                inheritTopBarMaterial = false,
+                material = GlassNavigationBarDefaults.material(),
+                stroke = GlassNavigationBarDefaults.stroke(),
+                fill = MiuixTheme.colorScheme.surfaceContainer,
+                size = locateActionSize,
+                shadow = null,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_locate_current_track),
+                    contentDescription = stringResource(R.string.locate_current_track),
+                    modifier = Modifier.size(24.dp),
+                    tint = MiuixTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
 }
@@ -119,14 +148,14 @@ internal fun collapseMusicLocationTopBar(state: TopAppBarState): Float {
 
 internal fun musicLocationOffset(
     miniPlayerBounds: Rect,
-    playerContentBounds: Rect,
+    pageBounds: Rect,
     actionSizePx: Float,
     gapPx: Float,
     trailingPaddingPx: Float,
 ): IntOffset = IntOffset(
-    (playerContentBounds.width - trailingPaddingPx - actionSizePx)
+    (pageBounds.width - trailingPaddingPx - actionSizePx)
         .roundToInt().coerceAtLeast(0),
-    (miniPlayerBounds.top - playerContentBounds.top - gapPx - actionSizePx)
-        .roundToInt().coerceAtLeast(0),
+    (miniPlayerBounds.top - pageBounds.top - gapPx - actionSizePx)
+        .roundToInt().coerceIn(0, (pageBounds.height - actionSizePx).roundToInt().coerceAtLeast(0)),
 )
 

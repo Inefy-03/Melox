@@ -1,14 +1,12 @@
 package com.melox.player.ui.component.playback
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Bitmap
 import android.os.Build
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -17,21 +15,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.TransformOrigin
@@ -50,7 +40,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.util.VelocityTracker
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.BottomBarStyle
 import top.yukonga.miuix.kmp.glass.GlassShape
@@ -68,9 +57,7 @@ import com.melox.player.ui.component.library.playbackArtworkClip
 import com.melox.player.ui.component.liquid.miuixFloatingBarShadow
 import com.melox.player.ui.component.liquid.miniPlayerSurface
 import com.melox.player.ui.screen.playback.toArtworkBlend
-import kotlin.math.abs
 import kotlin.math.roundToInt
-import androidx.compose.runtime.saveable.Saver
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.squircle.isSquircleEnabled
 import top.yukonga.miuix.kmp.squircle.squircleBorder
@@ -337,7 +324,7 @@ internal fun PlayerSheetContentOverlay(
     val cornerRadii = playerSheetContainerCornerRadii(transition, collapsedCornerRadius)
     val cornerRadius = cornerRadii.topStart.dp
     val miniChromeAlpha = playerSheetBarAlpha(progress)
-    val os4Shape = GlassShape(
+    val glassShape = GlassShape(
         topStart = cornerRadii.topStart.dp,
         topEnd = cornerRadii.topEnd.dp,
         bottomEnd = cornerRadii.bottomEnd.dp,
@@ -346,7 +333,7 @@ internal fun PlayerSheetContentOverlay(
         // expands. Keep its outline identical to Compose's circular clipping path.
         smoothing = 0f,
     )
-    val os4Stroke = GlassNavigationBarDefaults.stroke()
+    val glassStroke = GlassNavigationBarDefaults.stroke()
 
     val glassChrome = miniPlayerChrome?.takeIf {
         playerSheetGlassVisible(progress)
@@ -356,9 +343,10 @@ internal fun PlayerSheetContentOverlay(
             .miniPlayerSurface(
                 cornerRadius = cornerRadius,
                 style = glassChrome.style,
-                glassShape = os4Shape,
-                showGlassStroke = glassChrome.style != BottomBarStyle.OS4,
+                glassShape = glassShape,
+                showGlassStroke = glassChrome.style != BottomBarStyle.GLASS,
                 backdrop = glassChrome.backdrop,
+                glassBackdrop = glassChrome.glassBackdrop,
                 blurActive = glassChrome.blurActive,
                 liquidGlassActive = glassChrome.liquidGlassActive,
                 isDark = glassChrome.isDark,
@@ -405,8 +393,8 @@ internal fun PlayerSheetContentOverlay(
                 height = with(density) { bounds.height.coerceAtLeast(1f).toDp() },
             )
             .then(
-                if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
-                    Modifier.glassShadow(os4Shape, GlassShadows.Float, miniChromeAlpha)
+                if (miniPlayerChrome?.style == BottomBarStyle.GLASS) {
+                    Modifier.glassShadow(glassShape, GlassShadows.Float, miniChromeAlpha)
                 } else if (floatingMiniPlayer) {
                     Modifier.miuixFloatingBarShadow(
                         cornerRadius = cornerRadius,
@@ -418,8 +406,8 @@ internal fun PlayerSheetContentOverlay(
                 },
             )
             .then(
-                if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
-                    Modifier.clip(os4Shape)
+                if (miniPlayerChrome?.style == BottomBarStyle.GLASS) {
+                    Modifier.clip(glassShape)
                 } else if (miniPlayerChrome?.liquidGlassActive == true && miniPlayerChrome.backdrop != null) {
                     // Preserve the glass pill's outline after its material fades away.
                     if (glassChrome != null) Modifier else Modifier.clip(RoundedCornerShape(cornerRadius))
@@ -434,10 +422,10 @@ internal fun PlayerSheetContentOverlay(
             )
             .then(glassSurfaceModifier)
             .then(
-                if (miniPlayerChrome?.style == BottomBarStyle.OS4) {
+                if (miniPlayerChrome?.style == BottomBarStyle.GLASS) {
                     Modifier.drawWithContent {
                         drawContent()
-                        drawGlassStroke(os4Shape, layoutDirection, os4Stroke, (1f - progress).coerceIn(0f, 1f))
+                        drawGlassStroke(glassShape, layoutDirection, glassStroke, (1f - progress).coerceIn(0f, 1f))
                     }
                 } else Modifier,
             ),

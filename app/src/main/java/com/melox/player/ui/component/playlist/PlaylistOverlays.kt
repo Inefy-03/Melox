@@ -1,9 +1,10 @@
 package com.melox.player.ui.component.playlist
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -18,10 +19,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -33,7 +32,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.ui.component.bottomSheetCardColor
-import com.melox.player.ui.component.bottomSheetGlassModifier
 import com.melox.player.ui.component.bottomSheetMaterialColor
 import com.melox.player.model.LocalPlaylist
 import com.melox.player.model.MusicTrack
@@ -42,16 +40,16 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Close
-import com.melox.player.ui.component.os4.OverlayBottomSheet
-import com.melox.player.ui.component.os4.OverlayDialog
+import com.melox.player.ui.component.OverlayBottomSheet
+import com.melox.player.ui.component.OverlayDialog
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
@@ -82,7 +80,6 @@ fun PlaylistPickerOverlay(
 
     OverlayBottomSheet(
         show = tracks != null,
-        modifier = bottomSheetGlassModifier(),
         backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.playlist_picker_title),
         startAction = {

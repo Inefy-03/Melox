@@ -12,7 +12,7 @@ import androidx.compose.ui.node.DelegatableNode
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.Role
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.IconButton
 
 @Composable
 internal fun PlayerControlIconButton(

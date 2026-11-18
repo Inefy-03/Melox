@@ -27,7 +27,7 @@ import com.melox.player.ui.component.PageCard as Card
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.preference.ArrowPreference
-import com.melox.player.ui.component.os4.OverlayDropdownPreference
+import com.melox.player.ui.component.OverlayDropdownPreference
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 

@@ -3,7 +3,6 @@ package com.melox.player.ui.component.library
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
-import com.melox.player.ui.theme.LocalOs4Style
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -12,13 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
-import top.yukonga.miuix.kmp.icon.extended.AddCircle
+import com.melox.player.ui.icon.GlassIcons
+import com.melox.player.ui.icon.CopyEditPoint
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -61,7 +61,7 @@ fun SelectionActionsAnimatedContent(
         contentAlignment = Alignment.CenterEnd,
         label = "TopBarSelectionActions",
     ) { selectionActive ->
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (selectionActive) selectionActions() else defaultActions()
         }
     }
@@ -77,7 +77,7 @@ fun TrackSelectionActions(
     onToggleAll: () -> Unit,
     onAction: () -> Unit,
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         IconButton(
             onClick = onToggleAll,
             enabled = enabled,
@@ -120,7 +120,7 @@ fun TrackSelectionActions(
                 )
             } else {
                 Icon(
-                    imageVector = MiuixIcons.AddCircle,
+                    imageVector = GlassIcons.CopyEditPoint,
                     contentDescription = contentDescription,
                     modifier = Modifier.size(24.dp),
                     tint = if (enabled && actionEnabled) LocalContentColor.current

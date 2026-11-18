@@ -1,39 +1,26 @@
 package com.melox.player.ui.component
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.offset
-import androidx.compose.ui.unit.dp
-import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurBlendMode
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.drawBackdrop
-import top.yukonga.miuix.kmp.blur.ProgressiveBlur
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
-import top.yukonga.miuix.kmp.blur.progressiveTextureBlur
+import top.yukonga.miuix.kmp.upstream.blur.drawBackdrop
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.blur.textureBlur
-import top.yukonga.miuix.kmp.blur.textureBlurEffect
-import top.yukonga.miuix.kmp.blur.progressiveTextureBlurEffect
-import top.yukonga.miuix.kmp.blur.highlight.Highlight
-import top.yukonga.miuix.kmp.blur.highlight.BloomStroke
+import top.yukonga.miuix.kmp.glass.internal.currentTextureBlur as textureBlur
+import top.yukonga.miuix.kmp.glass.internal.asCurrentBackdrop
+import top.yukonga.miuix.kmp.glass.internal.asCurrentBlurColors
+import top.yukonga.miuix.kmp.upstream.blur.textureBlurEffect
 import top.yukonga.miuix.kmp.layout.BottomSheetDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.model.DEFAULT_CUSTOM_BACKGROUND_CARD_BLUR_PERCENT
@@ -60,9 +47,6 @@ internal fun pageCardSurfaceAlpha(opacityPercent: Int): Float =
 internal fun pageCardBlurRadius(percent: Int): Float =
     NormalBarBlurRadius * normalizeCustomBackgroundCardBlurPercent(percent) / DEFAULT_CUSTOM_BACKGROUND_CARD_BLUR_PERCENT
 
-internal fun tabSelectedContainerColor(hasWallpaper: Boolean, progressiveBlurActive: Boolean, fallbackColor: Color): Color =
-    if (hasWallpaper || progressiveBlurActive) fallbackColor.copy(alpha = fallbackColor.alpha * 0.8f) else fallbackColor
-
 @Composable
 internal fun rememberPageSurfaceBackdrop(): LayerBackdrop? {
     val image = LocalCustomPageBackground.current
@@ -73,12 +57,7 @@ internal fun rememberPageSurfaceBackdrop(): LayerBackdrop? {
         )
     ) return null
     LocalFixedPageBackground.current?.let { return it.backdrop }
-    val surfaceColor = MiuixTheme.colorScheme.surface
-    val dimAlpha = LocalCustomBackgroundDimAlpha.current
-    return rememberLayerBackdrop {
-        drawRect(surfaceColor)
-        image?.let { drawCustomPageBackground(it, dimAlpha) }
-    }
+    return null
 }
 
 internal fun pageSurfaceBlurEnabled(
@@ -88,6 +67,30 @@ internal fun pageSurfaceBlurEnabled(
 ): Boolean = hasBackground && blurEnabled && runtimeSupported
 
 @Composable
+internal fun rememberGlassBlurBackdrop(
+    captureCoordinates: () -> LayoutCoordinates?,
+): top.yukonga.miuix.kmp.upstream.blur.LayerBackdrop? {
+    if (!LocalTopBarBlurSettings.current.blurEnabled ||
+        !top.yukonga.miuix.kmp.upstream.material.isRuntimeShaderSupported()
+    ) return null
+    val surfaceColor = MiuixTheme.colorScheme.surface
+    val fixedBackground = LocalFixedPageBackground.current
+    return top.yukonga.miuix.kmp.upstream.blur.rememberLayerBackdrop {
+        drawRect(surfaceColor)
+        if (fixedBackground != null) {
+            fixedBackground.refreshSignal()
+            with(fixedBackground.backdrop) {
+                drawBackdrop(
+                    density = this@rememberLayerBackdrop,
+                    coordinates = captureCoordinates()?.takeIf { it.isAttached },
+                )
+            }
+        }
+        drawContent()
+    }
+}
+
+@Composable
 internal fun rememberBlurBackdrop(
     includeCustomBackground: Boolean = true,
     captureCoordinates: () -> LayoutCoordinates? = { null },
@@ -95,8 +98,6 @@ internal fun rememberBlurBackdrop(
     val currentSettings = LocalTopBarBlurSettings.current
     if (!currentSettings.blurEnabled || !isRuntimeShaderSupported()) return null
     val surfaceColor = MiuixTheme.colorScheme.surface
-    val customBackground = LocalCustomPageBackground.current.takeIf { includeCustomBackground }
-    val dimAlpha = LocalCustomBackgroundDimAlpha.current
     val fixedBackground = LocalFixedPageBackground.current.takeIf { includeCustomBackground }
     return rememberLayerBackdrop {
         drawRect(surfaceColor)
@@ -108,8 +109,6 @@ internal fun rememberBlurBackdrop(
                     coordinates = captureCoordinates()?.takeIf { it.isAttached },
                 )
             }
-        } else {
-            customBackground?.let { drawCustomPageBackground(it, dimAlpha) }
         }
         drawContent()
     }
@@ -126,9 +125,9 @@ internal fun Modifier.pageTextureBlur(
     val colors = barBlurColors(surfaceAlpha = surfaceAlpha)
     if (refreshSignal == null) return textureBlur(backdrop, shape, blurRadius, colors = colors)
     return drawBackdrop(
-        backdrop = backdrop,
+        backdrop = backdrop.asCurrentBackdrop(),
         shape = { shape },
-        effects = { textureBlurEffect(blurRadiusX = blurRadius, colors = colors) },
+        effects = { textureBlurEffect(blurRadiusX = blurRadius, colors = colors.asCurrentBlurColors()) },
         onDrawBehind = { refreshSignal() },
     )
 }
@@ -180,135 +179,19 @@ internal fun bottomSheetDirectContentColor(): Color =
         Color.Transparent
     }
 
-@Composable
-internal fun bottomSheetGlassModifier(): Modifier {
-    if (com.melox.player.ui.theme.LocalOs4Style.current) return Modifier
-    val backdrop = LocalBottomSheetBlurBackdrop.current ?: return Modifier
-    val elasticExtensionPx =
-        (LocalWindowInfo.current.containerSize.height / BottomSheetDragDampingDivisor)
-            .coerceAtLeast(1)
-    val isDark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
-    val highlight = if (isDark) {
-        Highlight.GlassStrokeBigDark
-    } else {
-        val stroke = BloomStroke.GlassStrokeBigLight
-        Highlight(
-            width = 1.dp,
-            style = stroke.copy(
-                primaryLight = stroke.primaryLight.copy(intensity = 0f),
-                secondaryLight = stroke.secondaryLight.copy(intensity = 0f),
-            ),
-        )
-    }
-    return Modifier
-        .layout { measurable, constraints ->
-            val placeable = measurable.measure(
-                constraints.offset(vertical = elasticExtensionPx),
-            )
-            layout(placeable.width, placeable.height - elasticExtensionPx) {
-                placeable.place(0, 0)
-            }
-        }
-        .textureBlur(
-            backdrop = backdrop,
-            shape = RoundedCornerShape(
-                topStart = BottomSheetDefaults.cornerRadius,
-                topEnd = BottomSheetDefaults.cornerRadius,
-            ),
-            blurRadius = 100f,
-            colors = BlurDefaults.blurColors(
-                blendColors = listOf(
-                    BlendColorEntry(
-                        color = if (isDark) Color(0x4D000000) else Color(0x99FFFFFF),
-                        mode = if (isDark) BlurBlendMode.ColorBurn else BlurBlendMode.Overlay,
-                    ),
-                    BlendColorEntry(
-                        color = MiuixTheme.colorScheme.surface.copy(
-                            alpha = if (isDark) 0x80 / 255f else 0xBF / 255f,
-                        ),
-                    ),
-                ),
-            ),
-            highlight = highlight,
-        )
-        .layout { measurable, constraints ->
-            val placeable = measurable.measure(
-                constraints.offset(vertical = -elasticExtensionPx),
-            )
-            layout(placeable.width, placeable.height + elasticExtensionPx) {
-                placeable.place(0, 0)
-            }
-        }
-}
-
-private const val BottomSheetDragDampingDivisor = 10
-
 internal val LocalWideTopBackdrop = compositionLocalOf<LayerBackdrop?> { null }
 
 internal val LocalGlassTopBackdrop = compositionLocalOf<LayerBackdrop?> { null }
 
 @Composable
-internal fun BlurredBar(
+internal fun TopBarBackdrop(
     backdrop: LayerBackdrop?,
-    blurEnabled: Boolean,
-    scrollBehavior: ScrollBehavior? = null,
-    surfaceColor: Color = MiuixTheme.colorScheme.surface,
     content: @Composable () -> Unit,
 ) {
-    val progressive = LocalTopBarBlurSettings.current.progressiveEnabled
-    val overlapDistance = rememberTopBarOverlapDistance(scrollBehavior)
-    val wallpaperOnly = wallpaperTopBarVisible(
-        hasBackground = LocalTopBarWallpaperVisible.current,
-        blurEnabled = blurEnabled,
-        progressiveEnabled = progressive,
-        runtimeSupported = backdrop != null,
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalGlassTopBackdrop provides (LocalWideTopBackdrop.current ?: backdrop),
+        content = content,
     )
-    val blurActive = blurEnabled && backdrop != null && !wallpaperOnly &&
-        !com.melox.player.ui.theme.LocalOs4Style.current && !progressive
-    Box(
-        modifier = if (blurActive && !progressive) {
-            Modifier.textureBlur(
-                backdrop = backdrop,
-                shape = RectangleShape,
-                blurRadius = NormalBarBlurRadius,
-                colors = barBlurColors(surfaceColor = surfaceColor),
-            )
-        } else {
-            Modifier
-        },
-    ) {
-        if (blurEnabled && backdrop != null && progressive && !com.melox.player.ui.theme.LocalOs4Style.current) {
-            @OptIn(ExperimentalLayoutApi::class)
-            val topInsets = androidx.compose.foundation.layout.WindowInsets.statusBarsIgnoringVisibility
-            // Match the current GlassTopAppBar band while retaining the OS3 title layout.
-            Box(
-                Modifier.matchParentSize()
-                    .layout { measurable, constraints ->
-                        val height = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(
-                            barHeight = constraints.maxHeight, topInset = topInsets.getTop(this), density = this,
-                        )
-                        val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
-                        layout(constraints.maxWidth, constraints.maxHeight) { placeable.placeRelative(0, 0) }
-                    }
-                    .graphicsLayer {
-                        val distance = overlapDistance?.value ?: scrollBehavior?.let { -it.state.contentOffset }
-                        alpha = distance?.let {
-                            (it / top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ProgressiveBlurRampDistance.toPx()).coerceIn(0f, 1f)
-                        } ?: 1f
-                    }
-                    .progressiveTextureBlur(
-                        backdrop = backdrop,
-                        shape = RectangleShape,
-                        gradient = ProgressiveBlur.Top.copy(curve = 0.5f),
-                        blurRadius = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ProgressiveBlurRadius.value,
-                        colors = BlurDefaults.blurColors(blendColors = listOf(
-                            BlendColorEntry(surfaceColor.copy(alpha = 0.3f)),
-                        )),
-                    ),
-            )
-        }
-        androidx.compose.runtime.CompositionLocalProvider(LocalGlassTopBackdrop provides (LocalWideTopBackdrop.current ?: backdrop)) { content() }
-    }
 }
 
 @Composable

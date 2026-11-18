@@ -1,5 +1,8 @@
 package com.melox.player.ui.screen.library
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.melox.player.ui.icon.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.geometry.Rect
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.ui.theme.referenceMusicHighlightColors
 import com.melox.player.R
-import com.melox.player.ui.theme.LocalOs4Style
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.FolderGroup
 import com.melox.player.data.library.filterFolders
@@ -47,8 +47,8 @@ import com.melox.player.model.MusicTrack
 import com.melox.player.model.ScanStatus
 import com.melox.player.ui.LibrarySearchBar
 import com.melox.player.ui.LibrarySearchButton
-import com.melox.player.ui.component.AdaptiveTopAppBar
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopAppBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
 import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
 import com.melox.player.ui.component.library.MusicSortButton
@@ -60,17 +60,15 @@ import com.melox.player.ui.component.library.selectedItemsInDisplayedOrder
 import com.melox.player.ui.component.library.toggleAllTrackSelection
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
-import com.melox.player.ui.component.os4.Icon
+import com.melox.player.ui.component.Icon
 import top.yukonga.miuix.kmp.basic.BreadcrumbBar
 import top.yukonga.miuix.kmp.basic.BreadcrumbBarDefaults
 import top.yukonga.miuix.kmp.basic.BreadcrumbItem
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.melox.player.ui.component.PageScaffold
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Folder
-import com.melox.player.ui.component.os4.navigationBackIcon
+import com.melox.player.ui.component.navigationBackIcon
 
 @Composable
 fun FolderDetailScreen(
@@ -165,12 +163,8 @@ fun FolderDetailScreen(
 
     PageScaffold(
             topBar = {
-            BlurredBar(
-                backdrop = backdrop,
-                blurEnabled = backdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
-                AdaptiveTopAppBar(
+            TopBarBackdrop(backdrop = backdrop) {
+                TopAppBar(
                     title = if (selectionMode) {
                         if (selectedTrackUris.isEmpty()) {
                             stringResource(R.string.selection_choose_songs)
@@ -193,7 +187,7 @@ fun FolderDetailScreen(
                                 selectionMode = false
                             },
                             defaultNavigationIcon = {
-                                Row(horizontalArrangement = Arrangement.spacedBy(if (LocalOs4Style.current) 8.dp else 0.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     IconButton(onClick = handleBack) {
                                         Icon(
                                             imageVector = navigationBackIcon(),
@@ -369,7 +363,7 @@ fun FolderDetailScreen(
                                 query = query,
                                 emptyMessageRes = R.string.folder_empty,
                                 noSearchResultsRes = R.string.folder_no_search_results,
-                                icon = MiuixIcons.Folder,
+                                icon = GlassIcons.FolderFill,
                                 modifier = emptyModifier,
                             )
                         }

@@ -1,5 +1,7 @@
 package com.melox.player.ui.screen.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -7,8 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import com.melox.player.ui.theme.LocalOs4Style
-import com.melox.player.ui.component.os4.OverlayIconDropdownMenu
+import com.melox.player.ui.component.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import androidx.compose.foundation.layout.Box
@@ -30,13 +31,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -71,29 +70,23 @@ import com.melox.player.data.library.MusicLibraryStatistics
 import com.melox.player.data.library.buildMusicLibraryStatistics
 import com.melox.player.model.AudioQuality
 import com.melox.player.model.MusicTrack
-import com.melox.player.ui.component.AdaptiveTopAppBar
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopAppBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.screen.library.MusicLibraryEmptyMessage
 import java.util.Locale
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.ListPopupDefaults
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
 import com.melox.player.ui.component.PageScaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import com.melox.player.ui.component.os4.navigationBackIcon
+import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.Music
 import top.yukonga.miuix.kmp.icon.extended.Tune
-import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -144,12 +137,8 @@ fun MusicStatisticsScreen(
 
     PageScaffold(
             topBar = {
-            BlurredBar(
-                backdrop = topBarBackdrop,
-                blurEnabled = topBarBackdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
-                AdaptiveTopAppBar(
+            TopBarBackdrop(backdrop = topBarBackdrop) {
+                TopAppBar(
                     title = stringResource(R.string.music_statistics_page_title),
                     color = topBarBackdrop.miuixBarColor(),
                     scrollBehavior = scrollBehavior,
@@ -203,92 +192,30 @@ private fun StatisticsTuneButton(
     onMetricChange: (StatisticsMetric) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showPopup by remember { mutableStateOf(false) }
     val qualityLabel = stringResource(R.string.music_statistics_group_quality)
     val formatLabel = stringResource(R.string.music_statistics_group_format)
     val countLabel = stringResource(R.string.music_statistics_metric_count)
     val sizeLabel = stringResource(R.string.music_statistics_metric_size)
 
-    if (LocalOs4Style.current) {
-        OverlayIconDropdownMenu(
-            modifier = modifier,
-            entries = listOf(
-                DropdownEntry(listOf(
-                    DropdownItem(text = qualityLabel, selected = group == StatisticsGroup.QUALITY,
-                        onClick = { onGroupChange(StatisticsGroup.QUALITY) }),
-                    DropdownItem(text = formatLabel, selected = group == StatisticsGroup.FORMAT,
-                        onClick = { onGroupChange(StatisticsGroup.FORMAT) }),
-                )),
-                DropdownEntry(listOf(
-                    DropdownItem(text = countLabel, selected = metric == StatisticsMetric.COUNT,
-                        onClick = { onMetricChange(StatisticsMetric.COUNT) }),
-                    DropdownItem(text = sizeLabel, selected = metric == StatisticsMetric.SIZE,
-                        onClick = { onMetricChange(StatisticsMetric.SIZE) }),
-                )),
-            ),
-            collapseOnSelection = true,
-        ) {
-            Icon(MiuixIcons.Tune, stringResource(R.string.music_statistics_tune_action), Modifier.size(24.dp))
-        }
-        return
-    }
-    Box(modifier = modifier) {
-        OverlayListPopup(
-            show = showPopup,
-            popupPositionProvider = ListPopupDefaults.ContextMenuPositionProvider,
-            alignment = PopupPositionProvider.Align.TopEnd,
-            onDismissRequest = { showPopup = false },
-        ) {
-            ListPopupColumn {
-                listOf(
-                    StatisticsGroup.QUALITY to qualityLabel,
-                    StatisticsGroup.FORMAT to formatLabel,
-                ).forEachIndexed { index, (option, label) ->
-                    DropdownImpl(
-                        text = label,
-                        optionSize = STATISTICS_OPTION_COUNT,
-                        isSelected = group == option,
-                        index = index,
-                        onSelectedIndexChange = {
-                            onGroupChange(option)
-                            showPopup = false
-                        },
-                    )
-                }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-                    thickness = 1.5.dp,
-                )
-
-                listOf(
-                    StatisticsMetric.COUNT to countLabel,
-                    StatisticsMetric.SIZE to sizeLabel,
-                ).forEachIndexed { index, (option, label) ->
-                    DropdownImpl(
-                        text = label,
-                        optionSize = STATISTICS_OPTION_COUNT,
-                        isSelected = metric == option,
-                        index = index + 2,
-                        onSelectedIndexChange = {
-                            onMetricChange(option)
-                            showPopup = false
-                        },
-                    )
-                }
-            }
-        }
-
-        IconButton(
-            onClick = { showPopup = true },
-            holdDownState = showPopup,
-        ) {
-            Icon(
-                imageVector = MiuixIcons.Tune,
-                contentDescription = stringResource(R.string.music_statistics_tune_action),
-                modifier = Modifier.size(24.dp),
-            )
-        }
+    OverlayIconDropdownMenu(
+        modifier = modifier,
+        entries = listOf(
+            DropdownEntry(listOf(
+                DropdownItem(text = qualityLabel, selected = group == StatisticsGroup.QUALITY,
+                    onClick = { onGroupChange(StatisticsGroup.QUALITY) }),
+                DropdownItem(text = formatLabel, selected = group == StatisticsGroup.FORMAT,
+                    onClick = { onGroupChange(StatisticsGroup.FORMAT) }),
+            )),
+            DropdownEntry(listOf(
+                DropdownItem(text = countLabel, selected = metric == StatisticsMetric.COUNT,
+                    onClick = { onMetricChange(StatisticsMetric.COUNT) }),
+                DropdownItem(text = sizeLabel, selected = metric == StatisticsMetric.SIZE,
+                    onClick = { onMetricChange(StatisticsMetric.SIZE) }),
+            )),
+        ),
+        collapseOnSelection = true,
+    ) {
+        Icon(MiuixIcons.Tune, stringResource(R.string.music_statistics_tune_action), Modifier.size(24.dp))
     }
 }
 

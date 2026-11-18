@@ -26,6 +26,24 @@ class MusicLocationLayoutTest {
     }
 
     @Test
+    fun pageWidthAndTrailingInsetAnchorActionAcrossSidebarAndPlayerSizes() {
+        val fullPage = Rect(0f, 20f, 1000f, 620f)
+        val insetPage = Rect(262f, 20f, 1000f, 620f)
+        val smallPlayer = Rect(300f, 540f, 900f, 590f)
+        val widePlayer = Rect(20f, 520f, 980f, 590f)
+        assertEquals(IntOffset(920, 468), musicLocationOffset(smallPlayer, fullPage, 40f, 12f, 40f))
+        assertEquals(IntOffset(658, 468), musicLocationOffset(smallPlayer, insetPage, 40f, 12f, 40f))
+        assertEquals(IntOffset(920, 448), musicLocationOffset(widePlayer, fullPage, 40f, 12f, 40f))
+    }
+
+    @Test
+    fun actionRemainsInsideThePageWhenThePlayerMovesBelowItsViewport() {
+        val page = Rect(262f, 20f, 1000f, 620f)
+        val player = Rect(300f, 800f, 900f, 850f)
+        assertEquals(IntOffset(658, 560), musicLocationOffset(player, page, 40f, 12f, 40f))
+    }
+
+    @Test
     fun locationCollapsesExpandedAndPartiallyCollapsedBarsBeforeListPlacement() {
         for (offset in listOf(0f, -30f, -100f)) {
             val state = TopAppBarState(-100f, offset, offset)

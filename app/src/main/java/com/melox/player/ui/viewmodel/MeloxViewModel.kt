@@ -76,7 +76,6 @@ import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.DynamicFlowStyle
 import com.melox.player.model.ScanStatus
-import com.melox.player.model.ThemeStyle
 import com.melox.player.model.ThemeMode
 import com.melox.player.model.withTrackMetadata
 import com.melox.player.model.PlaybackMetadataProjection
@@ -95,7 +94,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -700,12 +698,6 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setThemeStyle(style: ThemeStyle) {
-        viewModelScope.launch {
-            settingsRepository.setThemeStyle(style)
-        }
-    }
-
     fun setThemeMode(themeMode: ThemeMode) {
         viewModelScope.launch {
             settingsRepository.setThemeMode(themeMode)
@@ -1064,12 +1056,6 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     fun setDefaultHomePage(defaultHomePage: DefaultHomePage) {
         viewModelScope.launch {
             settingsRepository.setDefaultHomePage(defaultHomePage)
-        }
-    }
-
-    fun setLibraryTabIndex(index: Int) {
-        viewModelScope.launch {
-            settingsRepository.setLibraryTabIndex(index)
         }
     }
 

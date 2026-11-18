@@ -13,38 +13,44 @@ import org.junit.Test
 
 class BottomBarGeometryTest {
     @Test
-    fun progressiveBandFollowsMeasuredTabsAndSearchHeight() {
+    fun progressiveBandUsesCollapsedBarAndMeasuredBottomContent() {
         for (scale in listOf(1f, 2f, 3f)) {
             val density = androidx.compose.ui.unit.Density(scale)
             val topInset = (24 * scale).toInt()
-            val bar = (76 * scale).toInt()
-            val tabs = (48 * scale).toInt()
-            val search = (56 * scale).toInt()
-            val base = top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(bar, topInset, density)
-            assertEquals(base + tabs, top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(bar + tabs, topInset, density))
-            assertEquals(base + tabs + search, top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.progressiveBandHeight(bar + tabs + search, topInset, density))
+            // Upstream: (status bar + collapsed 52 dp bar + bottom slot + 20 dp) * 1.2.
+            for (bottom in listOf(0, 48, 104)) {
+                val expected = kotlin.math.round((24 + 52 + bottom + 20) * scale * 1.2f).toInt()
+                assertEquals(expected, top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults
+                    .progressiveBandHeight((bottom * scale).toInt(), topInset, density))
+            }
         }
     }
 
     @Test
-    fun os4PlaybackGeometryUsesTheFixedHeight() {
+    fun glassPlaybackGeometryUsesTheFixedHeight() {
         val chrome = MiniPlayerChrome(
-            style = BottomBarStyle.OS4,
+            style = BottomBarStyle.GLASS,
             backdrop = null,
             blurActive = false,
             liquidGlassActive = false,
             isDark = false,
             smallPlayerBar = true,
         )
-        assertEquals(52.dp, com.melox.player.ui.component.playback.miniPlayerHeight(BottomBarStyle.OS4, false))
+        assertEquals(52.dp, com.melox.player.ui.component.playback.miniPlayerHeight(BottomBarStyle.GLASS, false))
         assertEquals(52.dp, chrome.height)
         assertEquals(26.dp, chrome.cornerRadius)
         assertEquals(36.dp, chrome.artworkSize)
-        assertEquals(16.dp, chrome.os4ArtworkStartPadding)
-        assertEquals(6.dp, chrome.os4ArtworkCornerRadius)
+        assertEquals(16.dp, chrome.glassArtworkStartPadding)
+        assertEquals(6.dp, chrome.glassArtworkCornerRadius)
         assertEquals(0.25f, chrome.contentFraction)
         assertEquals(52.dp, chrome.copy(smallPlayerBar = false).height)
         assertEquals(64.dp, chrome.copy(style = BottomBarStyle.LIQUID_GLASS, smallPlayerBar = false).height)
+        for (compact in listOf(false, true)) {
+            val landscapeGlass = chrome.copy(smallPlayerBar = compact, useIosLikeLayout = true)
+            val iosLike = chrome.copy(style = BottomBarStyle.LIQUID_GLASS, smallPlayerBar = false)
+            assertEquals(iosLike.height, landscapeGlass.height)
+            assertEquals(iosLike.artworkSize, landscapeGlass.artworkSize)
+        }
     }
 
     @Test

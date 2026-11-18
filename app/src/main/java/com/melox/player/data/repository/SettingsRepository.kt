@@ -38,7 +38,6 @@ import com.melox.player.model.normalizeCustomBackgroundCardOpacityPercent
 import com.melox.player.model.resolveStoredNavigationStyle
 import android.os.Build
 import com.melox.player.model.availableBottomBarStyle
-import com.melox.player.model.ThemeStyle
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.DefaultHomePage
 import com.melox.player.model.DynamicColorSource
@@ -183,16 +182,7 @@ class SettingsRepository(context: Context) {
                         enumValueOrDefault(storedValue, LyricsFormatPriority.LRC)
                     }
                     ?: LyricsFormatPriority.LRC,
-                themeStyle = preferences[Keys.ThemeStyle]
-                    ?.let { enumValueOrDefault(it, if (Build.VERSION.SDK_INT >= 33) ThemeStyle.OS4 else ThemeStyle.OS3) }
-                    ?.takeUnless { it == ThemeStyle.OS4 && Build.VERSION.SDK_INT < 33 }
-                    ?: if (Build.VERSION.SDK_INT >= 33) ThemeStyle.OS4 else ThemeStyle.OS3,
-                selectedBottomBarStyle = if (preferences[Keys.NavigationBarStyle] == null &&
-                    preferences[Keys.BottomBarStyle] == null && preferences[Keys.FloatingBottomBar] == null
-                ) {
-                    if (Build.VERSION.SDK_INT >= 33 && preferences[Keys.ThemeStyle] != ThemeStyle.OS3.name)
-                        BottomBarStyle.OS4 else BottomBarStyle.NORMAL
-                } else resolveStoredNavigationStyle(
+                selectedBottomBarStyle = resolveStoredNavigationStyle(
                     stored = preferences[Keys.NavigationBarStyle],
                     legacyStyle = preferences[Keys.BottomBarStyle],
                     floating = preferences[Keys.FloatingBottomBar],
@@ -204,12 +194,7 @@ class SettingsRepository(context: Context) {
                 hideBottomBar = preferences[Keys.HideBottomBar] ?: false,
                 immersiveMode = preferences[Keys.ImmersiveMode] ?: false,
                 hideStatusBar = preferences[Keys.HideStatusBar] ?: false,
-                floatingBottomBar = preferences[Keys.FloatingBottomBar]
-                    ?: (preferences[Keys.BottomBarStyle] != null &&
-                        preferences[Keys.BottomBarStyle] != BottomBarStyle.NORMAL.name),
                 navigationRailExpanded = preferences[Keys.NavigationRailExpanded] ?: true,
-                liquidGlass = preferences[Keys.LiquidGlass]
-                    ?: (preferences[Keys.BottomBarStyle] == BottomBarStyle.LIQUID_GLASS.name),
                 predictiveBackEnabled = preferences[Keys.PredictiveBackEnabled] ?: true,
                 navigationTransitionStyle = preferences[Keys.NavigationTransitionStyle]
                     ?.let { storedValue ->
@@ -232,9 +217,6 @@ class SettingsRepository(context: Context) {
                     ?.sorted()
                     ?: emptyList(),
                 hiddenTrackUris = preferences[Keys.HiddenTrackUris].orEmpty(),
-                libraryTabIndex = preferences[Keys.LibraryTabIndex]
-                    ?.coerceIn(0, LIBRARY_TAB_COUNT - 1)
-                    ?: 0,
                 musicSortFieldOrdinal = preferences[Keys.MusicSortField]
                     ?.coerceIn(MusicSortField.entries.indices)
                     ?: MusicSortField.TITLE.ordinal,
@@ -523,14 +505,6 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    suspend fun setThemeStyle(style: ThemeStyle) {
-        if (style == ThemeStyle.OS4 && Build.VERSION.SDK_INT < 33) return
-        dataStore.edit { preferences ->
-            preferences[Keys.ThemeStyle] = style.name
-            preferences[Keys.NavigationBarStyle] = style.defaultBottomBarStyle.name
-        }
-    }
-
     suspend fun setBottomBarStyle(bottomBarStyle: BottomBarStyle) {
         if (availableBottomBarStyle(bottomBarStyle, Build.VERSION.SDK_INT >= 33) != bottomBarStyle) return
         dataStore.edit { preferences ->
@@ -650,12 +624,6 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    suspend fun setLibraryTabIndex(index: Int) {
-        dataStore.edit { preferences ->
-            preferences[Keys.LibraryTabIndex] = index.coerceIn(0, LIBRARY_TAB_COUNT - 1)
-        }
-    }
-
     suspend fun setMusicSortConfig(config: MusicSortConfig) {
         dataStore.edit { preferences ->
             preferences[Keys.MusicSortField] = config.field.ordinal
@@ -759,7 +727,6 @@ class SettingsRepository(context: Context) {
         val LyricsSourcePriority = stringPreferencesKey("lyrics_source_priority")
         // Keep the existing key so saved external-format preferences apply to both sources.
         val LyricsFormatPriority = stringPreferencesKey("lyrics_sidecar_format_priority")
-        val ThemeStyle = stringPreferencesKey("theme_style")
         val NavigationBarStyle = stringPreferencesKey("navigation_bar_style")
         val BottomBarStyle = stringPreferencesKey("bottom_bar_style")
         val BlurEnabled = booleanPreferencesKey("blur_enabled")
@@ -783,7 +750,6 @@ class SettingsRepository(context: Context) {
         val BlockedFolderPaths = stringSetPreferencesKey("blocked_folder_paths")
         val HiddenTrackUris = stringSetPreferencesKey("hidden_track_uris")
         val DefaultHomePage = stringPreferencesKey("default_home_page")
-        val LibraryTabIndex = intPreferencesKey("library_tab_index")
         val MusicSortField = intPreferencesKey("music_sort_field")
         val MusicSortDescending = booleanPreferencesKey("music_sort_descending")
         val AlbumSortField = intPreferencesKey("album_sort_field")

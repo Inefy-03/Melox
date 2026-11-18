@@ -23,7 +23,7 @@ import kotlin.math.roundToInt
 import com.melox.player.ui.component.PageCard as Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.preference.SwitchPreference
-import com.melox.player.ui.component.os4.OverlayDropdownPreference
+import com.melox.player.ui.component.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable

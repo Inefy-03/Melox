@@ -1,5 +1,10 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.rememberGlassBlurBackdrop
+import top.yukonga.miuix.kmp.upstream.blur.layerBackdrop
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+
 import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
 import com.melox.player.ui.component.library.MusicLocationAction
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
@@ -49,7 +54,7 @@ import com.melox.player.ui.component.library.toggleTrackSelection
 import com.melox.player.ui.component.library.offsetSectionIndices
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import com.melox.player.ui.component.os4.Icon
+import com.melox.player.ui.component.Icon
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.RefreshState
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -151,10 +156,17 @@ fun MusicListScreen(
         }
     }
 
+    var locationCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val locationBackdrop = if (showLocateAction) {
+        rememberGlassBlurBackdrop(captureCoordinates = { locationCaptureCoordinates })
+    } else null
     val listContent: @Composable () -> Unit = {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .then(locationBackdrop?.let {
+                    Modifier.onGloballyPositioned { coordinates -> locationCaptureCoordinates = coordinates }.layerBackdrop(it)
+                } ?: Modifier)
                 .scrollEndHaptic()
                 .overScrollVertical()
                 .then(
@@ -293,8 +305,8 @@ fun MusicListScreen(
                 listState = listState,
                 scrollBehavior = scrollBehavior,
                 miniPlayerBounds = miniPlayerBounds,
-                playerContentBounds = playerContentBounds,
                 contentPadding = contentPadding,
+                backdrop = locationBackdrop,
             )
         }
     }

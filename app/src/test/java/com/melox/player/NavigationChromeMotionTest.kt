@@ -11,11 +11,11 @@ import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.ui.AppNavDestination
 import com.melox.player.ui.AppRoute
+import com.melox.player.ui.SidebarNavigationSidebarMotion
+import com.melox.player.ui.SidebarNavigationReboundMotion
 import com.melox.player.ui.missingLibraryDetailCount
 import com.melox.player.ui.rememberLibraryDetailForExit
-import com.melox.player.ui.Os4NavigationSidebarMotion
-import com.melox.player.ui.Os4NavigationReboundMotion
-import com.melox.player.ui.os4NavigationItemMotion
+import com.melox.player.ui.sidebarItemMotion
 import com.melox.player.model.NavigationTransitionStyle
 import com.melox.player.ui.navigation.AospNavigationTransition
 import com.melox.player.ui.navigation.secondaryPageEnterMotion
@@ -28,6 +28,40 @@ import top.yukonga.miuix.kmp.nav.transition.NavSettleSpec
 import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 
 class NavigationChromeMotionTest {
+    @Test
+    fun upstreamBottomNavigationDragKeepsTheTrailAndSqueezesAtBothEnds() {
+        val forward = top.yukonga.miuix.kmp.upstream.glass.navigationDragTarget(100f, 80f, 0f, 320f, 5f, false)
+        assertEquals(80f, forward.left, 0f)
+        assertEquals(180f, forward.right, 0f)
+        assertEquals(top.yukonga.miuix.kmp.upstream.glass.GlassMotion.navDragFollow<Float>(), forward.leftSpring)
+        val reverse = top.yukonga.miuix.kmp.upstream.glass.navigationDragTarget(100f, 80f, 0f, 320f, -5f, false)
+        assertEquals(100f, reverse.left, 0f)
+        assertEquals(200f, reverse.right, 0f)
+        val capped = top.yukonga.miuix.kmp.upstream.glass.navigationDragTarget(100f, 80f, 0f, 320f, 100f, false)
+        assertEquals(40f, capped.left, 0f)
+        for ((position, delta) in listOf(-10f to -20f, 300f to 20f)) {
+            val target = top.yukonga.miuix.kmp.upstream.glass.navigationDragTarget(position, 80f, 0f, 320f, delta, false)
+            val bounds = top.yukonga.miuix.kmp.upstream.glass.navigationIndicatorBounds(target.left, target.right, 320f, 3f)
+            assertEquals(77f, bounds.y - bounds.x, 0f)
+            assertTrue(bounds.x >= 3f && bounds.y <= 317f)
+        }
+    }
+
+    @Test
+    fun landscapeNavigationKeepsItsOriginalDragTargets() {
+        for (position in -100..400 step 10) {
+            for (delta in listOf(-100f, -5f, 0f, 5f, 100f)) {
+                for (changed in listOf(false, true)) {
+                    val target = top.yukonga.miuix.kmp.glass.navigationDragTarget(position.toFloat(), 80f, 320f, delta, changed)
+                    val start = position.toFloat().coerceIn(0f, 240f)
+                    val trail = if (changed) 0f else (kotlin.math.abs(delta) * 4f).coerceAtMost(60f)
+                    assertEquals(if (delta > 0f && start + 80f < 320f) start - trail else start, target.left, 0f)
+                    assertEquals(if (delta < 0f && start > 0f) start + 80f + trail else start + 80f, target.right, 0f)
+                }
+            }
+        }
+    }
+
     @Test
     fun glassIndicatorStartsAtTheSuppliedDefaultDestinationThenAnimates() = kotlinx.coroutines.runBlocking {
         for (initialIndex in 0..3) {
@@ -196,7 +230,7 @@ class NavigationChromeMotionTest {
     @Test
     fun inlineTitleAppearsOnlyWhenTheNormalLandscapeTitleIsHidden() {
         fun inline(alpha: Float, progress: Float?, enabled: Boolean = true, title: String = "Albums") =
-            com.melox.player.ui.component.os4.shouldShowInlineTopBarTitle(title, alpha, progress, enabled)
+            com.melox.player.ui.component.shouldShowInlineTopBarTitle(title, alpha, progress, enabled)
         assertTrue(!inline(1f, 1f))
         assertTrue(!inline(1f, 0.5f))
         assertTrue(inline(1f, 0f))
@@ -209,10 +243,10 @@ class NavigationChromeMotionTest {
     @Test
     fun landscapeCascadeKeepsBothDirectionsOrderedAndRetargetable() {
         val entering = List(7) { index ->
-            TargetBasedAnimation(os4NavigationItemMotion(index, expanded = true), Float.VectorConverter, 0f, 1f)
+            TargetBasedAnimation(sidebarItemMotion(index, expanded = true), Float.VectorConverter, 0f, 1f)
         }
         val leaving = List(7) { index ->
-            TargetBasedAnimation(os4NavigationItemMotion(index, expanded = false), Float.VectorConverter, 1f, 0f)
+            TargetBasedAnimation(sidebarItemMotion(index, expanded = false), Float.VectorConverter, 1f, 0f)
         }
         assertTrue(entering.zipWithNext().all { (first, next) -> first.durationNanos < next.durationNanos })
         for (timeMillis in 16..280 step 8) {
@@ -224,7 +258,7 @@ class NavigationChromeMotionTest {
         }
         entering.indices.forEach { index ->
             assertTrue(leaving[index].durationNanos > entering[index].durationNanos)
-            val interrupted = TargetBasedAnimation(os4NavigationItemMotion(index, expanded = false), Float.VectorConverter, entering[index].getValueFromNanos(100_000_000L), 0f)
+            val interrupted = TargetBasedAnimation(sidebarItemMotion(index, expanded = false), Float.VectorConverter, entering[index].getValueFromNanos(100_000_000L), 0f)
             assertEquals(entering[index].getValueFromNanos(100_000_000L), interrupted.getValueFromNanos(0L), 0f)
         }
         entering.forEach { motion -> assertEquals(1f, motion.getValueFromNanos(motion.durationNanos), 0f) }
@@ -235,10 +269,10 @@ class NavigationChromeMotionTest {
     fun navigationIconsAndShortcutLabelsHaveIndependentFadePhases() {
         fun animation(spec: androidx.compose.animation.core.TweenSpec<Float>, entering: Boolean) =
             TargetBasedAnimation(spec, Float.VectorConverter, if (entering) 0f else 1f, if (entering) 1f else 0f)
-        val iconIn = animation(com.melox.player.ui.Os4NavigationIconEnterMotion, true)
-        val labelIn = animation(com.melox.player.ui.Os4NavigationLabelEnterMotion, true)
-        val iconOut = animation(com.melox.player.ui.Os4NavigationIconExitMotion, false)
-        val labelOut = animation(com.melox.player.ui.Os4NavigationLabelExitMotion, false)
+        val iconIn = animation(com.melox.player.ui.SidebarNavigationIconEnterMotion, true)
+        val labelIn = animation(com.melox.player.ui.SidebarNavigationLabelEnterMotion, true)
+        val iconOut = animation(com.melox.player.ui.SidebarNavigationIconExitMotion, false)
+        val labelOut = animation(com.melox.player.ui.SidebarNavigationLabelExitMotion, false)
         assertTrue(iconIn.getValueFromNanos(64_000_000L) > 0f)
         assertEquals(0f, labelIn.getValueFromNanos(64_000_000L), 0f)
         assertTrue(iconOut.getValueFromNanos(64_000_000L) < 0.5f)
@@ -250,9 +284,9 @@ class NavigationChromeMotionTest {
 
     @Test
     fun landscapeCapsuleReboundsOnlyWhenCollapsingSidebar() {
-        assertEquals(200f, Os4NavigationReboundMotion.stiffness, 0f)
-        assertEquals(0.8f, Os4NavigationReboundMotion.dampingRatio, 0f)
-        val motion = TargetBasedAnimation(Os4NavigationReboundMotion, Dp.VectorConverter, 12.dp, 400.dp)
+        assertEquals(200f, SidebarNavigationReboundMotion.stiffness, 0f)
+        assertEquals(0.8f, SidebarNavigationReboundMotion.dampingRatio, 0f)
+        val motion = TargetBasedAnimation(SidebarNavigationReboundMotion, Dp.VectorConverter, 12.dp, 400.dp)
         val positions = (0..motion.durationNanos step 8_000_000L).map { motion.getValueFromNanos(it).value }
         val peak = positions.max()
         assertTrue("Horizontal settle should overshoot to the right", peak > 400.2f)
@@ -261,19 +295,19 @@ class NavigationChromeMotionTest {
         assertTrue("Reference reaches its peak about 400 ms after travel begins", peakMillis in 350..450)
         assertTrue("Return should continue beyond the size morph", motion.durationNanos > 600_000_000L)
         assertEquals(400f, motion.getValueFromNanos(motion.durationNanos).value, 0.001f)
-        val expansion = TargetBasedAnimation(Os4NavigationSidebarMotion, Dp.VectorConverter, 400.dp, 12.dp)
+        val expansion = TargetBasedAnimation(SidebarNavigationSidebarMotion, Dp.VectorConverter, 400.dp, 12.dp)
         val expansionPositions = (0..300 step 4).map { expansion.getValueFromNanos(it * 1_000_000L).value }
         assertTrue(expansionPositions.all { it in 12f..400f })
         assertTrue(expansionPositions.zipWithNext().all { (before, after) -> after <= before })
         assertEquals(12f, expansionPositions.last(), 0.001f)
-        assertEquals(0.696f, com.melox.player.ui.os4SidebarHeightMotion(true, 696.dp).visibilityThreshold!!.value, 0.0001f)
-        val bottom = TargetBasedAnimation(com.melox.player.ui.os4SidebarHeightMotion(true, 696.dp), Dp.VectorConverter, 44.dp, 740.dp)
+        assertEquals(0.696f, com.melox.player.ui.sidebarHeightMotion(true, 696.dp).visibilityThreshold!!.value, 0.0001f)
+        val bottom = TargetBasedAnimation(com.melox.player.ui.sidebarHeightMotion(true, 696.dp), Dp.VectorConverter, 44.dp, 740.dp)
         val bottomPositions = (0..bottom.durationNanos step 8_000_000L).map { bottom.getValueFromNanos(it).value }
         assertTrue("Only the expanding sidebar bottom should overshoot", bottomPositions.max() > 740f)
         assertTrue("The rebound must fit inside the reference bottom clearance", bottomPositions.max() < 748f)
         val bottomPeakMillis = bottomPositions.indices.maxBy { bottomPositions[it] } * 8
         assertTrue(bottomPeakMillis in 350..420)
-        val heightExit = TargetBasedAnimation(com.melox.player.ui.os4SidebarHeightMotion(false, 696.dp), Dp.VectorConverter, 740.dp, 44.dp)
+        val heightExit = TargetBasedAnimation(com.melox.player.ui.sidebarHeightMotion(false, 696.dp), Dp.VectorConverter, 740.dp, 44.dp)
         assertTrue(heightExit.getValueFromNanos(100_000_000L).value < 320f)
         assertEquals(44f, heightExit.getValueFromNanos(heightExit.durationNanos).value, 0.001f)
         assertEquals(740f, bottom.getValueFromNanos(bottom.durationNanos).value, 0.001f)
@@ -312,9 +346,9 @@ class NavigationChromeMotionTest {
     @Test
     fun portraitCategoryEntriesUseTheOfficialMiuixTransition() {
         assertEquals(NavTransitions.MiuixDefault, com.melox.player.ui.navigation.secondaryPageTransition(NavigationTransitionStyle.MIUIX))
-        assertTrue(com.melox.player.ui.shouldUseImmediateOs4Navigation(1200.dp, 840.dp, com.melox.player.model.BottomBarStyle.OS4))
-        assertTrue(!com.melox.player.ui.shouldUseImmediateOs4Navigation(840.dp, 1200.dp, com.melox.player.model.BottomBarStyle.OS4))
-        assertTrue(!com.melox.player.ui.shouldUseImmediateOs4Navigation(1200.dp, 840.dp, com.melox.player.model.BottomBarStyle.NORMAL))
+        assertTrue(com.melox.player.ui.shouldUseImmediateSidebarNavigation(1200.dp, 840.dp, com.melox.player.model.BottomBarStyle.GLASS))
+        assertTrue(!com.melox.player.ui.shouldUseImmediateSidebarNavigation(840.dp, 1200.dp, com.melox.player.model.BottomBarStyle.GLASS))
+        assertTrue(!com.melox.player.ui.shouldUseImmediateSidebarNavigation(1200.dp, 840.dp, com.melox.player.model.BottomBarStyle.NORMAL))
     }
 
     @Test

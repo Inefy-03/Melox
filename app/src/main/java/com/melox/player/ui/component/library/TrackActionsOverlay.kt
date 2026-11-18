@@ -1,5 +1,7 @@
 package com.melox.player.ui.component.library
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
@@ -21,18 +23,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,7 +40,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.melox.player.R
 import com.melox.player.ui.component.bottomSheetCardColor
-import com.melox.player.ui.component.bottomSheetGlassModifier
 import com.melox.player.ui.component.bottomSheetMaterialColor
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.artistGroupKey
@@ -58,31 +54,21 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.icon.*
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.AddCircle
-import top.yukonga.miuix.kmp.icon.extended.Album
 import top.yukonga.miuix.kmp.icon.extended.Close
-import top.yukonga.miuix.kmp.icon.extended.ContactsCircle
-import top.yukonga.miuix.kmp.icon.extended.Delete
-import top.yukonga.miuix.kmp.icon.extended.Edit
-import top.yukonga.miuix.kmp.icon.extended.Hide
-import top.yukonga.miuix.kmp.icon.extended.Info
-import top.yukonga.miuix.kmp.icon.extended.Playlist
 import top.yukonga.miuix.kmp.icon.extended.Reset
-import top.yukonga.miuix.kmp.icon.extended.Share
-import com.melox.player.ui.component.os4.OverlayBottomSheet
-import com.melox.player.ui.component.os4.OverlayDialog
-import com.melox.player.ui.component.os4.OverlayDropdownMenu
+import com.melox.player.ui.component.OverlayBottomSheet
+import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDropdownMenu
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
 
 private val TrackActionIconSize = 22.dp
-private val TrackActionAddToQueueIconSize = 20.dp
 private val TrackActionSummaryArtworkSize = 56.dp
 private val TrackActionSummaryArtworkCornerRadius = 8.dp
 @Composable
@@ -198,7 +184,6 @@ fun TrackActionsOverlay(
     OverlayBottomSheet(
         show = track != null,
         allowDismiss = artworkPreview == null,
-        modifier = bottomSheetGlassModifier(),
         backgroundColor = bottomSheetMaterialColor(),
         enableWindowDim = true,
         startAction = {
@@ -256,7 +241,7 @@ fun TrackActionsOverlay(
                     ),
                 ) {
                     TrackAction(
-                        icon = MiuixIcons.Add,
+                        icon = GlassIcons.Add,
                         text = stringResource(R.string.music_play_next),
                         enabled = selectedTrack.contentUri !in mutations?.hiddenContentUris.orEmpty(),
                         onClick = {
@@ -265,19 +250,16 @@ fun TrackActionsOverlay(
                         },
                     )
                     TrackAction(
-                        icon = painterResource(R.drawable.ic_add_list),
+                        icon = GlassIcons.AddCircle,
                         text = stringResource(R.string.music_add_to_queue),
                         enabled = selectedTrack.contentUri !in mutations?.hiddenContentUris.orEmpty(),
-                        iconSize = TrackActionAddToQueueIconSize,
-                        iconStartPadding = 1.dp,
-                        iconEndPadding = 2.dp,
                         onClick = {
                             onAppendToQueue(selectedTrack)
                             onDismiss()
                         },
                     )
                     TrackAction(
-                        icon = MiuixIcons.AddCircle,
+                        icon = GlassIcons.CopyEditPoint,
                         text = stringResource(R.string.playlist_add_to),
                         onClick = {
                             onAddToPlaylist(selectedTrack)
@@ -287,7 +269,7 @@ fun TrackActionsOverlay(
                     onGoToAlbum?.let { goToAlbum ->
                         selectedTrack.album?.let { albumName ->
                             TrackAction(
-                                icon = MiuixIcons.Album,
+                                icon = GlassIcons.Item,
                                 text = stringResource(
                                     R.string.music_album_label,
                                     albumName,
@@ -309,7 +291,7 @@ fun TrackActionsOverlay(
                             selectedArtistGroups.isNotEmpty()
                         }?.let { artistName ->
                             TrackAction(
-                                icon = MiuixIcons.ContactsCircle,
+                                icon = GlassIcons.Contacts,
                                 text = stringResource(
                                     R.string.music_artist_label,
                                     artistName,
@@ -335,7 +317,7 @@ fun TrackActionsOverlay(
                             ExternalEditorKind.LunaBeat -> R.string.music_edit_with_luna_beat
                         }
                         TrackAction(
-                            icon = MiuixIcons.Edit,
+                            icon = GlassIcons.Edit,
                             text = stringResource(titleRes),
                             onClick = { openExternalEditor(selectedTrack, directEditor) },
                         )
@@ -345,7 +327,7 @@ fun TrackActionsOverlay(
                             modifier = Modifier.fillMaxWidth(),
                             startAction = {
                                 Icon(
-                                    imageVector = MiuixIcons.Edit,
+                                    imageVector = GlassIcons.Edit,
                                     contentDescription = null,
                                     modifier = Modifier.size(TrackActionIconSize),
                                     tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
@@ -370,12 +352,9 @@ fun TrackActionsOverlay(
                     TrackAction(
                         icon = {
                             Icon(
-                                imageVector = MiuixIcons.Share,
+                                imageVector = GlassIcons.Share,
                                 contentDescription = null,
-                                modifier = Modifier.size(TrackActionIconSize).graphicsLayer {
-                                    scaleX = 24f / 22f
-                                    scaleY = scaleX
-                                },
+                                modifier = Modifier.size(TrackActionIconSize),
                                 tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
                             )
                         },
@@ -389,7 +368,7 @@ fun TrackActionsOverlay(
                         },
                     )
                     TrackAction(
-                        icon = MiuixIcons.Info,
+                        icon = GlassIcons.Info,
                         text = stringResource(R.string.music_song_info),
                         onClick = {
                             songInfoTrack = selectedTrack
@@ -400,7 +379,7 @@ fun TrackActionsOverlay(
                         icon = if (selectedTrack.contentUri in mutations?.hiddenContentUris.orEmpty()) {
                             MiuixIcons.Reset
                         } else {
-                            MiuixIcons.Hide
+                            GlassIcons.Hide
                         },
                         text = stringResource(
                             if (selectedTrack.contentUri in mutations?.hiddenContentUris.orEmpty()) {
@@ -421,7 +400,7 @@ fun TrackActionsOverlay(
                         },
                     )
                     TrackAction(
-                        icon = MiuixIcons.Delete,
+                        icon = GlassIcons.Delete,
                         text = stringResource(R.string.music_delete_song),
                         enabled = mutations != null,
                         onClick = {
@@ -478,7 +457,6 @@ fun TrackActionsOverlay(
 
     OverlayBottomSheet(
         show = songInfoTrack != null,
-        modifier = bottomSheetGlassModifier(),
         backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.music_song_info),
         startAction = {
@@ -556,7 +534,6 @@ fun TrackActionsOverlay(
 
     OverlayBottomSheet(
         show = artistListTrack != null,
-        modifier = bottomSheetGlassModifier(),
         backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.participating_artists),
         startAction = {
@@ -615,7 +592,6 @@ private fun SheetScrollableContent(
         modifier = Modifier
             .fillMaxWidth()
             .overScrollVertical(
-                nestedScrollToParent = false,
                 isEnabled = { scrollState.maxValue > 0 },
             )
             .verticalScroll(scrollState, overscrollEffect = null)
@@ -639,39 +615,6 @@ private fun TrackAction(
         icon = {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier
-                    .padding(start = iconStartPadding, end = iconEndPadding)
-                    .size(iconSize),
-                tint = if (enabled) {
-                    MiuixTheme.colorScheme.onSurfaceVariantActions
-                } else {
-                    MiuixTheme.colorScheme.disabledOnSecondaryVariant
-                },
-            )
-        },
-        text = text,
-        truncateText = truncateText,
-        enabled = enabled,
-        onClick = onClick,
-    )
-}
-
-@Composable
-private fun TrackAction(
-    icon: Painter,
-    text: String,
-    iconSize: Dp = TrackActionIconSize,
-    iconStartPadding: Dp = 0.dp,
-    iconEndPadding: Dp = 0.dp,
-    truncateText: Boolean = false,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    TrackAction(
-        icon = {
-            Icon(
-                painter = icon,
                 contentDescription = null,
                 modifier = Modifier
                     .padding(start = iconStartPadding, end = iconEndPadding)

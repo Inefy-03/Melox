@@ -71,38 +71,29 @@ enum class BottomBarStyle {
     NORMAL,
     FLOATING,
     LIQUID_GLASS,
-    OS4;
+    GLASS;
 
     val supportsSmallPlayerBar: Boolean
-        get() = this != OS4
-}
-
-enum class ThemeStyle {
-    OS3,
-    OS4;
-
-    val defaultBottomBarStyle: BottomBarStyle
-        get() = if (this == OS4) BottomBarStyle.OS4 else BottomBarStyle.NORMAL
+        get() = this != GLASS
 }
 
 internal fun availableBottomBarStyle(style: BottomBarStyle, glassSupported: Boolean): BottomBarStyle =
-    if (glassSupported) style else when (style) {
-        BottomBarStyle.OS4 -> BottomBarStyle.NORMAL
-        BottomBarStyle.LIQUID_GLASS -> BottomBarStyle.NORMAL
-        else -> style
-    }
+    if (style == BottomBarStyle.LIQUID_GLASS && !glassSupported) BottomBarStyle.NORMAL else style
 
-/** Migrates the former floating/glass switches to the explicit navigation style. */
+/** Maps previous theme and navigation choices to the unified Glass presentation. */
 internal fun resolveStoredNavigationStyle(
     stored: String?,
     legacyStyle: String?,
     floating: Boolean?,
-): BottomBarStyle {
-    if (stored == "OS3_FLOATING") return BottomBarStyle.NORMAL
-    val selected = BottomBarStyle.entries.firstOrNull { it.name == stored }
-    if (selected != null && selected != BottomBarStyle.FLOATING) return selected
-    val legacyFloating = floating ?: (legacyStyle != null && legacyStyle != BottomBarStyle.NORMAL.name)
-    return if (legacyFloating) BottomBarStyle.LIQUID_GLASS else BottomBarStyle.NORMAL
+): BottomBarStyle = when (stored) {
+    "LIQUID_GLASS" -> BottomBarStyle.LIQUID_GLASS
+    "GLASS", "OS4" -> BottomBarStyle.GLASS
+    "NORMAL", "OS3_FLOATING" -> BottomBarStyle.NORMAL
+    else -> when {
+        legacyStyle == null && floating == null && stored != "FLOATING" -> BottomBarStyle.GLASS
+        floating ?: (legacyStyle != null && legacyStyle != "NORMAL") -> BottomBarStyle.LIQUID_GLASS
+        else -> BottomBarStyle.NORMAL
+    }
 }
 
 /** Selects the Miuix navigation host transition preset. */
@@ -246,9 +237,7 @@ data class AppSettings(
     val hideBottomBar: Boolean = false,
     val immersiveMode: Boolean = false,
     val hideStatusBar: Boolean = false,
-    val floatingBottomBar: Boolean = false,
     val navigationRailExpanded: Boolean = true,
-    val liquidGlass: Boolean = false,
     val predictiveBackEnabled: Boolean = true,
     val navigationTransitionStyle: NavigationTransitionStyle =
         NavigationTransitionStyle.MIUIX,
@@ -259,7 +248,6 @@ data class AppSettings(
     val customFolderUris: List<String> = emptyList(),
     val blockedFolderPaths: List<String> = emptyList(),
     val hiddenTrackUris: Set<String> = emptySet(),
-    val libraryTabIndex: Int = 0,
     val musicSortFieldOrdinal: Int = 0,
     val musicSortDescending: Boolean = false,
     val albumSortFieldOrdinal: Int = 0,
@@ -272,7 +260,6 @@ data class AppSettings(
     val folderTrackSortConfigs: Map<String, MusicSortConfig> = emptyMap(),
     val playlistSortConfigs: Map<String, PlaylistSortConfig> = emptyMap(),
     val defaultHomePage: DefaultHomePage = DefaultHomePage.HOME,
-    val themeStyle: ThemeStyle = ThemeStyle.OS4,
     val selectedBottomBarStyle: BottomBarStyle? = null,
 ) {
     /** Backwards-compatible derived flag; only the circular shape crops playback artwork. */
@@ -286,10 +273,5 @@ data class AppSettings(
         get() = smallPlayerBar && bottomBarStyle.supportsSmallPlayerBar
 
     val bottomBarStyle: BottomBarStyle
-        get() = selectedBottomBarStyle ?: when {
-            themeStyle == ThemeStyle.OS4 -> BottomBarStyle.OS4
-            !floatingBottomBar -> BottomBarStyle.NORMAL
-            liquidGlass -> BottomBarStyle.LIQUID_GLASS
-            else -> BottomBarStyle.FLOATING
-        }
+        get() = selectedBottomBarStyle ?: BottomBarStyle.GLASS
 }

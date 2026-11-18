@@ -56,6 +56,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
@@ -78,7 +79,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.blur.Backdrop
+import top.yukonga.miuix.kmp.upstream.blur.Backdrop
+import top.yukonga.miuix.kmp.upstream.glass.glassPanel
+import top.yukonga.miuix.kmp.upstream.material.GlassDefaults
+import top.yukonga.miuix.kmp.upstream.material.GlassMaterial as UpstreamGlassMaterial
+import top.yukonga.miuix.kmp.upstream.glass.GlassNavigationBarDefaults as UpstreamGlassNavigationBarDefaults
+import top.yukonga.miuix.kmp.upstream.material.GlassShape
+import top.yukonga.miuix.kmp.upstream.material.GlassStyle
+import top.yukonga.miuix.kmp.upstream.material.GlassShadow
+import top.yukonga.miuix.kmp.upstream.material.GlassShadows
+import top.yukonga.miuix.kmp.upstream.material.EdgeStroke
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.Platform
 import top.yukonga.miuix.kmp.utils.platform
@@ -200,6 +210,8 @@ object GlassNavigationBarDefaults {
  * @param leadingAction Optional independent control inside the leading portion of the surface.
  * @param leadingActionWidth Reserved leading width, excluded from destination hit testing.
  * @param labelsOnly Hide destination icons while preserving the full navigation interaction.
+ * @param selectOnRelease Preview pointer selection until release, matching the upstream bottom
+ *   bar. Leave disabled for Melox's existing landscape navigation interaction.
  * @param trailingAction Optional independent action outside the glass capsule. It owns its size
  *   and material, and shares the bar's show/hide transition. Use [GlassIconButton] for a round action.
  */
@@ -215,10 +227,10 @@ fun GlassNavigationBar(
     shape: GlassShape = GlassShape(CornerSize(50), CornerSize(50), CornerSize(50), CornerSize(50)),
     alpha: Float = 1f,
     visible: Boolean = true,
-    stroke: GlassStroke? = GlassNavigationBarDefaults.stroke(),
+    stroke: EdgeStroke? = UpstreamGlassNavigationBarDefaults.stroke(),
     shadow: GlassShadow? = GlassShadows.Float,
     height: Dp = GlassNavigationBarDefaults.Height,
-    material: GlassMaterial? = GlassNavigationBarDefaults.material(),
+    material: UpstreamGlassMaterial? = UpstreamGlassNavigationBarDefaults.material(),
     indicatorColor: Color = GlassNavigationBarDefaults.indicatorColor(),
     indicatorPressedColor: Color = GlassNavigationBarDefaults.indicatorPressedColor(),
     selectedColor: Color = if (MiuixTheme.isDynamicColor) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onBackground,
@@ -232,6 +244,7 @@ fun GlassNavigationBar(
     indicatorOverhang: Dp = GlassNavigationBarDefaults.IndicatorOverhang,
     contentPaddingEnd: Dp = GlassNavigationBarDefaults.ContentPaddingHorizontal,
     selectionVisible: Boolean = true,
+    selectOnRelease: Boolean = false,
 ) {
     if (items.isEmpty()) return
     require(destinationWidths == null || destinationWidths.size == items.size)
@@ -251,6 +264,7 @@ fun GlassNavigationBar(
     var barWidth by remember { mutableIntStateOf(0) }
     var pressedIndex by remember { mutableIntStateOf(-1) }
     val dragging = remember { mutableStateOf(false) }
+    var settleGeneration by remember { mutableIntStateOf(0) }
 
     val showScale = remember { Animatable(if (visible) 1f else GlassMotion.NAV_HIDE_SCALE) }
     var interactionEnabled by remember { mutableStateOf(visible) }
@@ -275,6 +289,7 @@ fun GlassNavigationBar(
         leftSpring: SpringSpec<Float> = GlassMotion.edgeSpring(newLeft <= left.value),
         rightSpring: SpringSpec<Float> = GlassMotion.edgeSpring(newLeft > left.value),
     ) {
+        if (selectOnRelease && left.targetValue == newLeft && right.targetValue == newRight) return
         // All motion owns the same two Animatables. Retarget through animateTo so their current
         // positions and velocities survive drag, reversal, selection and release interruptions.
         // These jobs belong to the composition, not to a restarting selection effect.
@@ -287,7 +302,7 @@ fun GlassNavigationBar(
     }
     val targetLeft = contentStart - overhang + navigationSlotPosition(index.toFloat(), spans)
     val targetRight = contentStart + overhang + navigationSlotPosition(index + 1f, spans)
-    LaunchedEffect(targetLeft, targetRight, dragging.value) {
+    LaunchedEffect(targetLeft, targetRight, dragging.value, settleGeneration) {
         if (barWidth <= contentStart + contentInset || dragging.value) return@LaunchedEffect
         indicatorMotion.syncTarget(targetLeft, targetRight) { newLeft, newRight ->
             animateIndicator(newLeft, newRight)
@@ -368,7 +383,7 @@ fun GlassNavigationBar(
                 .onSizeChanged { barWidth = it.width }
                 .then(
                     if (interactionEnabled) {
-                        Modifier.pointerInput(items.size, contentInset, contentStart, overhang, layoutDirection, measuredWidths) {
+                        Modifier.pointerInput(items.size, contentInset, contentStart, overhang, layoutDirection, measuredWidths, selectOnRelease) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
                                 val selectionWidth = size.width.toFloat()
@@ -386,13 +401,28 @@ fun GlassNavigationBar(
                                 var selectionX = downX
                                 var current = indexAt(downX)
                                 pressedIndex = current
-                                onSelectState(current)
+                                val pressedLeft = contentStart - overhang + navigationSlotPosition(current.toFloat(), selectionSpans)
+                                if (selectOnRelease) {
+                                    dragging.value = true
+                                    animateIndicator(pressedLeft, pressedLeft + selectionSpans[current] + overhang * 2f)
+                                } else {
+                                    onSelectState(current)
+                                }
                                 var grabOffset = Float.NaN
                                 try {
                                     while (true) {
                                         val event = awaitPointerEvent()
                                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                        if (!change.pressed || change.isConsumed) break
+                                        if (change.isConsumed) break
+                                        if (!change.pressed) {
+                                            if (selectOnRelease && change.changedToUp()) {
+                                                val releaseDelta = change.position.x - change.previousPosition.x
+                                                selectionX += if (layoutDirection == LayoutDirection.Rtl) -releaseDelta else releaseDelta
+                                                onSelectState(indexAt(selectionX))
+                                                change.consume()
+                                            }
+                                            break
+                                        }
                                         val width = size.width.toFloat()
                                         val currentSpans = measuredWidths ?: List(items.size) {
                                             ((width - contentStart - contentInset) / items.size).coerceAtLeast(0f)
@@ -407,19 +437,31 @@ fun GlassNavigationBar(
                                                 pressedIndex = indexAt(selectionX)
                                                 continue
                                             }
-                                            val bounds = navigationIndicatorBounds(left.value, right.value, width, minLeft, contentInset - overhang)
-                                            grabOffset = x - bounds.x
+                                            grabOffset = if (selectOnRelease) {
+                                                downX - pressedLeft
+                                            } else {
+                                                val bounds = navigationIndicatorBounds(left.value, right.value, width, minLeft, contentInset - overhang)
+                                                x - bounds.x
+                                            }
                                             dragging.value = true
                                         }
                                         val next = indexAt(selectionX)
                                         val chipW = navigationDragWidth(selectionX - contentStart, currentSpans) + overhang * 2f
-                                        val maxLeft = (width - chipW).coerceAtLeast(0f)
-                                        val chipLeft = (x - grabOffset).coerceIn(with(density) { leadingWidth.toPx() }.coerceAtMost(maxLeft), maxLeft)
-                                        val target = navigationDragTarget(chipLeft, chipW, width, delta, next != current)
+                                        val travelStart = if (selectOnRelease) contentStart - contentInset else 0f
+                                        val maxLeft = (width - chipW).coerceAtLeast(travelStart)
+                                        val chipLeft = (x - grabOffset).coerceIn(
+                                            if (selectOnRelease) travelStart else with(density) { leadingWidth.toPx() }.coerceAtMost(maxLeft),
+                                            maxLeft,
+                                        )
+                                        val target = if (selectOnRelease) {
+                                            navigationDragTarget(chipLeft, chipW, travelStart, width, delta, next != current)
+                                        } else {
+                                            navigationDragTarget(chipLeft, chipW, width, delta, next != current)
+                                        }
                                         animateIndicator(target.left, target.right, target.leftSpring, target.rightSpring)
                                         if (next != current) {
                                             current = next
-                                            onSelectState(next)
+                                            if (!selectOnRelease) onSelectState(next)
                                         }
                                         pressedIndex = next
                                         change.consume()
@@ -427,6 +469,7 @@ fun GlassNavigationBar(
                                 } finally {
                                     pressedIndex = -1
                                     dragging.value = false
+                                    if (selectOnRelease) settleGeneration++
                                     // Release settles against the latest selection and measured width.
                                 }
                             }

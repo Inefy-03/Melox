@@ -4,9 +4,8 @@
 
 package com.melox.player.ui
 
-import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -21,7 +20,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlin.math.abs
+
+// Shared by tab navigation and gesture settling, matching upstream PagerNavigationSpringSpec.
+internal val PlayerPagerNavigationSpringSpec = spring<Float>(
+    stiffness = 322.2f,
+    dampingRatio = 32.31f / (2f * kotlin.math.sqrt(322.2f)),
+    visibilityThreshold = 0.5f,
+)
 
 /**
  * Keeps tab selection responsive while the underlying Pager performs the Miuix-style scroll.
@@ -61,30 +66,24 @@ internal class PlayerPagerState(
         navigationJob = coroutineScope.launch {
             val currentJob = coroutineContext.job
             try {
-                pagerState.scroll(MutatePriority.UserInput) {
-                    // Match the demo's distance-based duration while retaining user-scroll priority.
-                    val distance = abs(targetIndex - pagerState.currentPage).coerceAtLeast(2)
-                    val durationMillis = 100 * distance + 100
-                    val pageSize = pagerState.layoutInfo.pageSize + pagerState.layoutInfo.pageSpacing
-                    val distanceInPages =
-                        targetIndex - pagerState.currentPage - pagerState.currentPageOffsetFraction
-                    val scrollPixels = distanceInPages * pageSize
+                with(pagerState) {
+                    scroll(MutatePriority.UserInput) {
+                        updateTargetPage(targetIndex)
+                        val pageSize = pagerState.layoutInfo.pageSize + pagerState.layoutInfo.pageSpacing
+                        val distanceInPages =
+                            targetIndex - pagerState.currentPage - pagerState.currentPageOffsetFraction
+                        val scrollPixels = distanceInPages * pageSize
 
-                    var previousValue = 0f
-                    animate(
-                        initialValue = 0f,
-                        targetValue = scrollPixels,
-                        animationSpec = tween(
-                            durationMillis = durationMillis,
-                            easing = EaseInOut,
-                        ),
-                    ) { currentValue, _ ->
-                        previousValue += scrollBy(currentValue - previousValue)
+                        var previousValue = 0f
+                        animate(
+                            initialValue = 0f,
+                            targetValue = scrollPixels,
+                            animationSpec = PlayerPagerNavigationSpringSpec,
+                        ) { currentValue, _ ->
+                            previousValue += scrollBy(currentValue - previousValue)
+                        }
+                        updateCurrentPage(targetIndex)
                     }
-                }
-
-                if (pagerState.currentPage != targetIndex) {
-                    pagerState.scrollToPage(targetIndex)
                 }
             } finally {
                 if (navigationJob == currentJob) {

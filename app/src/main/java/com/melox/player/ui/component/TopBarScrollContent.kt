@@ -10,9 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.composed
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.positionInRoot
 import top.yukonga.miuix.kmp.utils.overScrollVertical as miuixOverScrollVertical
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
@@ -36,6 +33,9 @@ internal class TopBarScrollContent {
             val overlap = it.bounds.intersect(bounds)
             overlap.width.coerceAtLeast(0f) * overlap.height.coerceAtLeast(0f)
         }?.distance?.value?.invoke()
+
+    fun visualContentOffset(fallback: Float): Float =
+        (distance?.let { -it } ?: fallback) + overscrollDistance
 }
 
 internal class ScrollContentPosition(val distance: State<() -> Float>) {
@@ -56,19 +56,19 @@ private fun Modifier.topBarScrollContent(distance: () -> Float): Modifier {
     return onGloballyPositioned { position.bounds = it.boundsInRoot() }
 }
 
-internal fun topBarOverlapDistance(
-    contentDistance: Float?,
-    contentOffset: Float,
-    overscrollDistance: Float = 0f,
-): Float = (contentDistance ?: -contentOffset).coerceAtLeast(0f) + (-overscrollDistance).coerceAtLeast(0f)
+@Composable
+internal fun topBarContentScrolled(behavior: ScrollBehavior?): Boolean {
+    val content = LocalTopBarScrollContent.current
+    return content?.distance?.let { it > 0f } ?: behavior?.state?.let { it.contentOffset < 0f } ?: true
+}
 
 @Composable
-internal fun rememberTopBarOverlapDistance(behavior: ScrollBehavior?): State<Float>? {
+internal fun rememberTopBarVisualContentOffset(behavior: ScrollBehavior?): (() -> Float)? {
     val content = LocalTopBarScrollContent.current ?: return null
+    if (behavior == null) return null
+    // Programmatic jumps and filtering update lazy layout without nested-scroll callbacks.
     return remember(content, behavior) {
-        derivedStateOf {
-            topBarOverlapDistance(content.distance, behavior?.state?.contentOffset ?: 0f, content.overscrollDistance)
-        }
+        { content.visualContentOffset(behavior.state.contentOffset) }
     }
 }
 
@@ -111,35 +111,19 @@ internal fun LazyVerticalGrid(
 
 // Observe the native effect's translated content, including its spring settle frames.
 internal fun Modifier.overScrollVertical(
-    nestedScrollToParent: Boolean = true,
     isEnabled: () -> Boolean = { true },
 ): Modifier = composed {
     val owner = LocalTopBarScrollContent.current
-    if (owner == null) return@composed this.miuixOverScrollVertical(nestedScrollToParent, isEnabled)
+    if (owner == null) return@composed this.miuixOverScrollVertical(isEnabled = isEnabled)
     var displacement by remember { mutableFloatStateOf(0f) }
     val distance = rememberUpdatedState<() -> Float> { displacement }
     val position = remember(owner) { ScrollContentPosition(distance) }
-    var outerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    var innerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     DisposableEffect(owner, position) {
         owner.overscrolls[position] = position
         onDispose { owner.overscrolls.remove(position) }
     }
-    fun updateDisplacement() {
-        val outer = outerCoordinates?.takeIf { it.isAttached } ?: return
-        val inner = innerCoordinates?.takeIf { it.isAttached } ?: return
-        displacement = inner.positionInRoot().y - outer.positionInRoot().y
-        position.bounds = outer.boundsInRoot()
-    }
+    val updateDisplacement = remember { { offset: Float -> displacement = offset } }
     this
-        .onPlaced {
-            outerCoordinates = it
-            updateDisplacement()
-        }
-        .miuixOverScrollVertical(nestedScrollToParent, isEnabled)
-        .onPlaced {
-            innerCoordinates = it
-            updateDisplacement()
-        }
-        .onGloballyPositioned { updateDisplacement() }
+        .onGloballyPositioned { position.bounds = it.boundsInRoot() }
+        .miuixOverScrollVertical(onOffsetChanged = updateDisplacement, isEnabled = isEnabled)
 }

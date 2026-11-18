@@ -1,5 +1,7 @@
 package com.melox.player.ui.screen.settings
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -20,10 +22,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -37,24 +37,20 @@ import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.DynamicFlowStyle
 import com.melox.player.model.NavigationTransitionStyle
 import com.melox.player.model.PlaybackBackgroundStyle
-import com.melox.player.model.ThemeStyle
 import com.melox.player.model.ThemeMode
-import com.melox.player.ui.component.AdaptiveTopAppBar
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopAppBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.PageCard as Card
-import top.yukonga.miuix.kmp.basic.DropdownEntry
-import top.yukonga.miuix.kmp.basic.DropdownItem
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import com.melox.player.ui.component.os4.navigationBackIcon
-import com.melox.player.ui.component.os4.OverlayDropdownPreference
+import com.melox.player.ui.component.navigationBackIcon
+import com.melox.player.ui.component.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import com.melox.player.ui.component.overScrollVertical
@@ -67,7 +63,6 @@ fun ThemeSettingsScreen(
     listState: LazyListState,
     scrollBehavior: ScrollBehavior,
     onBack: () -> Unit,
-    onThemeStyleChange: (ThemeStyle) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onImmersiveModeChange: (Boolean) -> Unit,
     onHideStatusBarChange: (Boolean) -> Unit,
@@ -154,12 +149,8 @@ fun ThemeSettingsScreen(
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarBackdropCaptureCoordinates })
     PageScaffold(
             topBar = {
-            BlurredBar(
-                backdrop = topBarBackdrop,
-                blurEnabled = topBarBackdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
-                AdaptiveTopAppBar(
+            TopBarBackdrop(backdrop = topBarBackdrop) {
+                TopAppBar(
                     title = stringResource(R.string.settings_theme_settings_title),
                     color = topBarBackdrop.miuixBarColor(),
                     scrollBehavior = scrollBehavior,
@@ -223,27 +214,6 @@ fun ThemeSettingsScreen(
                                 selectedThemeMode = mode
                                 onThemeModeChange(mode)
                             },
-                        )
-                    }
-                }
-                item {
-                    ThemeCard {
-                        OverlayDropdownPreference(
-                            title = stringResource(R.string.settings_theme_style_title),
-                            summary = if (Build.VERSION.SDK_INT < 33) stringResource(R.string.settings_glass_styles_unsupported) else null,
-                            entry = DropdownEntry(items = listOf(
-                                DropdownItem(
-                                    text = stringResource(R.string.settings_style_os3),
-                                    selected = settings.themeStyle == ThemeStyle.OS3,
-                                    onClick = { onThemeStyleChange(ThemeStyle.OS3) },
-                                ),
-                                DropdownItem(
-                                    text = stringResource(R.string.settings_style_os4),
-                                    selected = settings.themeStyle == ThemeStyle.OS4,
-                                    enabled = Build.VERSION.SDK_INT >= 33,
-                                    onClick = { onThemeStyleChange(ThemeStyle.OS4) },
-                                ),
-                            )),
                         )
                     }
                 }

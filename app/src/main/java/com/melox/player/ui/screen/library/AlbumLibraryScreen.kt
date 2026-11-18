@@ -1,8 +1,10 @@
 package com.melox.player.ui.screen.library
 
+import androidx.compose.runtime.getValue
 import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
+import com.melox.player.ui.icon.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,7 +26,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.platform.LocalDensity
 import com.melox.player.ui.component.library.isCompactLandscapeGrid
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,8 +54,6 @@ import com.melox.player.ui.component.PageCard as Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Album
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import com.melox.player.ui.component.overScrollVertical
@@ -98,22 +97,25 @@ fun AlbumLibraryScreen(
 
     val windowSize = LocalWindowInfo.current.containerSize
     val compactLandscape = with(LocalDensity.current) { isCompactLandscapeGrid(windowSize.width.toDp(), windowSize.height.toDp()) }
-    val os4Landscape = com.melox.player.ui.theme.LocalOs4Style.current && windowSize.width > windowSize.height
+    val wideGlassLayout = windowSize.width > windowSize.height
+    val horizontalGridPadding = if (compactLandscape) 16.dp else 20.dp
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val gridContentPadding = PaddingValues(
-            start = contentPadding.calculateStartPadding(layoutDirection) + 20.dp,
+            start = contentPadding.calculateStartPadding(layoutDirection) + horizontalGridPadding,
             top = contentPadding.calculateTopPadding() + 12.dp,
-            end = contentPadding.calculateEndPadding(layoutDirection) + 20.dp,
+            end = contentPadding.calculateEndPadding(layoutDirection) + horizontalGridPadding,
             bottom = contentPadding.calculateBottomPadding() + 12.dp,
         )
         LazyVerticalGrid(
             columns = GridCells.Fixed(
                 albumGridColumnCount(
                     gridStyle = sortConfig.gridStyle,
-                    landscape = landscape || os4Landscape,
+                    landscape = landscape || wideGlassLayout,
                     navigationRailExpanded = navigationRailExpanded,
-                    availableWidth = maxWidth,
-                    os4 = os4Landscape,
+                    availableWidth = maxWidth - contentPadding.calculateStartPadding(layoutDirection) -
+                        contentPadding.calculateEndPadding(layoutDirection),
+                    spaciousCells = wideGlassLayout,
+                    horizontalPadding = horizontalGridPadding * 2,
                     compactLandscape = compactLandscape,
                 ),
             ),
@@ -150,7 +152,7 @@ fun AlbumLibraryScreen(
                             query = query,
                             emptyMessageRes = R.string.album_empty,
                             noSearchResultsRes = R.string.album_no_search_results,
-                            icon = MiuixIcons.Album,
+                            icon = GlassIcons.Item,
                         )
                     }
                 }
@@ -207,7 +209,7 @@ internal fun albumGridColumnCount(
     landscape: Boolean,
     navigationRailExpanded: Boolean,
     availableWidth: Dp,
-    os4: Boolean = false,
+    spaciousCells: Boolean = false,
     horizontalPadding: Dp = 40.dp,
     compactLandscape: Boolean = false,
 ): Int {
@@ -219,11 +221,11 @@ internal fun albumGridColumnCount(
     }
     val minimumCellWidth = when (gridStyle) {
         AlbumGridStyle.TWO_SMALL -> when {
-            !os4 -> 140.dp
+            !spaciousCells -> 140.dp
             compactLandscape -> 160.dp
             else -> 200.dp
         }
-        AlbumGridStyle.THREE -> if (os4 && !compactLandscape) 160.dp else 120.dp
+        AlbumGridStyle.THREE -> if (spaciousCells && !compactLandscape) 160.dp else 120.dp
     }
     return responsiveGridColumnCount(
         availableWidth = availableWidth,
@@ -245,7 +247,7 @@ internal fun AlbumGridItem(
     when (gridStyle) {
         AlbumGridStyle.TWO_SMALL -> Card(
             modifier = modifier.fillMaxWidth(),
-            cornerRadius = if (com.melox.player.ui.theme.LocalOs4Style.current) 16.dp else 14.dp,
+            cornerRadius = 16.dp,
             insideMargin = PaddingValues(
                 start = 6.dp,
                 top = 6.dp,
@@ -265,7 +267,7 @@ internal fun AlbumGridItem(
                     dateModifiedEpochSeconds = cover?.dateModifiedEpochSeconds ?: 0L,
                     fileSizeBytes = cover?.fileSizeBytes ?: 0L,
                     size = 54.dp,
-                    cornerRadius = if (com.melox.player.ui.theme.LocalOs4Style.current) 10.dp else 8.dp,
+                    cornerRadius = 10.dp,
                     showLoadingBackground = true,
                 )
                 AlbumGridLabels(
@@ -294,7 +296,7 @@ internal fun AlbumGridItem(
                         dateModifiedEpochSeconds = cover?.dateModifiedEpochSeconds ?: 0L,
                         fileSizeBytes = cover?.fileSizeBytes ?: 0L,
                         size = maxWidth,
-                        cornerRadius = if (com.melox.player.ui.theme.LocalOs4Style.current) 18.dp else 14.dp,
+                        cornerRadius = 18.dp,
                         showLoadingBackground = true,
                     )
                 }

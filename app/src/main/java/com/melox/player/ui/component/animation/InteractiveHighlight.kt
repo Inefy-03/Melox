@@ -5,6 +5,7 @@ package com.melox.player.ui.component.animation
 
 // Adapted from Kyant0/AndroidLiquidGlass — https://github.com/Kyant0/AndroidLiquidGlass (Apache 2.0).
 
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.VisibilityThreshold
@@ -23,9 +24,9 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.blur.RuntimeShader
-import top.yukonga.miuix.kmp.blur.asBrush
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.material.RuntimeShader
+import top.yukonga.miuix.kmp.material.asBrush
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 
 internal class InteractiveHighlight(
     private val animationScope: CoroutineScope,
@@ -45,7 +46,11 @@ internal class InteractiveHighlight(
     // Smoothstep press spot; without runtime shader support, falls back to a radialGradient
     // approximation (linear instead of S-curve falloff — barely distinguishable).
     private val spotShader: RuntimeShader? =
-        if (isRuntimeShaderSupported()) RuntimeShader(SPOT_SHADER) else null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && isRuntimeShaderSupported()) {
+            RuntimeShader(SPOT_SHADER)
+        } else {
+            null
+        }
 
     val modifier: Modifier = Modifier.drawHighlight()
 
@@ -65,7 +70,7 @@ internal class InteractiveHighlight(
                 y = pos.y.coerceIn(0f, size.height),
             )
             val spotColor = Color.White.copy(alpha = 0.12f * progress)
-            if (spotShader != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && spotShader != null) {
                 spotShader.setColorUniform("color", spotColor)
                 spotShader.setFloatUniform("radius", radius)
                 spotShader.setFloatUniform("position", center.x, center.y)

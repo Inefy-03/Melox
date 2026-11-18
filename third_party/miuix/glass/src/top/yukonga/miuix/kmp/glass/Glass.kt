@@ -7,12 +7,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.isSpecified
 import top.yukonga.miuix.kmp.blur.Backdrop
-import top.yukonga.miuix.kmp.blur.BlurDefaults
-import top.yukonga.miuix.kmp.blur.blur
-import top.yukonga.miuix.kmp.blur.drawBackdrop
-import top.yukonga.miuix.kmp.blur.noiseDither
+import top.yukonga.miuix.kmp.upstream.blur.BackdropPipeline
+import top.yukonga.miuix.kmp.upstream.blur.BackdropEffectScope
+import top.yukonga.miuix.kmp.upstream.blur.BlurDefaults
+import top.yukonga.miuix.kmp.upstream.blur.blur
+import top.yukonga.miuix.kmp.upstream.blur.drawBackdrop
+import top.yukonga.miuix.kmp.upstream.blur.noiseDither
+import top.yukonga.miuix.kmp.glass.internal.asCurrentBackdrop
 import top.yukonga.miuix.kmp.glass.internal.GLASS_COLOR_BLEND_SHADER_KEY
 import top.yukonga.miuix.kmp.glass.internal.colorBlendEffect
 import top.yukonga.miuix.kmp.glass.internal.drawGlassMask
@@ -106,28 +111,49 @@ private fun Modifier.glassImpl(
     enabled: Boolean,
     shading: Boolean,
 ): Modifier = this.drawBackdrop(
-    backdrop = backdrop,
-    shape = { shape },
-    effects = {
-        noiseDither(noiseCoefficient)
-        val radius = material?.blurRadius?.value ?: (style.blur.small / GlassDefaults.SourceDensity)
-        blur(radius.coerceIn(0f, BlurDefaults.MaxBlurRadius) * density)
-        if (underlayMaterial != null) {
-            colorBlendEffect(underlayMaterial, 1f, "${GLASS_COLOR_BLEND_SHADER_KEY}ActionBar")
-        }
-        if (material != null) colorBlendEffect(material, alpha)
-        if (shading) glassEffect(style, shape, alpha, tint)
-    },
-    onDrawFront = {
-        if (stroke != null) drawGlassStroke(shape, layoutDirection, stroke, alpha)
-        drawGlassMask(shape, layoutDirection)
-        if (shading) {
-            drawGlassRim(shape, layoutDirection, style, if (tint.isSpecified) tint else style.inner.tint, alpha)
-        }
-    },
+    backdrop = backdrop.asCurrentBackdrop(),
+    pipeline = GlassPipeline(shape, style, alpha, tint, material, underlayMaterial, noiseCoefficient, stroke, shading),
     contentBlendMode = contentBlendMode,
     enabled = enabled,
 )
+
+/** Equal material inputs retain the current backdrop node across recompositions. */
+private data class GlassPipeline(
+    private val glassShape: GlassShape,
+    private val style: GlassStyle,
+    private val alpha: Float,
+    private val tint: Color,
+    private val material: GlassMaterial?,
+    private val underlayMaterial: GlassMaterial?,
+    private val noiseCoefficient: Float,
+    private val stroke: GlassStroke?,
+    private val shading: Boolean,
+) : BackdropPipeline {
+    override val shape: Shape get() = glassShape
+
+    override fun configureEffects(scope: BackdropEffectScope) {
+        with(scope) {
+            noiseDither(noiseCoefficient)
+            val radius = material?.blurRadius?.value ?: (style.blur.small / GlassDefaults.SourceDensity)
+            blur(radius.coerceIn(0f, BlurDefaults.MaxBlurRadius) * density)
+            if (underlayMaterial != null) {
+                colorBlendEffect(underlayMaterial, 1f, "${GLASS_COLOR_BLEND_SHADER_KEY}ActionBar")
+            }
+            if (material != null) colorBlendEffect(material, alpha)
+            if (shading) glassEffect(style, glassShape, alpha, tint)
+        }
+    }
+
+    override fun drawFront(scope: DrawScope) {
+        with(scope) {
+            if (stroke != null) drawGlassStroke(glassShape, layoutDirection, stroke, alpha)
+            drawGlassMask(glassShape, layoutDirection)
+            if (shading) {
+                drawGlassRim(glassShape, layoutDirection, style, if (tint.isSpecified) tint else style.inner.tint, alpha)
+            }
+        }
+    }
+}
 
 /**
  * Draws [shadow] beneath this composable using [shape].

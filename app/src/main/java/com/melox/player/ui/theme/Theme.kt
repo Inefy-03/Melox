@@ -1,8 +1,8 @@
 package com.melox.player.ui.theme
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
-import com.melox.player.model.ThemeStyle
 import android.os.Build
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
@@ -11,11 +11,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -27,7 +25,6 @@ import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 
-internal val LocalOs4Style = staticCompositionLocalOf { false }
 
 private const val PLAYBACK_ARTWORK_COLOR_TRANSITION_DURATION_MILLIS = 600
 
@@ -86,7 +83,6 @@ fun MeloxTheme(
             colors = rememberAnimatedThemeColors(targetColors, paletteTarget),
             content = {
                 CompositionLocalProvider(
-                    LocalOs4Style provides (settings.themeStyle == ThemeStyle.OS4 && Build.VERSION.SDK_INT >= 33),
                     LocalHapticFeedback provides hapticFeedback,
                     LocalHapticFeedbackEnabled provides settings.hapticFeedbackEnabled,
                 ) { content() }

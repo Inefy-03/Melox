@@ -25,21 +25,20 @@ import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import com.melox.player.ui.component.LocalCustomPageBackground
-import com.melox.player.ui.component.customPageBackground
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.blur.RuntimeShader
-import top.yukonga.miuix.kmp.blur.asBrush
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.material.RuntimeShader
+import top.yukonga.miuix.kmp.material.asBrush
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
 
 /**
- * Android adaptation of the OS3 background used by the official Miuix About
+ * Android adaptation of the background used by the official Miuix About
  * example. Unsupported devices keep the same content on the theme surface.
  */
 @Composable
@@ -51,17 +50,8 @@ internal fun AboutEffectBackground(
     content: @Composable BoxScope.() -> Unit,
 ) {
     if (useCustomBackground || LocalCustomPageBackground.current != null) {
-        Box(modifier = modifier) {
-            // Record only the wallpaper; header blur consumers must stay outside this layer.
-            Spacer(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(backgroundModifier)
-                    .background(MiuixTheme.colorScheme.surface)
-                    .customPageBackground(),
-            )
-            content()
-        }
+        // The owning Glass page already paints and records its wallpaper.
+        Box(modifier = modifier, content = content)
         return
     }
     val shaderSupported = remember { isRuntimeShaderSupported() }
@@ -201,7 +191,7 @@ private object AboutEffectConfig {
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private class AboutEffectPainter {
     private val runtimeShader by lazy {
-        RuntimeShader(OS3_BACKGROUND_SHADER).also {
+        RuntimeShader(ABOUT_BACKGROUND_SHADER).also {
             it.setFloatUniform("uTranslateY", 0f)
             it.setFloatUniform("uNoiseScale", 1.5f)
             it.setFloatUniform("uPointRadiusMulti", 1f)
@@ -418,7 +408,7 @@ private class AboutEffectNode(
     }
 }
 
-private const val OS3_BACKGROUND_SHADER = """
+private const val ABOUT_BACKGROUND_SHADER = """
     uniform vec2 uResolution;
     uniform float uAnimTime;
     uniform vec4 uBound;

@@ -1,5 +1,7 @@
 package com.melox.player.ui.component.library
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import android.Manifest
 import android.app.Activity
 import android.content.ClipData
@@ -37,14 +39,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -77,9 +77,8 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.melox.player.R
 import com.melox.player.model.MusicTrack
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.rememberBlurBackdrop
-import com.melox.player.ui.component.stableTopAppBarInsets
 import com.melox.player.ui.component.playback.sourceOverAlphas
 import com.melox.player.ui.screen.playback.rememberArtworkBlend
 import kotlinx.coroutines.launch
@@ -89,13 +88,13 @@ import kotlinx.coroutines.flow.collectLatest
 import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import com.melox.player.ui.component.os4.TopAppBar
+import com.melox.player.ui.component.TopAppBar
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import com.melox.player.ui.component.os4.navigationBackIcon
+import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.Download
 import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -488,11 +487,7 @@ internal fun ArtworkPreviewOverlay(
                         if (!toolbarInteractive) hideFromAccessibility()
                     },
             ) {
-            BlurredBar(
-                backdrop = topBarBackdrop,
-                blurEnabled = topBarBackdrop != null,
-                surfaceColor = toolbarSurfaceColor,
-            ) {
+            TopBarBackdrop(backdrop = topBarBackdrop) {
             val topBarColor = if (topBarBackdrop == null) toolbarSurfaceColor else Color.Transparent
             TopAppBar(
                 title = asset?.let { stringResource(R.string.artwork_dimensions, it.width, it.height) }
@@ -503,10 +498,9 @@ internal fun ArtworkPreviewOverlay(
                             topAppBarState.heightOffset = topAppBarState.heightOffsetLimit
                         }
                     }
-                    .stableTopAppBarInsets(topBarColor),
+                    ,
                 color = topBarColor,
                 titleColor = previewContentColor,
-                largeTitleColor = previewContentColor,
                 scrollBehavior = topAppBarScrollBehavior,
                 navigationIcon = {
                     IconButton(enabled = toolbarInteractive && !busy,

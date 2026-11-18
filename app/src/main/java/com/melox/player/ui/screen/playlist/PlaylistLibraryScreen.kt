@@ -1,5 +1,8 @@
 package com.melox.player.ui.screen.playlist
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.melox.player.ui.icon.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,11 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,25 +43,24 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.LocalPlaylist
-import com.melox.player.ui.component.AdaptiveTopAppBar
+import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.PageScaffold
-import com.melox.player.ui.component.BlurredBar
+import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.playlist.PlaylistGridItem
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.screen.home.homePlaylistGridColumnCount
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
-import com.melox.player.ui.component.os4.Icon
-import com.melox.player.ui.component.os4.IconButton
+import com.melox.player.ui.component.Icon
+import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
-import com.melox.player.ui.component.os4.navigationBackIcon
-import top.yukonga.miuix.kmp.icon.extended.RecordingTape
+import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -111,12 +111,8 @@ fun PlaylistLibraryScreen(
 
     PageScaffold(
         topBar = {
-            BlurredBar(
-                backdrop = backdrop,
-                blurEnabled = backdrop != null,
-                scrollBehavior = scrollBehavior,
-            ) {
-                AdaptiveTopAppBar(
+            TopBarBackdrop(backdrop = backdrop) {
+                TopAppBar(
                     title = stringResource(R.string.home_playlists_title),
                     color = backdrop.miuixBarColor(),
                     scrollBehavior = scrollBehavior,
@@ -219,7 +215,7 @@ fun PlaylistLibraryScreen(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 PlaylistEmptyMessage(
-                                    icon = MiuixIcons.RecordingTape,
+                                    icon = GlassIcons.RecentTasks,
                                     text = stringResource(R.string.playlist_empty),
                                 )
                             }

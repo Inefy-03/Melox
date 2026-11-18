@@ -56,7 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -1713,21 +1713,21 @@ private fun Modifier.playerHeaderEdgeMask(): Modifier = this
     .graphicsLayer {
         compositingStrategy = CompositingStrategy.Offscreen
     }
-    .drawWithContent {
-        drawContent()
+    .drawWithCache {
         val fadeWidth = PLAYER_HEADER_TITLE_EDGE_FADE_WIDTH.toPx()
         val edgeFraction = (
             fadeWidth / size.width.coerceAtLeast(1f)
         ).coerceIn(0f, 0.18f)
-        drawRect(
-            brush = Brush.horizontalGradient(
-                0f to Color.Transparent,
-                edgeFraction to Color.Black,
-                1f - edgeFraction to Color.Black,
-                1f to Color.Transparent,
-            ),
-            blendMode = BlendMode.DstIn,
+        val edgeMask = Brush.horizontalGradient(
+            0f to Color.Transparent,
+            edgeFraction to Color.Black,
+            1f - edgeFraction to Color.Black,
+            1f to Color.Transparent,
         )
+        onDrawWithContent {
+            drawContent()
+            drawRect(edgeMask, blendMode = BlendMode.DstIn)
+        }
     }
 
 internal fun Modifier.expandLeftForMarquee(extra: Dp): Modifier = layout { measurable, constraints ->

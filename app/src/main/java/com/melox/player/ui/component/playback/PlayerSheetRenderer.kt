@@ -549,29 +549,26 @@ internal fun PlayerSheetArtworkOverlay(
     circularArtwork: Boolean = false,
     squareArtwork: Boolean = false,
 ) {
-    if (playback.currentItem == null) return
+    if (!enabled || playback.currentItem == null ||
+        !transition.separateArtworkOverlayReady || !transition.isTransitionActive
+    ) return
+    val target = transition.overlayFullArtworkBounds
+    val viewportBounds = transition.fullPlayerBounds
+    if (!sharedArtworkTargetIsOnscreen(artworkBounds = target, viewportBounds = viewportBounds)) return
+
     val progress = transition.progress
     val source = transition.overlayMiniArtworkBounds
-    val target = transition.overlayFullArtworkBounds
     val artworkBlend = artworkState.toArtworkBlend()
     val bitmap = artworkBlend.currentBitmap
     val placeholderArtworkAlpha = playerSheetPlaceholderArtworkAlpha(progress)
-    val artworkLayerAlphas = sourceOverAlphas(artworkBlend.frames().map { frame ->
-        frame.alpha * if (frame.isPlaceholder) placeholderArtworkAlpha else 1f
-    })
     val density = LocalDensity.current
     // 方形裁剪：圆形或"圆角矩形"都按正方形铺满封面。
     val squareClip = circularArtwork || squareArtwork
-    if (!enabled || !transition.separateArtworkOverlayReady || !transition.isTransitionActive) return
     val sourceArtworkBounds = bitmap?.let {
         playbackArtworkBounds(source, it.width, it.height, squareClip)
     }
     val sourceBounds = sourceArtworkBounds ?: source
-    val trackContainerEdges = transition.fullPlayerBounds.let { it.width > it.height }
-    if (!sharedArtworkTargetIsOnscreen(
-        artworkBounds = target,
-        viewportBounds = transition.fullPlayerBounds,
-    )) return
+    val trackContainerEdges = viewportBounds.width > viewportBounds.height
     val collapsedArtworkCornerRadius = bitmap?.takeUnless { squareClip }?.let {
         playbackArtworkCornerRadius(
             cornerRadius = collapsedCornerRadius,
@@ -689,28 +686,34 @@ internal fun PlayerSheetArtworkOverlay(
                         filterQuality = FilterQuality.High,
                     )
                 }
-            } else artworkBlend.frames().forEachIndexed { index, frame ->
-                Image(
-                    bitmap = frame.value.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .playbackArtworkShadow(
-                            cornerRadius = localCornerRadius,
-                            alpha = if (frame.isPlaceholder) {
-                                progress * placeholderArtworkAlpha
-                            } else {
-                                progress
+            } else {
+                val frames = artworkBlend.frames()
+                val artworkLayerAlphas = sourceOverAlphas(frames.map { frame ->
+                    frame.alpha * if (frame.isPlaceholder) placeholderArtworkAlpha else 1f
+                })
+                frames.forEachIndexed { index, frame ->
+                    Image(
+                        bitmap = frame.value.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .playbackArtworkShadow(
+                                cornerRadius = localCornerRadius,
+                                alpha = if (frame.isPlaceholder) {
+                                    progress * placeholderArtworkAlpha
+                                } else {
+                                    progress
+                                },
+                                circular = circularArtwork,
+                            )
+                            .playbackArtworkClip(localCornerRadius, circularArtwork)
+                            .graphicsLayer {
+                                alpha = artworkLayerAlphas[index]
                             },
-                            circular = circularArtwork,
-                        )
-                        .playbackArtworkClip(localCornerRadius, circularArtwork)
-                        .graphicsLayer {
-                            alpha = artworkLayerAlphas[index]
-                        },
-                    contentScale = if (squareClip) ContentScale.Crop else ContentScale.Fit,
-                    filterQuality = FilterQuality.High,
-                )
+                        contentScale = if (squareClip) ContentScale.Crop else ContentScale.Fit,
+                        filterQuality = FilterQuality.High,
+                    )
+                }
             }
         }
     }

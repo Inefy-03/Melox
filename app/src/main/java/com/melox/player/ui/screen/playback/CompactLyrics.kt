@@ -34,7 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -469,20 +469,23 @@ private fun CompactLyricsViewport(
     val rowCenters = remember(rowHeights, density) {
         with(density) { compactLyricRowCenters(rowHeights.map { it.toPx() }, 6.dp.toPx()) }
     }
-    val edgeFade = with(density) { 4.dp.toPx() }
-    val horizontalFade = with(density) { CompactLyricHorizontalEdgeFadeWidth.toPx() }
     val auxiliaryColor = color.copy(alpha = lyricTranslationAlpha(1f))
     val hasTimedWords = remember(lines) { lines.any { it.words.isNotEmpty() } }
     BoxWithConstraints(
         modifier = modifier.clipToBounds().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .drawWithContent {
-                drawContent()
-                val edge = (edgeFade / size.height.coerceAtLeast(1f)).coerceAtMost(0.5f)
-                drawRect(Brush.verticalGradient(0f to Color.Transparent, edge to Color.Black,
-                    1f - edge to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
-                val horizontalEdge = (horizontalFade / size.width.coerceAtLeast(1f)).coerceIn(0f, 0.18f)
-                drawRect(Brush.horizontalGradient(0f to Color.Transparent, horizontalEdge to Color.Black,
-                    1f - horizontalEdge to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn)
+            .drawWithCache {
+                val edge = (4.dp.toPx() / size.height.coerceAtLeast(1f)).coerceAtMost(0.5f)
+                val verticalMask = Brush.verticalGradient(0f to Color.Transparent, edge to Color.Black,
+                    1f - edge to Color.Black, 1f to Color.Transparent)
+                val horizontalEdge = (CompactLyricHorizontalEdgeFadeWidth.toPx() / size.width.coerceAtLeast(1f))
+                    .coerceIn(0f, 0.18f)
+                val horizontalMask = Brush.horizontalGradient(0f to Color.Transparent, horizontalEdge to Color.Black,
+                    1f - horizontalEdge to Color.Black, 1f to Color.Transparent)
+                onDrawWithContent {
+                    drawContent()
+                    drawRect(verticalMask, blendMode = BlendMode.DstIn)
+                    drawRect(horizontalMask, blendMode = BlendMode.DstIn)
+                }
             },
     ) {
         val viewportHeight = with(density) { maxHeight.toPx() }

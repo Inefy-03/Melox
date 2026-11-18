@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,6 +98,7 @@ internal fun PlayerDetails(
     secondaryControlsWidth: Dp = contentWidth,
     spacing: PlayerVerticalSpacing = PlayerVerticalSpacing(),
 ) {
+    val hasTrack = playback.currentItem != null
     val primaryControlColor = emphasisControlColor.copy(
         alpha = primaryControlAlpha ?: emphasisControlColor.alpha,
     )
@@ -121,7 +121,7 @@ internal fun PlayerDetails(
                 PlayerProgress(
                     positionMs = playback.positionMs,
                     durationMs = playback.durationMs,
-                    enabled = playback.currentItem != null,
+                    enabled = hasTrack,
                     interactive = !immersiveMode,
                     indicatorColor = progressIndicatorColor,
                     labelColor = progressLabelColor,
@@ -147,7 +147,7 @@ internal fun PlayerDetails(
                         tint = primaryControlColor,
                         iconSize = PLAYER_SIDE_CONTROL_ICON_SIZE,
                         touchSize = PLAYER_SIDE_CONTROL_TOUCH_SIZE,
-                        onClick = { playback.currentItem != null && onPrevious() },
+                        onClick = { hasTrack && onPrevious() },
                     )
                 }
                 PlayerPrimaryControlSurface(
@@ -160,7 +160,7 @@ internal fun PlayerDetails(
                         playWhenReady = playback.playWhenReady,
                         tint = primaryControlColor,
                         onClick = {
-                            if (playback.currentItem != null) onTogglePlayPause()
+                            if (hasTrack) onTogglePlayPause()
                         },
                         onLongClick = onToggleImmersiveMode,
                         onLongClickLabel = stringResource(
@@ -180,7 +180,7 @@ internal fun PlayerDetails(
                         tint = primaryControlColor,
                         iconSize = PLAYER_SIDE_CONTROL_ICON_SIZE,
                         touchSize = PLAYER_SIDE_CONTROL_TOUCH_SIZE,
-                        onClick = { playback.currentItem != null && onNext() },
+                        onClick = { hasTrack && onNext() },
                     )
                 }
             }
@@ -367,15 +367,10 @@ private fun PlayerProgress(
 ) {
     val safeDuration = durationMs.coerceAtLeast(1L)
     val interactionEnabled = enabled && interactive && durationMs > 0L
-    var seekPositionMs by remember { mutableFloatStateOf(positionMs.toFloat()) }
+    var seekPositionMs by remember { mutableFloatStateOf(0f) }
     var isSeeking by remember { mutableStateOf(false) }
     val currentOnSeek by rememberUpdatedState(onSeek)
     val currentOnPreviewPositionChange by rememberUpdatedState(onPreviewPositionChange)
-    LaunchedEffect(positionMs, durationMs, isSeeking) {
-        if (!isSeeking) {
-            seekPositionMs = positionMs.coerceIn(0L, safeDuration).toFloat()
-        }
-    }
     val displayedPosition = if (isSeeking) {
         seekPositionMs
     } else {
@@ -383,12 +378,12 @@ private fun PlayerProgress(
     }
     val progress = (displayedPosition / safeDuration.toFloat()).coerceIn(0f, 1f)
     val unavailableTime = stringResource(R.string.player_time_unavailable)
-    val indicatorHeight by animateDpAsState(
+    val indicatorHeight = animateDpAsState(
         targetValue = if (isSeeking) 12.dp else PLAYER_PROGRESS_IDLE_HEIGHT,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 550f),
         label = "playerProgressPressedHeight",
     )
-    val indicatorWidthExpansion by animateDpAsState(
+    val indicatorWidthExpansion = animateDpAsState(
         targetValue = if (isSeeking) 8.dp else 0.dp,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 550f),
         label = "playerProgressPressedWidth",
@@ -426,8 +421,8 @@ private fun PlayerProgress(
                             seekPositionMs = fraction * safeDuration.toFloat()
                             return seekPositionMs.roundToLong()
                         }
-                        isSeeking = true
                         updatePosition(down.position.x)
+                        isSeeking = true
                         down.consume()
                         var completed = false
                         var isDragging = false
@@ -473,9 +468,9 @@ private fun PlayerProgress(
                     backgroundColor =
                         indicatorColor.copy(alpha = 0.3f),
                 ),
-                height = indicatorHeight,
+                height = indicatorHeight.value,
                 modifier = Modifier
-                    .width(maxWidth + indicatorWidthExpansion),
+                    .width(maxWidth + indicatorWidthExpansion.value),
             )
         }
         Row(
@@ -485,12 +480,15 @@ private fun PlayerProgress(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = if (enabled) formatPlayerProgressTime(displayedPosition.roundToLong()) else unavailableTime,
+                text = if (enabled) {
+                    val displayedSecond = displayedPosition.roundToLong() / 1_000L
+                    remember(displayedSecond) { formatPlayerProgressTime(displayedSecond * 1_000L) }
+                } else unavailableTime,
                 style = MiuixTheme.textStyles.footnote1,
                 color = labelColor,
             )
             Text(
-                text = if (enabled) formatPlayerProgressTime(durationMs) else unavailableTime,
+                text = if (enabled) remember(durationMs) { formatPlayerProgressTime(durationMs) } else unavailableTime,
                 style = MiuixTheme.textStyles.footnote1,
                 color = labelColor,
             )

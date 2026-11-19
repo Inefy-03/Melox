@@ -15,6 +15,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -66,16 +67,20 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -227,12 +232,16 @@ internal fun PlayerArtwork(
     circularArtwork: Boolean = false,
     squareArtwork: Boolean = false,
     showArtwork: Boolean = true,
+    hideArtworkForPreview: Boolean = false,
+    onPreview: ((Bitmap, Rect) -> Unit)? = null,
 ) {
     // 方形裁剪：圆形或"圆角矩形"都裁成正方形；默认形状保留等比边长条。
     val squareClip = circularArtwork || squareArtwork
     val resolvedContentScale = if (squareClip) ContentScale.Crop else ContentScale.Fit
     val artworkContainerSize = size + PLAYER_ARTWORK_CONTAINER_EXPANSION
     val placeholderArtworkAlpha = playerSheetPlaceholderArtworkAlpha(1f)
+    // The preview replaces the image while its backdrop gradually covers the original shadow.
+    val artworkVisibility = if (hideArtworkForPreview) 0f else 1f
     val artworkContentSize =
         (artworkContainerSize - artworkPadding * 2f).coerceAtLeast(0.dp)
     // The playing state expands the artwork content back to the measured size.
@@ -243,6 +252,43 @@ internal fun PlayerArtwork(
     }
     val density = LocalDensity.current
     var artworkLayoutBounds by remember { mutableStateOf(Rect.Zero) }
+    var artworkWindowBounds by remember { mutableStateOf(Rect.Zero) }
+    val bitmap = artworkBlend.currentBitmap?.takeUnless { artworkBlend.isPlaceholder }
+    val previewAction = if (bitmap != null && onPreview != null) {
+        {
+            val bounds = playbackArtworkBounds(
+                bounds = artworkInsetRect(artworkWindowBounds, with(density) { artworkPadding.toPx() }),
+                bitmapWidth = bitmap.width,
+                bitmapHeight = bitmap.height,
+                circular = squareClip,
+            )
+            if (!bounds.isEmpty) onPreview(bitmap, bounds)
+        }
+    } else null
+    val latestPreviewAction by rememberUpdatedState(previewAction)
+    val haptics = LocalHapticFeedback.current
+    val previewLabel = stringResource(R.string.artwork_preview)
+    val previewModifier = if (previewAction != null) {
+        Modifier.semantics {
+            onLongClick(label = previewLabel) {
+                latestPreviewAction?.invoke()
+                true
+            }
+        }.pointerInput(haptics) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                val longPress = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+                val action = latestPreviewAction ?: return@awaitEachGesture
+                longPress.consume()
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                action()
+                do {
+                    val event = awaitPointerEvent()
+                    event.changes.forEach { it.consume() }
+                } while (event.changes.any { it.pressed })
+            }
+        }
+    } else Modifier
     val artworkWindowSize = LocalWindowInfo.current.containerSize
     var boundsWindowSize by remember { mutableStateOf(artworkWindowSize) }
     fun reportArtworkBounds(bounds: Rect) {
@@ -269,6 +315,7 @@ internal fun PlayerArtwork(
         modifier = Modifier
             .size(artworkContainerSize)
             .onGloballyPositioned { coordinates ->
+                artworkWindowBounds = coordinates.boundsInWindow()
                 artworkLayoutBounds = coordinates.findRootCoordinates().localBoundingBoxOf(
                     sourceCoordinates = coordinates,
                     clipBounds = false,
@@ -279,7 +326,8 @@ internal fun PlayerArtwork(
             .graphicsLayer {
                 alpha = if (sharedArtworkVisible) 1f else 0f
                 clip = false
-            },
+            }
+            .then(previewModifier),
         contentAlignment = Alignment.Center,
     ) {
         if (!showArtwork) {
@@ -287,6 +335,7 @@ internal fun PlayerArtwork(
         } else if (artworkBlend.flipState != null) {
             ArtworkFlipLayer(artworkBlend.flipState,
                 contentScale = resolvedContentScale) { face, blur ->
+                val frameAlpha = if (artworkBlend.flipState.visibleIsPlaceholder) placeholderArtworkAlpha else 1f
                 PlaybackArtworkFrame(
                     bitmap = face,
                     size = artworkContentSize,
@@ -295,11 +344,13 @@ internal fun PlayerArtwork(
                     useSquircleClip = true,
                     circular = circularArtwork,
                     drawArtworkShadow = true,
-                    artworkAlpha = if (artworkBlend.flipState.visibleIsPlaceholder) placeholderArtworkAlpha else 1f,
+                    artworkAlpha = frameAlpha * artworkVisibility,
+                    artworkShadowAlpha = frameAlpha,
                     artworkEffect = blur,
                 )
             }
         } else if (artworkBlend.frames().isEmpty()) {
+            val frameAlpha = if (artworkBlend.isPlaceholder) placeholderArtworkAlpha else 1f
             PlaybackArtworkFrame(
                 bitmap = null,
                 size = artworkContentSize,
@@ -309,10 +360,12 @@ internal fun PlayerArtwork(
                 useSquircleClip = true,
                 circular = circularArtwork,
                 drawArtworkShadow = true,
-                artworkAlpha = if (artworkBlend.isPlaceholder) placeholderArtworkAlpha else 1f,
+                artworkAlpha = frameAlpha * artworkVisibility,
+                artworkShadowAlpha = frameAlpha,
             )
         } else {
             artworkBlend.frames().forEach { frame ->
+                val frameAlpha = frame.alpha * if (frame.isPlaceholder) placeholderArtworkAlpha else 1f
                 PlaybackArtworkFrame(
                     bitmap = frame.value,
                     size = artworkContentSize,
@@ -322,7 +375,8 @@ internal fun PlayerArtwork(
                     useSquircleClip = true,
                     circular = circularArtwork,
                     drawArtworkShadow = true,
-                    artworkAlpha = frame.alpha * if (frame.isPlaceholder) placeholderArtworkAlpha else 1f,
+                    artworkAlpha = frameAlpha * artworkVisibility,
+                    artworkShadowAlpha = frameAlpha,
                 )
             }
         }

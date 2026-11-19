@@ -13,7 +13,6 @@ import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import androidx.core.net.toUri
 import com.melox.player.data.library.readEmbeddedArtworkData
-import com.melox.player.model.MusicTrack
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,18 +29,19 @@ internal data class ArtworkPreviewFile(
 
 internal suspend fun readArtworkPreviewFile(
     context: Context,
-    track: MusicTrack,
+    contentUri: String,
+    title: String?,
 ): ArtworkPreviewFile? = withContext(Dispatchers.IO) {
     try {
         val retriever = MediaMetadataRetriever()
         val bytes = try {
             runCatching {
-                retriever.setDataSource(context, track.contentUri.toUri())
+                retriever.setDataSource(context, contentUri.toUri())
                 retriever.embeddedPicture
             }.getOrNull()
         } finally {
             runCatching { retriever.release() }
-        } ?: readEmbeddedArtworkData(context, track.contentUri) ?: return@withContext null
+        } ?: readEmbeddedArtworkData(context, contentUri) ?: return@withContext null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
@@ -64,7 +64,7 @@ internal suspend fun readArtworkPreviewFile(
             width = bounds.outWidth,
             height = bounds.outHeight,
             mimeType = mime,
-            displayName = artworkExportName(track.title, extension),
+            displayName = artworkExportName(title, extension),
         )
     } catch (_: Exception) {
         null

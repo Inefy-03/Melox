@@ -104,6 +104,8 @@ import com.melox.player.model.withTrackMetadata
 import com.melox.player.ui.usesMiuixSmallTopAppBar
 import com.melox.player.ui.screen.settings.LyricsInterfacePreferences
 import com.melox.player.ui.screen.settings.LyricsTranslationPreferences
+import com.melox.player.ui.component.library.ArtworkPreviewOverlay
+import com.melox.player.ui.component.library.ArtworkPreviewRequest
 import com.melox.player.ui.component.library.TrackActionsOverlay
 import com.melox.player.ui.component.bottomSheetCardColor
 import com.melox.player.ui.component.bottomSheetMaterialColor
@@ -251,6 +253,24 @@ internal fun FullPlayerScreen(
         alpha = 0.6f,
     )
     val artworkCornerRadius = PLAYER_FULL_ARTWORK_CORNER_RADIUS
+    var artworkPreview by remember { mutableStateOf<ArtworkPreviewRequest?>(null) }
+    var artworkPreviewPresented by remember { mutableStateOf(false) }
+    val openArtworkPreview: ((Bitmap, Rect) -> Unit)? =
+        if (item != null && interactionEnabled && lyricsPagingEnabled &&
+            artworkState.currentContentKey == item.contentUri && artworkPreview == null
+        ) {
+            { bitmap, bounds ->
+                artworkPreview = ArtworkPreviewRequest(
+                    contentUri = item.contentUri,
+                    title = item.title,
+                    sourceBounds = { bounds },
+                    thumbnail = bitmap,
+                    sourceCornerRadius = artworkCornerRadius,
+                    circularSource = circularArtwork,
+                )
+            }
+        } else null
+    val hideArtworkForPreview = artworkPreviewPresented && artworkPreview?.contentUri == item?.contentUri
     var showTrackActions by remember { mutableStateOf(false) }
     var showLyricsSettings by remember { mutableStateOf(false) }
     var showAudioSettings by remember { mutableStateOf(false) }
@@ -616,6 +636,8 @@ internal fun FullPlayerScreen(
                                             artworkBlend = artworkBlend,
                                             cornerRadius = artworkCornerRadius,
                                             sharedArtworkVisible = sharedArtworkVisible,
+                                            hideArtworkForPreview = hideArtworkForPreview,
+                                            onPreview = openArtworkPreview,
                                             onArtworkBoundsChanged = onArtworkBoundsChanged,
                                             onArtworkDisplaySizeChanged =
                                                 onArtworkDisplaySizeChanged,
@@ -722,6 +744,8 @@ internal fun FullPlayerScreen(
                                         artworkBlend = artworkBlend,
                                         cornerRadius = artworkCornerRadius,
                                         sharedArtworkVisible = sharedArtworkVisible,
+                                        hideArtworkForPreview = hideArtworkForPreview,
+                                        onPreview = openArtworkPreview,
                                         onArtworkBoundsChanged = onArtworkBoundsChanged,
                                         onArtworkDisplaySizeChanged =
                                             onArtworkDisplaySizeChanged,
@@ -970,6 +994,8 @@ internal fun FullPlayerScreen(
                                                             artworkBlend = artworkBlend,
                                                             cornerRadius = artworkCornerRadius,
                                                             sharedArtworkVisible = sharedArtworkVisible,
+                                                            hideArtworkForPreview = hideArtworkForPreview,
+                                                            onPreview = openArtworkPreview,
                                                             onArtworkBoundsChanged = onArtworkBoundsChanged,
                                                             onArtworkDisplaySizeChanged =
                                                                 onArtworkDisplaySizeChanged,
@@ -1122,6 +1148,8 @@ internal fun FullPlayerScreen(
                                                             artworkBlend = artworkBlend,
                                                             cornerRadius = artworkCornerRadius,
                                                             sharedArtworkVisible = sharedArtworkVisible,
+                                                            hideArtworkForPreview = hideArtworkForPreview,
+                                                            onPreview = openArtworkPreview,
                                                             onArtworkBoundsChanged =
                                                                 onArtworkBoundsChanged,
                                                             onArtworkDisplaySizeChanged =
@@ -1221,6 +1249,13 @@ internal fun FullPlayerScreen(
                     showLyricoEditor = showLyricoEditor,
                     showLunaBeatEditor = showLunaBeatEditor,
                 )
+                artworkPreview?.let { request ->
+                    ArtworkPreviewOverlay(
+                        request = request,
+                        onPresented = { artworkPreviewPresented = it },
+                        onClosed = { artworkPreview = null },
+                    )
+                }
                 PlayerSettingsSheet(
                     show = showLyricsSettings,
                     leftAlignPlayerTitle = displayedLeftAlignPlayerTitle,

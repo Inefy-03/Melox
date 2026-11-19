@@ -18,7 +18,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animate
@@ -30,10 +29,21 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.captionBar
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -48,12 +58,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -76,8 +90,14 @@ import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.melox.player.R
+import com.melox.player.ui.component.LocalTopBarBlurSettings
+import com.melox.player.ui.icon.GlassIcons
+import com.melox.player.ui.icon.Download
+import com.melox.player.ui.icon.Share
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults
+import top.yukonga.miuix.kmp.glass.GlassIconButton
 import com.melox.player.model.MusicTrack
-import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.playback.sourceOverAlphas
 import com.melox.player.ui.screen.playback.rememberArtworkBlend
@@ -89,14 +109,7 @@ import top.yukonga.miuix.kmp.anim.DecelerateEasing
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import com.melox.player.ui.component.Icon
-import com.melox.player.ui.component.IconButton
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import com.melox.player.ui.component.TopAppBar
-import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
-import top.yukonga.miuix.kmp.icon.MiuixIcons
 import com.melox.player.ui.component.navigationBackIcon
-import top.yukonga.miuix.kmp.icon.extended.Download
-import top.yukonga.miuix.kmp.icon.extended.Share
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.utils.MiuixPopupUtils
@@ -106,9 +119,12 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 internal data class ArtworkPreviewRequest(
-    val track: MusicTrack,
+    val contentUri: String,
+    val title: String?,
     val sourceBounds: () -> Rect,
     val thumbnail: Bitmap,
+    val sourceCornerRadius: Dp = 8.dp,
+    val circularSource: Boolean = false,
 )
 
 @Composable
@@ -138,7 +154,7 @@ internal fun PreviewableTrackArtwork(
             onClick = if (hidden) null else {
                 {
                     if (!bounds.isEmpty) {
-                        onPreview(ArtworkPreviewRequest(track, { bounds }, bitmap))
+                        onPreview(ArtworkPreviewRequest(track.contentUri, track.title, { bounds }, bitmap))
                     }
                 }
             },
@@ -219,6 +235,7 @@ internal fun artworkPreviewChromeAlpha(zoom: Float): Float =
 internal fun artworkPreviewShouldDismiss(zoom: Float): Boolean =
     zoom <= ARTWORK_PREVIEW_DISMISS_ZOOM
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ArtworkPreviewOverlay(
     request: ArtworkPreviewRequest,
@@ -269,20 +286,23 @@ internal fun ArtworkPreviewOverlay(
         animationSpec = tween(ARTWORK_PREVIEW_CHROME_TRANSITION_DURATION_MILLIS),
         label = "artworkPreviewToolbar",
     )
-    val previewBackgroundColor by animateColorAsState(
-        targetValue = artworkPreviewBackgroundColor(usesLightChrome, toolbarVisible),
-        animationSpec = tween(ARTWORK_PREVIEW_CHROME_TRANSITION_DURATION_MILLIS),
-        label = "artworkPreviewBackground",
-    )
+    val toolbarSurfaceColor = artworkPreviewBackgroundColor(usesLightChrome, toolbarVisible = true)
+    val previewBackgroundColor = lerp(Color.Black, toolbarSurfaceColor, toolbarAlpha)
+    val previewProgress = progress.value.coerceIn(0f, 1f)
+    val previewAlpha = previewProgress * pinchChromeAlpha
     val lightSystemBars = previewBackgroundColor.luminance() >= 0.5f
-    LaunchedEffect(systemBarsController, lightSystemBars) {
-        systemBarsController?.isAppearanceLightStatusBars = lightSystemBars
-        systemBarsController?.isAppearanceLightNavigationBars = lightSystemBars
+    val systemBarAppearance = if (previewAlpha >= 0.5f) {
+        SystemBarAppearance(lightSystemBars, lightSystemBars)
+    } else originalSystemBarAppearance
+    LaunchedEffect(systemBarsController, systemBarAppearance) {
+        systemBarAppearance?.let {
+            systemBarsController?.isAppearanceLightStatusBars = it.lightStatusBars
+            systemBarsController?.isAppearanceLightNavigationBars = it.lightNavigationBars
+        }
     }
     val previewContentColor = if (usesLightChrome) Color.Black else Color.White
-    val toolbarSurfaceColor = if (usesLightChrome) Color.White else Color.Black
-    val asset by produceState<ArtworkPreviewFile?>(null, request.track) {
-        value = readArtworkPreviewFile(context.applicationContext, request.track)
+    val asset by produceState<ArtworkPreviewFile?>(null, request.contentUri) {
+        value = readArtworkPreviewFile(context.applicationContext, request.contentUri, request.title)
         if (value == null) {
             Toast.makeText(context, R.string.artwork_unavailable, Toast.LENGTH_SHORT).show()
         }
@@ -378,13 +398,18 @@ internal fun ArtworkPreviewOverlay(
                 durationMillis = 100,
             )
             val artworkLayerAlphas = sourceOverAlphas(artworkBlend.frames().map { it.alpha })
+            val source = request.sourceBounds().translate(-origin)
+            val rect = artworkPreviewTransitionBounds(source, target, previewProgress)
+            val artworkScale = 1f + (zoom - 1f) * previewProgress
+            val artworkTranslation = panOffset * previewProgress
+            val artworkCenter = rect.center + artworkTranslation
+            val halfArtworkSize = Offset(rect.width, rect.height) * (artworkScale / 2f)
+            val displayedArtwork = Rect(artworkCenter - halfArtworkSize, artworkCenter + halfArtworkSize)
             Box(Modifier.fillMaxSize()
                 .then(topBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)) {
             Box(Modifier.fillMaxSize()
-                .graphicsLayer { alpha = progress.value * pinchChromeAlpha }
+                .graphicsLayer { alpha = previewAlpha }
                 .background(previewBackgroundColor))
-            val source = request.sourceBounds().translate(-origin)
-            val rect = artworkPreviewTransitionBounds(source, target, progress.value)
             Box(Modifier.fillMaxSize().pointerInput(target, closing) {
                 detectTapGestures(onTap = {
                     if (!closing && progress.value >= 0.999f) toolbarVisible = !toolbarVisible
@@ -449,16 +474,23 @@ internal fun ArtworkPreviewOverlay(
                     }
                 }
             }) {
+                val sourceAlpha = 1f - previewProgress
+                val coverClip = if (request.circularSource) {
+                    val radius = with(density) { (minOf(source.width, source.height) / 2f).toDp() }
+                    Modifier.clip(RoundedCornerShape(radius * sourceAlpha))
+                } else {
+                    Modifier.squircleClip(request.sourceCornerRadius * sourceAlpha)
+                }
                 Box(Modifier
-                        .offset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
+                        .absoluteOffset { IntOffset(rect.left.roundToInt(), rect.top.roundToInt()) }
                         .requiredSize(with(density) { rect.width.toDp() }, with(density) { rect.height.toDp() })
                         .graphicsLayer {
-                            scaleX = 1f + (zoom - 1f) * progress.value
-                            scaleY = scaleX
-                            translationX = panOffset.x * progress.value
-                            translationY = panOffset.y * progress.value
+                            scaleX = artworkScale
+                            scaleY = artworkScale
+                            translationX = artworkTranslation.x
+                            translationY = artworkTranslation.y
                         }
-                        .squircleClip(8.dp * (1f - progress.value))) {
+                        .then(coverClip)) {
                     artworkBlend.frames().forEachIndexed { index, frame ->
                         Image(
                             bitmap = frame.value.asImageBitmap(),
@@ -471,80 +503,80 @@ internal fun ArtworkPreviewOverlay(
                 }
             }
             }
-            val topAppBarState = rememberTopAppBarState(
-                initialHeightOffsetLimit = -Float.MAX_VALUE,
-                initialHeightOffset = -Float.MAX_VALUE,
-            )
-            val topAppBarScrollBehavior = MiuixScrollBehavior(
-                state = topAppBarState,
-                canScroll = { false },
-            )
             val toolbarInteractive = toolbarVisible && pinchChromeAlpha > 0f && !closing
             Box(
                 Modifier
-                    .graphicsLayer { alpha = progress.value * pinchChromeAlpha * toolbarAlpha }
+                    .graphicsLayer { alpha = previewAlpha * toolbarAlpha }
                     .semantics {
                         if (!toolbarInteractive) hideFromAccessibility()
                     },
             ) {
-            TopBarBackdrop(backdrop = topBarBackdrop) {
-            val topBarColor = if (topBarBackdrop == null) toolbarSurfaceColor else Color.Transparent
-            TopAppBar(
-                title = asset?.let { stringResource(R.string.artwork_dimensions, it.width, it.height) }
-                    .orEmpty(),
-                modifier = Modifier
-                    .onGloballyPositioned {
-                        if (topAppBarState.heightOffset != topAppBarState.heightOffsetLimit) {
-                            topAppBarState.heightOffset = topAppBarState.heightOffsetLimit
-                        }
-                    }
-                    ,
-                color = topBarColor,
-                titleColor = previewContentColor,
-                scrollBehavior = topAppBarScrollBehavior,
-                navigationIcon = {
-                    IconButton(enabled = toolbarInteractive && !busy,
-                        onClick = { closing = true }) {
-                        Icon(navigationBackIcon(), stringResource(R.string.back), tint = previewContentColor)
-                    }
-                },
-                actions = {
-                    IconButton(enabled = toolbarInteractive && asset != null && !busy, onClick = {
-                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
-                            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
-                            PackageManager.PERMISSION_GRANTED) {
-                            permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        } else {
-                            saveToGallery()
-                        }
-                    }) {
-                        Icon(MiuixIcons.Download, stringResource(R.string.artwork_download),
-                            modifier = Modifier.size(24.dp), tint = previewContentColor)
-                    }
-                    IconButton(enabled = toolbarInteractive && asset != null && !busy, onClick = {
-                        asset?.let { original ->
-                            runCatching {
-                                val uri = FileProvider.getUriForFile(context,
-                                    "${context.packageName}.fileprovider", original.file, original.displayName)
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = original.mimeType
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    clipData = ClipData.newRawUri(original.displayName, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(Intent.createChooser(intent,
-                                    shareTitle))
-                            }.onFailure {
-                                Toast.makeText(context, R.string.artwork_export_failed, Toast.LENGTH_SHORT).show()
+                GlassTopAppBar(
+                    title = asset?.let { stringResource(R.string.artwork_dimensions, it.width, it.height) }
+                        .orEmpty(),
+                    compact = true,
+                    isContentScrolled = true,
+                    backdrop = topBarBackdrop,
+                    progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled,
+                    bandBrush = GlassTopAppBarDefaults.bandBrush(toolbarSurfaceColor),
+                    backgroundModifier = Modifier.drawWithContent {
+                        // The shared backdrop already colors the rest of the screen.
+                        val overlap = displayedArtwork.intersect(Rect(Offset.Zero, size))
+                        if (!overlap.isEmpty) {
+                            clipRect(overlap.left, overlap.top, overlap.right, overlap.bottom) {
+                                this@drawWithContent.drawContent()
                             }
                         }
-                    }) {
-                        Icon(MiuixIcons.Share, stringResource(R.string.artwork_share),
-                            modifier = Modifier.size(24.dp), tint = previewContentColor)
-                    }
-                },
-            )
-            }
+                    },
+                    contentModifier = Modifier.windowInsetsPadding(
+                        WindowInsets.statusBarsIgnoringVisibility.union(WindowInsets.captionBar)
+                            .only(WindowInsetsSides.Top),
+                    ),
+                    navigationIcon = {
+                        GlassIconButton(enabled = toolbarInteractive && !busy,
+                            onClick = { closing = true }) {
+                            Icon(navigationBackIcon(), stringResource(R.string.back),
+                                modifier = Modifier.size(28.dp), tint = previewContentColor)
+                        }
+                    },
+                    actions = {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GlassIconButton(enabled = toolbarInteractive && asset != null && !busy, onClick = {
+                                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+                                    PackageManager.PERMISSION_GRANTED) {
+                                    permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                } else {
+                                    saveToGallery()
+                                }
+                            }) {
+                                Icon(GlassIcons.Download, stringResource(R.string.artwork_download),
+                                    modifier = Modifier.size(28.dp), tint = previewContentColor)
+                            }
+                            GlassIconButton(enabled = toolbarInteractive && asset != null && !busy, onClick = {
+                                asset?.let { original ->
+                                    runCatching {
+                                        val uri = FileProvider.getUriForFile(context,
+                                            "${context.packageName}.fileprovider", original.file, original.displayName)
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = original.mimeType
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            clipData = ClipData.newRawUri(original.displayName, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent,
+                                            shareTitle))
+                                    }.onFailure {
+                                        Toast.makeText(context, R.string.artwork_export_failed, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }) {
+                                Icon(GlassIcons.Share, stringResource(R.string.artwork_share),
+                                    modifier = Modifier.size(28.dp), tint = previewContentColor)
+                            }
+                        }
+                    },
+                )
             }
         }
     }

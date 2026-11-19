@@ -362,6 +362,7 @@ fun GlassTopAppBar(
     isContentScrolled: Boolean,
     modifier: Modifier = Modifier,
     contentModifier: Modifier = Modifier,
+    backgroundModifier: Modifier = Modifier,
     visualContentOffset: (() -> Float)? = null,
     progressiveBlur: Boolean = false,
     backdrop: Backdrop? = null,
@@ -474,6 +475,7 @@ fun GlassTopAppBar(
             }
             Box(
                 modifier = backdropCaptureModifier
+                    .then(backgroundModifier)
                     .graphicsLayer {
                         val offset = visualContentOffset?.invoke() ?: scrollBehavior?.state?.contentOffset
                         val ramp = offset?.let {
@@ -497,7 +499,7 @@ fun GlassTopAppBar(
                 GlassTopAppBarDefaults.fadeBandBrush(bandBrush, bandOverhang, density)
             }
             Box(
-                modifier = Modifier
+                modifier = backgroundModifier
                     .graphicsLayer {
                         val progress = if (visualContentOffset != null || scrollBehavior != null) ramp.value else maskProgress.value
                         this.alpha = progress * backgroundAlpha().coerceIn(0f, 1f)

@@ -20,9 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.unit.offset
 import com.melox.player.R
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.ui.component.BottomSearchAction
@@ -77,7 +76,7 @@ internal fun GlassPortraitPlayerScaffold(
     Scaffold(
         containerColor = Color.Transparent,
         bottomBar = {
-            // Keep Melox's 16 dp side margins; use GlassPage's sizing and search action.
+            // The mini player and navigation share the same horizontal gutters.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,19 +107,7 @@ internal fun GlassPortraitPlayerScaffold(
                     backdrop = backdrop.takeIf { blurActive },
                     visible = showNavigation,
                     defaultWindowInsetsPadding = false,
-                    modifier = Modifier
-                        .graphicsLayer { translationY = playerNavigationOffset() }
-                        .layout { measurable, constraints ->
-                            val actionWidth = (GlassNavigationBarDefaults.Height + GlassNavigationBarDefaults.ActionSpacing).roundToPx()
-                            val available = constraints.maxWidth - actionWidth + (10.dp * (items.size - 1) - 6.dp).roundToPx()
-                            val width = if (constraints.hasBoundedWidth && available > 400.dp.roundToPx()) {
-                                constraints.constrainWidth(344.dp.roundToPx() + actionWidth)
-                            } else {
-                                constraints.maxWidth
-                            }
-                            val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
-                            layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
-                        },
+                    modifier = Modifier.graphicsLayer { translationY = playerNavigationOffset() },
                     // Reserve the destination action before its page registers the callback.
                     trailingAction = if (showBottomSearch) {
                         {

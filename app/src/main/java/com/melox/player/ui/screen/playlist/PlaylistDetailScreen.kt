@@ -60,6 +60,7 @@ import com.melox.player.ui.component.library.LibrarySearchBar
 import com.melox.player.ui.component.library.LibrarySearchButton
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
+import com.melox.player.ui.component.LocalGlassSearchResults
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
 import com.melox.player.ui.component.library.AlphabetSections
@@ -423,6 +424,8 @@ fun PlaylistDetailScreen(
             }
         },
     ) { padding ->
+        val selectionAllowed = !LocalGlassSearchResults.current
+        val selectingTracks = selectionAllowed && selectionMode
         val indexBottomPadding = maxOf(
             padding.calculateBottomPadding(),
             bottomContentPadding,
@@ -483,7 +486,7 @@ fun PlaylistDetailScreen(
                                 isCurrent = item.available && item.track.id == currentTrackId,
                                 onClick = {
                                     if (!isDragging) {
-                                        if (selectionMode) {
+                                        if (selectingTracks) {
                                             selectedEntryIds = toggleTrackSelection(
                                                 selectedEntryIds,
                                                 entryId,
@@ -502,17 +505,19 @@ fun PlaylistDetailScreen(
                                 enabled = item.available,
                                 moreActionEnabled = item.available,
                                 descriptionOverride = unavailableDescription.takeUnless { item.available },
-                                selectionMode = selectionMode,
+                                selectionMode = selectingTracks,
                                 selected = entryId in selectedEntryIds,
-                                onLongClick = {
-                                    selectedTrack = null
-                                    selectionMode = true
-                                    selectedEntryIds += entryId
-                                },
+                                onLongClick = if (selectionAllowed) {
+                                    {
+                                        selectedTrack = null
+                                        selectionMode = true
+                                        selectedEntryIds += entryId
+                                    }
+                                } else null,
                                 modifier = rowModifier.fillMaxWidth(),
                             )
                         }
-                        if (reorderEnabled) {
+                        if (selectionAllowed && reorderEnabled) {
                             ReorderableItem(
                                 state = playlistReorderState,
                                 key = entryId,

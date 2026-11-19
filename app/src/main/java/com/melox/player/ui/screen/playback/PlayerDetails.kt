@@ -614,6 +614,6 @@ private fun PlayerFunctionButton(
                     .requiredSize(64.dp),
             )
         }
-        IconButton(onClick = onClick, enabled = false, content = content)
+        IconButton(onClick = onClick, enabled = false, glassEnabled = false, content = content)
     }
 }

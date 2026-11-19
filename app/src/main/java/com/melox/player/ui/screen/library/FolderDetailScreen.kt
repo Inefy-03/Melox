@@ -138,6 +138,7 @@ fun FolderDetailScreen(
     }
     val scrollBehavior = rememberSearchTopBarScrollBehavior(searchVisible)
     val directoryStateHolder = rememberSaveableStateHolder()
+    val breadcrumbListState = remember(folder.key) { LazyListState() }
     val showSongActions = breadcrumbItems.isEmpty() || folder.tracks.isNotEmpty()
     var backdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
@@ -322,16 +323,9 @@ fun FolderDetailScreen(
                 .fillMaxSize()
                 .then(backdrop?.let { Modifier.onGloballyPositioned { coordinates -> backdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
         ) {
-            directoryStateHolder.SaveableStateProvider(folder.key) {
-                val showingResults = LocalGlassSearchResults.current
-                val displayedChildFolders = if (showingResults) emptyList() else childFolders
-                val listState = if (showingResults) {
-                    rememberLazyListState()
-                } else if (breadcrumbItems.isNotEmpty()) {
-                    remember(folder.key) { LazyListState() }
-                } else {
-                    rememberLazyListState()
-                }
+            val showingResults = LocalGlassSearchResults.current
+            val displayedChildFolders = if (showingResults) emptyList() else childFolders
+            val listContent: @Composable (LazyListState) -> Unit = { listState ->
                 MusicListScreen(
                     showLocateAction = true,
                     currentTrackContentUri = currentTrackContentUri,
@@ -398,6 +392,14 @@ fun FolderDetailScreen(
                         }
                     },
                 )
+            }
+            // The search overlay is a separate composition and may overlap the directory's disposal.
+            if (showingResults) {
+                listContent(rememberLazyListState())
+            } else {
+                directoryStateHolder.SaveableStateProvider(folder.key) {
+                    listContent(if (breadcrumbItems.isNotEmpty()) breadcrumbListState else rememberLazyListState())
+                }
             }
         }
     }

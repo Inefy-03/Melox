@@ -42,10 +42,11 @@ internal fun IconButton(
         onClick()
     }
     // Custom/no indication and display-only wrappers retain their original interaction owner.
-    if (glassEnabled && enabled && !holdDownState && LocalIndication.current is MiuixIndication) {
+    if (glassEnabled && !holdDownState && LocalIndication.current is MiuixIndication) {
         top.yukonga.miuix.kmp.glass.GlassIconButton(
             onClick = onClickWithHaptic,
             modifier = modifier,
+            enabled = enabled,
             content = content,
             size = if (topBarButtonHaptics) top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ButtonSize else maxOf(minHeight, minWidth),
             // The root scene includes this button; only the separate wallpaper layer is safe here.

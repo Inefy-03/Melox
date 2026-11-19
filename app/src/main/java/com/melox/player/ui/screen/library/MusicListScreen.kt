@@ -5,6 +5,7 @@ import top.yukonga.miuix.kmp.upstream.blur.layerBackdrop
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 
+import com.melox.player.ui.component.LocalGlassSearchResults
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.MusicLocationAction
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
@@ -105,6 +106,8 @@ fun MusicListScreen(
     onRefresh: (() -> Unit)? = null,
 ) {
     val layoutDirection = LocalLayoutDirection.current
+    val selectionAllowed = !LocalGlassSearchResults.current
+    val selectingTracks = selectionAllowed && selectionMode
     val density = LocalDensity.current
     val locateActionSize = ButtonDefaults.MinHeight
     val trackIndex = displayedTracks.indexOfFirst { it.contentUri == currentTrackContentUri }
@@ -120,7 +123,7 @@ fun MusicListScreen(
                 sortConfig.field == MusicSortField.FILE_NAME
         ) &&
         query.isBlank()
-    val locateActionVisible = showLocateAction && currentIndex >= 0 && !selectionMode &&
+    val locateActionVisible = showLocateAction && currentIndex >= 0 && !selectingTracks &&
         miniPlayerBounds.width > 0f && playerContentBounds.width > 0f
     val locateBottomPadding = if (locateActionVisible) {
         with(density) {
@@ -211,7 +214,7 @@ fun MusicListScreen(
                         track = track,
                         isCurrent = track.id == currentTrackId,
                         onClick = {
-                            if (selectionMode) {
+                            if (selectingTracks) {
                                 onSelectionChange?.invoke(
                                     toggleTrackSelection(selectedTrackUris, track.contentUri),
                                 )
@@ -227,9 +230,9 @@ fun MusicListScreen(
                             }
                         },
                         onMoreClick = { selectedTrack = track },
-                        selectionMode = selectionMode,
+                        selectionMode = selectingTracks,
                         selected = track.contentUri in selectedTrackUris,
-                        onLongClick = onSelectionChange?.let { selectionChange ->
+                        onLongClick = onSelectionChange?.takeIf { selectionAllowed }?.let { selectionChange ->
                             {
                                 selectedTrack = null
                                 onSelectionModeChange?.invoke(true)

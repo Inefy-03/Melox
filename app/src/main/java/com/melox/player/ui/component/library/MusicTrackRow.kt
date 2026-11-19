@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.sp
 import com.melox.player.R
+import com.melox.player.data.library.songListTitle
 import com.melox.player.data.library.displayArtistName
 import com.melox.player.model.AudioQuality
 import com.melox.player.model.MusicTrack
@@ -66,9 +67,6 @@ enum class MusicTrackDescriptionMode {
 internal val LocalSongListArtworkVisible = compositionLocalOf { true }
 internal val LocalSongListFileNameVisible = compositionLocalOf { false }
 internal val LocalSongListDurationVisible = compositionLocalOf { true }
-
-internal fun MusicTrack.songListTitle(showFileName: Boolean): String? =
-    if (showFileName) fileName?.takeIf { it.isNotBlank() } ?: title else title
 
 internal fun handleSongListTrackClick(
     selectedTrack: MusicTrack,

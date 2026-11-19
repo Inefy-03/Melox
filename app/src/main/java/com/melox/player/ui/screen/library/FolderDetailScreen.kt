@@ -37,7 +37,7 @@ import com.melox.player.ui.theme.referenceMusicHighlightColors
 import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.FolderGroup
-import com.melox.player.data.library.filterFolders
+import com.melox.player.data.library.SongSearchFields
 import com.melox.player.data.library.MusicSortConfig
 import com.melox.player.data.library.MusicSortField
 import com.melox.player.data.library.createMusicSortKeys
@@ -68,6 +68,7 @@ import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.LocalGlassSearchResults
+import com.melox.player.ui.component.library.LocalSongListFileNameVisible
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.component.navigationBackIcon
 
@@ -109,6 +110,18 @@ fun FolderDetailScreen(
     var query by rememberSaveable(folder.key) { mutableStateOf("") }
     var searchVisible by rememberSaveable(folder.key) { mutableStateOf(false) }
     var searchFocused by remember(folder.key) { mutableStateOf(false) }
+    val canSearch = folder.tracks.isNotEmpty()
+    LaunchedEffect(canSearch) {
+        if (!canSearch) {
+            searchVisible = false
+            searchFocused = false
+            query = ""
+        }
+    }
+    val searchFields = SongSearchFields(
+        showFileName = LocalSongListFileNameVisible.current,
+        unknownTitle = stringResource(R.string.music_unknown_title),
+    )
     var selectedTrackUris by remember(folder.key) {
         mutableStateOf<Set<String>>(emptySet())
     }
@@ -131,8 +144,8 @@ fun FolderDetailScreen(
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
     val layoutDirection = LocalLayoutDirection.current
     val sortedTracks = remember(folder.tracks, sortConfig) { sortMusicTracks(folder.tracks, sortConfig) }
-    val displayedTracks = remember(sortedTracks, query) {
-        filterMusicTracks(sortedTracks, query)
+    val displayedTracks = remember(sortedTracks, query, searchFields, canSearch) {
+        if (canSearch) filterMusicTracks(sortedTracks, query, searchFields) else sortedTracks
     }
     val sectionIndexMap = remember(sortedTracks, sortConfig.field) {
         buildMap {
@@ -146,7 +159,6 @@ fun FolderDetailScreen(
             }
         }
     }
-    val displayedChildFolders = remember(childFolders, query) { filterFolders(childFolders, query) }
     var pendingBlockFolder by remember(folder.key) { mutableStateOf<FolderGroup?>(null) }
     val displayedKeys = displayedTracks.map(MusicTrack::contentUri)
     BackHandler(enabled = selectionMode) {
@@ -239,6 +251,7 @@ fun FolderDetailScreen(
                                 FolderDetailActions(
                                     scrollBehavior = scrollBehavior,
                                     showSongSort = showSongActions,
+                                    showSearch = canSearch,
                                     searchVisible = searchVisible,
                                     sortConfig = sortConfig,
                                     onSearchVisibleChange = { visible ->
@@ -253,22 +266,24 @@ fun FolderDetailScreen(
                     },
                     bottomContent = {
                         Column {
-                            LibrarySearchBar(
-                                visible = searchVisible,
-                                focused = searchFocused,
-                                query = query,
-                                label = stringResource(R.string.search_hint),
-                                onBackRequest = onDirectorySearchBack.takeIf { breadcrumbItems.isNotEmpty() },
-                                onQueryChange = { query = it },
-                                onFocusedChange = { searchFocused = it },
-                                onVisibleChange = { visible ->
-                                    searchVisible = visible
-                                    if (!visible) {
-                                        searchFocused = false
-                                        query = ""
-                                    }
-                                },
-                            )
+                            if (canSearch) {
+                                LibrarySearchBar(
+                                    visible = searchVisible,
+                                    focused = searchFocused,
+                                    query = query,
+                                    label = stringResource(R.string.search_hint),
+                                    onBackRequest = onDirectorySearchBack.takeIf { breadcrumbItems.isNotEmpty() },
+                                    onQueryChange = { query = it },
+                                    onFocusedChange = { searchFocused = it },
+                                    onVisibleChange = { visible ->
+                                        searchVisible = visible
+                                        if (!visible) {
+                                            searchFocused = false
+                                            query = ""
+                                        }
+                                    },
+                                )
+                            }
                             if (breadcrumbItems.isNotEmpty()) {
                                 // BreadcrumbBar 0.9.4 reads body2 directly; limit the override to it.
                                 MiuixTheme(textStyles = MiuixTheme.textStyles.copy(
@@ -315,6 +330,7 @@ fun FolderDetailScreen(
         ) {
             directoryStateHolder.SaveableStateProvider(folder.key) {
                 val showingResults = LocalGlassSearchResults.current
+                val displayedChildFolders = if (showingResults) emptyList() else childFolders
                 val listState = if (showingResults) {
                     rememberLazyListState()
                 } else if (breadcrumbItems.isNotEmpty()) {
@@ -403,16 +419,19 @@ fun FolderDetailScreen(
 private fun RowScope.FolderDetailActions(
     scrollBehavior: ScrollBehavior,
     showSongSort: Boolean,
+    showSearch: Boolean,
     searchVisible: Boolean,
     sortConfig: MusicSortConfig,
     onSearchVisibleChange: (Boolean) -> Unit,
     onSortConfigChange: (MusicSortConfig) -> Unit,
 ) {
-    LibrarySearchButton(
-        visible = searchVisible,
-        scrollBehavior = scrollBehavior,
-        onClick = { onSearchVisibleChange(!searchVisible) },
-    )
+    if (showSearch) {
+        LibrarySearchButton(
+            visible = searchVisible,
+            scrollBehavior = scrollBehavior,
+            onClick = { onSearchVisibleChange(!searchVisible) },
+        )
+    }
     if (showSongSort) {
         MusicSortButton(
             config = sortConfig,

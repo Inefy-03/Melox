@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.createMusicSortKeys
-import com.melox.player.data.library.filterMusicTracks
+import com.melox.player.data.library.SongSearchFields
 import com.melox.player.data.playlist.PlaylistSortConfig
 import com.melox.player.data.playlist.PlaylistSortField
 import com.melox.player.data.playlist.canonicalPlaylistEntryOrder
@@ -70,6 +70,7 @@ import com.melox.player.ui.component.library.ShufflePlayButton
 import com.melox.player.ui.component.library.MusicLocationAction
 import com.melox.player.ui.component.library.MusicTrackRow
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
+import com.melox.player.ui.component.library.LocalSongListFileNameVisible
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
 import com.melox.player.ui.component.library.SelectionNavigationIconAnimatedContent
 import com.melox.player.ui.component.library.TrackActionsOverlay
@@ -145,12 +146,15 @@ fun PlaylistDetailScreen(
         resolvePlaylistTracks(playlist, libraryTracks, readableContentUris)
     }
     val unavailableDescription = stringResource(R.string.playlist_unavailable)
-    val filteredTracks = remember(resolvedTracks, query) {
-        val matchingContentUris = filterMusicTracks(
-            resolvedTracks.map(ResolvedPlaylistTrack::track),
-            query,
-        ).map(MusicTrack::contentUri).toSet()
-        resolvedTracks.filter { item -> item.track.contentUri in matchingContentUris }
+    val searchFields = SongSearchFields(
+        showFileName = LocalSongListFileNameVisible.current,
+        unknownTitle = stringResource(R.string.music_unknown_title),
+    )
+    val filteredTracks = remember(resolvedTracks, query, searchFields) {
+        val keyword = query.trim()
+        if (keyword.isEmpty()) resolvedTracks else resolvedTracks.filter { item ->
+            searchFields.matches(item.track, keyword)
+        }
     }
     val persistedDisplayedTracks = remember(filteredTracks, sortConfig) {
         sortPlaylistTracks(filteredTracks, sortConfig)
@@ -495,11 +499,7 @@ fun PlaylistDetailScreen(
                                 onMoreClick = { selectedTrack = item.track },
                                 enabled = item.available,
                                 moreActionEnabled = item.available,
-                                descriptionOverride = if (item.available) {
-                                    null
-                                } else {
-                                    stringResource(R.string.playlist_unavailable)
-                                },
+                                descriptionOverride = unavailableDescription.takeUnless { item.available },
                                 selectionMode = selectionMode,
                                 selected = entryId in selectedEntryIds,
                                 onLongClick = {

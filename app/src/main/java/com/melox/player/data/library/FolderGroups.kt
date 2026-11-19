@@ -107,17 +107,6 @@ internal fun buildFolderGroups(tracks: List<MusicTrack>): List<FolderGroup> {
         }
 }
 
-internal fun filterFolders(
-    folders: List<FolderGroup>,
-    query: String,
-): List<FolderGroup> {
-    val normalizedQuery = query.trim()
-    if (normalizedQuery.isEmpty()) return folders
-    return folders.filter { folder ->
-        folder.name?.contains(normalizedQuery, ignoreCase = true) == true
-    }
-}
-
 internal fun sortFolders(
     folders: List<FolderGroup>,
     config: FolderSortConfig,

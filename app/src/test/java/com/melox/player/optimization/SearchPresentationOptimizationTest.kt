@@ -25,7 +25,7 @@ class SearchPresentationOptimizationTest {
             assertEquals(listOf(2L, 1L, 3L), initial.queueItems.map { it.id })
             for ((query, ids) in listOf(
                 "ALPHA" to listOf(1L), "zeta" to listOf(1L, 3L),
-                "compilation" to listOf(2L), "z.flac" to listOf(1L),
+                "compilation" to listOf(2L), "z.flac" to emptyList(),
                 "missing" to emptyList(),
             )) {
                 fixture.requests.value = fixture.requests.value.copy(query = query)
@@ -34,6 +34,13 @@ class SearchPresentationOptimizationTest {
                 assertEquals(ids, result.items.map { it.id })
                 assertSame(initial.queueSectionIndexMap, result.queueSectionIndexMap)
             }
+            fixture.requests.value = fixture.requests.value.copy(
+                query = "z.flac",
+                searchFields = com.melox.player.data.library.SongSearchFields(showFileName = true),
+            )
+            val fileTitleResult = fixture.next()
+            assertEquals(listOf(1L), fileTitleResult.items.map { it.id })
+            assertSame(initial.queueItems, fileTitleResult.queueItems)
             fixture.requests.value = fixture.requests.value.copy(query = "  ")
             val cleared = fixture.next()
             assertSame(initial.queueItems, cleared.items)

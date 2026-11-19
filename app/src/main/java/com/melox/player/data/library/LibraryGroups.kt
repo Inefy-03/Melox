@@ -140,11 +140,12 @@ internal fun buildArtistGroups(tracks: List<MusicTrack>): List<ArtistGroup> =
 internal fun filterAlbums(
     albums: List<AlbumGroup>,
     query: String,
+    unknownName: String? = null,
 ): List<AlbumGroup> {
     val normalizedQuery = query.trim()
     if (normalizedQuery.isEmpty()) return albums
     return albums.filter { album ->
-        album.name?.contains(normalizedQuery, ignoreCase = true) == true
+        (album.name ?: unknownName)?.contains(normalizedQuery, ignoreCase = true) == true
     }
 }
 
@@ -171,11 +172,12 @@ internal fun sortAlbums(
 internal fun filterArtists(
     artists: List<ArtistGroup>,
     query: String,
+    unknownName: String? = null,
 ): List<ArtistGroup> {
     val normalizedQuery = query.trim()
     if (normalizedQuery.isEmpty()) return artists
     return artists.filter { artist ->
-        artist.name?.contains(normalizedQuery, ignoreCase = true) == true
+        (artist.name ?: unknownName)?.contains(normalizedQuery, ignoreCase = true) == true
     }
 }
 

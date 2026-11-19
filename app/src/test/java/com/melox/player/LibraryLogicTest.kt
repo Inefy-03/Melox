@@ -23,7 +23,7 @@ import com.melox.player.data.library.createMusicSortKeys
 import com.melox.player.data.library.displayArtistName
 import com.melox.player.data.library.filterAlbums
 import com.melox.player.data.library.filterArtists
-import com.melox.player.data.library.filterFolders
+import com.melox.player.data.library.SongSearchFields
 import com.melox.player.data.library.filterMusicTracks
 import com.melox.player.data.library.folderDisplayPath
 import com.melox.player.data.library.hasReusableAudioProperties
@@ -659,7 +659,6 @@ class LibraryLogicTest {
             listOf(1L, 2L),
             folders.single { it.displayPath == "/Music" }.tracks.map(MusicTrack::id),
         )
-        assertTrue(filterFolders(folders, "podcasts").isEmpty())
         assertEquals(
             "/Music",
             sortFolders(
@@ -690,7 +689,14 @@ class LibraryLogicTest {
 
         assertEquals(listOf(1L), filterMusicTracks(tracks, "txt").map(MusicTrack::id))
         assertEquals(listOf(2L), filterMusicTracks(tracks, "萧邦").map(MusicTrack::id))
-        assertEquals(listOf(2L), filterMusicTracks(tracks, "FLAC").map(MusicTrack::id))
+        val fileTitles = SongSearchFields(showFileName = true)
+        assertTrue(filterMusicTracks(tracks, "FLAC").isEmpty())
+        assertEquals(listOf(2L), filterMusicTracks(tracks, "FLAC", fileTitles).map(MusicTrack::id))
+        assertTrue(filterMusicTracks(tracks, "夜曲", fileTitles).isEmpty())
+        assertTrue(filterMusicTracks(tracks, "TXT - Minisode").isEmpty())
+        assertTrue(filterMusicTracks(tracks, "-").isEmpty())
+        val hyphenatedAlbum = tracks.first().copy(album = "Mini-Sode")
+        assertEquals(listOf(hyphenatedAlbum), filterMusicTracks(listOf(hyphenatedAlbum), "-"))
         assertEquals(listOf(1L, 2L), filterMusicTracks(tracks, "  ").map(MusicTrack::id))
     }
 
@@ -714,7 +720,6 @@ class LibraryLogicTest {
         )
         val albums = buildAlbumGroups(tracks)
         val artists = buildArtistGroups(tracks)
-        val folders = buildFolderGroups(tracks)
 
         assertEquals(
             listOf("Minisode"),
@@ -724,16 +729,12 @@ class LibraryLogicTest {
             listOf("Moon"),
             filterArtists(artists, "moon").map { it.name },
         )
-        assertEquals(
-            listOf("Pop"),
-            filterFolders(folders, "pop").map { it.name },
-        )
+        assertEquals(1, filterAlbums(listOf(albums.first().copy(name = null)), "未知专辑", "未知专辑").size)
+        assertEquals(1, filterArtists(listOf(artists.first().copy(name = null)), "未知艺术家", "未知艺术家").size)
         assertTrue(filterAlbums(albums, "blue").isEmpty())
         assertTrue(filterAlbums(albums, "big hit").isEmpty())
         assertTrue(filterArtists(artists, "after dark").isEmpty())
         assertTrue(filterArtists(artists, "night.flac").isEmpty())
-        assertTrue(filterFolders(folders, "collections").isEmpty())
-        assertTrue(filterFolders(folders, "blue hour").isEmpty())
     }
 
     @Test

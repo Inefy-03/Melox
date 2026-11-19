@@ -70,9 +70,11 @@ internal fun MusicLocationAction(
     var locateJob by remember { mutableStateOf<Job?>(null) }
     val locateActionSize = ButtonDefaults.MinHeight
     var actionAreaBounds by remember { mutableStateOf(Rect.Zero) }
+    // The page reports its origin after layout, even when the player is already measured.
+    val actionVisible = visible && !actionAreaBounds.isEmpty && !miniPlayerBounds.isEmpty
     Box(modifier.fillMaxSize().zIndex(1f).onGloballyPositioned { actionAreaBounds = Rect(it.positionInRoot(), it.size.toSize()) }) {
         AnimatedVisibility(
-            visible = visible,
+            visible = actionVisible,
             enter = fadeIn() + scaleIn(),
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
@@ -88,7 +90,7 @@ internal fun MusicLocationAction(
                         )
                     }
                 }
-                .then(if (visible) Modifier else Modifier.clearAndSetSemantics {}.pointerInput(Unit) {
+                .then(if (actionVisible) Modifier else Modifier.clearAndSetSemantics {}.pointerInput(Unit) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -102,7 +104,7 @@ internal fun MusicLocationAction(
         ) {
             GlassIconButton(
                 onClick = {
-                    if (visible && currentIndex >= 0) {
+                    if (actionVisible && currentIndex >= 0) {
                         locateJob?.cancel()
                         locateJob = scope.launch {
                             val paddingBeforeCollapse = listState.layoutInfo.beforeContentPadding

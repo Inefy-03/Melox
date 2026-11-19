@@ -19,7 +19,7 @@ import com.melox.player.data.library.buildFolderGroups
 import com.melox.player.data.library.createMusicSortKeys
 import com.melox.player.data.library.filterAlbums
 import com.melox.player.data.library.filterArtists
-import com.melox.player.data.library.filterFolders
+import com.melox.player.data.library.SongSearchFields
 import com.melox.player.data.library.filterMusicTracks
 import com.melox.player.data.library.folderSectionKey
 import com.melox.player.data.library.isMusicFolderHidden
@@ -65,27 +65,28 @@ data class ArtistPresentationState(
 data class FolderPresentationState(
     val items: List<FolderGroup> = emptyList(),
     val sectionIndexMap: Map<String, Int> = emptyMap(),
-    val query: String = "",
     val sortConfig: FolderSortConfig = FolderSortConfig(),
 )
 
 internal data class MusicPresentationRequest(
     val query: String = "",
     val sortConfig: MusicSortConfig = MusicSortConfig(),
+    val searchFields: SongSearchFields = SongSearchFields(),
 )
 
 internal data class AlbumPresentationRequest(
     val query: String = "",
     val sortConfig: AlbumSortConfig = AlbumSortConfig(),
+    val unknownName: String? = null,
 )
 
 internal data class ArtistPresentationRequest(
     val query: String = "",
     val sortConfig: ArtistSortConfig = ArtistSortConfig(),
+    val unknownName: String? = null,
 )
 
 internal data class FolderPresentationRequest(
-    val query: String = "",
     val sortConfig: FolderSortConfig = FolderSortConfig(),
 )
 
@@ -122,7 +123,7 @@ internal fun FolderPresentationState.withHiddenFolders(paths: List<String>): Fol
     val prefixes = normalizedHiddenFolderPaths(paths)
     val visibleFolders = items.filterNot { isMusicFolderHidden(it.path, prefixes) }
     if (visibleFolders.size == items.size) return this
-    val indices = if (query.isBlank() && sortConfig.field == FolderSortField.NAME) {
+    val indices = if (sortConfig.field == FolderSortField.NAME) {
         buildMap {
             visibleFolders.forEachIndexed { index, folder ->
                 putIfAbsent(folderSectionKey(folder), index)
@@ -171,7 +172,7 @@ internal fun musicPresentations(
                     queueItems = sorted
                     sectionIndexMap = indices
                 }
-                val items = filterMusicTracks(queueItems, request.query)
+                val items = filterMusicTracks(queueItems, request.query, request.searchFields)
                 currentCoroutineContext().ensureActive()
                 send(MusicPresentationState(
                     items = items,
@@ -189,7 +190,7 @@ internal fun albumPresentations(
     requests: Flow<AlbumPresentationRequest>,
 ): Flow<AlbumPresentationState> = combine(library, requests) { projection, request ->
     val items = sortAlbums(
-        filterAlbums(projection.albums, request.query),
+        filterAlbums(projection.albums, request.query, request.unknownName),
         request.sortConfig,
     )
     val columns = request.sortConfig.gridStyle.columns
@@ -222,7 +223,7 @@ internal fun artistPresentations(
     requests: Flow<ArtistPresentationRequest>,
 ): Flow<ArtistPresentationState> = combine(library, requests) { projection, request ->
     val items = sortArtists(
-        filterArtists(projection.artists, request.query),
+        filterArtists(projection.artists, request.query, request.unknownName),
         request.sortConfig,
     )
     val sectionIndexMap = if (
@@ -250,13 +251,10 @@ internal fun folderPresentations(
     requests: Flow<FolderPresentationRequest>,
 ): Flow<FolderPresentationState> = combine(library, requests) { projection, request ->
     val items = sortFolders(
-        filterFolders(projection.folders, request.query),
+        projection.folders,
         request.sortConfig,
     )
-    val sectionIndexMap = if (
-        request.query.isBlank() &&
-        request.sortConfig.field == FolderSortField.NAME
-    ) {
+    val sectionIndexMap = if (request.sortConfig.field == FolderSortField.NAME) {
         buildMap {
             items.forEachIndexed { index, folder ->
                 putIfAbsent(folderSectionKey(folder), index)
@@ -268,7 +266,6 @@ internal fun folderPresentations(
     FolderPresentationState(
         items = items,
         sectionIndexMap = sectionIndexMap,
-        query = request.query,
         sortConfig = request.sortConfig,
     )
 }

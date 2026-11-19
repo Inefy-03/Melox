@@ -1,7 +1,7 @@
 package com.melox.player
 
 import com.melox.player.model.MusicTrack
-import com.melox.player.ui.component.library.songListTitle
+import com.melox.player.data.library.songListTitle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

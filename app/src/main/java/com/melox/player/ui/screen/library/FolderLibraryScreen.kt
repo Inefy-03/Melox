@@ -70,7 +70,6 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 fun FolderLibraryScreen(
     displayedFolders: List<FolderGroup>,
     sectionIndexMap: Map<String, Int>,
-    query: String,
     scanStatus: ScanStatus,
     sortConfig: FolderSortConfig,
     onFolderClick: (FolderGroup) -> Unit,
@@ -88,7 +87,7 @@ fun FolderLibraryScreen(
     val listSectionIndexMap = remember(sectionIndexMap) { offsetSectionIndices(sectionIndexMap, 1) }
     PreserveSortScrollPosition(
         sortKey = sortConfig,
-        query = query,
+        query = "",
         itemCount = maxOf(displayedFolders.size, 1) + 1,
         scrollState = listState,
     ) {
@@ -143,7 +142,7 @@ fun FolderLibraryScreen(
                     ) {
                         MusicLibraryEmptyState(
                             scanStatus = scanStatus,
-                            query = query,
+                            query = "",
                             emptyMessageRes = R.string.folder_empty,
                             noSearchResultsRes = R.string.folder_no_search_results,
                             icon = GlassIcons.FolderFill,
@@ -167,8 +166,7 @@ fun FolderLibraryScreen(
         if (
             showIndex &&
             displayedFolders.isNotEmpty() &&
-            sortConfig.field == FolderSortField.NAME &&
-            query.isBlank()
+            sortConfig.field == FolderSortField.NAME
         ) {
             AlphabetSideBar(
                 sectionIndexMap = listSectionIndexMap,

@@ -18,17 +18,29 @@ data class MusicSortConfig(
     val descending: Boolean = false,
 )
 
+internal fun MusicTrack.songListTitle(showFileName: Boolean): String? =
+    if (showFileName) fileName?.takeIf { it.isNotBlank() } ?: title else title
+
+data class SongSearchFields(
+    val showFileName: Boolean = false,
+    val unknownTitle: String? = null,
+) {
+    internal fun matches(track: MusicTrack, query: String): Boolean {
+        val title = track.songListTitle(showFileName) ?: unknownTitle
+        return title?.contains(query, ignoreCase = true) == true ||
+            track.artist?.contains(query, ignoreCase = true) == true ||
+            track.album?.contains(query, ignoreCase = true) == true
+    }
+}
+
 internal fun filterMusicTracks(
     tracks: List<MusicTrack>,
     query: String,
+    fields: SongSearchFields = SongSearchFields(),
 ): List<MusicTrack> {
     val normalizedQuery = query.trim()
     if (normalizedQuery.isEmpty()) return tracks
-    return tracks.filter { track ->
-        sequenceOf(track.title, track.artist, track.album, track.fileName)
-            .filterNotNull()
-            .any { value -> value.contains(normalizedQuery, ignoreCase = true) }
-    }
+    return tracks.filter { fields.matches(it, normalizedQuery) }
 }
 
 internal fun sortMusicTracks(

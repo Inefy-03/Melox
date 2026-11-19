@@ -81,6 +81,7 @@ import com.melox.player.model.isDuetForMedia
 import com.melox.player.R
 import com.melox.player.ui.component.*
 import com.melox.player.data.library.AlbumGroup
+import com.melox.player.data.library.SongSearchFields
 import com.melox.player.data.library.MusicSortConfig
 import com.melox.player.data.library.MusicSortField
 import com.melox.player.data.library.AlbumSortConfig
@@ -572,20 +573,25 @@ fun MeloxApp(
             libraryPreferencesHydrated = true
         }
     }
-    LaunchedEffect(songSearchQuery, musicSortConfig) {
-        viewModel.updateMusicPresentation(songSearchQuery, musicSortConfig)
+    val songSearchFields = SongSearchFields(
+        showFileName = settings.showSongListFileName,
+        unknownTitle = stringResource(R.string.music_unknown_title),
+    )
+    LaunchedEffect(songSearchQuery, musicSortConfig, songSearchFields) {
+        viewModel.updateMusicPresentation(songSearchQuery, musicSortConfig, songSearchFields)
     }
     val albumSearchQuery = secondarySearchQuery[LIBRARY_ALBUMS_TAB_INDEX].value
     val artistSearchQuery = secondarySearchQuery[LIBRARY_ARTISTS_TAB_INDEX].value
-    val folderSearchQuery = secondarySearchQuery[LIBRARY_FOLDERS_TAB_INDEX].value
-    LaunchedEffect(albumSearchQuery, albumSortConfig) {
-        viewModel.updateAlbumPresentation(albumSearchQuery, albumSortConfig)
+    val unknownAlbumName = stringResource(R.string.album_unknown)
+    LaunchedEffect(albumSearchQuery, albumSortConfig, unknownAlbumName) {
+        viewModel.updateAlbumPresentation(albumSearchQuery, albumSortConfig, unknownAlbumName)
     }
-    LaunchedEffect(artistSearchQuery, artistSortConfig) {
-        viewModel.updateArtistPresentation(artistSearchQuery, artistSortConfig)
+    val unknownArtistName = stringResource(R.string.artist_unknown)
+    LaunchedEffect(artistSearchQuery, artistSortConfig, unknownArtistName) {
+        viewModel.updateArtistPresentation(artistSearchQuery, artistSortConfig, unknownArtistName)
     }
-    LaunchedEffect(folderSearchQuery, folderSortConfig) {
-        viewModel.updateFolderPresentation(folderSearchQuery, folderSortConfig)
+    LaunchedEffect(folderSortConfig) {
+        viewModel.updateFolderPresentation(folderSortConfig)
     }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collectLatest(playerPagerState::syncPage)
@@ -729,7 +735,7 @@ fun MeloxApp(
         val secondaryFoldersListState = rememberLazyListState()
         val secondaryLibraryScrollBehaviors = List(LIBRARY_TAB_COUNT) { index ->
             rememberSearchTopBarScrollBehavior(
-                secondarySearchVisible[index].value,
+                index != LIBRARY_FOLDERS_TAB_INDEX && secondarySearchVisible[index].value,
             )
         }
         val themeSettingsListState = rememberLazyListState()
@@ -906,6 +912,7 @@ fun MeloxApp(
         val libraryContent: @Composable (PaddingValues, Int?, () -> Unit) -> Unit =
             { outerPadding, section, onBack ->
                 val overview = section == null
+                val canSearch = section == LIBRARY_ALBUMS_TAB_INDEX || section == LIBRARY_ARTISTS_TAB_INDEX
                 var librarySearchQuery by secondarySearchQuery[section ?: LIBRARY_ALBUMS_TAB_INDEX]
                 var librarySearchVisible by secondarySearchVisible[section ?: LIBRARY_ALBUMS_TAB_INDEX]
                 var librarySearchFocused by secondarySearchFocused[section ?: LIBRARY_ALBUMS_TAB_INDEX]
@@ -947,28 +954,28 @@ fun MeloxApp(
                     isRootPage = section == null,
                     actions = {
                         if (!overview) {
-                            LibrarySearchButton(
-                                bottomActionActive = true,
-                                visible = librarySearchVisible,
-                                scrollBehavior = pageLibraryScrollBehavior,
-                                contentDescription = when (section) {
-                                    LIBRARY_ARTISTS_TAB_INDEX ->
-                                        stringResource(R.string.artist_search_hint)
-                                    LIBRARY_FOLDERS_TAB_INDEX ->
-                                        stringResource(R.string.folder_search_hint)
-                                    else -> stringResource(R.string.album_search_hint)
-                                },
-                                onClick = {
-                                    if (librarySearchVisible) {
-                                        librarySearchVisible = false
-                                        librarySearchFocused = false
-                                        librarySearchQuery = ""
-                                    } else {
-                                        librarySearchVisible = true
-                                        librarySearchFocused = true
-                                    }
-                                },
-                            )
+                            if (canSearch) {
+                                LibrarySearchButton(
+                                    bottomActionActive = true,
+                                    visible = librarySearchVisible,
+                                    scrollBehavior = pageLibraryScrollBehavior,
+                                    contentDescription = when (section) {
+                                        LIBRARY_ARTISTS_TAB_INDEX ->
+                                            stringResource(R.string.artist_search_hint)
+                                        else -> stringResource(R.string.album_search_hint)
+                                    },
+                                    onClick = {
+                                        if (librarySearchVisible) {
+                                            librarySearchVisible = false
+                                            librarySearchFocused = false
+                                            librarySearchQuery = ""
+                                        } else {
+                                            librarySearchVisible = true
+                                            librarySearchFocused = true
+                                        }
+                                    },
+                                )
+                            }
                             when (section) {
                                 LIBRARY_ARTISTS_TAB_INDEX -> ArtistSortButton(
                                     config = artistSortConfig,
@@ -1006,17 +1013,16 @@ fun MeloxApp(
                         }
                     },
                     bottomContent = {
-                        if (!overview) {
+                        if (canSearch) {
                             Column {
 
                                 LibrarySearchBar(
                                     visible = librarySearchVisible,
                                     focused = librarySearchFocused,
-                                    backEnabled = currentRoute == libraryRoutes[section],
+                                    backEnabled = currentRoute == libraryRoutes[checkNotNull(section)],
                                     query = librarySearchQuery,
                                     resultsQuery = when (section) {
                                         LIBRARY_ARTISTS_TAB_INDEX -> artistPresentation.query
-                                        LIBRARY_FOLDERS_TAB_INDEX -> folderPresentation.query
                                         else -> albumPresentation.query
                                     },
                                     label = stringResource(R.string.search_hint),
@@ -1128,7 +1134,6 @@ fun MeloxApp(
                                     LIBRARY_FOLDERS_TAB_INDEX -> FolderLibraryScreen(
                                         displayedFolders = folderPresentation.items,
                                         sectionIndexMap = folderPresentation.sectionIndexMap,
-                                        query = folderPresentation.query,
                                         scanStatus = uiState.scanStatus,
                                         sortConfig = folderPresentation.sortConfig,
                                         onFolderClick = { folder ->
@@ -1159,7 +1164,6 @@ fun MeloxApp(
                             when (section) {
                                 LIBRARY_ALBUMS_TAB_INDEX -> if (
                                     albumPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
                                     (
                                         albumSortConfig.field == AlbumSortField.ALBUM ||
                                             albumSortConfig.field ==
@@ -1188,7 +1192,6 @@ fun MeloxApp(
 
                                 LIBRARY_ARTISTS_TAB_INDEX -> if (
                                     artistPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
                                     artistSortConfig.field == ArtistSortField.NAME
                                 ) {
                                     AlphabetSideBar(
@@ -1213,7 +1216,6 @@ fun MeloxApp(
 
                                 LIBRARY_FOLDERS_TAB_INDEX -> if (
                                     folderPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
                                     folderSortConfig.field == FolderSortField.NAME
                                 ) {
                                     AlphabetSideBar(
@@ -1826,8 +1828,13 @@ fun MeloxApp(
                     var preparedSearchDestination by remember { mutableStateOf<Pair<String?, Int?>?>(null) }
                     val destinationHasSearch = useBottomSearch && when (currentRoute) {
                         AppRoute.ROOT -> navigationPresentationPage == SONGS_TAB_INDEX
-                        AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS,
-                        AppRoute.FOLDER_DETAIL, AppRoute.INTERNAL_STORAGE, AppRoute.PLAYLIST_DETAIL -> true
+                        AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.PLAYLIST_DETAIL -> true
+                        AppRoute.FOLDER_DETAIL -> uiState.folders.any {
+                            it.key == selectedFolderKey && it.tracks.isNotEmpty()
+                        }
+                        AppRoute.INTERNAL_STORAGE -> internalStorageHierarchy.directories[
+                            internalStorageHierarchy.closestDirectoryKey(internalStoragePath)
+                        ]?.tracks?.isNotEmpty() == true
                         else -> false
                     }
                     if (currentSearchAction != null || !destinationHasSearch) {

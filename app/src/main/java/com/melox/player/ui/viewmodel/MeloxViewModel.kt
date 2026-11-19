@@ -19,6 +19,7 @@ import com.melox.player.data.library.FolderGroup
 import com.melox.player.data.library.InternalStorageHierarchy
 import com.melox.player.data.library.buildInternalStorageHierarchy
 import com.melox.player.data.library.FolderSortConfig
+import com.melox.player.data.library.SongSearchFields
 import com.melox.player.data.library.MusicSortConfig
 import com.melox.player.data.library.hiddenFolderDisplayPaths
 import com.melox.player.data.library.normalizeHiddenFolderPath
@@ -786,32 +787,33 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     fun updateMusicPresentation(
         query: String,
         sortConfig: MusicSortConfig,
+        searchFields: SongSearchFields,
     ) {
-        musicPresentationRequest.value = MusicPresentationRequest(query, sortConfig)
+        musicPresentationRequest.value = MusicPresentationRequest(query, sortConfig, searchFields)
     }
 
     fun updateAlbumPresentation(
         query: String,
         sortConfig: AlbumSortConfig,
+        unknownName: String,
     ) {
         albumPresentationRequest.value = AlbumPresentationRequest(
             query = query,
             sortConfig = sortConfig,
+            unknownName = unknownName,
         )
     }
 
     fun updateArtistPresentation(
         query: String,
         sortConfig: ArtistSortConfig,
+        unknownName: String,
     ) {
-        artistPresentationRequest.value = ArtistPresentationRequest(query, sortConfig)
+        artistPresentationRequest.value = ArtistPresentationRequest(query, sortConfig, unknownName)
     }
 
-    fun updateFolderPresentation(
-        query: String,
-        sortConfig: FolderSortConfig,
-    ) {
-        folderPresentationRequest.value = FolderPresentationRequest(query, sortConfig)
+    fun updateFolderPresentation(sortConfig: FolderSortConfig) {
+        folderPresentationRequest.value = FolderPresentationRequest(sortConfig)
     }
 
     fun createPlaylist(

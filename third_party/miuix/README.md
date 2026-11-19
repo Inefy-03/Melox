@@ -1,9 +1,15 @@
 # Miuix Android Integration
 
-Melox follows [Miuix main at `58b0a3dd`](https://github.com/compose-miuix-ui/miuix/commit/58b0a3dd06f8ee83c1099a7ebee1183adce3f83c),
-covering [the 25 commits after `v0.9.5-beta01`](https://github.com/compose-miuix-ui/miuix/compare/v0.9.5-beta01...58b0a3dd06f8ee83c1099a7ebee1183adce3f83c).
-UI, Blur and Preference use the bundled Android AARs at `0.9.5-beta01-melox.2`.
+Melox follows [Miuix main at `08d52d45`](https://github.com/compose-miuix-ui/miuix/commit/08d52d455bf1d62c45e979ec75b47f6b5dc377f3),
+covering [the 28 commits after `v0.9.5-beta01`](https://github.com/compose-miuix-ui/miuix/compare/v0.9.5-beta01...08d52d455bf1d62c45e979ec75b47f6b5dc377f3).
+UI, Blur and Preference use the bundled Android AARs at `0.9.5-beta01` from the
+local Maven repository.
 Other Miuix Android modules retain the Beta 01 release artifacts.
+
+The current snapshot includes the upstream top-bar title alignment and collapsed
+Glass rail avoidance, plus horizontal cutout and navigation-bar insets for the
+bottom bars. Adaptive layout uses the measured root constraints so the window
+size updates on Android 10 rotation.
 
 - License [Apache-2.0](LICENSE)
 - Source patch [navigation-rail-insets.patch](navigation-rail-insets.patch)
@@ -46,7 +52,10 @@ patch, builds the three Android AARs and updates this directory's local Maven ar
 It copies only `sdk.dir` from Melox's local configuration when present.
 The isolated build omits demo and baseline-profile generation projects.
 The packaged AARs carry the corresponding Beta 01 dependency metadata.
-Ordinary Melox builds consume the bundled AARs.
+Ordinary Melox builds resolve the bundled modules exclusively from the local
+repository. Rebuilds use the upstream version in the Gradle version catalog,
+replace existing artifacts at that version, and remove superseded versions
+after all active AAR/POM pairs are installed.
 
 ## Compatibility
 
@@ -129,9 +138,9 @@ material algorithms are unchanged.
 Os4PortraitPlayerScaffold follows the example's GlassPage integration: native
 visibility animation, 54 dp height, 25 dp destination icons, 12 dp action spacing,
 and a 54 dp search button with its 28 dp Regular vector and Float shadow.
-The page uses the example's width cap, 20 dp top spacing and safe-bottom spacing
-of at least 24 dp (system bottom inset plus 8 dp when larger). Horizontal margins
-remain Melox's 16 dp by explicit user requirement rather than the example's 24 dp.
+The page uses 20 dp top spacing and safe-bottom spacing of at least 24 dp
+(system bottom inset plus 8 dp when larger). The mini player and the bar share
+16 dp horizontal margins inside the horizontal safe area.
 The mini player, destination callbacks, search state and full-player translation
 remain application-owned. The original 8 dp mini-player bottom padding supplies
 the player-to-navigation gap, with no additional Column spacing. Search keeps hidden chrome from accepting input.

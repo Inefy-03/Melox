@@ -89,6 +89,8 @@
     <string name="music_no_search_results">没有匹配的歌曲</string>
     <string name="music_play_next">下一首播放</string>
     <string name="music_add_to_queue">添加到队列</string>
+    <string name="music_play_next_confirmation">已添加为下一首</string>
+    <string name="music_add_to_queue_confirmation">已添加到队列</string>
     <string name="music_song_info">歌曲信息</string>
     <string name="music_edit_metadata">元数据编辑</string>
     <string name="music_edit_with_music_tag_editor">使用音乐标签编辑</string>

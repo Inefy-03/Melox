@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.adaptiveWindowSize
 import androidx.compose.runtime.getValue
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
@@ -30,7 +31,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -192,7 +192,7 @@ internal fun albumGridColumns(
     maxWidth: Dp,
     contentPadding: PaddingValues,
 ): Int {
-    val window = LocalWindowInfo.current.containerSize
+    val window = adaptiveWindowSize()
     val density = LocalDensity.current
     val width = with(density) { window.width.toDp() }
     val height = with(density) { window.height.toDp() }

@@ -2,6 +2,7 @@ package com.melox.player.ui.viewmodel
 
 import android.Manifest
 import android.app.Application
+import com.melox.player.R
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -184,6 +185,8 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     val scanCompletionEvents: SharedFlow<Int> = mutableScanCompletionEvents.asSharedFlow()
     private val mutableScanNoChangesEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val scanNoChangesEvents: SharedFlow<Unit> = mutableScanNoChangesEvents.asSharedFlow()
+    private val mutableQueueActionMessages = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    val queueActionMessages = mutableQueueActionMessages.asSharedFlow()
     private val playlists = MutableStateFlow<List<LocalPlaylist>>(emptyList())
     private val playlistReadableContentUris = MutableStateFlow<Set<String>>(emptySet())
     private val playlistsLoaded = MutableStateFlow(false)
@@ -1095,13 +1098,17 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
 
     fun playNext(track: MusicTrack) {
         if (visibleMusicTracks(listOf(track), hiddenFolderPaths.value, hiddenTrackUris.value).isNotEmpty()) {
-            playbackController.playNext(track)
+            playbackController.playNext(track) {
+                mutableQueueActionMessages.tryEmit(R.string.music_play_next_confirmation)
+            }
         }
     }
 
     fun appendToQueue(track: MusicTrack) {
         if (visibleMusicTracks(listOf(track), hiddenFolderPaths.value, hiddenTrackUris.value).isNotEmpty()) {
-            playbackController.append(track)
+            playbackController.append(track) {
+                mutableQueueActionMessages.tryEmit(R.string.music_add_to_queue_confirmation)
+            }
         }
     }
 

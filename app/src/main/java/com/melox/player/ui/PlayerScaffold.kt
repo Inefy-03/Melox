@@ -43,6 +43,8 @@ import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -196,7 +198,7 @@ internal fun PlayerScaffold(
             NavigationItem(label = settingsLabel, icon = GlassIcons.SettingsFill),
         )
     }
-    val windowSize = LocalWindowInfo.current.containerSize
+    val windowSize = adaptiveWindowSize()
     val density = LocalDensity.current
     val windowWidth = with(density) { windowSize.width.toDp() }
     val windowHeight = with(density) { windowSize.height.toDp() }
@@ -555,9 +557,15 @@ internal fun isMiuixWideLayout(
         (windowWidth >= 600.dp && heightToWidthRatio < 1.2f)
 }
 
+internal val LocalAdaptiveWindowSize = staticCompositionLocalOf<IntSize?> { null }
+
+@Composable
+internal fun adaptiveWindowSize(): IntSize =
+    LocalAdaptiveWindowSize.current ?: LocalWindowInfo.current.containerSize
+
 @Composable
 internal fun usesMiuixSmallTopAppBar(): Boolean {
-    val windowSize = LocalWindowInfo.current.containerSize
+    val windowSize = adaptiveWindowSize()
     val density = LocalDensity.current
     return isMiuixWideLayout(
         windowWidth = with(density) { windowSize.width.toDp() },
@@ -638,7 +646,7 @@ private fun BasePlayerScaffold(
     val bottomBarBackdrop = rememberBlurBackdrop()
     val normalBarColor = bottomBarBackdrop.miuixBarColor()
     val density = LocalDensity.current
-    val windowSize = LocalWindowInfo.current.containerSize
+    val windowSize = adaptiveWindowSize()
     val windowWidth = with(density) { windowSize.width.toDp() }
     val windowHeight = with(density) { windowSize.height.toDp() }
     val navigationBarBottomInset = WindowInsets.navigationBars

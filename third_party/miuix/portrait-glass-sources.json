@@ -1,5 +1,5 @@
 {
-  "commit": "58b0a3dd06f8ee83c1099a7ebee1183adce3f83c",
+  "commit": "08d52d455bf1d62c45e979ec75b47f6b5dc377f3",
   "files": [
     {
       "source": "miuix-blur/src/androidMain/kotlin/top/yukonga/miuix/kmp/blur/internal/RenderEffectCompat.android.kt",
@@ -249,8 +249,8 @@
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassNavigationBar.kt",
       "target": "glass/GlassNavigationBar.kt",
-      "source_sha256": "2bca1990f7ab760890592cbcf9d33b96eb8b351cd71b5e540a36a3cc1f7a6088",
-      "sha256": "ca43113f62fc9674ab450489c48d1bfb2c18300efbfbeaebacd4f2efe80d1a66",
+      "source_sha256": "d73d900575839d0ab732694f058ddc77f486af12702d7cf8b9c1b895de7346c0",
+      "sha256": "313c43fbe6335cec4f54e1c0e9277a7153bb8c06343394d3a274cbd85e5e2134",
       "selection": null
     },
     {
@@ -326,7 +326,7 @@
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassTopAppBar.kt",
       "target": "glass/GlassTopAppBar.kt",
-      "source_sha256": "0b3d0d362821c5d26e10985b96d36557045f9da217bb1fd05cc5909fadc22c5e",
+      "source_sha256": "cb3ca21ce2e12837dad0322be229816254dda76d96b9a0161cca212e811bcd1b",
       "sha256": "44577354fe11013a2bd6aefc172ffd0de541adfd3d8048f6b62ace93e2c566cc",
       "selection": "GlassTopAppBarDefaults button defaults, GlassTopAppBarContext, LocalGlassTopAppBarContext"
     },
@@ -347,8 +347,8 @@
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassNavigationRail.kt",
       "target": "glass/GlassNavigationRail.kt",
-      "source_sha256": "50d4c9fb0adcbc239b590c64428de28ee569dd87ac6bc6f91a796cffaf5cdf5f",
-      "sha256": "c25ffff655ea6dd4ca7536cc2f89ed06ced25d3b13daf99e0756ae4f82c649ef",
+      "source_sha256": "2740d8801e4aec647be02aa8a3f0b221a38e6c88b798dcd6f67bd3dcd4c6cb42",
+      "sha256": "367c7dc229c0fe9ef153beea75efdfd751d97e326bcdc88e88e8832657dec2a9",
       "selection": "Full source with optional primary destination for the selected shortcut in the collapsed rail"
     },
     {

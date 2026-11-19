@@ -4,6 +4,7 @@
 package top.yukonga.miuix.kmp.glass
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -18,6 +19,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -43,6 +46,7 @@ internal fun GlassCompactTopAppBar(
     expandedContent: (@Composable () -> Unit)? = null,
     showTitleWhileExpanded: Boolean = false,
     titleBlurRadius: Dp = GlassTopAppBarDefaults.TitleBlurRadius,
+    centerObstructionStart: Dp = Dp.Unspecified,
 ) {
     val collapsible = expandedContent != null
     val scrollState = scrollBehavior?.state
@@ -76,6 +80,12 @@ internal fun GlassCompactTopAppBar(
         }
     }
     val titleStartProgress = LocalGlassCompactTitleStartProgress.current.coerceIn(0f, 1f)
+    var canCenterTitle by remember { mutableStateOf<Boolean?>(null) }
+    val centeredFraction by animateFloatAsState(
+        targetValue = if (canCenterTitle == false) 0f else 1f,
+        animationSpec = folmeSpring(damping = 1f, response = 0.35f),
+        label = "glassCompactTitleAlignment",
+    )
     var compactHeaderHeight by remember { mutableIntStateOf(0) }
     Layout(
         modifier = modifier.then(if (defaultWindowInsetsPadding) Modifier.windowInsetsPadding(
@@ -97,8 +107,10 @@ internal fun GlassCompactTopAppBar(
                 color = titleColor,
                 style = MiuixTheme.textStyles.title4,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Text(subtitle, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, style = MiuixTheme.textStyles.subtitle, maxLines = 1)
+            Text(subtitle, color = MiuixTheme.colorScheme.onSurfaceVariantSummary, style = MiuixTheme.textStyles.subtitle,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
             Box { bottomContent() }
             if (expandedContent != null) {
                 Box(
@@ -142,7 +154,15 @@ internal fun GlassCompactTopAppBar(
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val leading = children[0].measure(loose)
         val trailing = children[1].measure(loose)
-        val titleConstraints = loose.copy(maxWidth = ((constraints.maxWidth - leading.width - trailing.width).coerceAtLeast(0) * 0.9f).toInt())
+        val spacing = TopAppBarDefaults.TitleControlSpacing.roundToPx()
+        val titlePadding = TopAppBarDefaults.TitlePadding.roundToPx()
+        val start = leading.width + if (leading.width > 0) spacing else titlePadding
+        val end = constraints.maxWidth - trailing.width - if (trailing.width > 0) spacing else titlePadding
+        val obstructed = centerObstructionStart.isSpecified
+        val titleEnd = if (obstructed) minOf(end, centerObstructionStart.roundToPx() - spacing) else end
+        val available = (titleEnd - start).coerceAtLeast(0)
+        val titleMaxWidth = if (obstructed && available < 48.dp.roundToPx()) 0 else available
+        val titleConstraints = loose.copy(maxWidth = titleMaxWidth)
         val heading = children[2].measure(titleConstraints)
         val summary = children[3].measure(titleConstraints)
         val bottom = children[4].measure(loose)
@@ -151,15 +171,26 @@ internal fun GlassCompactTopAppBar(
         val center = TopAppBarDefaults.SmallTopAppBarCenterHeight.roundToPx() / 2 + 3.dp.roundToPx()
         val contentTop = maxOf((TopAppBarDefaults.CollapsedHeight + 6.dp).roundToPx(),
             if (subtitle.isEmpty()) 0 else center + heading.height / 2 + summary.height + TopAppBarDefaults.SubtitleBottomPadding.roundToPx())
+        val groupWidth = maxOf(heading.width, summary.width)
+        val centeredStart = (constraints.maxWidth - groupWidth) / 2
+        canCenterTitle = !obstructed && centeredStart >= start && centeredStart + groupWidth <= end
         if (collapsible) compactHeaderHeight = contentTop
         layout(constraints.maxWidth, contentTop + expandedHeight + bottom.height) {
             expanded?.placeRelative(0, contentTop, zIndex = -1f)
             leading.placeRelative(0, center - leading.height / 2)
             trailing.placeRelative(constraints.maxWidth - trailing.width, center - trailing.height / 2)
-            val titleX = ((constraints.maxWidth - heading.width) / 2).coerceIn(leading.width, (constraints.maxWidth - trailing.width - heading.width).coerceAtLeast(leading.width))
-            val startX = (leading.width + 12.dp.roundToPx()).coerceAtMost((constraints.maxWidth - trailing.width - heading.width).coerceAtLeast(leading.width))
-            heading.placeRelative((titleX + (startX - titleX) * titleStartProgress).toInt(), center - heading.height / 2)
-            if (subtitle.isNotEmpty()) summary.placeRelative((constraints.maxWidth - summary.width) / 2, center + heading.height / 2)
+            if (titleMaxWidth > 0) {
+                val centerProgress = if (obstructed) 0f else centeredFraction * (1f - titleStartProgress)
+                fun titleX(width: Int): Int {
+                    val centered = (constraints.maxWidth - width) / 2
+                    return (start + (centered - start) * centerProgress).toInt()
+                        .coerceIn(start, (titleEnd - width).coerceAtLeast(start))
+                }
+                heading.placeRelative(titleX(heading.width), center - heading.height / 2)
+                if (subtitle.isNotEmpty()) {
+                    summary.placeRelative(titleX(summary.width), center + heading.height / 2)
+                }
+            }
             bottom.placeRelative(0, contentTop + expandedHeight)
         }
     }

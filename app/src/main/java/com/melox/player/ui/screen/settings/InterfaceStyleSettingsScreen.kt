@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.settings
 
+import com.melox.player.ui.adaptiveWindowSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.AnimatedVisibility
@@ -64,7 +65,7 @@ internal fun InterfaceStyleSettingsScreen(
     onBottomBarStyleChange: (BottomBarStyle) -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
-    val size = androidx.compose.ui.platform.LocalWindowInfo.current.containerSize
+    val size = adaptiveWindowSize()
     val density = androidx.compose.ui.platform.LocalDensity.current
     val landscape = with(density) { com.melox.player.ui.isMiuixWideLayout(size.width.toDp(), size.height.toDp()) }
     val blurSupported = liquidGlassSupported

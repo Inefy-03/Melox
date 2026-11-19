@@ -6,7 +6,13 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntSize
 import androidx.core.content.IntentCompat
+import com.melox.player.ui.LocalAdaptiveWindowSize
 import com.melox.player.ui.MeloxApp
 import com.melox.player.ui.viewmodel.MeloxViewModel
 
@@ -18,7 +24,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         val appViewModel = viewModel
         setContent {
-            MeloxApp(viewModel = appViewModel)
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val size = IntSize(constraints.maxWidth, constraints.maxHeight)
+                CompositionLocalProvider(LocalAdaptiveWindowSize provides size) {
+                    MeloxApp(viewModel = appViewModel)
+                }
+            }
         }
         appViewModel.applyStartupPlayback(allowAutoPlay = intent.externalAudioUri() == null)
         if (savedInstanceState == null) {

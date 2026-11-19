@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
@@ -39,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.ui.component.liquid.LiquidGlassNavigationBar
@@ -80,7 +82,7 @@ internal fun IosLikeFloatingPlayerScaffold(
     val searchChromeAlpha = rememberGlassSearchBarAlpha(searchOpen)
     val density = LocalDensity.current
     val chromeShadowOutsets = remember(density) { with(density) { popupShadowOutsets(GlassShadows.Regular) } }
-    val windowSize = LocalWindowInfo.current.containerSize
+    val windowSize = adaptiveWindowSize()
     val windowWidth = with(density) { windowSize.width.toDp() }
     val windowHeight = with(density) { windowSize.height.toDp() }
     val navigationBarBottomInset = WindowInsets.navigationBars
@@ -142,6 +144,9 @@ internal fun IosLikeFloatingPlayerScaffold(
                     .then(if (searchExpanded || searchOpen) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
                         awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
                     } else Modifier)
+                    .windowInsetsPadding(
+                        WindowInsets.displayCutout.union(WindowInsets.navigationBars).only(WindowInsetsSides.Horizontal),
+                    )
                     .padding(
                         horizontal = (if (ordinaryPortrait) 16.dp else 24.dp) -
                             FLOATING_NAVIGATION_BAR_SHADOW_PADDING,
@@ -154,7 +159,10 @@ internal fun IosLikeFloatingPlayerScaffold(
                     contentMaxWidth = maxWidth,
                     portraitReferenceWidth = portraitReferenceWidth,
                 )
-                val barWidth = rememberIosLikeNavigationBarWidth(items = navigationItems, maxWidth = availableBarWidth)
+                val safeBarWidth = (maxWidth - FLOATING_NAVIGATION_BAR_SHADOW_PADDING * 2).coerceAtLeast(0.dp)
+                val barWidth = rememberIosLikeNavigationBarWidth(
+                    items = navigationItems, maxWidth = minOf(availableBarWidth, safeBarWidth),
+                )
                 Column(
                     modifier = Modifier.width(
                         barWidth + FLOATING_NAVIGATION_BAR_SHADOW_PADDING * 2,

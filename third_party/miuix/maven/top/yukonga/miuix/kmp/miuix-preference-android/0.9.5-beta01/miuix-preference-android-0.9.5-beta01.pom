@@ -7,11 +7,11 @@
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>top.yukonga.miuix.kmp</groupId>
-  <artifactId>miuix-blur-android</artifactId>
-  <version>0.9.5-beta01-melox.1</version>
+  <artifactId>miuix-preference-android</artifactId>
+  <version>0.9.5-beta01</version>
   <packaging>aar</packaging>
-  <name>miuix-blur</name>
-  <description>Blur effect library for Miuix</description>
+  <name>miuix-preference</name>
+  <description>Preference components for Miuix</description>
   <url>https://github.com/compose-miuix-ui/miuix</url>
   <licenses>
     <license>
@@ -37,8 +37,14 @@
   <dependencies>
     <dependency>
       <groupId>top.yukonga.miuix.kmp</groupId>
-      <artifactId>miuix-material-android</artifactId>
+      <artifactId>miuix-ui-android</artifactId>
       <version>0.9.5-beta01</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jetbrains.compose.foundation</groupId>
+      <artifactId>foundation-android</artifactId>
+      <version>1.12.2</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -46,12 +52,6 @@
       <artifactId>kotlin-stdlib</artifactId>
       <version>2.4.21</version>
       <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.compose.foundation</groupId>
-      <artifactId>foundation-android</artifactId>
-      <version>1.12.2</version>
-      <scope>runtime</scope>
     </dependency>
   </dependencies>
 </project>

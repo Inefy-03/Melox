@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import com.melox.player.ui.LocalLandscapeNavigation
+import com.melox.player.ui.LocalSecondaryTopBar
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import top.yukonga.miuix.kmp.upstream.glass.glassSearchBarTransition
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.*
@@ -34,7 +36,9 @@ internal fun SmallTopAppBar(
     showTitleWhileExpanded: Boolean = false,
 ) {
     val backdrop = LocalGlassTopBackdrop.current
-    val navigation = LocalLandscapeNavigation.current
+    val landscapeNavigation = LocalLandscapeNavigation.current
+    val secondary = LocalSecondaryTopBar.current
+    val navigation = landscapeNavigation.takeUnless { secondary }
     val inlineTitle = shouldShowInlineTopBarTitle(
         title, titleColor.alpha, navigation?.titleAlpha?.invoke(), inlineTitleEnabled,
     )
@@ -61,6 +65,7 @@ internal fun SmallTopAppBar(
             visualContentOffset = rememberTopBarVisualContentOffset(scrollBehavior),
             progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
             defaultWindowInsetsPadding = defaultWindowInsetsPadding,
+            centerObstructionStart = if (secondary) landscapeNavigation?.centerObstructionStart ?: Dp.Unspecified else Dp.Unspecified,
             titleAlpha = {
                 val navigationAlpha = if (inlineTitleEnabled) 1f else navigation?.titleAlpha?.invoke() ?: 1f
                 (glassTitleAlpha?.invoke() ?: if (inlineTitle) 1f else titleColor.alpha) * navigationAlpha

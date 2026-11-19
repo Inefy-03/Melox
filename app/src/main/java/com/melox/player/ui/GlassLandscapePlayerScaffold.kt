@@ -41,9 +41,11 @@ internal class LandscapeNavigation(
     val labels: List<String>,
     val titleAlpha: () -> Float,
     val searchTopPadding: () -> Dp,
+    val centerObstructionStart: Dp,
 )
 
 internal val LocalLandscapeNavigation = staticCompositionLocalOf<LandscapeNavigation?> { null }
+internal val LocalSecondaryTopBar = staticCompositionLocalOf { false }
 
 @Composable
 internal fun GlassLandscapePlayerScaffold(
@@ -88,6 +90,11 @@ internal fun GlassLandscapePlayerScaffold(
             LocalLandscapeNavigation provides LandscapeNavigation(
                 navigationItems.map { it.label },
                 titleAlpha = { if (showRail) railState.progress else 1f },
+                centerObstructionStart = if (showRail && !railState.expanded && railState.collapsedWidth > 0.dp) {
+                    (railState.collapsedStart - railInset).coerceAtLeast(0.dp)
+                } else {
+                    Dp.Unspecified
+                },
                 searchTopPadding = {
                     if (showRail) {
                         (GlassNavigationRailDefaults.CollapsedTop +

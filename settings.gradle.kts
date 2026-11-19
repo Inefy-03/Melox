@@ -29,9 +29,9 @@ dependencyResolutionManagement {
                 includeModule("androidx.compose.ui", "ui-android")
             }
         }
-        maven {
-            url = uri("third_party/miuix/maven")
-            content {
+        exclusiveContent {
+            forRepository { maven { url = uri("third_party/miuix/maven") } }
+            filter {
                 includeModule("top.yukonga.miuix.kmp", "miuix-ui-android")
                 includeModule("top.yukonga.miuix.kmp", "miuix-blur-android")
                 includeModule("top.yukonga.miuix.kmp", "miuix-preference-android")

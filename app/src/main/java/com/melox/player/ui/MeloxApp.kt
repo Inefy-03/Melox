@@ -68,7 +68,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.unit.dp
@@ -275,8 +274,13 @@ fun MeloxApp(
     val playlistState by viewModel.playlistState.collectAsStateWithLifecycle()
     val settings = uiState.settings
     val context = LocalContext.current
+    LaunchedEffect(viewModel, context) {
+        viewModel.queueActionMessages.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
     val resources = LocalResources.current
-    val windowSize = LocalWindowInfo.current.containerSize
+    val windowSize = adaptiveWindowSize()
     val playbackErrorText = stringResource(R.string.playback_error)
     val scanNoChangesText = stringResource(R.string.scan_no_changes)
     val hiddenFolderSaveErrorText = stringResource(R.string.hidden_folder_save_error)
@@ -2046,7 +2050,10 @@ fun MeloxApp(
                                             // End the immediate sidebar switch; subsequent pushes and pops use the normal transition.
                                             if (sidebarEntryRoute == route.route) sidebarEntryRoute = null
                                         }
-                                        CompositionLocalProvider(LocalBottomSearchOwner provides route.entryContentKey()) {
+                                        CompositionLocalProvider(
+                                            LocalBottomSearchOwner provides route.entryContentKey(),
+                                            LocalSecondaryTopBar provides (route.route != AppRoute.ROOT),
+                                        ) {
                                             if (route.route == AppRoute.ROOT) {
                                                 content(
                                                     currentRootPadding,

@@ -442,8 +442,9 @@ class PlaybackController(context: Context) {
         }
     }
 
-    fun playNext(track: MusicTrack) {
+    fun playNext(track: MusicTrack, onAdded: () -> Unit) {
         withController { controller ->
+            if (!controller.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS)) return@withController
             val queue = controller.currentPlaybackQueue()
             val playbackMode = controller.currentPlaybackMode()
             val insertionIndex = nextQueueInsertionIndex(
@@ -463,11 +464,13 @@ class PlaybackController(context: Context) {
             if (controller.mediaItemCount == 1) {
                 controller.prepare()
             }
+            onAdded()
         }
     }
 
-    fun append(track: MusicTrack) {
+    fun append(track: MusicTrack, onAdded: () -> Unit) {
         withController { controller ->
+            if (!controller.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS)) return@withController
             val queue = controller.currentPlaybackQueue()
             val playbackMode = controller.currentPlaybackMode()
             val item = track.toPlaybackQueueItem(
@@ -479,6 +482,7 @@ class PlaybackController(context: Context) {
             ).toMediaItem()
             controller.addMediaItem(item)
             if (controller.mediaItemCount == 1) controller.prepare()
+            onAdded()
         }
     }
 

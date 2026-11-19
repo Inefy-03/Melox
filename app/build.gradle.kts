@@ -42,7 +42,7 @@ val releaseSigningValues = listOf(
 val releaseSigningConfigured = localPropertiesFile.isFile &&
     releaseKeystoreFile?.isFile == true &&
     releaseSigningValues.all { (_, value) -> !value.isNullOrBlank() }
-val appVersionName = "2.0.0-beta3-" + ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+val appVersionName = "2.0.0-beta4-" + ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
     .format(DateTimeFormatter.ofPattern("yyMMddHHmm"))
 val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.equals("assemble", ignoreCase = true) ||
@@ -180,12 +180,6 @@ tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
 
 configurations.configureEach {
     resolutionStrategy.dependencySubstitution {
-        for (artifact in listOf("miuix-ui-android", "miuix-blur-android", "miuix-preference-android")) {
-            val coordinate = "top.yukonga.miuix.kmp:$artifact"
-            substitute(module(coordinate))
-                .using(module("$coordinate:${libs.versions.miuixAndroidPatch.get()}"))
-                .because("Use the pinned Miuix sources and preserve the Melox UI patches")
-        }
         substitute(module("androidx.compose.ui:ui-android"))
             .using(module("androidx.compose.ui:ui-android:${libs.versions.composeUiPatch.get()}"))
             .because("Allow detached lazy layouts to clean up prefetch without requiring an owner")

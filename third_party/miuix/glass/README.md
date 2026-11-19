@@ -19,7 +19,7 @@ The search field and cancel button follow the Icon page's scroll-triggered
 transition from solid fill to glass. Melox supplies query and result state,
 localized action descriptions, and the page header gradient and blur settings.
 
-The relocated source manifest records the 52 selected files at `58b0a3dd`,
+The relocated source manifest records the 52 selected files at `08d52d45`,
 including the latest progressive blur renderer and dynamic-color navigation
 materials. The existing legacy Glass adapters also receive the upstream
 dynamic colors and lazy dropdown anchor tracking.

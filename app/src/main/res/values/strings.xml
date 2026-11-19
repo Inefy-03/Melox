@@ -91,6 +91,8 @@
     <string name="music_no_search_results">No matching songs</string>
     <string name="music_play_next">Play next</string>
     <string name="music_add_to_queue">Add to queue</string>
+    <string name="music_play_next_confirmation">Added to play next</string>
+    <string name="music_add_to_queue_confirmation">Added to queue</string>
     <string name="music_song_info">Song info</string>
     <string name="music_edit_metadata">Edit metadata</string>
     <string name="music_edit_with_music_tag_editor">Edit with Music Tag Editor</string>

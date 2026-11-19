@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.adaptiveWindowSize
 import com.melox.player.ui.icon.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
@@ -16,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -67,7 +67,7 @@ internal fun LibraryOverviewScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
 ) {
-    val window = LocalWindowInfo.current.containerSize
+    val window = adaptiveWindowSize()
     val landscape = window.width > window.height
     val direction = LocalLayoutDirection.current
     BoxWithConstraints(modifier.fillMaxSize()) {

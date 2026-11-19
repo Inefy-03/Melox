@@ -36,6 +36,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -71,6 +73,10 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+internal val LocalAlphabetIndexBottomPadding = compositionLocalOf { 0.dp }
+internal val LocalAlphabetIndexTopBarHeight = compositionLocalOf<MutableIntState?> { null }
+internal val LocalPageAlphabetIndexPadding = compositionLocalOf<PaddingValues> { PaddingValues() }
 
 internal val LocalCustomPageBackground = compositionLocalOf<ImageBitmap?> { null }
 internal val LocalCustomBackgroundDimAlpha = compositionLocalOf { 0f }
@@ -207,8 +213,13 @@ internal fun customPageContainerColor(): Color =
 internal fun PageScaffold(
     modifier: Modifier = Modifier,
     topBar: @Composable () -> Unit = {},
+    hasAlphabetIndex: Boolean = false,
     content: @Composable (PaddingValues) -> Unit,
 ) {
+    val indexTopBarHeight = remember(hasAlphabetIndex) {
+        if (hasAlphabetIndex) mutableIntStateOf(0) else null
+    }
+    val indexBottomPadding = LocalAlphabetIndexBottomPadding.current
     val floatingRailInset = LocalFloatingNavigationRailInset.current
     val clippedRailInset = com.melox.player.ui.LocalClippedNavigationRailInset.current
     val landscapeNavigation = com.melox.player.ui.LocalLandscapeNavigation.current
@@ -250,7 +261,11 @@ internal fun PageScaffold(
                 containerColor = surfaceColor,
                 contentWindowInsets = safeInsets.union(statusBarSpace),
                 topBar = {
-                    CompositionLocalProvider(LocalTopBarWallpaperVisible provides (image != null), LocalWideTopBackdrop provides topBackdrop) {
+                    CompositionLocalProvider(
+                        LocalTopBarWallpaperVisible provides (image != null),
+                        LocalWideTopBackdrop provides topBackdrop,
+                        LocalAlphabetIndexTopBarHeight provides indexTopBarHeight,
+                    ) {
                         Box(
                             Modifier.padding(start = clippedRailInset),
                         ) {
@@ -265,6 +280,21 @@ internal fun PageScaffold(
                     end = padding.calculateEndPadding(layoutDirection),
                     bottom = padding.calculateBottomPadding(),
                 )
+                val indexPadding = remember(padding, density, indexTopBarHeight, indexBottomPadding) {
+                    object : PaddingValues {
+                        override fun calculateLeftPadding(layoutDirection: LayoutDirection): Dp =
+                            if (layoutDirection == LayoutDirection.Rtl) padding.calculateLeftPadding(layoutDirection) else 0.dp
+
+                        override fun calculateRightPadding(layoutDirection: LayoutDirection): Dp =
+                            if (layoutDirection == LayoutDirection.Ltr) padding.calculateRightPadding(layoutDirection) else 0.dp
+
+                        override fun calculateTopPadding(): Dp =
+                            indexTopBarHeight?.intValue?.takeIf { it > 0 }?.let { with(density) { it.toDp() } }
+                                ?: padding.calculateTopPadding()
+
+                        override fun calculateBottomPadding(): Dp = indexBottomPadding
+                    }
+                }
                 Box(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
                     // Root pages sample the stationary window image; secondary pages crop locally.
                     Box(Modifier.matchParentSize().layerBackdrop(wallpaperBackdrop).background(surfaceColor)
@@ -279,7 +309,9 @@ internal fun PageScaffold(
                     // The result overlay and the page share the screen content. Only one may own
                     // the list while search results are being displayed.
                     if (!resultsVisible) {
-                        content(pagePadding)
+                        CompositionLocalProvider(LocalPageAlphabetIndexPadding provides indexPadding) {
+                            content(pagePadding)
+                        }
                     }
                 }
             }

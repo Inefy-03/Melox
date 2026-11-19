@@ -5,7 +5,7 @@ import top.yukonga.miuix.kmp.upstream.blur.layerBackdrop
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 
-import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
+import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.MusicLocationAction
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -87,7 +86,6 @@ fun MusicListScreen(
     showLyricoEditor: Boolean,
     showLunaBeatEditor: Boolean,
     scrollBehavior: ScrollBehavior,
-    indexTopPadding: Dp,
     listState: LazyListState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
@@ -114,6 +112,14 @@ fun MusicListScreen(
     val listSectionIndexMap = remember(sectionIndexMap, leadingItemCount) {
         offsetSectionIndices(sectionIndexMap, leadingItemCount)
     }
+    val showAlphabetIndex = showIndex &&
+        displayedTracks.isNotEmpty() &&
+        (
+            sortConfig.field == MusicSortField.TITLE ||
+                sortConfig.field == MusicSortField.ARTIST ||
+                sortConfig.field == MusicSortField.FILE_NAME
+        ) &&
+        query.isBlank()
     val locateActionVisible = showLocateAction && currentIndex >= 0 && !selectionMode &&
         miniPlayerBounds.width > 0f && playerContentBounds.width > 0f
     val locateBottomPadding = if (locateActionVisible) {
@@ -260,17 +266,9 @@ fun MusicListScreen(
             listContent()
         }
 
-        if (
-            showIndex &&
-            displayedTracks.isNotEmpty() &&
-            (
-                sortConfig.field == MusicSortField.TITLE ||
-                    sortConfig.field == MusicSortField.ARTIST ||
-                    sortConfig.field == MusicSortField.FILE_NAME
-            ) &&
-            query.isBlank()
-        ) {
+        if (showAlphabetIndex) {
             AlphabetSideBar(
+                contentPadding = LocalPageAlphabetIndexPadding.current,
                 sectionIndexMap = listSectionIndexMap,
                 itemCount = displayedTracks.size + leadingItemCount,
                 scrollStateKey = listState,
@@ -292,12 +290,6 @@ fun MusicListScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(
-                        top = indexTopPadding + 4.dp,
-                        end = contentPadding.calculateEndPadding(layoutDirection),
-                        bottom = LocalAlphabetIndexBottomPadding.current,
-                    )
-                    .fillMaxHeight()
             )
         }
         if (showLocateAction) {
@@ -309,6 +301,7 @@ fun MusicListScreen(
                 miniPlayerBounds = miniPlayerBounds,
                 contentPadding = contentPadding,
                 backdrop = locationBackdrop,
+                alphabetIndexVisible = showAlphabetIndex,
             )
         }
     }

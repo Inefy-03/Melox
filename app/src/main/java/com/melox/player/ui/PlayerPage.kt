@@ -15,13 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.Dp
 import com.melox.player.ui.component.LocalGlassSearchResults
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.SmallTopAppBar
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
-import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.refreshFixedWallpaperSample
 import com.melox.player.ui.component.rememberBlurBackdrop
@@ -35,10 +33,11 @@ internal fun PlayerPage(
     scrollBehavior: ScrollBehavior,
     useSmallTopAppBar: Boolean,
     isRootPage: Boolean = true,
+    hasAlphabetIndex: Boolean = false,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     bottomContent: @Composable () -> Unit = {},
-    content: @Composable (PaddingValues, ScrollBehavior, indexTopPadding: Dp) -> Unit,
+    content: @Composable (PaddingValues, ScrollBehavior) -> Unit,
 ) {
     val landscapeNavigation = LocalLandscapeNavigation.current.takeIf { isRootPage }
     val replaceTitle = landscapeNavigation?.labels?.contains(title) == true
@@ -47,6 +46,7 @@ internal fun PlayerPage(
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarCaptureCoordinates })
 
     PageScaffold(
+        hasAlphabetIndex = hasAlphabetIndex,
         topBar = {
             TopBarBackdrop(backdrop = topBarBackdrop) {
                 val topBarColor = topBarBackdrop.miuixBarColor()
@@ -84,7 +84,6 @@ internal fun PlayerPage(
             }
         },
     ) { innerPadding ->
-        val indexTopPadding = fixedAlphabetIndexTopPadding()
         // The page bar owns top/system insets; the outer scaffold owns bottom-bar clearance.
         Box(
             modifier = Modifier
@@ -105,7 +104,6 @@ internal fun PlayerPage(
                     },
                 ),
                 scrollBehavior,
-                indexTopPadding,
             )
         }
     }

@@ -63,12 +63,17 @@ internal fun MusicLocationAction(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     backdrop: Backdrop? = null,
+    alphabetIndexVisible: Boolean = false,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     var locateJob by remember { mutableStateOf<Job?>(null) }
     val locateActionSize = ButtonDefaults.MinHeight
+    val trailingPadding = maxOf(
+        TopAppBarDefaults.ActionIconPadding,
+        if (alphabetIndexVisible) AlphabetSideBarWidth else 0.dp,
+    )
     var actionAreaBounds by remember { mutableStateOf(Rect.Zero) }
     // The page reports its origin after layout, even when the player is already measured.
     val actionVisible = visible && !actionAreaBounds.isEmpty && !miniPlayerBounds.isEmpty
@@ -85,8 +90,7 @@ internal fun MusicLocationAction(
                             actionAreaBounds,
                             locateActionSize.toPx(),
                             12.dp.toPx(),
-                            (contentPadding.calculateEndPadding(layoutDirection) +
-                                TopAppBarDefaults.ActionIconPadding).toPx(),
+                            (contentPadding.calculateEndPadding(layoutDirection) + trailingPadding).toPx(),
                         )
                     }
                 }

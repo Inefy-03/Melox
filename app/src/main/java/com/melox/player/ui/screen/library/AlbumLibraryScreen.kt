@@ -1,7 +1,7 @@
 package com.melox.player.ui.screen.library
 
 import androidx.compose.runtime.getValue
-import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
+import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
 import com.melox.player.ui.icon.*
@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,7 +69,6 @@ fun AlbumLibraryScreen(
     sortConfig: AlbumSortConfig,
     onAlbumClick: (AlbumGroup) -> Unit,
     scrollBehavior: ScrollBehavior,
-    indexTopPadding: Dp,
     gridState: LazyGridState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
@@ -159,6 +157,7 @@ fun AlbumLibraryScreen(
 
         if (showIndex && displayedAlbums.isNotEmpty() && supportsIndex && query.isBlank()) {
             AlphabetSideBar(
+                contentPadding = LocalPageAlphabetIndexPadding.current,
                 sectionIndexMap = sectionIndexMap,
                 itemCount = displayedAlbums.size,
                 scrollStateKey = gridState,
@@ -179,13 +178,7 @@ fun AlbumLibraryScreen(
                     }
                 },
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        top = indexTopPadding + 4.dp,
-                        end = contentPadding.calculateEndPadding(layoutDirection),
-                        bottom = LocalAlphabetIndexBottomPadding.current,
-                    )
-                    .fillMaxHeight(),
+                    .align(Alignment.TopEnd),
             )
         }
     }

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -61,8 +60,7 @@ import com.melox.player.ui.component.library.LibrarySearchBar
 import com.melox.player.ui.component.library.LibrarySearchButton
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
-import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
-import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
+import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
 import com.melox.player.ui.component.library.AlphabetSections
 import com.melox.player.ui.component.library.AlphabetSideBar
@@ -211,6 +209,10 @@ fun PlaylistDetailScreen(
     val currentIndex = displayedTracks.indexOfFirst { item ->
         item.available && item.track.contentUri == currentTrackContentUri
     }
+    val showAlphabetIndex = displayedTracks.isNotEmpty() &&
+        (sortConfig.field == PlaylistSortField.TITLE ||
+            sortConfig.field == PlaylistSortField.FILE_NAME) &&
+        query.isBlank()
     val locateActionVisible = currentIndex >= 0 && !selectionMode &&
         miniPlayerBounds.width > 0f && playerContentBounds.width > 0f
     val locateBottomPadding = if (locateActionVisible) {
@@ -305,6 +307,7 @@ fun PlaylistDetailScreen(
     }
 
     PageScaffold(
+        hasAlphabetIndex = true,
         topBar = {
             TopBarBackdrop(backdrop = backdrop) {
                 TopAppBar(
@@ -420,7 +423,6 @@ fun PlaylistDetailScreen(
             }
         },
     ) { padding ->
-        val indexTopPadding = fixedAlphabetIndexTopPadding()
         val indexBottomPadding = maxOf(
             padding.calculateBottomPadding(),
             bottomContentPadding,
@@ -540,13 +542,9 @@ fun PlaylistDetailScreen(
                 }
             }
 
-            if (
-                displayedTracks.isNotEmpty() &&
-                (sortConfig.field == PlaylistSortField.TITLE ||
-                    sortConfig.field == PlaylistSortField.FILE_NAME) &&
-                query.isBlank()
-            ) {
+            if (showAlphabetIndex) {
                 AlphabetSideBar(
+                    contentPadding = LocalPageAlphabetIndexPadding.current,
                     sectionIndexMap = sectionIndexMap,
                     itemCount = displayedTracks.size,
                     scrollStateKey = listState,
@@ -567,13 +565,7 @@ fun PlaylistDetailScreen(
                         }
                     },
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(
-                            top = indexTopPadding + 4.dp,
-                            end = padding.calculateEndPadding(layoutDirection),
-                            bottom = LocalAlphabetIndexBottomPadding.current,
-                        )
-                        .fillMaxHeight(),
+                        .align(Alignment.TopEnd),
                 )
             }
             MusicLocationAction(
@@ -584,6 +576,7 @@ fun PlaylistDetailScreen(
                 miniPlayerBounds = miniPlayerBounds,
                 contentPadding = padding,
                 backdrop = locationBackdrop,
+                alphabetIndexVisible = showAlphabetIndex,
             )
         }
     }

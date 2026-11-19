@@ -1,6 +1,5 @@
 package com.melox.player.ui.component.library
 
-
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -9,22 +8,19 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,7 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,30 +41,25 @@ import androidx.compose.ui.platform.LocalView
 import com.melox.player.ui.theme.LocalHapticFeedbackEnabled
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import com.melox.player.ui.component.Icon
-import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.ChevronBackward
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-internal val LocalAlphabetIndexBottomPadding = staticCompositionLocalOf { 12.dp }
-
-@Composable
-@OptIn(ExperimentalLayoutApi::class)
-internal fun fixedAlphabetIndexTopPadding(): Dp =
-    WindowInsets.systemBars.union(WindowInsets.statusBarsIgnoringVisibility)
-        .asPaddingValues().calculateTopPadding() +
-        TopAppBarDefaults.CollapsedHeight
+internal val AlphabetSideBarWidth = 20.dp
 
 internal val AlphabetSections =
     listOf("0") + ('A'..'Z').map(Char::toString) + listOf("#")
@@ -86,21 +76,16 @@ fun AlphabetSideBar(
     scrollStateKey: Any,
     isAtTarget: (Int) -> Boolean,
     scrollToItem: suspend (Int) -> Unit,
+    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
     sections: List<String> = AlphabetSections,
     onTargetIndexChanged: (targetIndex: Int, restoreLargeTitle: Boolean) -> Unit,
-    topOffset: Dp = 54.dp,
 ) {
     val view = LocalView.current
     val hapticFeedbackEnabled by rememberUpdatedState(LocalHapticFeedbackEnabled.current)
     val density = LocalDensity.current
     val touchSlop = LocalViewConfiguration.current.touchSlop
     val scope = rememberCoroutineScope()
-    val textMeasurer = rememberTextMeasurer()
-    val letterStyle = MiuixTheme.textStyles.footnote2
-    val cellSize = with(density) {
-        textMeasurer.measure("A", style = letterStyle).size.height.toDp()
-    }
     val items = remember(sections) {
         listOf<AlphabetSideBarItem>(AlphabetSideBarItem.ScrollTop) +
             sections.map(AlphabetSideBarItem::Section)
@@ -157,8 +142,8 @@ fun AlphabetSideBar(
             targetIndex,
             item == AlphabetSideBarItem.ScrollTop,
         )
+        scrollJob?.cancel()
         if (!currentIsAtTarget(targetIndex)) {
-            scrollJob?.cancel()
             scrollJob = scope.launch {
                 try {
                     val latestMaxIndex = currentItemCount - 1
@@ -185,19 +170,26 @@ fun AlphabetSideBar(
         lastSelectedIndex = -1
     }
 
-    Box(modifier = modifier) {
-        val barHeight = cellSize * items.size
-        val cellHeightPx = with(density) { cellSize.toPx() }
+    val preferredCellHeight = 15.dp
+    BoxWithConstraints(modifier = modifier.padding(contentPadding).fillMaxHeight()) {
+        if (maxHeight <= 0.dp || sections.isEmpty()) return@BoxWithConstraints
 
-        fun itemIndexAt(y: Float): Int =
-            (y / cellHeightPx).toInt().coerceIn(0, items.lastIndex)
+        val slotCount = (maxHeight / preferredCellHeight).toInt()
+        val ranges = remember(items.size, slotCount) {
+            listOf(0..0) + alphabetSectionRanges(sections.size, slotCount - 1)
+        }
+        val currentRanges by rememberUpdatedState(ranges)
+        val cellSize = with(density) {
+            val availablePx = constraints.maxHeight / ranges.size
+            minOf(preferredCellHeight.roundToPx(), availablePx).toDp()
+        }
+        if (cellSize <= 0.dp) return@BoxWithConstraints
+        val barHeight = cellSize * ranges.size
+        val textScale = cellSize / preferredCellHeight
 
         Row(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(y = topOffset)
-                .wrapContentHeight(align = Alignment.Top, unbounded = true)
-                .height(barHeight),
+                .align(Alignment.CenterEnd),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -208,13 +200,13 @@ fun AlphabetSideBar(
             Box(modifier = Modifier.width(12.dp))
             Column(
                 modifier = Modifier
-                    .width(20.dp)
+                    .width(AlphabetSideBarWidth)
                     .height(barHeight)
-                    .pointerInput(items, cellHeightPx, sectionIndexMap) {
+                    .pointerInput(items, sectionIndexMap, scrollStateKey) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             down.consume()
-                            val downItemIndex = itemIndexAt(down.position.y)
+                            val downItemIndex = alphabetItemIndexAt(down.position.y, size.height, currentRanges)
                             var dragged = false
                             var released = false
                             if (downItemIndex != 0) {
@@ -242,7 +234,8 @@ fun AlphabetSideBar(
                                     }
                                     if (dragged) {
                                         updateSelection(
-                                            itemIndexAt(change.position.y).coerceAtLeast(1),
+                                            alphabetItemIndexAt(change.position.y, size.height, currentRanges)
+                                                .coerceAtLeast(1),
                                         )
                                     }
                                 }
@@ -262,11 +255,13 @@ fun AlphabetSideBar(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                items.forEach { item ->
+                val selectedIndex = items.indexOf(selectedItem)
+                ranges.forEach { range ->
                     AlphabetCell(
-                        item = item,
-                        selected = selectedItem == item,
+                        item = items[range.first].takeIf { range.first == range.last },
+                        selected = selectedIndex in range,
                         size = cellSize,
+                        textScale = textScale,
                         showScrollTop = scrollTopVisible,
                     )
                 }
@@ -304,13 +299,10 @@ private fun AlphabetIndicator(
                     tint = MiuixTheme.colorScheme.primary,
                 )
 
-                is AlphabetSideBarItem.Section -> Text(
+                is AlphabetSideBarItem.Section -> AlphabetText(
                     text = item.value,
-                    style = MiuixTheme.textStyles.title1,
+                    style = MiuixTheme.textStyles.title1.copy(fontWeight = FontWeight.Bold),
                     color = MiuixTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
                 )
 
                 null -> Unit
@@ -321,9 +313,10 @@ private fun AlphabetIndicator(
 
 @Composable
 private fun AlphabetCell(
-    item: AlphabetSideBarItem,
+    item: AlphabetSideBarItem?,
     selected: Boolean,
     size: Dp,
+    textScale: Float,
     showScrollTop: Boolean,
 ) {
     val selectedColor = if (MiuixTheme.colorScheme.surface.luminance() > 0.5f) {
@@ -338,7 +331,7 @@ private fun AlphabetCell(
     }
 
     Box(
-        modifier = Modifier.width(20.dp).height(size),
+        modifier = Modifier.width(AlphabetSideBarWidth).height(size),
         contentAlignment = Alignment.Center,
     ) {
         when (item) {
@@ -351,21 +344,63 @@ private fun AlphabetCell(
                     imageVector = MiuixIcons.ChevronBackward,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(12.dp)
+                        .size(12.dp.coerceAtMost(size))
                         .rotate(90f),
                     tint = cellColor,
                 )
             }
 
-            is AlphabetSideBarItem.Section -> Text(
-                text = item.value,
-                style = MiuixTheme.textStyles.footnote2,
+            is AlphabetSideBarItem.Section, null -> AlphabetText(
+                text = item?.value ?: "·",
+                style = MiuixTheme.textStyles.footnote2.let {
+                    it.copy(
+                        fontSize = it.fontSize * textScale,
+                        lineHeight = if (it.lineHeight.isSpecified) it.lineHeight * textScale else it.lineHeight,
+                    )
+                },
                 color = cellColor,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
             )
         }
     }
+}
+
+@Composable
+private fun AlphabetText(text: String, style: TextStyle, color: Color) {
+    val density = LocalDensity.current.density
+    val fixedTextDensity = remember(density) { Density(density, fontScale = 1f) }
+    CompositionLocalProvider(LocalDensity provides fixedTextDensity) {
+        Text(text = text, style = style, color = color, textAlign = TextAlign.Center, maxLines = 1)
+    }
+}
+
+// Item 0 belongs to ScrollTop. The first and last sections flank the letter range.
+internal fun alphabetSectionRanges(sectionCount: Int, slots: Int): List<IntRange> {
+    if (slots >= sectionCount || sectionCount <= 5) {
+        return (1..sectionCount).map { it..it }
+    }
+
+    val lastLetter = sectionCount - 1
+    val visibleLetters = ((slots - 1) / 2).coerceAtLeast(2)
+    return buildList {
+        add(1..1)
+        var previous = 1
+        for (index in 0 until visibleLetters) {
+            val letter = 2 + (index * (lastLetter - 2f) / (visibleLetters - 1)).roundToInt()
+            if (letter > previous + 1) add((previous + 1) until letter)
+            add(letter..letter)
+            previous = letter
+        }
+        add(sectionCount..sectionCount)
+    }
+}
+
+internal fun alphabetItemIndexAt(y: Float, height: Int, ranges: List<IntRange>): Int {
+    if (height <= 0) return 0
+    val position = (y / height * ranges.size).coerceIn(0f, ranges.size.toFloat())
+    val slot = position.toInt().coerceAtMost(ranges.lastIndex)
+    val range = ranges[slot]
+    return (range.first + ((position - slot) * (range.last - range.first + 1)).toInt())
+        .coerceAtMost(range.last)
 }
 
 internal fun findAlphabetTargetIndex(

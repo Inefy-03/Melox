@@ -49,7 +49,6 @@ import com.melox.player.ui.component.library.LibrarySearchBar
 import com.melox.player.ui.component.library.LibrarySearchButton
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
-import com.melox.player.ui.component.library.fixedAlphabetIndexTopPadding
 import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
 import com.melox.player.ui.component.library.MusicSortButton
 import com.melox.player.ui.component.library.ShufflePlayButton
@@ -176,6 +175,7 @@ fun FolderDetailScreen(
     }
 
     PageScaffold(
+        hasAlphabetIndex = true,
             topBar = {
             TopBarBackdrop(backdrop = backdrop) {
                 TopAppBar(
@@ -317,12 +317,6 @@ fun FolderDetailScreen(
             }
         },
         ) { padding ->
-        val indexTopPadding = fixedAlphabetIndexTopPadding() + if (breadcrumbItems.isNotEmpty()) {
-            BreadcrumbBarDefaults.ItemHeight + BreadcrumbBarDefaults.InsideMargin.calculateTopPadding() +
-                BreadcrumbBarDefaults.InsideMargin.calculateBottomPadding()
-        } else {
-            0.dp
-        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -361,7 +355,6 @@ fun FolderDetailScreen(
                     showLyricoEditor = showLyricoEditor,
                     showLunaBeatEditor = showLunaBeatEditor,
                     scrollBehavior = scrollBehavior,
-                    indexTopPadding = indexTopPadding,
                     listState = listState,
                     topContentSpacing = if (breadcrumbItems.isNotEmpty()) 4.dp else 12.dp,
                     contentPadding = PaddingValues(

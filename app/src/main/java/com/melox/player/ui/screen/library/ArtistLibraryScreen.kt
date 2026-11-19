@@ -1,6 +1,6 @@
 package com.melox.player.ui.screen.library
 
-import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
+import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
 import androidx.compose.foundation.layout.Arrangement
@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import com.melox.player.ui.component.LazyColumn
@@ -49,7 +48,6 @@ fun ArtistLibraryScreen(
     sortConfig: ArtistSortConfig,
     onArtistClick: (ArtistGroup) -> Unit,
     scrollBehavior: ScrollBehavior,
-    indexTopPadding: Dp,
     listState: LazyListState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
@@ -123,6 +121,7 @@ fun ArtistLibraryScreen(
             query.isBlank()
         ) {
             AlphabetSideBar(
+                contentPadding = LocalPageAlphabetIndexPadding.current,
                 sectionIndexMap = sectionIndexMap,
                 itemCount = displayedArtists.size,
                 scrollStateKey = listState,
@@ -143,13 +142,7 @@ fun ArtistLibraryScreen(
                     }
                 },
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        top = indexTopPadding + 4.dp,
-                        end = contentPadding.calculateEndPadding(layoutDirection),
-                        bottom = LocalAlphabetIndexBottomPadding.current,
-                    )
-                    .fillMaxHeight(),
+                    .align(Alignment.TopEnd),
             )
         }
     }

@@ -2,7 +2,7 @@ package com.melox.player.ui.screen.library
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
+import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 import com.melox.player.ui.component.library.offsetSectionIndices
 
@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -76,7 +75,6 @@ fun FolderLibraryScreen(
     onOpenInternalStorage: () -> Unit,
     onBlockFolder: (String) -> Unit = {},
     scrollBehavior: ScrollBehavior,
-    indexTopPadding: Dp,
     listState: LazyListState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
@@ -169,6 +167,7 @@ fun FolderLibraryScreen(
             sortConfig.field == FolderSortField.NAME
         ) {
             AlphabetSideBar(
+                contentPadding = LocalPageAlphabetIndexPadding.current,
                 sectionIndexMap = listSectionIndexMap,
                 itemCount = displayedFolders.size + 1,
                 scrollStateKey = listState,
@@ -189,13 +188,7 @@ fun FolderLibraryScreen(
                     }
                 },
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(
-                        top = indexTopPadding + 4.dp,
-                        end = contentPadding.calculateEndPadding(layoutDirection),
-                        bottom = LocalAlphabetIndexBottomPadding.current,
-                    )
-                    .fillMaxHeight(),
+                    .align(Alignment.TopEnd),
             )
         }
     }

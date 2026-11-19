@@ -46,6 +46,8 @@ import com.melox.player.ui.component.library.AlphabetSections
 import com.melox.player.ui.component.library.audioFormatLabel
 import com.melox.player.ui.component.library.displayFileLocation
 import com.melox.player.ui.component.library.findAlphabetTargetIndex
+import com.melox.player.ui.component.library.alphabetItemIndexAt
+import com.melox.player.ui.component.library.alphabetSectionRanges
 import com.melox.player.ui.component.library.formatDuration
 import com.melox.player.ui.component.library.participatingArtistGroups
 import com.melox.player.ui.component.library.responsiveGridColumnCount
@@ -138,6 +140,37 @@ class LibraryLogicTest {
         assertEquals("S", createMusicSortKeys("さくら").section)
         assertEquals("1_SAKURA", createMusicSortKeys("さくら").value)
         assertEquals("T", createMusicSortKeys("とうきょう").section)
+    }
+
+    @Test
+    fun compressedAlphabetKeepsEndpointsAndDistributesVisibleLetters() {
+        val count = AlphabetSections.size
+        for (slots in 0..count) {
+            val ranges = alphabetSectionRanges(count, slots)
+            assertEquals((1..count).toList(), ranges.flatMap { it.toList() })
+            assertEquals(listOf(1..1, 2..2), ranges.take(2))
+            assertEquals(listOf((count - 1)..(count - 1), count..count), ranges.takeLast(2))
+            assertTrue(ranges.size <= slots.coerceAtLeast(5))
+        }
+        assertEquals(
+            listOf(1..1, 2..2, 3..14, 15..15, 16..26, 27..27, 28..28),
+            alphabetSectionRanges(count, slots = 7),
+        )
+    }
+
+    @Test
+    fun dragAcrossCompressedAlphabetReachesEveryHiddenLetter() {
+        val ranges = listOf(0..0) + alphabetSectionRanges(AlphabetSections.size, slots = 5)
+        val height = 90
+        assertEquals(0, alphabetItemIndexAt(-1f, height, ranges))
+        assertEquals(1, alphabetItemIndexAt(15f, height, ranges))
+        assertEquals(2, alphabetItemIndexAt(30f, height, ranges))
+        for (offset in 0..23) {
+            val y = 45f + (offset + 0.5f) * (15f / 24)
+            assertEquals(3 + offset, alphabetItemIndexAt(y, height, ranges))
+        }
+        assertEquals(27, alphabetItemIndexAt(60f, height, ranges))
+        assertEquals(28, alphabetItemIndexAt(90f, height, ranges))
     }
 
     @Test

@@ -1,6 +1,14 @@
 package com.melox.player.ui.component
 
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.ui.layout.layout
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
@@ -14,6 +22,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.*
 import top.yukonga.miuix.kmp.glass.*
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun TopAppBar(
     title: String,
@@ -46,6 +55,8 @@ internal fun TopAppBar(
         )
     } else {
         val searchExpanded = LocalGlassSearchPage.current?.isExpanded == true
+        val indexTopBarHeight = LocalAlphabetIndexTopBarHeight.current
+        val topInsets = WindowInsets.statusBarsIgnoringVisibility.union(WindowInsets.systemBars)
         GlassTopAppBar(
             title = title, modifier = modifier, subtitle = subtitle,
             compact = com.melox.player.ui.usesMiuixSmallTopAppBar(),
@@ -62,7 +73,25 @@ internal fun TopAppBar(
             navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
             actions = {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }
-            }, bottomContent = bottomContent,
+            },
+            bottomContent = {
+                if (indexTopBarHeight == null) {
+                    bottomContent()
+                } else {
+                    Box(Modifier.layout { measurable, constraints ->
+                        val bottom = measurable.measure(constraints)
+                        // The native collapse range is the full large-title height.
+                        val limit = scrollBehavior?.state?.heightOffsetLimit ?: 0f
+                        if (!expandable || limit != -Float.MAX_VALUE) {
+                            val titleHeight = if (expandable) (-limit).roundToInt().coerceAtLeast(0) else 0
+                            indexTopBarHeight.intValue = topInsets.getTop(this) +
+                                TopAppBarDefaults.CollapsedHeight.roundToPx() + titleHeight +
+                                TopAppBarDefaults.LargeTitleBottomPadding.roundToPx() + bottom.height
+                        }
+                        layout(bottom.width, bottom.height) { bottom.placeRelative(0, 0) }
+                    }) { bottomContent() }
+                }
+            },
         )
     }
 }

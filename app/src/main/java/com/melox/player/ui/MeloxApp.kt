@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -126,7 +125,8 @@ import com.melox.player.ui.component.TopBarBlurSettings
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.library.LibrarySearchBar
 import com.melox.player.ui.component.library.LibrarySearchButton
-import com.melox.player.ui.component.library.LocalAlphabetIndexBottomPadding
+import com.melox.player.ui.component.LocalAlphabetIndexBottomPadding
+import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.MusicSortButton
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
 import com.melox.player.ui.component.library.SelectionNavigationIconAnimatedContent
@@ -773,7 +773,6 @@ fun MeloxApp(
             liquidGlassSupported = liquidGlassSupported,
         )
         val useSmallTopAppBar = landscape
-        val rootIndexBottomSpacing = if (miniPlayerUsesNormalChrome) 12.dp else 6.dp
         val homeScrollBehavior = MiuixScrollBehavior()
         val songsScrollBehavior = rememberSearchTopBarScrollBehavior(songSearchVisible)
         val libraryScrollBehavior = rememberSearchTopBarScrollBehavior(false)
@@ -952,6 +951,7 @@ fun MeloxApp(
                     scrollBehavior = pageLibraryScrollBehavior,
                     useSmallTopAppBar = useSmallTopAppBar,
                     isRootPage = section == null,
+                    hasAlphabetIndex = !overview,
                     actions = {
                         if (!overview) {
                             if (canSearch) {
@@ -1039,7 +1039,7 @@ fun MeloxApp(
                             }
                         }
                     },
-                ) { contentPadding, _, indexTopPadding ->
+                ) { contentPadding, _ ->
                     if (overview) {
                         LibraryOverviewScreen(
                             albums = remember(uiState.albums, albumSortConfig) { sortAlbums(uiState.albums, albumSortConfig) },
@@ -1067,7 +1067,6 @@ fun MeloxApp(
                             },
                         )
                     } else {
-                        val layoutDirection = LocalLayoutDirection.current
                         val onLibraryIndexTargetChanged: (Int, Boolean) -> Unit =
                             { _, restoreLargeTitle ->
                                 val state = pageLibraryScrollBehavior.state
@@ -1082,12 +1081,6 @@ fun MeloxApp(
                         Box(modifier = Modifier.fillMaxSize()) {
                             val libraryIndexModifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(
-                                    top = indexTopPadding + 4.dp,
-                                    end = contentPadding.calculateEndPadding(layoutDirection),
-                                    bottom = LocalAlphabetIndexBottomPadding.current,
-                                )
-                                .fillMaxHeight()
                             val renderLibrarySection: @Composable (Int) -> Unit = { libraryPage ->
                                 when (libraryPage) {
                                     LIBRARY_ALBUMS_TAB_INDEX -> AlbumLibraryScreen(
@@ -1107,7 +1100,6 @@ fun MeloxApp(
                                             currentRoute = AppRoute.ALBUM_DETAIL
                                         },
                                         scrollBehavior = pageLibraryScrollBehavior,
-                                        indexTopPadding = indexTopPadding,
                                         gridState = pageAlbumsGridState,
                                         contentPadding = contentPadding,
                                         showIndex = false,
@@ -1125,7 +1117,6 @@ fun MeloxApp(
                                             openTrackArtist(artist)
                                         },
                                         scrollBehavior = pageLibraryScrollBehavior,
-                                        indexTopPadding = indexTopPadding,
                                         listState = pageArtistsListState,
                                         contentPadding = contentPadding,
                                         showIndex = false,
@@ -1152,7 +1143,6 @@ fun MeloxApp(
                                             viewModel.addBlockedFolderPath(path)
                                         },
                                         scrollBehavior = pageLibraryScrollBehavior,
-                                        indexTopPadding = indexTopPadding,
                                         listState = pageFoldersListState,
                                         contentPadding = contentPadding,
                                         showIndex = false,
@@ -1164,6 +1154,7 @@ fun MeloxApp(
                             when (section) {
                                 LIBRARY_ALBUMS_TAB_INDEX -> if (
                                     albumPresentation.items.isNotEmpty() &&
+                                    librarySearchQuery.isBlank() &&
                                     (
                                         albumSortConfig.field == AlbumSortField.ALBUM ||
                                             albumSortConfig.field ==
@@ -1171,8 +1162,8 @@ fun MeloxApp(
                                     )
                                 ) {
                                     AlphabetSideBar(
+                                        contentPadding = LocalPageAlphabetIndexPadding.current,
                                         sectionIndexMap = albumPresentation.sectionIndexMap,
-                                        topOffset = 108.dp,
                                         itemCount = albumPresentation.items.size,
                                         scrollStateKey = pageAlbumsGridState,
                                         isAtTarget = { index ->
@@ -1192,11 +1183,12 @@ fun MeloxApp(
 
                                 LIBRARY_ARTISTS_TAB_INDEX -> if (
                                     artistPresentation.items.isNotEmpty() &&
+                                    librarySearchQuery.isBlank() &&
                                     artistSortConfig.field == ArtistSortField.NAME
                                 ) {
                                     AlphabetSideBar(
+                                        contentPadding = LocalPageAlphabetIndexPadding.current,
                                         sectionIndexMap = artistPresentation.sectionIndexMap,
-                                        topOffset = 108.dp,
                                         itemCount = artistPresentation.items.size,
                                         scrollStateKey = pageArtistsListState,
                                         isAtTarget = { index ->
@@ -1219,8 +1211,8 @@ fun MeloxApp(
                                     folderSortConfig.field == FolderSortField.NAME
                                 ) {
                                     AlphabetSideBar(
+                                        contentPadding = LocalPageAlphabetIndexPadding.current,
                                         sectionIndexMap = folderLibrarySectionIndexMap,
-                                        topOffset = 108.dp,
                                         itemCount = folderPresentation.items.size + 1,
                                         scrollStateKey = pageFoldersListState,
                                         isAtTarget = { index ->
@@ -1285,7 +1277,7 @@ fun MeloxApp(
                         outerPadding = outerPadding,
                         scrollBehavior = homeScrollBehavior,
                         useSmallTopAppBar = useSmallTopAppBar,
-                    ) { contentPadding, scrollBehavior, _ ->
+                    ) { contentPadding, scrollBehavior ->
                         HomeScreen(
                             tracks = uiState.tracks,
                             recommendations = homeRecommendations,
@@ -1349,6 +1341,7 @@ fun MeloxApp(
                         outerPadding = outerPadding,
                         scrollBehavior = songsScrollBehavior,
                         useSmallTopAppBar = useSmallTopAppBar,
+                        hasAlphabetIndex = true,
                         navigationIcon = {
                             SelectionNavigationIconAnimatedContent(
                                 selectionMode = songsSelectionMode,
@@ -1442,7 +1435,7 @@ fun MeloxApp(
                                 },
                             )
                         },
-                    ) { contentPadding, scrollBehavior, indexTopPadding ->
+                    ) { contentPadding, scrollBehavior ->
                         val showingSearch = LocalGlassSearchResults.current
                         MusicListScreen(
                             showLocateAction = !showingSearch,
@@ -1472,7 +1465,6 @@ fun MeloxApp(
                             showLyricoEditor = settings.showLyricoEditor,
                             showLunaBeatEditor = settings.showLunaBeatEditor,
                             scrollBehavior = scrollBehavior,
-                            indexTopPadding = indexTopPadding,
                             listState = if (showingSearch) songsSearchListState else songsListState,
                             onRefresh = if (settings.songListPullToRefresh && !showingSearch) {
                                 viewModel::scanMusic
@@ -1492,7 +1484,7 @@ fun MeloxApp(
                         outerPadding = outerPadding,
                         scrollBehavior = settingsScrollBehavior,
                         useSmallTopAppBar = useSmallTopAppBar,
-                    ) { contentPadding, scrollBehavior, _ ->
+                    ) { contentPadding, scrollBehavior ->
                         SettingsScreen(
                             defaultHomePage = settings.defaultHomePage,
                             trackCount = uiState.tracks.size,
@@ -1991,31 +1983,19 @@ fun MeloxApp(
                                     playerContentBounds = it.boundsInRoot()
                                 },
                             ) {
-                                val songsIndexBottomPadding = maxOf(
-                                    retainedRootBottomPadding + rootIndexBottomSpacing,
-                                    if (playerTransition.miniPlayerBounds.width > 0f && playerContentBounds.width > 0f) {
-                                        with(density) {
-                                            (playerContentBounds.bottom - playerTransition.miniPlayerBounds.top)
-                                                .coerceAtLeast(0f).toDp()
-                                        } + 24.dp + top.yukonga.miuix.kmp.basic.ButtonDefaults.MinHeight
-                                    } else {
-                                        0.dp
-                                    },
-                                )
-                                var retainedSongsIndexBottomPadding by remember(
-                                    windowSize, density, miniPlayerUsesNormalChrome,
-                                ) { mutableStateOf(songsIndexBottomPadding) }
-                                if (currentRoute == AppRoute.ROOT) {
-                                    SideEffect {
-                                        retainedSongsIndexBottomPadding = songsIndexBottomPadding
+                                val miniPlayerBounds = playerTransition.miniPlayerBounds
+                                val indexBottomPadding = if (
+                                    hasCurrentItem && miniPlayerBounds.width > 0f && playerContentBounds.height > 0f
+                                ) {
+                                    with(density) {
+                                        (playerContentBounds.bottom - miniPlayerBounds.top)
+                                            .coerceIn(0f, playerContentBounds.height).toDp()
                                     }
+                                } else {
+                                    outerPadding.calculateBottomPadding()
                                 }
                                 CompositionLocalProvider(
-                                    LocalAlphabetIndexBottomPadding provides if (currentRoute == AppRoute.ROOT) {
-                                        songsIndexBottomPadding
-                                    } else {
-                                        retainedSongsIndexBottomPadding
-                                    },
+                                    LocalAlphabetIndexBottomPadding provides indexBottomPadding,
                                 ) {
                                 PredictiveNavDisplay(
                                     backStack = navBackStack,

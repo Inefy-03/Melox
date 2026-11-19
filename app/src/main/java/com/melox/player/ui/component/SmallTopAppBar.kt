@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import top.yukonga.miuix.kmp.upstream.glass.glassSearchBarTransition
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.*
@@ -37,12 +38,17 @@ internal fun SmallTopAppBar(
     val inlineTitle = shouldShowInlineTopBarTitle(
         title, titleColor.alpha, navigation?.titleAlpha?.invoke(), inlineTitleEnabled,
     )
+    val indexTopBarHeight = LocalAlphabetIndexTopBarHeight.current
     val searchExpanded = LocalGlassSearchPage.current?.isExpanded == true
     androidx.compose.runtime.CompositionLocalProvider(
         LocalGlassCompactTitleStartProgress provides (if (inlineTitleEnabled) navigation?.titleAlpha?.let { 1f - it() } ?: 0f else 0f),
     ) {
         GlassTopAppBar(
-            title = title, modifier = modifier, subtitle = subtitle,
+            title = title,
+            modifier = if (indexTopBarHeight != null && expandedContent == null) {
+                modifier.onSizeChanged { indexTopBarHeight.intValue = it.height }
+            } else modifier,
+            subtitle = subtitle,
             compact = true,
             expandedContent = expandedContent,
             showTitleWhileExpanded = showTitleWhileExpanded,

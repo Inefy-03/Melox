@@ -83,6 +83,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -106,7 +107,9 @@ import com.melox.player.ui.screen.settings.LyricsInterfacePreferences
 import com.melox.player.ui.screen.settings.LyricsTranslationPreferences
 import com.melox.player.ui.component.library.ArtworkPreviewOverlay
 import com.melox.player.ui.component.library.ArtworkPreviewRequest
+import com.melox.player.ui.component.library.TrackArtistsSheet
 import com.melox.player.ui.component.library.TrackActionsOverlay
+import com.melox.player.ui.component.library.participatingArtistGroups
 import com.melox.player.ui.component.bottomSheetCardColor
 import com.melox.player.ui.component.bottomSheetMaterialColor
 import com.melox.player.ui.component.playback.ArtworkTransitionState
@@ -271,6 +274,18 @@ internal fun FullPlayerScreen(
             }
         } else null
     val hideArtworkForPreview = artworkPreviewPresented && artworkPreview?.contentUri == item?.contentUri
+
+    var selectedArtists by remember { mutableStateOf(emptyList<ArtistGroup>()) }
+    val currentArtists = remember(currentTrack, artistGroups) {
+        currentTrack?.let { participatingArtistGroups(it, artistGroups) }.orEmpty()
+    }
+    val openArtists: (() -> Unit)? =
+        if (interactionEnabled && lyricsPagingEnabled && !immersiveMode && currentArtists.isNotEmpty()) {
+            {
+                if (currentArtists.size == 1) onGoToArtist(currentArtists.single())
+                else selectedArtists = currentArtists
+            }
+        } else null
     var showTrackActions by remember { mutableStateOf(false) }
     var showLyricsSettings by remember { mutableStateOf(false) }
     var showAudioSettings by remember { mutableStateOf(false) }
@@ -614,6 +629,7 @@ internal fun FullPlayerScreen(
                                         leftAligned = displayedLeftAlignPlayerTitle,
                                         titleSlotHeight = playerHeaderTitleSlotHeight,
                                         artistSlotHeight = playerHeaderArtistSlotHeight,
+                                        onOpenArtists = openArtists,
                                         modifier = Modifier
                                             .width(artworkContentWidth)
                                             .playerChromeVisibility(!immersiveMode),
@@ -760,6 +776,7 @@ internal fun FullPlayerScreen(
                                         leftAligned = displayedLeftAlignPlayerTitle,
                                         titleSlotHeight = playerHeaderTitleSlotHeight,
                                         artistSlotHeight = playerHeaderArtistSlotHeight,
+                                        onOpenArtists = openArtists,
                                         modifier = Modifier
                                             .width(contentWidth)
                                             .playerChromeVisibility(!immersiveMode),
@@ -1207,6 +1224,9 @@ internal fun FullPlayerScreen(
                                 .padding(top = headerTopPadding),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
+                            val headerPlaybackGesturesEnabled = !immersiveMode && hideLyricsControls &&
+                                lyricsPagingEnabled && item != null &&
+                                pagerState.settledPage == 1 && !pagerState.isScrollInProgress
                             PlayerHeader(
                                 item = item,
                                 trackChangeDirection = playback.trackChangeDirection,
@@ -1215,14 +1235,13 @@ internal fun FullPlayerScreen(
                                 leftAligned = displayedLeftAlignPlayerTitle,
                                 titleSlotHeight = playerHeaderTitleSlotHeight,
                                 artistSlotHeight = playerHeaderArtistSlotHeight,
+                                onOpenArtists = openArtists,
+                                onArtistDoubleTap = onTogglePlayPause.takeIf { headerPlaybackGesturesEnabled },
                                 modifier = Modifier
                                     .width(portraitArtworkContentWidth)
                                     .then(
                                         rememberPlayerHeaderGestureModifier(
-                                            enabled = !immersiveMode && hideLyricsControls &&
-                                                lyricsPagingEnabled && item != null &&
-                                                pagerState.settledPage == 1 &&
-                                                !pagerState.isScrollInProgress,
+                                            enabled = headerPlaybackGesturesEnabled,
                                             playWhenReady = playback.playWhenReady,
                                             onTogglePlayPause = onTogglePlayPause,
                                             onPrevious = { onPrevious() },
@@ -1248,6 +1267,11 @@ internal fun FullPlayerScreen(
                     showMusicTagEditor = showMusicTagEditor,
                     showLyricoEditor = showLyricoEditor,
                     showLunaBeatEditor = showLunaBeatEditor,
+                )
+                TrackArtistsSheet(
+                    artists = selectedArtists,
+                    onDismiss = { selectedArtists = emptyList() },
+                    onGoToArtist = onGoToArtist,
                 )
                 artworkPreview?.let { request ->
                     ArtworkPreviewOverlay(
@@ -1635,6 +1659,8 @@ private fun PlayerHeader(
     titleSlotHeight: Dp,
     artistSlotHeight: Dp,
     modifier: Modifier = Modifier,
+    onOpenArtists: (() -> Unit)? = null,
+    onArtistDoubleTap: (() -> Unit)? = null,
 ) {
     val direction = remember(item?.contentUri) { trackChangeDirection }
     val header = PlayerHeaderContent(
@@ -1652,6 +1678,16 @@ private fun PlayerHeader(
     )
     val titleFadeWidthPx = with(LocalDensity.current) {
         PLAYER_HEADER_TITLE_EDGE_FADE_WIDTH.roundToPx()
+    }
+    val artistAlignment = remember(alignmentProgress) {
+        Alignment { size, space, direction ->
+            val start = Alignment.CenterStart.align(size, space, direction)
+            val center = Alignment.Center.align(size, space, direction)
+            IntOffset(
+                x = (start.x + (center.x - start.x) * alignmentProgress.value).roundToInt(),
+                y = start.y,
+            )
+        }
     }
     Box(modifier = modifier.fillMaxWidth()) {
         Box(
@@ -1673,9 +1709,6 @@ private fun PlayerHeader(
                 contentAlignment = if (leftAligned) Alignment.CenterStart else Alignment.Center,
             ) { target ->
                 var titleLayout by remember(target.trackKey) {
-                    mutableStateOf<TextLayoutResult?>(null)
-                }
-                var artistLayout by remember(target.trackKey) {
                     mutableStateOf<TextLayoutResult?>(null)
                 }
                 Column(
@@ -1719,14 +1752,16 @@ private fun PlayerHeader(
                         }
                     }
                     Box(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = artistSlotHeight),
-                        contentAlignment = if (leftAligned) Alignment.CenterStart else Alignment.Center,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = artistSlotHeight)
+                            .padding(start = PLAYER_HEADER_TITLE_EDGE_FADE_WIDTH),
+                        contentAlignment = artistAlignment,
                     ) {
                         Text(
                             text = playerHeaderArtistText(target.artist),
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(start = PLAYER_HEADER_TITLE_EDGE_FADE_WIDTH)
-                                .animatedPlayerTextAlignment(artistLayout, alignmentProgress),
+                            modifier = Modifier.playerArtistTextAction(
+                                onOpenArtists = onOpenArtists.takeIf { target.trackKey == header.trackKey },
+                                onTogglePlayPause = onArtistDoubleTap,
+                            ),
                             style = MiuixTheme.textStyles.body2.copy(
                                 fontSize = 14.sp,
                                 lineHeight = PLAYER_HEADER_ARTIST_LINE_HEIGHT,
@@ -1735,7 +1770,6 @@ private fun PlayerHeader(
                             textAlign = TextAlign.Start,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            onTextLayout = { artistLayout = it },
                         )
                     }
                 }

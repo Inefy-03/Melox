@@ -83,6 +83,40 @@ internal fun rememberPlayerHeaderGestureModifier(
         }
 }
 
+@Composable
+internal fun Modifier.playerArtistTextAction(
+    onOpenArtists: (() -> Unit)?,
+    onTogglePlayPause: (() -> Unit)?,
+): Modifier {
+    if (onOpenArtists == null) return this
+    val openArtists by rememberUpdatedState(onOpenArtists)
+    val togglePlayback by rememberUpdatedState(onTogglePlayPause)
+    val haptics = LocalHapticFeedback.current
+    val label = stringResource(R.string.participating_artists)
+    return semantics {
+        onClick(label = label) {
+            openArtists()
+            true
+        }
+    }.pointerInput(onTogglePlayPause != null, haptics) {
+        detectTapGestures(
+            onTap = { position ->
+                if (position.x >= 0f && position.x < size.width &&
+                    position.y >= 0f && position.y < size.height
+                ) {
+                    openArtists()
+                }
+            },
+            onDoubleTap = if (onTogglePlayPause != null) {
+                {
+                    haptics.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                    togglePlayback?.invoke()
+                }
+            } else null,
+        )
+    }
+}
+
 internal fun playerHeaderSwipeDirection(distancePx: Float, thresholdPx: Float): Int = when {
     distancePx >= thresholdPx -> -1
     distancePx <= -thresholdPx -> 1

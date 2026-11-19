@@ -105,8 +105,7 @@ fun TrackActionsOverlay(
     var artworkPreviewPresented by remember { mutableStateOf(false) }
     var songInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var retainedSongInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
-    var artistListTrack by remember { mutableStateOf<MusicTrack?>(null) }
-    var retainedArtistListTrack by remember { mutableStateOf<MusicTrack?>(null) }
+    var selectedArtists by remember { mutableStateOf(emptyList<ArtistGroup>()) }
     val editors = visibleExternalEditors(showMusicTagEditor, showLyricoEditor, showLunaBeatEditor)
     var pendingExternalEditTrackId by rememberSaveable { mutableStateOf<Long?>(null) }
     val finishExternalEdit = {
@@ -167,18 +166,12 @@ fun TrackActionsOverlay(
             showMutationConfirm = false
             songInfoTrack = null
             retainedSongInfoTrack = null
-            artistListTrack = null
-            retainedArtistListTrack = null
+            selectedArtists = emptyList()
         }
     }
     LaunchedEffect(songInfoTrack?.id) {
         if (songInfoTrack != null) {
             retainedSongInfoTrack = songInfoTrack
-        }
-    }
-    LaunchedEffect(artistListTrack?.id) {
-        if (artistListTrack != null) {
-            retainedArtistListTrack = artistListTrack
         }
     }
     OverlayBottomSheet(
@@ -302,7 +295,7 @@ fun TrackActionsOverlay(
                                         goToArtist(selectedArtistGroups.single())
                                         onDismiss()
                                     } else {
-                                        artistListTrack = selectedTrack
+                                        selectedArtists = selectedArtistGroups
                                         onDismiss()
                                     }
                                 },
@@ -532,46 +525,12 @@ fun TrackActionsOverlay(
         }
     }
 
-    OverlayBottomSheet(
-        show = artistListTrack != null,
-        backgroundColor = bottomSheetMaterialColor(),
-        title = stringResource(R.string.participating_artists),
-        startAction = {
-            BottomSheetCloseButton(onClick = { artistListTrack = null })
-        },
-        enableWindowDim = true,
-        onDismissRequest = { artistListTrack = null },
-        onDismissFinished = { retainedArtistListTrack = null },
-    ) {
-        (artistListTrack ?: retainedArtistListTrack)?.let { artistTrack ->
-            SheetScrollableContent(
-                bottomPadding = navigationBarBottomPadding + 12.dp,
-            ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    colors = CardDefaults.defaultColors(
-                        color = bottomSheetCardColor(),
-                    ),
-                ) {
-                    participatingArtistGroups(
-                        track = artistTrack,
-                        artistGroups = artistGroups,
-                    ).forEach { artist ->
-                        ArtistListItem(
-                            artist = artist,
-                            artworkTextSpacing = 12.dp,
-                            insideMargin = PaddingValues(12.dp),
-                            showNavigationIcon = false,
-                            onClick = {
-                                artistListTrack = null
-                                onGoToArtist?.invoke(artist)
-                            },
-                        )
-                    }
-                }
-            }
-        }
+    if (onGoToArtist != null) {
+        TrackArtistsSheet(
+            artists = selectedArtists,
+            onDismiss = { selectedArtists = emptyList() },
+            onGoToArtist = onGoToArtist,
+        )
     }
     artworkPreview?.let { request ->
         ArtworkPreviewOverlay(
@@ -579,6 +538,48 @@ fun TrackActionsOverlay(
             onPresented = { artworkPreviewPresented = it },
             onClosed = { artworkPreview = null },
         )
+    }
+}
+
+@Composable
+internal fun TrackArtistsSheet(
+    artists: List<ArtistGroup>,
+    onDismiss: () -> Unit,
+    onGoToArtist: (ArtistGroup) -> Unit,
+) {
+    var retainedArtists by remember { mutableStateOf(artists) }
+    LaunchedEffect(artists) {
+        if (artists.isNotEmpty()) retainedArtists = artists
+    }
+    val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    OverlayBottomSheet(
+        show = artists.isNotEmpty(),
+        backgroundColor = bottomSheetMaterialColor(),
+        title = stringResource(R.string.participating_artists),
+        startAction = { BottomSheetCloseButton(onClick = onDismiss) },
+        enableWindowDim = true,
+        onDismissRequest = onDismiss,
+        onDismissFinished = { if (artists.isEmpty()) retainedArtists = emptyList() },
+    ) {
+        SheetScrollableContent(bottomPadding = navigationBottom + 12.dp) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.defaultColors(color = bottomSheetCardColor()),
+            ) {
+                artists.ifEmpty { retainedArtists }.forEach { artist ->
+                    ArtistListItem(
+                        artist = artist,
+                        artworkTextSpacing = 12.dp,
+                        insideMargin = PaddingValues(12.dp),
+                        showNavigationIcon = false,
+                        onClick = {
+                            onDismiss()
+                            onGoToArtist(artist)
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 

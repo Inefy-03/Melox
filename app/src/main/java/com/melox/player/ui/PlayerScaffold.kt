@@ -128,8 +128,8 @@ internal data class MiniPlayerChrome(
         get() = if (style == BottomBarStyle.GLASS && !useIosLikeLayout) 36.dp
             else miniPlayerArtworkSize(style == BottomBarStyle.NORMAL, usesSmallPlayerBar)
 
-    val glassArtworkStartPadding: Dp
-        get() = 16.dp
+    fun glassArtworkStartPadding(circular: Boolean): Dp =
+        if (circular) (height - artworkSize) / 2 else 16.dp
 
     val glassArtworkCornerRadius: Dp
         get() = 6.dp
@@ -271,8 +271,6 @@ internal fun PlayerScaffold(
             miniPlayer = miniPlayer,
             bottomSearchAction = bottomSearchAction,
             showBottomSearch = showBottomSearch,
-            searchExpanded = searchExpanded,
-            searchOpen = searchOpen,
             content = { padding -> stableContent(padding, false) },
         )
         return

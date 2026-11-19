@@ -32,13 +32,13 @@ class SearchPresentationOptimizationTest {
                 val result = fixture.next()
                 assertSame(initial.queueItems, result.queueItems)
                 assertEquals(ids, result.items.map { it.id })
-                assertTrue(result.sectionIndexMap.isEmpty())
+                assertSame(initial.queueSectionIndexMap, result.queueSectionIndexMap)
             }
             fixture.requests.value = fixture.requests.value.copy(query = "  ")
             val cleared = fixture.next()
             assertSame(initial.queueItems, cleared.items)
-            assertSame(initial.sectionIndexMap, cleared.sectionIndexMap)
-            assertEquals(mapOf("A" to 0, "Z" to 1), cleared.sectionIndexMap)
+            assertSame(initial.queueSectionIndexMap, cleared.queueSectionIndexMap)
+            assertEquals(mapOf("A" to 0, "Z" to 1), cleared.queueSectionIndexMap)
         } finally { fixture.close() }
     }
 
@@ -82,7 +82,7 @@ class SearchPresentationOptimizationTest {
             fixture.tracks.value = fixture.tracks.value.filterNot { it.id == 2L }
             val hidden = fixture.next()
             assertEquals(listOf(3L, 1L), hidden.queueItems.map { it.id })
-            assertFalse(hidden.sectionIndexMap.containsKey("A"))
+            assertFalse(hidden.queueSectionIndexMap.containsKey("A"))
         } finally { fixture.close() }
     }
 

@@ -1,15 +1,6 @@
 package com.melox.player.ui.component
 
 import androidx.compose.runtime.*
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 internal class GlassSearchSession(
     val expanded: State<Boolean>,
@@ -29,23 +20,12 @@ internal fun showGlassSearchResults(
 
 internal class GlassSearchPage {
     var session: GlassSearchSession? by mutableStateOf(null)
-    var materialProgress: State<Float>? by mutableStateOf(null)
-    val buttonAnchor = top.yukonga.miuix.kmp.glass.GlassPopupAnchor()
-    var buttonBounds: Rect? = null
-    var fieldBounds: Rect? = null
-    var overlayPresentation: State<Boolean>? by mutableStateOf(null)
     var transitionActive by mutableStateOf(false)
     val isExpanded: Boolean get() = session?.expanded?.value == true
 }
 
-internal class WideGlassSearchHost {
-    val pages = mutableStateListOf<GlassSearchPage>()
-    val expandedPage: GlassSearchPage? get() = pages.lastOrNull { it.isExpanded }
-}
-
-internal val LocalWideGlassSearchHost = staticCompositionLocalOf<WideGlassSearchHost?> { null }
-
 internal val LocalGlassSearchPage = staticCompositionLocalOf<GlassSearchPage?> { null }
+internal val LocalGlassSearchResults = staticCompositionLocalOf { false }
 
 @Composable
 internal fun registerGlassSearchSession(
@@ -68,37 +48,4 @@ internal fun registerGlassSearchSession(
         onDispose { if (page.session === session) page.session = null }
     }
     return true
-}
-
-/** Observe outside taps without taking clicks or scroll gestures away from page content. */
-@Composable
-internal fun Modifier.dismissWideSearchOnOutsideTap(
-    currentPage: () -> GlassSearchPage?,
-    coordinates: () -> LayoutCoordinates?,
-): Modifier {
-    val focusManager = LocalFocusManager.current
-    val keyboard = LocalSoftwareKeyboardController.current
-    return pointerInput(Unit) {
-        awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-            val page = currentPage()
-            val session = page?.session
-            val rootPosition = coordinates()?.takeIf { it.isAttached }?.localToRoot(down.position)
-            val outside = page?.isExpanded == true && rootPosition != null &&
-                page.fieldBounds?.contains(rootPosition) == false
-            var moved = false
-            do {
-                val event = awaitPointerEvent(PointerEventPass.Initial)
-                if (event.changes.size > 1 || event.changes.any {
-                        (it.position - down.position).getDistance() > viewConfiguration.touchSlop
-                    }) moved = true
-            } while (event.changes.any { it.pressed })
-            if (outside && !moved && page.session === session && page.isExpanded) {
-                keyboard?.hide()
-                focusManager.clearFocus(force = true)
-                session?.onFocusedChange?.value?.invoke(false)
-                if (session?.query?.value?.isEmpty() == true) session.onDismiss.value()
-            }
-        }
-    }
 }

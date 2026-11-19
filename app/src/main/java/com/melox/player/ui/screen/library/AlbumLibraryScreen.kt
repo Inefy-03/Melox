@@ -24,6 +24,8 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import com.melox.player.ui.component.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.platform.LocalDensity
+import com.melox.player.ui.isMiuixWideLayout
+import com.melox.player.ui.component.library.gridViewportWidth
 import com.melox.player.ui.component.library.isCompactLandscapeGrid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -73,8 +75,6 @@ fun AlbumLibraryScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     showIndex: Boolean = true,
-    landscape: Boolean = false,
-    navigationRailExpanded: Boolean = false,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     PreserveSortScrollPosition(
@@ -95,29 +95,16 @@ fun AlbumLibraryScreen(
         if (sortConfig.descending) AlphabetSections.asReversed() else AlphabetSections
     }
 
-    val windowSize = LocalWindowInfo.current.containerSize
-    val compactLandscape = with(LocalDensity.current) { isCompactLandscapeGrid(windowSize.width.toDp(), windowSize.height.toDp()) }
-    val wideGlassLayout = windowSize.width > windowSize.height
-    val horizontalGridPadding = if (compactLandscape) 16.dp else 20.dp
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val gridContentPadding = PaddingValues(
-            start = contentPadding.calculateStartPadding(layoutDirection) + horizontalGridPadding,
+            start = contentPadding.calculateStartPadding(layoutDirection) + AlbumGridHorizontalPadding,
             top = contentPadding.calculateTopPadding() + 12.dp,
-            end = contentPadding.calculateEndPadding(layoutDirection) + horizontalGridPadding,
+            end = contentPadding.calculateEndPadding(layoutDirection) + AlbumGridHorizontalPadding,
             bottom = contentPadding.calculateBottomPadding() + 12.dp,
         )
         LazyVerticalGrid(
             columns = GridCells.Fixed(
-                albumGridColumnCount(
-                    gridStyle = sortConfig.gridStyle,
-                    landscape = landscape || wideGlassLayout,
-                    navigationRailExpanded = navigationRailExpanded,
-                    availableWidth = maxWidth - contentPadding.calculateStartPadding(layoutDirection) -
-                        contentPadding.calculateEndPadding(layoutDirection),
-                    spaciousCells = wideGlassLayout,
-                    horizontalPadding = horizontalGridPadding * 2,
-                    compactLandscape = compactLandscape,
-                ),
+                albumGridColumns(sortConfig.gridStyle, maxWidth, contentPadding),
             ),
             modifier = Modifier
                 .fillMaxSize()
@@ -202,6 +189,29 @@ fun AlbumLibraryScreen(
             )
         }
     }
+}
+
+internal val AlbumGridHorizontalPadding = 16.dp
+
+@Composable
+internal fun albumGridColumns(
+    gridStyle: AlbumGridStyle,
+    maxWidth: Dp,
+    contentPadding: PaddingValues,
+): Int {
+    val window = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current
+    val width = with(density) { window.width.toDp() }
+    val height = with(density) { window.height.toDp() }
+    return albumGridColumnCount(
+        gridStyle = gridStyle,
+        landscape = width > height || isMiuixWideLayout(width, height),
+        navigationRailExpanded = false,
+        availableWidth = contentPadding.gridViewportWidth(maxWidth, LocalLayoutDirection.current),
+        spaciousCells = width > height,
+        horizontalPadding = AlbumGridHorizontalPadding * 2,
+        compactLandscape = isCompactLandscapeGrid(width, height),
+    )
 }
 
 internal fun albumGridColumnCount(

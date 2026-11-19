@@ -135,10 +135,12 @@ fun MusicListScreen(
         )
     }
     var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
+    val startPadding = contentPadding.calculateStartPadding(layoutDirection)
+    val endPadding = contentPadding.calculateEndPadding(layoutDirection)
     val listContentPadding = PaddingValues(
-        start = contentPadding.calculateStartPadding(layoutDirection),
+        start = if (onRefresh == null) startPadding else 0.dp,
         top = contentPadding.calculateTopPadding() + topContentSpacing,
-        end = contentPadding.calculateEndPadding(layoutDirection),
+        end = if (onRefresh == null) endPadding else 0.dp,
         bottom = maxOf(contentPadding.calculateBottomPadding(), locateBottomPadding) + 12.dp,
     )
     val sections = remember(sortConfig.descending) {
@@ -242,7 +244,7 @@ fun MusicListScreen(
             PullToRefresh(
                 isRefreshing = shouldKeepMusicPullRefreshing(scanStatus, pullToRefreshState.refreshState),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().padding(start = startPadding, end = endPadding),
                 pullToRefreshState = pullToRefreshState,
                 contentPadding = listContentPadding,
                 topAppBarScrollBehavior = scrollBehavior,

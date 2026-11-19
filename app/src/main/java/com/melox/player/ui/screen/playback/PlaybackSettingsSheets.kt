@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRowDefaults
+import top.yukonga.miuix.kmp.glass.GlassStroke
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -61,7 +62,6 @@ import top.yukonga.miuix.kmp.basic.NumberPickerDefaults
 import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRow
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import com.melox.player.ui.component.LocalBottomSheetBlurBackdrop
 import com.melox.player.ui.component.LocalPageSurfaceBackdrop
 import com.melox.player.ui.component.rememberBlurBackdrop
 import top.yukonga.miuix.kmp.basic.Text
@@ -399,7 +399,7 @@ internal fun AudioSettingsSheet(
             PlaybackSpeedSelector(
                 playbackSpeed = playbackSpeed,
                 onPlaybackSpeedChange = onPlaybackSpeedChange,
-                backdrop = LocalBottomSheetBlurBackdrop.current,
+                trackColor = bottomSheetCardColor(),
             )
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -427,6 +427,8 @@ internal fun PlaybackSpeedSelector(
     onPlaybackSpeedChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     backdrop: Backdrop? = null,
+    trackColor: Color = GlassSegmentedTabRowDefaults.restingTrackColor(),
+    stroke: GlassStroke? = GlassSegmentedTabRowDefaults.stroke(),
 ) {
     val speedLabels = stringArrayResource(R.array.playback_speed_options).toList()
     val speedDescription = stringResource(R.string.playback_speed_title)
@@ -453,6 +455,9 @@ internal fun PlaybackSpeedSelector(
             modifier = Modifier.fillMaxWidth(),
             tabWidth = tabWidth,
             backdrop = backdrop,
+            shadow = null,
+            stroke = stroke,
+            trackColor = trackColor,
             selectedIndex = selectedIndex,
             onSelect = { index -> onPlaybackSpeedChange(PLAYBACK_SPEED_VALUES[index]) },
         )
@@ -484,6 +489,7 @@ internal fun AudioPlaybackPreferences(
                 playbackSpeed = playbackSpeed,
                 onPlaybackSpeedChange = onPlaybackSpeedChange,
                 backdrop = wallpaperBackdrop ?: baseBackdrop,
+                stroke = null,
             )
         }
         AudioEffectPreferences(audioSessionId = audioSessionId)

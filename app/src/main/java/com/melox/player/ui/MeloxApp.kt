@@ -723,6 +723,7 @@ fun MeloxApp(
         val rootScope = rememberCoroutineScope()
         val homeListState = rememberLazyListState()
         val songsListState = rememberLazyListState()
+        val songsSearchListState = rememberLazyListState()
         val secondaryAlbumsGridState = rememberLazyGridState()
         val secondaryArtistsListState = rememberLazyListState()
         val secondaryFoldersListState = rememberLazyListState()
@@ -902,8 +903,8 @@ fun MeloxApp(
         val libraryRoutes = listOf(AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS)
         val sidebarRoutes = listOf(AppRoute.PLAYLISTS) + libraryRoutes
         val libraryOverviewListState = rememberLazyListState()
-        val libraryContent: @Composable (PaddingValues, Boolean, Int?, () -> Unit) -> Unit =
-            { outerPadding, navigationRailExpanded, section, onBack ->
+        val libraryContent: @Composable (PaddingValues, Int?, () -> Unit) -> Unit =
+            { outerPadding, section, onBack ->
                 val overview = section == null
                 var librarySearchQuery by secondarySearchQuery[section ?: LIBRARY_ALBUMS_TAB_INDEX]
                 var librarySearchVisible by secondarySearchVisible[section ?: LIBRARY_ALBUMS_TAB_INDEX]
@@ -1104,8 +1105,6 @@ fun MeloxApp(
                                         gridState = pageAlbumsGridState,
                                         contentPadding = contentPadding,
                                         showIndex = false,
-                                        landscape = landscape,
-                                        navigationRailExpanded = navigationRailExpanded,
                                     )
 
                                     LIBRARY_ARTISTS_TAB_INDEX -> ArtistLibraryScreen(
@@ -1241,8 +1240,8 @@ fun MeloxApp(
                     }
                 }
             }
-        val content: @Composable (PaddingValues, Boolean) -> Unit =
-            { outerPadding, navigationRailExpanded ->
+        val content: @Composable (PaddingValues) -> Unit =
+            { outerPadding ->
             FixedPageBackgroundHost(
                 modifier = Modifier.fillMaxSize(),
                 refreshSignal = {
@@ -1442,18 +1441,20 @@ fun MeloxApp(
                             )
                         },
                     ) { contentPadding, scrollBehavior, indexTopPadding ->
+                        val showingSearch = LocalGlassSearchResults.current
                         MusicListScreen(
-                            showLocateAction = true,
+                            showLocateAction = !showingSearch,
+                            showIndex = !showingSearch,
                             currentTrackContentUri = compactPlayback.currentItem?.contentUri,
                             miniPlayerBounds = playerTransition.miniPlayerBounds,
                             playerContentBounds = playerContentBounds,
                             onTrackClick = onSongListTrackClick,
-                            displayedTracks = musicPresentation.items,
+                            displayedTracks = if (showingSearch) musicPresentation.items else musicPresentation.queueItems,
                             queueTracks = musicPresentation.queueItems,
-                            sectionIndexMap = musicPresentation.sectionIndexMap,
+                            sectionIndexMap = musicPresentation.queueSectionIndexMap,
                             scanStatus = uiState.scanStatus,
                             currentTrackId = currentTrackId,
-                            query = musicPresentation.query,
+                            query = if (showingSearch) musicPresentation.query else "",
                             sortConfig = musicPresentation.sortConfig,
                             onPlayNext = viewModel::playNext,
                             onAppendToQueue = viewModel::appendToQueue,
@@ -1470,8 +1471,10 @@ fun MeloxApp(
                             showLunaBeatEditor = settings.showLunaBeatEditor,
                             scrollBehavior = scrollBehavior,
                             indexTopPadding = indexTopPadding,
-                            listState = songsListState,
-                            onRefresh = if (settings.songListPullToRefresh) viewModel::scanMusic else null,
+                            listState = if (showingSearch) songsSearchListState else songsListState,
+                            onRefresh = if (settings.songListPullToRefresh && !showingSearch) {
+                                viewModel::scanMusic
+                            } else null,
                             contentPadding = contentPadding,
                             selectionMode = songsSelectionMode,
                             selectedTrackUris = selectedSongUris,
@@ -1480,7 +1483,7 @@ fun MeloxApp(
                         )
                     }
 
-                    LIBRARY_TAB_INDEX -> libraryContent(outerPadding, navigationRailExpanded, null, {})
+                    LIBRARY_TAB_INDEX -> libraryContent(outerPadding, null, {})
 
                     SETTINGS_TAB_INDEX -> PlayerPage(
                         title = settingsTitle,
@@ -1953,7 +1956,7 @@ fun MeloxApp(
                                     onArtworkBoundsChanged = { playerTransition.updateMiniArtworkBounds(it, windowSize) },
                                 )
                             },
-                    ) { outerPadding, navigationRailExpanded ->
+                    ) { outerPadding, _ ->
                             val layoutDirection = LocalLayoutDirection.current
                             val currentOuterPadding by rememberUpdatedState(outerPadding)
                             var retainedRootBottomPadding by remember(
@@ -2060,7 +2063,6 @@ fun MeloxApp(
                                             if (route.route == AppRoute.ROOT) {
                                                 content(
                                                     currentRootPadding,
-                                                    navigationRailExpanded,
                                                 )
                                             } else {
                                                 val routeBottomPadding =
@@ -2603,7 +2605,7 @@ fun MeloxApp(
                                                     }
 
                                                     AppRoute.ALBUMS, AppRoute.ARTISTS, AppRoute.FOLDERS ->
-                                                        libraryContent(outerPadding, navigationRailExpanded, libraryRoutes.indexOf(route.route), navigateBack)
+                                                        libraryContent(outerPadding, libraryRoutes.indexOf(route.route), navigateBack)
                                                     AppRoute.PLAYLISTS ->
                                                         PlaylistLibraryScreen(
                                                             playlists = playlistState.playlists,

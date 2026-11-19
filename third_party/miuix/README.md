@@ -1,13 +1,13 @@
-# Miuix Native Rail Inset Patch
+# Miuix Android Integration
 
-Melox consumes Miuix `0.9.5-beta01` from Maven Central. The UI Android artifact
-is substituted with `0.9.5-beta01-melox`, rebuilt from the same release tag
-with the rail inset overload and observable top-bar collapse limit.
+Melox follows [Miuix main at `58b0a3dd`](https://github.com/compose-miuix-ui/miuix/commit/58b0a3dd06f8ee83c1099a7ebee1183adce3f83c),
+covering [the 25 commits after `v0.9.5-beta01`](https://github.com/compose-miuix-ui/miuix/compare/v0.9.5-beta01...58b0a3dd06f8ee83c1099a7ebee1183adce3f83c).
+UI, Blur and Preference use the bundled Android AARs at `0.9.5-beta01-melox.2`.
+Other Miuix Android modules retain the Beta 01 release artifacts.
 
-- Upstream release [v0.9.5-beta01](https://github.com/compose-miuix-ui/miuix/releases/tag/v0.9.5-beta01)
 - License [Apache-2.0](LICENSE)
 - Source patch [navigation-rail-insets.patch](navigation-rail-insets.patch)
-- Release dependency metadata [upstream-ui-android-0.9.5-beta01.pom](upstream-ui-android-0.9.5-beta01.pom)
+- Vendored Glass source hashes [portrait-glass-sources.json](portrait-glass-sources.json)
 
 The new stateful `NavigationRail` overload requires `statusBarInsets` and accepts
 optional `contentBottomInsets`. The top input replaces the existing inner
@@ -42,11 +42,11 @@ python3 third_party/miuix/rebuild.py /path/to/miuix
 
 The script reads that clone without changing it, exports the pinned source to
 a temporary directory, verifies the original rail source hash, applies the
-patch, builds the Android AAR and updates this directory's local Maven artifact.
+patch, builds the three Android AARs and updates this directory's local Maven artifacts.
 It copies only `sdk.dir` from Melox's local configuration when present.
 The isolated build omits demo and baseline-profile generation projects.
-The packaged UI AAR carries the official Beta 01 dependency metadata.
-Ordinary Melox builds consume the bundled AAR.
+The packaged AARs carry the corresponding Beta 01 dependency metadata.
+Ordinary Melox builds consume the bundled AARs.
 
 ## Compatibility
 
@@ -55,8 +55,8 @@ with minimum API 28. The original public Beta 01 UI entry points are retained.
 `verify_binary_compat.py BASELINE_AAR CANDIDATE_AAR DEPENDENCY_AAR...`
 checks dependent AAR references against the patched UI.
 
-The Android app consumes the official Blur, Material, Nav, Icons and Preference
-artifacts. iOS-like follows the Beta 01 example's Lens and Vibrancy sources
+The Android app consumes the official Material, Nav and Icons artifacts.
+The iOS-like style follows the Beta 01 example's Lens and Vibrancy sources
 and uses Material's tilt sensor and Axial stroke model. The navigation body
 and mini player use 4 dp blur and a 24 dp lens. The selected capsule applies
 the example's press-scaled lens, depth and chromatic dispersion. Melox compiles
@@ -78,7 +78,7 @@ host pane. App menu anchors mark only the icon as transform content.
 The historical blur artifact `miuix-blur-android:0.9.4.1-melox` was built from
 the original v0.9.4 blur sources. `progressive-blur-downsample.patch` caps both progressive
 sampling branches at exponent 3 (1/8 resolution) without reducing blur radii or
-changing ordinary blur. The current rebuild generates the Beta 01 UI AAR.
+changing ordinary blur. The current rebuild generates the pinned UI, Blur and Preference AARs.
 GlassTransformPopup reports dismissal only after all transition channels settle;
 menu hosts start the morph after PopupLayout's asynchronous mount. GlassIconButton
 adds an enabled argument so the independent navigation search preserves disabled

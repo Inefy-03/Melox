@@ -11,11 +11,8 @@ import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.ui.AppNavDestination
 import com.melox.player.ui.AppRoute
-import com.melox.player.ui.SidebarNavigationSidebarMotion
-import com.melox.player.ui.SidebarNavigationReboundMotion
 import com.melox.player.ui.missingLibraryDetailCount
 import com.melox.player.ui.rememberLibraryDetailForExit
-import com.melox.player.ui.sidebarItemMotion
 import com.melox.player.model.NavigationTransitionStyle
 import com.melox.player.ui.navigation.AospNavigationTransition
 import com.melox.player.ui.navigation.secondaryPageEnterMotion
@@ -238,79 +235,6 @@ class NavigationChromeMotionTest {
         assertTrue(!inline(1f, null))
         assertTrue(!inline(1f, 0f, enabled = false))
         assertTrue(!inline(1f, 0f, title = ""))
-    }
-
-    @Test
-    fun landscapeCascadeKeepsBothDirectionsOrderedAndRetargetable() {
-        val entering = List(7) { index ->
-            TargetBasedAnimation(sidebarItemMotion(index, expanded = true), Float.VectorConverter, 0f, 1f)
-        }
-        val leaving = List(7) { index ->
-            TargetBasedAnimation(sidebarItemMotion(index, expanded = false), Float.VectorConverter, 1f, 0f)
-        }
-        assertTrue(entering.zipWithNext().all { (first, next) -> first.durationNanos < next.durationNanos })
-        for (timeMillis in 16..280 step 8) {
-            val time = timeMillis * 1_000_000L
-            val positions = entering.map { it.getValueFromNanos(time) }
-            assertTrue(positions.zipWithNext().all { (first, next) -> first > next })
-            val reversePositions = leaving.map { it.getValueFromNanos(time) }
-            assertTrue(reversePositions.zipWithNext().all { (first, next) -> first < next })
-        }
-        entering.indices.forEach { index ->
-            assertTrue(leaving[index].durationNanos > entering[index].durationNanos)
-            val interrupted = TargetBasedAnimation(sidebarItemMotion(index, expanded = false), Float.VectorConverter, entering[index].getValueFromNanos(100_000_000L), 0f)
-            assertEquals(entering[index].getValueFromNanos(100_000_000L), interrupted.getValueFromNanos(0L), 0f)
-        }
-        entering.forEach { motion -> assertEquals(1f, motion.getValueFromNanos(motion.durationNanos), 0f) }
-        leaving.forEach { motion -> assertEquals(0f, motion.getValueFromNanos(motion.durationNanos), 0f) }
-    }
-
-    @Test
-    fun navigationIconsAndShortcutLabelsHaveIndependentFadePhases() {
-        fun animation(spec: androidx.compose.animation.core.TweenSpec<Float>, entering: Boolean) =
-            TargetBasedAnimation(spec, Float.VectorConverter, if (entering) 0f else 1f, if (entering) 1f else 0f)
-        val iconIn = animation(com.melox.player.ui.SidebarNavigationIconEnterMotion, true)
-        val labelIn = animation(com.melox.player.ui.SidebarNavigationLabelEnterMotion, true)
-        val iconOut = animation(com.melox.player.ui.SidebarNavigationIconExitMotion, false)
-        val labelOut = animation(com.melox.player.ui.SidebarNavigationLabelExitMotion, false)
-        assertTrue(iconIn.getValueFromNanos(64_000_000L) > 0f)
-        assertEquals(0f, labelIn.getValueFromNanos(64_000_000L), 0f)
-        assertTrue(iconOut.getValueFromNanos(64_000_000L) < 0.5f)
-        assertEquals(1f, labelOut.getValueFromNanos(64_000_000L), 0f)
-        assertEquals(0f, iconOut.getValueFromNanos(120_000_000L), 0f)
-        assertTrue(labelOut.getValueFromNanos(120_000_000L) > 0f)
-        assertEquals(0f, labelOut.getValueFromNanos(labelOut.durationNanos), 0f)
-    }
-
-    @Test
-    fun landscapeCapsuleReboundsOnlyWhenCollapsingSidebar() {
-        assertEquals(200f, SidebarNavigationReboundMotion.stiffness, 0f)
-        assertEquals(0.8f, SidebarNavigationReboundMotion.dampingRatio, 0f)
-        val motion = TargetBasedAnimation(SidebarNavigationReboundMotion, Dp.VectorConverter, 12.dp, 400.dp)
-        val positions = (0..motion.durationNanos step 8_000_000L).map { motion.getValueFromNanos(it).value }
-        val peak = positions.max()
-        assertTrue("Horizontal settle should overshoot to the right", peak > 400.2f)
-        assertTrue("The reference rebound should stay subtle", peak < 407f)
-        val peakMillis = positions.indices.maxBy { positions[it] } * 8
-        assertTrue("Reference reaches its peak about 400 ms after travel begins", peakMillis in 350..450)
-        assertTrue("Return should continue beyond the size morph", motion.durationNanos > 600_000_000L)
-        assertEquals(400f, motion.getValueFromNanos(motion.durationNanos).value, 0.001f)
-        val expansion = TargetBasedAnimation(SidebarNavigationSidebarMotion, Dp.VectorConverter, 400.dp, 12.dp)
-        val expansionPositions = (0..300 step 4).map { expansion.getValueFromNanos(it * 1_000_000L).value }
-        assertTrue(expansionPositions.all { it in 12f..400f })
-        assertTrue(expansionPositions.zipWithNext().all { (before, after) -> after <= before })
-        assertEquals(12f, expansionPositions.last(), 0.001f)
-        assertEquals(0.696f, com.melox.player.ui.sidebarHeightMotion(true, 696.dp).visibilityThreshold!!.value, 0.0001f)
-        val bottom = TargetBasedAnimation(com.melox.player.ui.sidebarHeightMotion(true, 696.dp), Dp.VectorConverter, 44.dp, 740.dp)
-        val bottomPositions = (0..bottom.durationNanos step 8_000_000L).map { bottom.getValueFromNanos(it).value }
-        assertTrue("Only the expanding sidebar bottom should overshoot", bottomPositions.max() > 740f)
-        assertTrue("The rebound must fit inside the reference bottom clearance", bottomPositions.max() < 748f)
-        val bottomPeakMillis = bottomPositions.indices.maxBy { bottomPositions[it] } * 8
-        assertTrue(bottomPeakMillis in 350..420)
-        val heightExit = TargetBasedAnimation(com.melox.player.ui.sidebarHeightMotion(false, 696.dp), Dp.VectorConverter, 740.dp, 44.dp)
-        assertTrue(heightExit.getValueFromNanos(100_000_000L).value < 320f)
-        assertEquals(44f, heightExit.getValueFromNanos(heightExit.durationNanos).value, 0.001f)
-        assertEquals(740f, bottom.getValueFromNanos(bottom.durationNanos).value, 0.001f)
     }
 
     @Test

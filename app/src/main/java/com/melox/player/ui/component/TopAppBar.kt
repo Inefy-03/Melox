@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
+import top.yukonga.miuix.kmp.upstream.glass.glassSearchBarTransition
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -44,26 +45,20 @@ internal fun TopAppBar(
             glassTitleAlpha = glassTitleAlpha,
         )
     } else {
-        val searchExpanded = com.melox.player.ui.component.LocalGlassSearchPage.current?.isExpanded == true &&
-            com.melox.player.ui.LocalLandscapeNavigation.current == null
-        val searchAlpha = com.melox.player.ui.component.rememberGlassSearchBarAlpha(searchExpanded)
-        val searchTitleAlpha = com.melox.player.ui.component.rememberGlassSearchTitleAlpha(
-            searchExpanded,
-            scrollBehavior?.state?.let { it.heightOffset == it.heightOffsetLimit } == true,
-        )
+        val searchExpanded = LocalGlassSearchPage.current?.isExpanded == true
         GlassTopAppBar(
             title = title, modifier = modifier, subtitle = subtitle,
             compact = com.melox.player.ui.usesMiuixSmallTopAppBar(),
             expandable = expandable,
-            contentModifier = Modifier.stableTopAppBarContentInsets()
-                .glassSearchBarTransition(searchExpanded) { searchAlpha.value },
-            backgroundAlpha = { searchAlpha.value },
+            contentModifier = Modifier
+                .glassSearchBarTransition(searchExpanded, LocalTopBarBlurSettings.current.blurEnabled) { 1f }
+                .stableTopAppBarContentInsets(),
             backdrop = backdrop, scrollBehavior = scrollBehavior,
             isContentScrolled = topBarContentScrolled(scrollBehavior),
             visualContentOffset = rememberTopBarVisualContentOffset(scrollBehavior),
             progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
             defaultWindowInsetsPadding = defaultWindowInsetsPadding,
-            titleAlpha = { (glassTitleAlpha?.invoke() ?: titleColor.alpha) * searchTitleAlpha() },
+            titleAlpha = { (glassTitleAlpha?.invoke() ?: titleColor.alpha) },
             navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
             actions = {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { TopBarButtonHaptics { actions() } }

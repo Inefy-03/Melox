@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import com.melox.player.ui.LocalLandscapeNavigation
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
+import top.yukonga.miuix.kmp.upstream.glass.glassSearchBarTransition
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -28,28 +29,27 @@ internal fun SmallTopAppBar(
     bottomContent: @Composable () -> Unit = {},
     glassBackgroundAlpha: () -> Float = { 1f },
     glassTitleAlpha: (() -> Float)? = null,
+    expandedContent: (@Composable () -> Unit)? = null,
+    showTitleWhileExpanded: Boolean = false,
 ) {
     val backdrop = LocalGlassTopBackdrop.current
     val navigation = LocalLandscapeNavigation.current
     val inlineTitle = shouldShowInlineTopBarTitle(
         title, titleColor.alpha, navigation?.titleAlpha?.invoke(), inlineTitleEnabled,
     )
-    val searchExpanded = com.melox.player.ui.component.LocalGlassSearchPage.current?.isExpanded == true &&
-        com.melox.player.ui.LocalLandscapeNavigation.current == null
-    val searchAlpha = com.melox.player.ui.component.rememberGlassSearchBarAlpha(searchExpanded)
-    val searchTitleAlpha = com.melox.player.ui.component.rememberGlassSearchTitleAlpha(
-        searchExpanded,
-        scrollBehavior?.state?.let { it.heightOffset == it.heightOffsetLimit } == true,
-    )
+    val searchExpanded = LocalGlassSearchPage.current?.isExpanded == true
     androidx.compose.runtime.CompositionLocalProvider(
         LocalGlassCompactTitleStartProgress provides (if (inlineTitleEnabled) navigation?.titleAlpha?.let { 1f - it() } ?: 0f else 0f),
     ) {
         GlassTopAppBar(
             title = title, modifier = modifier, subtitle = subtitle,
             compact = true,
-            contentModifier = Modifier.stableTopAppBarContentInsets()
-                .glassSearchBarTransition(searchExpanded) { searchAlpha.value },
-            backgroundAlpha = { searchAlpha.value * glassBackgroundAlpha() },
+            expandedContent = expandedContent,
+            showTitleWhileExpanded = showTitleWhileExpanded,
+            contentModifier = Modifier
+                .glassSearchBarTransition(searchExpanded, LocalTopBarBlurSettings.current.blurEnabled) { 1f }
+                .stableTopAppBarContentInsets(),
+            backgroundAlpha = glassBackgroundAlpha,
             backdrop = backdrop, scrollBehavior = scrollBehavior,
             isContentScrolled = topBarContentScrolled(scrollBehavior),
             visualContentOffset = rememberTopBarVisualContentOffset(scrollBehavior),
@@ -57,7 +57,7 @@ internal fun SmallTopAppBar(
             defaultWindowInsetsPadding = defaultWindowInsetsPadding,
             titleAlpha = {
                 val navigationAlpha = if (inlineTitleEnabled) 1f else navigation?.titleAlpha?.invoke() ?: 1f
-                (glassTitleAlpha?.invoke() ?: if (inlineTitle) 1f else titleColor.alpha) * searchTitleAlpha() * navigationAlpha
+                (glassTitleAlpha?.invoke() ?: if (inlineTitle) 1f else titleColor.alpha) * navigationAlpha
             },
             navigationIcon = { TopBarButtonHaptics { navigationIcon() } },
             actions = {

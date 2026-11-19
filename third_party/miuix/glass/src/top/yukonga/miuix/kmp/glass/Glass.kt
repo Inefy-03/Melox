@@ -3,6 +3,8 @@
 
 package top.yukonga.miuix.kmp.glass
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.BlendMode
@@ -25,6 +27,7 @@ import top.yukonga.miuix.kmp.glass.internal.drawGlassRim
 import top.yukonga.miuix.kmp.glass.internal.drawGlassShadow
 import top.yukonga.miuix.kmp.glass.internal.drawGlassStroke
 import top.yukonga.miuix.kmp.glass.internal.glassEffect
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * Applies a glass surface over [backdrop].
@@ -176,4 +179,18 @@ internal fun Modifier.glassShadow(
     this
 } else {
     this.drawBehind { drawGlassShadow(shape, layoutDirection, shadow, alpha()) }
+}
+
+/** Tints the glass material with a container surface when appropriate. */
+@Composable
+internal fun dynamicGlassMaterial(
+    base: GlassMaterial,
+    tint: Color = MiuixTheme.colorScheme.surfaceContainerHigh,
+    alpha: Float = 0.6f,
+): GlassMaterial = if (MiuixTheme.isDynamicColor) {
+    remember(base, tint, alpha) {
+        base.copy(third = GlassColorLayer(tint.copy(alpha = alpha), GlassColorBlendMode.SrcOver))
+    }
+} else {
+    base
 }

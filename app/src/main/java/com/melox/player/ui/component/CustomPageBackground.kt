@@ -5,17 +5,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.layout.ContentScale
-import com.melox.player.ui.component.*
 import com.melox.player.ui.LocalFloatingNavigationRailInset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.BoxScope
@@ -25,11 +26,13 @@ import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.statusBarsIgnoringVisibility
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
@@ -47,8 +50,17 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onLayoutRectChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import com.melox.player.R
+import com.melox.player.ui.navigation.LocalWindowBackDispatcherOwner
+import top.yukonga.miuix.kmp.upstream.glass.GlassSearchOverlay
+import top.yukonga.miuix.kmp.upstream.glass.GlassSearchOverlayDefaults
+import top.yukonga.miuix.kmp.upstream.glass.rememberGlassSearchBarAlpha
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import com.melox.player.data.repository.CustomBackgroundRepository
 import com.melox.player.data.repository.LoadedCustomBackground
 import com.melox.player.model.AppSettings
@@ -199,31 +211,20 @@ internal fun PageScaffold(
 ) {
     val floatingRailInset = LocalFloatingNavigationRailInset.current
     val clippedRailInset = com.melox.player.ui.LocalClippedNavigationRailInset.current
-    val wideSidebar = com.melox.player.ui.LocalLandscapeNavigation.current != null
+    val landscapeNavigation = com.melox.player.ui.LocalLandscapeNavigation.current
     val pageBackdrop = rememberLayerBackdrop()
     val wallpaperBackdrop = rememberLayerBackdrop()
-    val effectsActive = LocalTopBarBlurSettings.current.blurEnabled && isRuntimeShaderSupported()
+    val blurSettings = LocalTopBarBlurSettings.current
+    val effectsActive = blurSettings.blurEnabled && isRuntimeShaderSupported()
     val topBackdrop = pageBackdrop.takeIf { effectsActive }
     val scrollContent = remember { TopBarScrollContent() }
     val searchPage = remember { GlassSearchPage() }
-    val wideSearchHost = LocalWideGlassSearchHost.current
-    androidx.compose.runtime.DisposableEffect(wideSearchHost, searchPage) {
-        wideSearchHost?.pages?.add(searchPage)
-        onDispose { wideSearchHost?.pages?.remove(searchPage) }
-    }
-    val searchActive = searchPage.isExpanded || searchPage.transitionActive
-    val hasSearchQuery = showGlassSearchResults(
-        searchPage.isExpanded, searchPage.session?.query?.value.orEmpty(),
-    )
-    val resultsReady = showGlassSearchResults(
-        searchPage.isExpanded,
-        searchPage.session?.query?.value.orEmpty(),
-        searchPage.session?.resultsQuery?.value.orEmpty(),
-    )
-    val awaitingResults = hasSearchQuery && !resultsReady
-    val showSearchResults = !wideSidebar && hasSearchQuery
-    val hidePageContent = (!wideSidebar && searchPage.isExpanded && !hasSearchQuery) || awaitingResults
-    val blockPageContent = (searchActive && !wideSidebar && !hasSearchQuery) || awaitingResults
+    val searchExpanded = searchPage.isExpanded
+    val searchAlpha = rememberGlassSearchBarAlpha(searchExpanded)
+    val query = searchPage.session?.query?.value.orEmpty()
+    val renderedQuery = searchPage.session?.resultsQuery?.value.orEmpty()
+    val resultsVisible = searchExpanded && query.isNotBlank() && renderedQuery.isNotBlank()
+    val resultsReady = showGlassSearchResults(searchExpanded, query, renderedQuery)
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
     val image = LocalCustomPageBackground.current
@@ -231,15 +232,23 @@ internal fun PageScaffold(
     val surfaceColor = MiuixTheme.colorScheme.surface
     val fixedWallpaper = LocalFixedPageBackground.current.takeIf { LocalRootPageWallpaperFixed.current }
     val surfaceBackdrop = wallpaperBackdrop.takeIf { image != null && effectsActive }
-    val statusBarSpace = WindowInsets.statusBarsIgnoringVisibility
-        .union(WindowInsets.captionBar).union(WindowInsets.displayCutout).only(WindowInsetsSides.Top)
+    val safeInsets = WindowInsets.systemBars.union(WindowInsets.captionBar).union(WindowInsets.displayCutout)
+    val statusBarSpace = WindowInsets.statusBarsIgnoringVisibility.only(WindowInsetsSides.Top)
+    val searchTopInsets = safeInsets.only(WindowInsetsSides.Top)
+    val searchTopPadding = landscapeNavigation?.searchTopPadding ?: { 0.dp }
+    val searchStartInset = WindowInsets(
+        left = if (layoutDirection == LayoutDirection.Ltr) floatingRailInset else 0.dp,
+        right = if (layoutDirection == LayoutDirection.Rtl) floatingRailInset else 0.dp,
+    )
+    val searchHorizontalInsets = safeInsets.only(WindowInsetsSides.Horizontal).add(searchStartInset)
     Box(modifier = modifier.onGloballyPositioned { scrollContent.bounds = it.boundsInRoot() }) {
         CompositionLocalProvider(LocalPageSurfaceBackdrop provides surfaceBackdrop, LocalGlassSearchPage provides searchPage, LocalTopBarScrollContent provides scrollContent) {
             Scaffold(
+                modifier = Modifier.fillMaxSize()
+                    .graphicsLayer { alpha = searchAlpha.value }
+                    .then(if (searchExpanded) Modifier.clearAndSetSemantics { } else Modifier),
                 containerColor = surfaceColor,
-                contentWindowInsets = WindowInsets.systemBars
-                    .union(WindowInsets.displayCutout)
-                    .union(statusBarSpace),
+                contentWindowInsets = safeInsets.union(statusBarSpace),
                 topBar = {
                     CompositionLocalProvider(LocalTopBarWallpaperVisible provides (image != null), LocalWideTopBackdrop provides topBackdrop) {
                         Box(
@@ -250,24 +259,13 @@ internal fun PageScaffold(
                     }
                 },
             ) { padding ->
-                val pagePadding = if (showSearchResults) PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection) + floatingRailInset,
-                    top = with(density) { statusBarSpace.getTop(this).toDp() } + 52.dp,
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = padding.calculateBottomPadding(),
-                ) else PaddingValues(
+                val pagePadding = PaddingValues(
                     start = padding.calculateStartPadding(layoutDirection) + floatingRailInset,
                     top = padding.calculateTopPadding(),
                     end = padding.calculateEndPadding(layoutDirection),
                     bottom = padding.calculateBottomPadding(),
                 )
-                // Keep the same filtered list and state underneath the search header.
-                Box(Modifier.fillMaxSize()
-                    .then(if (showSearchResults) Modifier.imePadding() else Modifier)
-                    .layerBackdrop(pageBackdrop)
-                    .then(if (blockPageContent) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
-                        awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
-                    } else Modifier)) {
+                Box(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
                     // Root pages sample the stationary window image; secondary pages crop locally.
                     Box(Modifier.matchParentSize().layerBackdrop(wallpaperBackdrop).background(surfaceColor)
                         .then(fixedWallpaper?.let { Modifier.fixedWallpaperRegion(it) } ?: Modifier)) {
@@ -278,15 +276,76 @@ internal fun PageScaffold(
                                 .background(Color.Black.copy(alpha = dimAlpha.coerceIn(0f, 1f))))
                         }
                     }
-                    Box(Modifier.fillMaxSize()
-                        .graphicsLayer { alpha = if (hidePageContent) 0f else 1f }) {
+                    // The result overlay and the page share the screen content. Only one may own
+                    // the list while search results are being displayed.
+                    if (!resultsVisible) {
                         content(pagePadding)
                     }
                 }
             }
             searchPage.session?.let { session ->
-                CompositionLocalProvider(LocalWideTopBackdrop provides topBackdrop) {
-                    GlassSearchHeader(session, searchPage)
+                val searchScrollContent = remember { TopBarScrollContent() }
+                val backOwner = LocalWindowBackDispatcherOwner.current ?: LocalNavigationEventDispatcherOwner.current
+                DisposableEffect(searchPage) {
+                    onDispose {
+                        searchPage.transitionActive = false
+                    }
+                }
+                val backOwnerLocals = if (backOwner != null) {
+                    arrayOf(LocalNavigationEventDispatcherOwner provides backOwner)
+                } else emptyArray()
+                CompositionLocalProvider(*backOwnerLocals) {
+                    GlassSearchOverlay(
+                        expanded = session.expanded.value,
+                        scrollMaterialThreshold = GlassSearchOverlayDefaults.VerticalPadding * 2,
+                        onDismissRequest = session.onDismiss.value,
+                        label = session.label.value,
+                        horizontalInsetsModifier = Modifier.windowInsetsPadding(searchHorizontalInsets),
+                        topInsets = searchTopInsets,
+                        searchTopPadding = searchTopPadding,
+                        scrollOffset = { -searchScrollContent.visualContentOffset(0f) },
+                        blurEnabled = effectsActive,
+                        progressiveBlur = blurSettings.progressiveEnabled,
+                        searchIcon = glassSearchIcon,
+                        closeIcon = glassCloseIcon,
+                        query = session.query.value,
+                        onQueryChange = session.onQueryChange.value,
+                        onFocusedChange = session.onFocusedChange.value,
+                        onActiveChange = { searchPage.transitionActive = it },
+                        clearContentDescription = stringResource(R.string.search_clear),
+                        cancelContentDescription = stringResource(R.string.search_cancel),
+                    ) {
+                        if (resultsVisible) {
+                            Box(
+                                Modifier.fillMaxSize()
+                                    .windowInsetsPadding(searchHorizontalInsets)
+                                    .then(if (resultsReady) Modifier else Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                            }
+                                        }
+                                    })
+                                    .onGloballyPositioned { searchScrollContent.bounds = it.boundsInRoot() },
+                            ) {
+                                CompositionLocalProvider(
+                                    LocalPageSurfaceBackdrop provides null,
+                                    LocalCustomPageBackground provides null,
+                                    LocalTopBarScrollContent provides searchScrollContent,
+                                    LocalGlassSearchResults provides true,
+                                ) {
+                                    content(
+                                        PaddingValues(
+                                            top = with(density) { searchTopInsets.getTop(this).toDp() } +
+                                                searchTopPadding() + GlassSearchOverlayDefaults.BarHeight +
+                                                GlassSearchOverlayDefaults.VerticalPadding * 2,
+                                            bottom = safeInsets.asPaddingValues().calculateBottomPadding(),
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

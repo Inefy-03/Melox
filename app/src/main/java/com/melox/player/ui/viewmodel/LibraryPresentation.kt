@@ -43,7 +43,7 @@ import kotlinx.coroutines.withContext
 data class MusicPresentationState(
     val items: List<MusicTrack> = emptyList(),
     val queueItems: List<MusicTrack> = emptyList(),
-    val sectionIndexMap: Map<String, Int> = emptyMap(),
+    val queueSectionIndexMap: Map<String, Int> = emptyMap(),
     val query: String = "",
     val sortConfig: MusicSortConfig = MusicSortConfig(),
 )
@@ -176,7 +176,7 @@ internal fun musicPresentations(
                 send(MusicPresentationState(
                     items = items,
                     queueItems = queueItems,
-                    sectionIndexMap = if (request.query.isBlank()) sectionIndexMap else emptyMap(),
+                    queueSectionIndexMap = sectionIndexMap,
                     query = request.query,
                     sortConfig = request.sortConfig,
                 ))

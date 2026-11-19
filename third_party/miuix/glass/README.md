@@ -1,8 +1,32 @@
 # Miuix Glass source integration
 
+## Post-Beta 01 synchronization (2026-11-19)
+
+Glass navigation uses the pinned upstream `GlassNavigationBar` in portrait and
+`GlassNavigationRail` in landscape. The rail owns both the 250 dp sidebar and
+its 44 dp collapsed top capsule. Melox provides four primary destinations,
+including Settings with the shared SettingsFill icon, and its existing library
+and playlist shortcuts below the divider. An optional parent index identifies
+the primary destination to highlight while a shortcut is selected and the rail
+is collapsed.
+
+Both orientations use the upstream `GlassSearchOverlay`. The original page
+and its toolbar follow the Glass Component demo's fade and transition. Scrolling
+the results drives the search header band, as in IconPage. Wide search clears
+the expanded sidebar or the collapsed capsule using the rail's morph progress.
+The shell bottom navigation and mini player remain visible above search.
+The search field and cancel button follow the Icon page's scroll-triggered
+transition from solid fill to glass. Melox supplies query and result state,
+localized action descriptions, and the page header gradient and blur settings.
+
+The relocated source manifest records the 52 selected files at `58b0a3dd`,
+including the latest progressive blur renderer and dynamic-color navigation
+materials. The existing legacy Glass adapters also receive the upstream
+dynamic colors and lazy dropdown anchor tracking.
+
 ## Shared blur synchronization (2026-11-17)
 
-The current upstream audit is pinned to `6d2554a850b8960e2616c968263ff64beb5ffb03` (2026-11-18).
+The prior upstream audit was pinned to `6d2554a850b8960e2616c968263ff64beb5ffb03` (2026-11-18).
 All 50 selected upstream source hashes match this revision. Blur and material
 implementation sources are identical to the previously audited `189ef10a` pin.
 

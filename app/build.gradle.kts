@@ -180,9 +180,12 @@ tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
 
 configurations.configureEach {
     resolutionStrategy.dependencySubstitution {
-        substitute(module("top.yukonga.miuix.kmp:miuix-ui-android"))
-            .using(module("top.yukonga.miuix.kmp:miuix-ui-android:${libs.versions.miuixUiPatch.get()}"))
-            .because("Preserve Melox rail insets and observable top bar collapse limits")
+        for (artifact in listOf("miuix-ui-android", "miuix-blur-android", "miuix-preference-android")) {
+            val coordinate = "top.yukonga.miuix.kmp:$artifact"
+            substitute(module(coordinate))
+                .using(module("$coordinate:${libs.versions.miuixAndroidPatch.get()}"))
+                .because("Use the pinned Miuix sources and preserve the Melox UI patches")
+        }
         substitute(module("androidx.compose.ui:ui-android"))
             .using(module("androidx.compose.ui:ui-android:${libs.versions.composeUiPatch.get()}"))
             .because("Allow detached lazy layouts to clean up prefetch without requiring an owner")

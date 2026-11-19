@@ -41,10 +41,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -156,11 +156,13 @@ object GlassNavigationBarDefaults {
 
     /** The bar's own body. */
     @Composable
-    fun material(): GlassMaterial = GlassMaterials.puredThinGlass(
-        isDark = MiuixTheme.colorScheme.background.luminance() < 0.5f,
+    fun material(): GlassMaterial = dynamicGlassMaterial(
+        GlassMaterials.puredThinGlass(
+            isDark = MiuixTheme.colorScheme.background.luminance() < 0.5f,
+        ),
     )
 
-    /** Resting indicator fill, using the primary colour only in dynamic colour themes. */
+    /** Resting indicator fill. */
     @Composable
     fun indicatorColor(): Color = indicatorTint().copy(
         alpha = if (MiuixTheme.colorScheme.background.luminance() < 0.5f) 0.12f else 0.06f,
@@ -206,8 +208,7 @@ object GlassNavigationBarDefaults {
  *   layers; it does not disable sampling. Ignored when [backdrop] is `null`.
  * @param indicatorPressedColor Fill of the capsule while a finger is on it.
  * @param indicatorColor Fill of the capsule behind the selected destination.
- * @param selectedColor Tint of the selected icon and label. Dynamic colour themes use primary;
- *   other themes use onBackground.
+ * @param selectedColor Tint of the selected icon and label.
  * @param unselectedColor Tint of the unselected icons and labels, without additional dimming.
  * @param trailingAction Optional independent action outside the glass capsule. It owns its size
  *   and material, and shares the bar's show/hide transition. Adding or removing it animates its
@@ -304,12 +305,6 @@ fun GlassNavigationBar(
     val bottomPadding = if (defaultWindowInsetsPadding) {
         val navigationBarBottom = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
             .asPaddingValues().calculateBottomPadding()
-        val floatingMargin = when {
-            platform() == Platform.IOS -> 24.dp
-            navigationBarBottom <= 16.dp -> 28.dp
-            navigationBarBottom >= 28.dp -> navigationBarBottom
-            else -> 12.dp + navigationBarBottom
-        }
         val captionBarBottom = WindowInsets.captionBar.only(WindowInsetsSides.Bottom)
             .asPaddingValues().calculateBottomPadding()
         val animatedCaptionBarHeight by animateDpAsState(
@@ -317,7 +312,13 @@ fun GlassNavigationBar(
             animationSpec = tween(durationMillis = 300),
             label = "glassNavigationCaptionBarHeight",
         )
-        floatingMargin + animatedCaptionBarHeight
+        val systemBottom = maxOf(navigationBarBottom, animatedCaptionBarHeight)
+        when {
+            platform() == Platform.IOS -> 24.dp
+            systemBottom <= 16.dp -> 20.dp
+            systemBottom >= 28.dp -> systemBottom
+            else -> 12.dp + systemBottom
+        }
     } else {
         0.dp
     }
@@ -327,18 +328,14 @@ fun GlassNavigationBar(
             .padding(bottom = bottomPadding)
             .graphicsLayer {
                 val show = showScale.value
+                val visibility = ((show - GlassMotion.NAV_HIDE_SCALE) / (1f - GlassMotion.NAV_HIDE_SCALE))
+                    .coerceIn(0f, 1f)
                 scaleX = show
                 scaleY = show
-                this.alpha = ((show - GlassMotion.NAV_HIDE_SCALE) / (1f - GlassMotion.NAV_HIDE_SCALE))
-                    .coerceIn(0f, 1f)
-            }
-            .blur(
-                radius = (
-                    (1f - ((showScale.value - GlassMotion.NAV_HIDE_SCALE) / (1f - GlassMotion.NAV_HIDE_SCALE)))
-                        .coerceIn(0f, 1f) * GlassMotion.NAV_HIDE_BLUR_DP
-                    ).dp,
-                edgeTreatment = BlurredEdgeTreatment.Unbounded,
-            ),
+                this.alpha = visibility
+                val blurPx = ((1f - visibility) * GlassMotion.NAV_HIDE_BLUR_DP).dp.toPx()
+                renderEffect = if (blurPx > 0.5f) BlurEffect(blurPx, blurPx, TileMode.Decal) else null
+            },
         trailingAction = trailingAction?.let { action ->
             {
                 Box(
@@ -513,6 +510,8 @@ fun GlassNavigationBar(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
+                                .heightIn(min = height)
+                                .graphicsLayer { this.alpha = pressAlpha.value }
                                 .padding(
                                     horizontal = GlassNavigationBarDefaults.IndicatorOverhang,
                                     vertical = GlassNavigationBarDefaults.ContentPaddingVertical,
@@ -546,8 +545,7 @@ fun GlassNavigationBar(
                                     } else {
                                         Modifier.clearAndSetSemantics { }
                                     },
-                                )
-                                .graphicsLayer { this.alpha = pressAlpha.value },
+                                ),
                             contentAlignment = Alignment.Center,
                         ) {
                             androidx.compose.foundation.layout.Column(

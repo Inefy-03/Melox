@@ -10,8 +10,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.platform.LocalDensity
-import com.melox.player.ui.component.library.isCompactLandscapeGrid
+import com.melox.player.ui.component.library.gridViewportWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -70,16 +69,10 @@ internal fun LibraryOverviewScreen(
 ) {
     val window = LocalWindowInfo.current.containerSize
     val landscape = window.width > window.height
-    val compactLandscape = with(LocalDensity.current) { isCompactLandscapeGrid(window.width.toDp(), window.height.toDp()) }
     val direction = LocalLayoutDirection.current
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val availableWidth = maxWidth - contentPadding.calculateStartPadding(direction) -
-            contentPadding.calculateEndPadding(direction)
-        val columns = albumGridColumnCount(
-            gridStyle, landscape, false,
-            availableWidth,
-            spaciousCells = true, horizontalPadding = 32.dp, compactLandscape = compactLandscape,
-        )
+        val availableWidth = contentPadding.gridViewportWidth(maxWidth, direction)
+        val columns = albumGridColumns(gridStyle, maxWidth, contentPadding)
         val albumRows = if (gridStyle == AlbumGridStyle.TWO_SMALL) 3 else 2
         LazyColumn(
             state = listState,
@@ -100,7 +93,7 @@ internal fun LibraryOverviewScreen(
                 item(key = "albums_empty") { LibraryPreviewEmptyCard(0) }
             } else {
                 items(albums.take(columns * albumRows).chunked(columns), key = { it.first().key }) { row ->
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = LibraryPreviewBottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = AlbumGridHorizontalPadding).padding(bottom = LibraryPreviewBottomPadding), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         row.forEach { album ->
                             AlbumGridItem(album, gridStyle, { onAlbumClick(album) }, Modifier.weight(1f))
                         }

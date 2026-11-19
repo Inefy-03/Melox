@@ -1,6 +1,5 @@
 package com.melox.player.ui
 
-import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,10 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.constrainWidth
@@ -31,7 +28,6 @@ import com.melox.player.model.BottomBarStyle
 import com.melox.player.ui.component.BottomSearchAction
 import com.melox.player.ui.component.GlassTopBarIcons
 import com.melox.player.ui.component.Search
-import com.melox.player.ui.component.rememberGlassSearchBarAlpha
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -57,8 +53,6 @@ internal fun GlassPortraitPlayerScaffold(
     miniPlayer: @Composable (MiniPlayerChrome) -> Unit,
     bottomSearchAction: BottomSearchAction?,
     showBottomSearch: Boolean,
-    searchExpanded: Boolean,
-    searchOpen: Boolean,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val surfaceColor = MiuixTheme.colorScheme.surface
@@ -67,7 +61,6 @@ internal fun GlassPortraitPlayerScaffold(
         drawContent()
     }
     val blurActive = blurEnabled && effectsSupported
-    val searchAlpha by rememberGlassSearchBarAlpha(searchOpen)
     val items = remember(navigationItems) {
         navigationItems.map { GlassNavigationItem(icon = it.icon, label = it.label) }
     }
@@ -88,12 +81,6 @@ internal fun GlassPortraitPlayerScaffold(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .graphicsLayer { alpha = searchAlpha }
-                    .then(if (searchExpanded || searchOpen) Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) awaitPointerEvent().changes.forEach { it.consume() }
-                        }
-                    } else Modifier)
                     .padding(start = 16.dp, end = 16.dp, top = 20.dp)
                     .layout { measurable, constraints ->
                         val bottom = bottomPadding.roundToPx().coerceIn(0, constraints.maxHeight)

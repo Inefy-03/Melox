@@ -1,6 +1,9 @@
 package com.melox.player
 
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.layout.PaddingValues
+import com.melox.player.ui.component.library.gridViewportWidth
 import com.melox.player.data.library.AlbumGridStyle
 import com.melox.player.data.library.AlbumSortConfig
 import com.melox.player.data.library.AlbumSortField
@@ -49,7 +52,7 @@ import com.melox.player.ui.component.library.responsiveGridColumnCount
 import com.melox.player.ui.component.playlist.PlaylistArtworkLayout
 import com.melox.player.ui.component.playlist.playlistArtworkLayout
 import com.melox.player.ui.screen.home.homeInitialRecommendationCount
-import com.melox.player.ui.screen.home.homePlaylistGridColumnCount
+import com.melox.player.ui.component.library.playlistGridColumnCount
 import com.melox.player.ui.screen.library.MusicLibraryPlaceholder
 import com.melox.player.ui.screen.library.albumDetailHeaderCoverSize
 import com.melox.player.ui.screen.library.albumGridColumnCount
@@ -70,6 +73,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryLogicTest {
+    @Test
+    fun playlistGridUsesViewportAfterSidebarAndSafeInsets() {
+        val padding = PaddingValues(start = 240.dp, end = 12.dp)
+        for (direction in LayoutDirection.entries) {
+            val viewport = padding.gridViewportWidth(840.dp, direction)
+            assertEquals(588.dp, viewport)
+            assertEquals(3, playlistGridColumnCount(landscape = true, availableWidth = viewport))
+        }
+    }
+
     @Test
     fun libraryPreviewColumnsUse360DpWidthWithinFiveToSevenColumns() {
         val cases = mapOf(320 to 5, 1879 to 5, 1880 to 5, 2251 to 5, 2252 to 6, 2623 to 6, 2624 to 7, 3000 to 7)
@@ -508,13 +521,13 @@ class LibraryLogicTest {
         }
         assertEquals(5, albumGridColumnCount(AlbumGridStyle.TWO_SMALL, true, false, 2000.dp, spaciousCells = true, compactLandscape = true))
         assertEquals(6, albumGridColumnCount(AlbumGridStyle.THREE, true, false, 2000.dp, spaciousCells = true, compactLandscape = true))
-        assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 400.dp))
-        assertEquals(2, homePlaylistGridColumnCount(landscape = false, availableWidth = 535.dp))
-        assertEquals(3, homePlaylistGridColumnCount(landscape = false, availableWidth = 536.dp))
-        assertEquals(3, homePlaylistGridColumnCount(landscape = false, availableWidth = 1200.dp))
-        assertEquals(2, homePlaylistGridColumnCount(landscape = true, availableWidth = 400.dp))
-        assertEquals(3, homePlaylistGridColumnCount(landscape = true, availableWidth = 600.dp))
-        assertEquals(4, homePlaylistGridColumnCount(landscape = true, availableWidth = 840.dp))
+        assertEquals(2, playlistGridColumnCount(landscape = false, availableWidth = 400.dp))
+        assertEquals(2, playlistGridColumnCount(landscape = false, availableWidth = 535.dp))
+        assertEquals(3, playlistGridColumnCount(landscape = false, availableWidth = 536.dp))
+        assertEquals(3, playlistGridColumnCount(landscape = false, availableWidth = 1200.dp))
+        assertEquals(2, playlistGridColumnCount(landscape = true, availableWidth = 400.dp))
+        assertEquals(3, playlistGridColumnCount(landscape = true, availableWidth = 600.dp))
+        assertEquals(4, playlistGridColumnCount(landscape = true, availableWidth = 840.dp))
         assertEquals(3, responsiveGridColumnCount(600.dp, 32.dp, 140.dp, 2, 6))
         assertEquals(4, homeInitialRecommendationCount(400.dp))
         assertEquals(8, homeInitialRecommendationCount(1280.dp))
@@ -533,7 +546,7 @@ class LibraryLogicTest {
             assertEquals(
                 "Playlist columns at ${width}dp",
                 expectedColumns,
-                homePlaylistGridColumnCount(landscape = true, availableWidth = width.dp),
+                playlistGridColumnCount(landscape = true, availableWidth = width.dp),
             )
         }
     }

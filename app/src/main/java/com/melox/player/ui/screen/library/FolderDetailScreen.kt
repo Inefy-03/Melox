@@ -67,6 +67,7 @@ import top.yukonga.miuix.kmp.basic.BreadcrumbItem
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.melox.player.ui.component.PageScaffold
+import com.melox.player.ui.component.LocalGlassSearchResults
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.component.navigationBackIcon
 
@@ -129,12 +130,13 @@ fun FolderDetailScreen(
     var backdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
     val layoutDirection = LocalLayoutDirection.current
-    val displayedTracks = remember(folder.tracks, query, sortConfig) {
-        sortMusicTracks(filterMusicTracks(folder.tracks, query), sortConfig)
+    val sortedTracks = remember(folder.tracks, sortConfig) { sortMusicTracks(folder.tracks, sortConfig) }
+    val displayedTracks = remember(sortedTracks, query) {
+        filterMusicTracks(sortedTracks, query)
     }
-    val sectionIndexMap = remember(displayedTracks, sortConfig.field) {
+    val sectionIndexMap = remember(sortedTracks, sortConfig.field) {
         buildMap {
-            displayedTracks.forEachIndexed { index, track ->
+            sortedTracks.forEachIndexed { index, track ->
                 val key = when (sortConfig.field) {
                     MusicSortField.ARTIST -> createMusicSortKeys(track.artist).section
                     MusicSortField.FILE_NAME -> createMusicSortKeys(track.fileName).section
@@ -312,7 +314,10 @@ fun FolderDetailScreen(
                 .then(backdrop?.let { Modifier.onGloballyPositioned { coordinates -> backdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
         ) {
             directoryStateHolder.SaveableStateProvider(folder.key) {
-                val listState = if (breadcrumbItems.isNotEmpty()) {
+                val showingResults = LocalGlassSearchResults.current
+                val listState = if (showingResults) {
+                    rememberLazyListState()
+                } else if (breadcrumbItems.isNotEmpty()) {
                     remember(folder.key) { LazyListState() }
                 } else {
                     rememberLazyListState()
@@ -323,11 +328,11 @@ fun FolderDetailScreen(
                     miniPlayerBounds = miniPlayerBounds,
                     playerContentBounds = playerContentBounds,
                     onTrackClick = onTrackClick,
-                    displayedTracks = displayedTracks,
-                    sectionIndexMap = sectionIndexMap,
+                    displayedTracks = if (showingResults) displayedTracks else sortedTracks,
+                    sectionIndexMap = if (showingResults) emptyMap() else sectionIndexMap,
                     scanStatus = scanStatus,
                     currentTrackId = currentTrackId,
-                    query = query,
+                    query = if (showingResults) query else "",
                     sortConfig = sortConfig,
                     onPlayNext = onPlayNext,
                     onAppendToQueue = onAppendToQueue,

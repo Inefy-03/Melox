@@ -1,5 +1,8 @@
 package com.melox.player.ui.screen.home
 
+import com.melox.player.ui.component.library.gridViewportWidth
+import com.melox.player.ui.component.library.playlistGridColumnCount
+import com.melox.player.ui.component.library.PlaylistGridHorizontalPadding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import android.graphics.Bitmap
@@ -80,7 +83,6 @@ import com.melox.player.ui.component.library.loadPlaceholderArtworkBitmap
 import com.melox.player.ui.component.library.rememberArtworkBitmapPixels
 import com.melox.player.ui.component.library.rememberPlaceholderArtworkBitmap
 import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
-import com.melox.player.ui.component.library.responsiveGridColumnCount
 import com.melox.player.ui.component.playlist.PlaylistGridItem
 import com.melox.player.ui.screen.library.MusicLibraryPlaceholder
 import com.melox.player.ui.screen.library.toMusicLibraryPlaceholder
@@ -142,10 +144,9 @@ fun HomeScreen(
         onRecommendationGestureActiveChanged,
     )
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val playlistGridColumns = homePlaylistGridColumnCount(
+        val playlistGridColumns = playlistGridColumnCount(
             landscape = landscape,
-            availableWidth = maxWidth - contentPadding.calculateStartPadding(layoutDirection) -
-                contentPadding.calculateEndPadding(layoutDirection),
+            availableWidth = contentPadding.gridViewportWidth(maxWidth, layoutDirection),
         )
         LazyColumn(
             state = listState,
@@ -307,7 +308,7 @@ fun HomeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                            .padding(horizontal = PlaylistGridHorizontalPadding).padding(bottom = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         row.forEach { playlist ->
@@ -471,17 +472,6 @@ internal fun HomeEmptyCardContent(
         Spacer(modifier = Modifier.weight(4f))
     }
 }
-
-internal fun homePlaylistGridColumnCount(
-    landscape: Boolean,
-    availableWidth: Dp,
-): Int = responsiveGridColumnCount(
-    availableWidth = availableWidth,
-    horizontalPadding = HomePlaylistGridHorizontalPadding,
-    minimumCellWidth = HomePlaylistGridMinimumCellWidth,
-    minimumColumns = HomePlaylistMinimumColumnCount,
-    maximumColumns = if (landscape) HomePlaylistLandscapeMaximumColumnCount else HomePlaylistPortraitMaximumColumnCount,
-)
 
 internal fun homeInitialRecommendationCount(viewportWidth: Dp, landscape: Boolean = false): Int {
     val artworkSize = if (landscape) 240.dp else HomeRecommendationArtworkSize
@@ -936,11 +926,6 @@ private val HomeRecommendationArtworkSize = 220.dp
 private val HomeRecommendationCardCornerRadius = 20.dp
 private val HomeRecommendationPageSpacing = 12.dp
 private val HomeRecommendationHorizontalContentPadding = 16.dp
-private const val HomePlaylistMinimumColumnCount = 2
-private const val HomePlaylistPortraitMaximumColumnCount = 3
-private const val HomePlaylistLandscapeMaximumColumnCount = 6
-private val HomePlaylistGridHorizontalPadding = 32.dp
-private val HomePlaylistGridMinimumCellWidth = 160.dp
 private val HomeRecommendationInfoHeight = 70.dp
 private val HomeRecommendationMetadataHorizontalPadding = 18.dp
 private val HomeRecommendationMetadataBottomPadding = 14.dp

@@ -372,7 +372,7 @@ internal fun MiniPlayer(
                         else Modifier,
                     )
                     .padding(
-                        start = if (isGlassLayout) chrome.glassArtworkStartPadding
+                        start = if (isGlassLayout) chrome.glassArtworkStartPadding(circularArtwork)
                         else miniPlayerArtworkStartPadding(isNormal, chrome.usesSmallPlayerBar, circularArtwork),
                         end = when {
                             isGlassLayout -> 7.dp

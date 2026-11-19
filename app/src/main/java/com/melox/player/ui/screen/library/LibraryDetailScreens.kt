@@ -4,6 +4,7 @@ import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -27,7 +29,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,16 +70,16 @@ import com.melox.player.ui.component.library.participatingArtistGroups
 import com.melox.player.ui.component.library.selectedItemsInDisplayedOrder
 import com.melox.player.ui.component.library.toggleAllTrackSelection
 import com.melox.player.ui.component.library.toggleTrackSelection
-import kotlinx.coroutines.launch
 import com.melox.player.ui.component.Icon
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRow
+import top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults
 import top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext
+import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -88,18 +89,26 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 @Composable
 private fun LibraryDetailTabs(
     tabs: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
+    pagerState: PagerState,
     backdrop: Backdrop?,
     modifier: Modifier = Modifier,
 ) {
+    var requestedPage by remember(pagerState) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(pagerState, requestedPage) {
+        val page = requestedPage ?: return@LaunchedEffect
+        try {
+            pagerState.animateScrollToPage(page)
+        } finally {
+            if (requestedPage == page) requestedPage = null
+        }
+    }
     GlassSegmentedTabRow(
         tabs = tabs,
-        selectedIndex = selectedIndex,
-        onSelect = onSelect,
+        selectedIndex = requestedPage ?: pagerState.currentPage,
+        onSelect = { requestedPage = it },
         backdrop = backdrop,
         modifier = modifier,
-        surfaceAlpha = if (backdrop == null) 0f else LocalGlassTopAppBarContext.current?.materialProgress?.value ?: 1f,
+        surfaceAlpha = LocalGlassTopAppBarContext.current?.materialProgress?.value ?: 1f,
     )
 }
 
@@ -129,7 +138,6 @@ fun AlbumDetailScreen(
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
     val layoutDirection = LocalLayoutDirection.current
     val pagerState = rememberPagerState(pageCount = { 2 })
-    val scope = rememberCoroutineScope()
     val trackSections = remember(album.tracks) { buildAlbumDiscSections(album.tracks) }
     val orderedTracks = remember(trackSections) { trackSections.flatMap(AlbumDiscSection::tracks) }
     val orderedTrackIndices = remember(orderedTracks) {
@@ -177,7 +185,7 @@ fun AlbumDetailScreen(
                             )
                         }
                     } else {
-                        ""
+                        album.name ?: stringResource(R.string.album_unknown)
                     },
                     modifier = Modifier,
                     color = backdrop.miuixBarColor(),
@@ -231,24 +239,21 @@ fun AlbumDetailScreen(
                             defaultActions = {},
                         )
                     },
+                    expandedContent = { AlbumDetailHeader(album) },
+                    showTitleWhileExpanded = selectionMode,
                     bottomContent = {
-                        Column {
-                            AlbumDetailHeader(album)
-                            LibraryDetailTabs(
-                                tabs = listOf(
-                                    stringResource(R.string.artist_songs),
-                                    stringResource(R.string.participating_artists),
-                                ),
-                                selectedIndex = pagerState.currentPage,
-                                onSelect = { page ->
-                                    scope.launch { pagerState.animateScrollToPage(page) }
-                                },
-                                backdrop = backdrop,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 16.dp, end = 16.dp, bottom = 1.dp),
-                            )
-                        }
+                        LibraryDetailTabs(
+                            tabs = listOf(
+                                stringResource(R.string.artist_songs),
+                                stringResource(R.string.participating_artists),
+                            ),
+                            pagerState = pagerState,
+                            backdrop = backdrop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = GlassTopAppBarDefaults.HorizontalPadding)
+                                .padding(top = 6.dp, bottom = 12.dp),
+                        )
                     },
                 )
             }
@@ -261,8 +266,7 @@ fun AlbumDetailScreen(
         ) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier
-                    .fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = true,
                 key = { it },
             ) { page ->
@@ -451,7 +455,6 @@ fun ArtistDetailScreen(
     val layoutDirection = LocalLayoutDirection.current
     val albums = remember(artist.tracks) { buildAlbumGroups(artist.tracks) }
     val pagerState = rememberPagerState(pageCount = { 2 })
-    val scope = rememberCoroutineScope()
     var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var selectedTrackUris by remember(artist.key) {
         mutableStateOf<Set<String>>(emptySet())
@@ -491,7 +494,7 @@ fun ArtistDetailScreen(
                             )
                         }
                     } else {
-                        ""
+                        artist.name ?: stringResource(R.string.artist_unknown)
                     },
                     modifier = Modifier,
                     color = backdrop.miuixBarColor(),
@@ -545,24 +548,21 @@ fun ArtistDetailScreen(
                             defaultActions = {},
                         )
                     },
+                    expandedContent = { ArtistDetailHeader(artist) },
+                    showTitleWhileExpanded = selectionMode,
                     bottomContent = {
-                        Column {
-                            ArtistDetailHeader(artist)
-                            LibraryDetailTabs(
-                                tabs = listOf(
-                                    stringResource(R.string.artist_songs),
-                                    stringResource(R.string.artist_albums),
-                                ),
-                                selectedIndex = pagerState.currentPage,
-                                onSelect = { page ->
-                                    scope.launch { pagerState.animateScrollToPage(page) }
-                                },
-                                backdrop = backdrop,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 16.dp, end = 16.dp, bottom = 1.dp),
-                            )
-                        }
+                        LibraryDetailTabs(
+                            tabs = listOf(
+                                stringResource(R.string.artist_songs),
+                                stringResource(R.string.artist_albums),
+                            ),
+                            pagerState = pagerState,
+                            backdrop = backdrop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = GlassTopAppBarDefaults.HorizontalPadding)
+                                .padding(top = 6.dp, bottom = 12.dp),
+                        )
                     },
                 )
             }
@@ -627,32 +627,34 @@ fun ArtistDetailScreen(
                         }
                     }
                 } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(albumGridStyle.columns),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .scrollEndHaptic()
-                            .overScrollVertical()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        contentPadding = PaddingValues(
-                            start = padding.calculateStartPadding(layoutDirection) + 16.dp,
-                            top = padding.calculateTopPadding() + 12.dp,
-                            end = padding.calculateEndPadding(layoutDirection) + 16.dp,
-                            bottom = maxOf(
-                                padding.calculateBottomPadding(),
-                                bottomContentPadding,
-                            ) + 16.dp,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        overscrollEffect = null,
-                    ) {
-                        items(albums, key = AlbumGroup::key) { album ->
-                            AlbumGridItem(
-                                album = album,
-                                gridStyle = albumGridStyle,
-                                onClick = { onAlbumClick(album) },
-                            )
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(albumGridColumns(albumGridStyle, maxWidth, padding)),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .scrollEndHaptic()
+                                .overScrollVertical()
+                                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            contentPadding = PaddingValues(
+                                start = padding.calculateStartPadding(layoutDirection) + AlbumGridHorizontalPadding,
+                                top = padding.calculateTopPadding() + 12.dp,
+                                end = padding.calculateEndPadding(layoutDirection) + AlbumGridHorizontalPadding,
+                                bottom = maxOf(
+                                    padding.calculateBottomPadding(),
+                                    bottomContentPadding,
+                                ) + 16.dp,
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            overscrollEffect = null,
+                        ) {
+                            items(albums, key = AlbumGroup::key) { album ->
+                                AlbumGridItem(
+                                    album = album,
+                                    gridStyle = albumGridStyle,
+                                    onClick = { onAlbumClick(album) },
+                                )
+                            }
                         }
                     }
                 }

@@ -144,6 +144,7 @@ fun PlaylistDetailScreen(
     val resolvedTracks = remember(playlist, libraryTracks, readableContentUris) {
         resolvePlaylistTracks(playlist, libraryTracks, readableContentUris)
     }
+    val unavailableDescription = stringResource(R.string.playlist_unavailable)
     val filteredTracks = remember(resolvedTracks, query) {
         val matchingContentUris = filterMusicTracks(
             resolvedTracks.map(ResolvedPlaylistTrack::track),
@@ -202,6 +203,7 @@ fun PlaylistDetailScreen(
     } else {
         persistedDisplayedTracks
     }
+    val canShuffle = displayedTracks.any { it.available }
     val currentIndex = displayedTracks.indexOfFirst { item ->
         item.available && item.track.contentUri == currentTrackContentUri
     }
@@ -333,15 +335,16 @@ fun PlaylistDetailScreen(
                                             contentDescription = stringResource(R.string.back),
                                         )
                                     }
-                                    ShufflePlayButton(
-                                        enabled = displayedTracks.any { item -> item.available } && !isDragging,
-                                        onClick = {
-                                            onShufflePlay(
-                                                displayedTracks.filter { item -> item.available }
-                                                    .map { item -> item.track },
-                                            )
-                                        },
-                                    )
+                                    if (canShuffle) {
+                                        ShufflePlayButton(
+                                            enabled = !isDragging,
+                                            onClick = {
+                                                onShufflePlay(
+                                                    displayedTracks.filter { it.available }.map { it.track },
+                                                )
+                                            },
+                                        )
+                                    }
                                 }
                             },
                         )

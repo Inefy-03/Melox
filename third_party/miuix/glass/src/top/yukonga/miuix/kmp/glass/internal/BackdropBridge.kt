@@ -68,6 +68,7 @@ internal fun Modifier.currentProgressiveTextureBlur(
     gradient: ProgressiveBlur,
     blurRadius: Float,
     colors: BlurColors,
+    enabled: Boolean = true,
 ): Modifier = progressiveTextureBlur(
     backdrop = backdrop.asCurrentBackdrop(),
     shape = shape,
@@ -76,4 +77,5 @@ internal fun Modifier.currentProgressiveTextureBlur(
     ),
     blurRadius = blurRadius,
     colors = colors.asCurrentBlurColors(),
+    enabled = enabled,
 )

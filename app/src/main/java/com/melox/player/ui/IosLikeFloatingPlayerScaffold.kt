@@ -28,7 +28,7 @@ import androidx.compose.foundation.layout.width
 import com.melox.player.ui.component.BottomSearchAction
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import com.melox.player.ui.component.rememberGlassSearchBarAlpha
+import top.yukonga.miuix.kmp.upstream.glass.rememberGlassSearchBarAlpha
 import androidx.compose.runtime.remember
 import top.yukonga.miuix.kmp.glass.popupShadowOutsets
 import top.yukonga.miuix.kmp.glass.GlassShadows

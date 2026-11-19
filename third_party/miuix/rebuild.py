@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild Melox's Miuix UI patch from the v0.9.5-beta01 source."""
+"""Rebuild the pinned Miuix Android artifacts used by Melox."""
 
 import argparse
 import hashlib
@@ -10,9 +10,10 @@ import tempfile
 from pathlib import Path
 
 
-UPSTREAM_COMMIT = "6d2554a850b8960e2616c968263ff64beb5ffb03"
+UPSTREAM_COMMIT = "58b0a3dd06f8ee83c1099a7ebee1183adce3f83c"
 UPSTREAM_VERSION = "0.9.5-beta01"
-PATCH_VERSION = f"{UPSTREAM_VERSION}-melox"
+PATCH_VERSION = f"{UPSTREAM_VERSION}-melox.2"
+MODULES = ("ui", "blur", "preference")
 RAIL_SOURCE = "miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt"
 RAIL_SHA256 = "231daca7b4ba8352092a23cae6376eddbb73e97938dd9117c08c8e691d7f8e7f"
 
@@ -55,24 +56,31 @@ def main():
             if sdk:
                 (work / "local.properties").write_text(sdk + "\n")
         subprocess.run(
-            [str(work / "gradlew"), "-p", str(work), ":miuix-ui:assembleAndroidMain",
-             "-Prelease", "--no-configuration-cache", "--max-workers=4"],
+            [str(work / "gradlew"), "-p", str(work),
+             *(f":miuix-{module}:assembleAndroidMain" for module in MODULES),
+             "-Prelease", "-Pkotlin.compiler.execution.strategy=in-process",
+             "--no-configuration-cache", "--no-watch-fs", "--max-workers=4"],
             cwd=project, check=True,
         )
-        artifacts = list((work / "miuix-ui/build/outputs/aar").glob("*.aar"))
+        install_artifacts(work, directory)
+
+
+def install_artifacts(work, directory):
+    for module in MODULES:
+        artifacts = list((work / f"miuix-{module}/build/outputs/aar").glob("*.aar"))
         assert len(artifacts) == 1, artifacts
-        output = directory / "maven/top/yukonga/miuix/kmp/miuix-ui-android" / PATCH_VERSION
+        artifact_id = f"miuix-{module}-android"
+        output = directory / "maven/top/yukonga/miuix/kmp" / artifact_id / PATCH_VERSION
         output.mkdir(parents=True, exist_ok=True)
-        name = f"miuix-ui-android-{PATCH_VERSION}"
+        name = f"{artifact_id}-{PATCH_VERSION}"
         target = output / f"{name}.aar"
         shutil.copy2(artifacts[0], target)
-        pom = (directory / f"upstream-ui-android-{UPSTREAM_VERSION}.pom").read_text()
+        pom = (directory / f"upstream-{module}-android-{UPSTREAM_VERSION}.pom").read_text()
         pom = re.sub(r"<!--.*?-->", "", pom, flags=re.DOTALL)
         pom = "\n".join(line.rstrip() for line in pom.splitlines()) + "\n"
         pom = pom.replace(f"<version>{UPSTREAM_VERSION}</version>", f"<version>{PATCH_VERSION}</version>", 1)
         (output / f"{name}.pom").write_text(pom)
-        print(f"AAR SHA-256: {hashlib.sha256(target.read_bytes()).hexdigest()}")
-        print(target)
+        print(f"{target}: {hashlib.sha256(target.read_bytes()).hexdigest()}")
 
 
 if __name__ == "__main__":

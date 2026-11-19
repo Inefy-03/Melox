@@ -3,6 +3,8 @@
 
 package top.yukonga.miuix.kmp.upstream.glass
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.dropShadow
@@ -23,6 +25,8 @@ import top.yukonga.miuix.kmp.upstream.glass.internal.GLASS_COLOR_BLEND_SHADER_KE
 import top.yukonga.miuix.kmp.upstream.glass.internal.colorBlendEffect
 import top.yukonga.miuix.kmp.upstream.glass.internal.glassEffect
 import top.yukonga.miuix.kmp.upstream.material.EdgeStroke
+import top.yukonga.miuix.kmp.upstream.material.GlassColorBlendMode
+import top.yukonga.miuix.kmp.upstream.material.GlassColorLayer
 import top.yukonga.miuix.kmp.upstream.material.GlassDefaults
 import top.yukonga.miuix.kmp.upstream.material.GlassInner
 import top.yukonga.miuix.kmp.upstream.material.GlassMaterial
@@ -37,6 +41,7 @@ import top.yukonga.miuix.kmp.upstream.material.drawGlassMask
 import top.yukonga.miuix.kmp.upstream.material.drawGlassRim
 import top.yukonga.miuix.kmp.upstream.material.drawGlassShadow
 import top.yukonga.miuix.kmp.upstream.material.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * Applies a glass surface over [backdrop].
@@ -257,4 +262,18 @@ internal fun Modifier.fallbackGlassShadow(
     offset = Offset(shadow.offsetX * sourceScale, shadow.offsetY * sourceScale)
     color = shadow.color
     this.alpha = alpha().coerceIn(0f, 1f)
+}
+
+/** Tints the glass material with a container surface when appropriate. */
+@Composable
+internal fun dynamicGlassMaterial(
+    base: GlassMaterial,
+    tint: Color = MiuixTheme.colorScheme.surfaceContainerHigh,
+    alpha: Float = 0.6f,
+): GlassMaterial = if (MiuixTheme.isDynamicColor) {
+    remember(base, tint, alpha) {
+        base.copy(third = GlassColorLayer(tint.copy(alpha = alpha), GlassColorBlendMode.SrcOver))
+    }
+} else {
+    base
 }

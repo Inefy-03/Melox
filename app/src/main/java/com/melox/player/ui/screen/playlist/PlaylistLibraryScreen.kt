@@ -1,5 +1,8 @@
 package com.melox.player.ui.screen.playlist
 
+import com.melox.player.ui.component.library.gridViewportWidth
+import com.melox.player.ui.component.library.playlistGridColumnCount
+import com.melox.player.ui.component.library.PlaylistGridHorizontalPadding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.melox.player.ui.icon.*
@@ -49,7 +52,6 @@ import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.playlist.PlaylistGridItem
 import com.melox.player.ui.component.rememberBlurBackdrop
-import com.melox.player.ui.screen.home.homePlaylistGridColumnCount
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 import com.melox.player.ui.component.Icon
@@ -143,9 +145,9 @@ fun PlaylistLibraryScreen(
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val gridContentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection) + 16.dp,
+                    start = padding.calculateStartPadding(layoutDirection) + PlaylistGridHorizontalPadding,
                     top = padding.calculateTopPadding() + 12.dp,
-                    end = padding.calculateEndPadding(layoutDirection) + 16.dp,
+                    end = padding.calculateEndPadding(layoutDirection) + PlaylistGridHorizontalPadding,
                     bottom = maxOf(
                         padding.calculateBottomPadding(),
                         bottomContentPadding,
@@ -168,9 +170,9 @@ fun PlaylistLibraryScreen(
                     state = gridState,
                     userScrollEnabled = !reorderState.isAnyItemDragging,
                     columns = GridCells.Fixed(
-                        homePlaylistGridColumnCount(
+                        playlistGridColumnCount(
                             landscape = landscape,
-                            availableWidth = maxWidth,
+                            availableWidth = padding.gridViewportWidth(maxWidth, layoutDirection),
                         ),
                     ),
                     modifier = Modifier

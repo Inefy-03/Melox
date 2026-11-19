@@ -16,7 +16,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
-import com.melox.player.ui.component.LocalGlassSearchPage
+import com.melox.player.ui.component.LocalGlassSearchResults
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.SmallTopAppBar
 import com.melox.player.ui.component.TopAppBar
@@ -98,8 +98,8 @@ internal fun PlayerPage(
                     start = innerPadding.calculateStartPadding(layoutDirection),
                     top = innerPadding.calculateTopPadding(),
                     end = innerPadding.calculateEndPadding(layoutDirection),
-                    bottom = if (LocalGlassSearchPage.current?.isExpanded == true) {
-                        innerPadding.calculateBottomPadding()
+                    bottom = if (LocalGlassSearchResults.current) {
+                        maxOf(innerPadding.calculateBottomPadding(), outerPadding.calculateBottomPadding())
                     } else {
                         outerPadding.calculateBottomPadding()
                     },

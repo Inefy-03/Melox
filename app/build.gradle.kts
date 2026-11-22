@@ -187,6 +187,8 @@ configurations.configureEach {
 }
 
 dependencies {
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     implementation(files("libs/renderscript-toolkit-blur-344be3f-arm64-16k.aar"))
     implementation(files("libs/media3-decoder-ffmpeg-1.11.0-ffmpeg9.0-arm64-v8a.aar"))
     implementation(libs.androidx.activity.compose)

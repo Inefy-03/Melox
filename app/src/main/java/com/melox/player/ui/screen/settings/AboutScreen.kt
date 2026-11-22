@@ -75,6 +75,8 @@ fun AboutScreen(
     customBackgroundSelected: Boolean,
     onBack: () -> Unit,
     onOpenSponsor: () -> Unit,
+    isCurrentPage: Boolean = true,
+    isNavigationSettled: () -> Boolean = { true },
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     val listState = rememberLazyListState()
@@ -125,15 +127,20 @@ fun AboutScreen(
                 .fillMaxSize()
                 .then(topBarBackdrop?.let { Modifier.onGloballyPositioned { coordinates -> topBarBackdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
         ) {
-            AboutContent(
-                padding = padding,
-                listState = listState,
-                scrollBehavior = scrollBehavior,
-                scrollProgress = { scrollProgress },
-                bottomContentPadding = bottomContentPadding,
-                customBackgroundSelected = customBackgroundSelected,
-                onOpenSponsor = onOpenSponsor,
-            )
+            AboutUpdates(isCurrentPage, isNavigationSettled) { available, checking, onCheck ->
+                AboutContent(
+                    padding = padding,
+                    listState = listState,
+                    scrollBehavior = scrollBehavior,
+                    scrollProgress = { scrollProgress },
+                    bottomContentPadding = bottomContentPadding,
+                    customBackgroundSelected = customBackgroundSelected,
+                    onOpenSponsor = onOpenSponsor,
+                    updateAvailable = available,
+                    checkingUpdate = checking,
+                    onCheckUpdate = onCheck,
+                )
+            }
         }
     }
 }
@@ -147,6 +154,9 @@ private fun AboutContent(
     bottomContentPadding: Dp,
     customBackgroundSelected: Boolean,
     onOpenSponsor: () -> Unit,
+    updateAvailable: Boolean,
+    checkingUpdate: Boolean,
+    onCheckUpdate: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     val density = LocalDensity.current
@@ -231,63 +241,78 @@ private fun AboutContent(
             item(key = "aboutOptions") {
                 Box {
                     Spacer(Modifier.fillParentMaxHeight())
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp)
-                            .padding(bottom = 12.dp)
-                            .then(
-                                contentBackdrop?.takeUnless { customBackgroundVisible }?.let {
-                                    Modifier.textureBlur(
-                                        backdrop = it,
-                                        shape = RoundedCornerShape(16.dp),
-                                        blurRadius = 60f,
-                                        noiseCoefficient = BlurDefaults.NoiseCoefficient,
-                                        colors = BlurDefaults.blurColors(
-                                            blendColors = cardBlend,
-                                        ),
+                    val cardModifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp)
+                        .then(
+                            contentBackdrop?.takeUnless { customBackgroundVisible }?.let {
+                                Modifier.textureBlur(
+                                    backdrop = it,
+                                    shape = RoundedCornerShape(16.dp),
+                                    blurRadius = 60f,
+                                    noiseCoefficient = BlurDefaults.NoiseCoefficient,
+                                    colors = BlurDefaults.blurColors(blendColors = cardBlend),
+                                )
+                            } ?: Modifier,
+                        )
+                    val cardColors = CardDefaults.defaultColors(
+                        color = if (contentBackdrop != null && !customBackgroundVisible) {
+                            Color.Transparent
+                        } else {
+                            MiuixTheme.colorScheme.surfaceContainer
+                        },
+                        contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
+                    )
+                    Column {
+                        Card(modifier = cardModifier, colors = cardColors) {
+                            ArrowPreference(
+                                title = stringResource(R.string.about_project_title),
+                                endActions = {
+                                    Text(
+                                        text = stringResource(R.string.about_github_label),
+                                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantActions,
                                     )
-                                } ?: Modifier,
-                            ),
-                        colors = CardDefaults.defaultColors(
-                            color = if (contentBackdrop != null && !customBackgroundVisible) {
-                                Color.Transparent
-                            } else {
-                                MiuixTheme.colorScheme.surfaceContainer
-                            },
-                            contentColor = MiuixTheme.colorScheme.onSurfaceContainer,
-                        ),
-                    ) {
-                        ArrowPreference(
-                            title = stringResource(R.string.about_project_title),
-                            endActions = {
-                                Text(
-                                    text = stringResource(R.string.about_github_label),
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                )
-                            },
-                            onClick = {
-                                uriHandler.openUri(PROJECT_URL)
-                            },
-                        )
-                        ArrowPreference(
-                            title = stringResource(R.string.about_join_group_title),
-                            endActions = {
-                                Text(
-                                    text = stringResource(R.string.about_telegram_label),
-                                    fontSize = MiuixTheme.textStyles.body2.fontSize,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                                )
-                            },
-                            onClick = {
-                                uriHandler.openUri(TELEGRAM_URL)
-                            },
-                        )
-                        ArrowPreference(
-                            title = stringResource(R.string.about_sponsor_title),
-                            onClick = onOpenSponsor,
-                        )
+                                },
+                                onClick = {
+                                    uriHandler.openUri(PROJECT_URL)
+                                },
+                            )
+                            ArrowPreference(
+                                title = stringResource(R.string.about_join_group_title),
+                                endActions = {
+                                    Text(
+                                        text = stringResource(R.string.about_telegram_label),
+                                        fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                    )
+                                },
+                                onClick = {
+                                    uriHandler.openUri(TELEGRAM_URL)
+                                },
+                            )
+                        }
+                        Card(modifier = cardModifier, colors = cardColors) {
+                            ArrowPreference(
+                                title = stringResource(R.string.about_check_update),
+                                enabled = !checkingUpdate,
+                                endActions = {
+                                    if (updateAvailable) {
+                                        Text(
+                                            text = stringResource(R.string.about_update_available),
+                                            fontSize = MiuixTheme.textStyles.body2.fontSize,
+                                            color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                        )
+                                    }
+                                },
+                                onClick = onCheckUpdate,
+                            )
+                            ArrowPreference(
+                                title = stringResource(R.string.about_sponsor_title),
+                                onClick = onOpenSponsor,
+                            )
+                        }
                     }
                 }
             }

@@ -2337,6 +2337,10 @@ fun MeloxApp(
                                                     AppRoute.ABOUT -> AboutScreen(
                                                         bottomContentPadding = routeBottomPadding,
                                                         customBackgroundSelected = settings.customBackgroundEnabled && settings.customBackgroundId != null,
+                                                        isCurrentPage = currentRoute == AppRoute.ABOUT,
+                                                        isNavigationSettled = {
+                                                            !transitionScope.isRunning && transitionScope.relativeDepth == 0f
+                                                        },
                                                         onBack = navigateBack,
                                                         onOpenSponsor = {
                                                             currentRoute = AppRoute.SPONSOR

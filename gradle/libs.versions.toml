@@ -19,6 +19,8 @@ taglib = "1.0.6"
 tinypinyin = "2.0.3"
 
 [libraries]
+shizuku-api = { module = "dev.rikka.shizuku:api", version = "13.1.5" }
+shizuku-provider = { module = "dev.rikka.shizuku:provider", version = "13.1.5" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "dataStore" }

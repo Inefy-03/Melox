@@ -1,15 +1,14 @@
 package com.melox.player.ui.component
 
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
-import top.yukonga.miuix.kmp.glass.GlassDialogDefaults
 import top.yukonga.miuix.kmp.layout.DialogDefaults
-import top.yukonga.miuix.kmp.layout.DialogSurfaceScope
-import top.yukonga.miuix.kmp.overlay.OverlayDialog as MiuixOverlayDialog
+import top.yukonga.miuix.kmp.glass.GlassDialog
+import top.yukonga.miuix.kmp.glass.GlassDialogDefaults
 
 @Composable
 internal fun OverlayDialog(
@@ -19,7 +18,7 @@ internal fun OverlayDialog(
     titleColor: Color = DialogDefaults.titleColor(),
     summary: String? = null,
     summaryColor: Color = DialogDefaults.summaryColor(),
-    backgroundColor: Color = DialogDefaults.backgroundColor(),
+    backgroundColor: Color = GlassDialogDefaults.containerColor(),
     enableWindowDim: Boolean = true,
     onDismissRequest: (() -> Unit)? = null,
     onDismissFinished: (() -> Unit)? = null,
@@ -31,19 +30,19 @@ internal fun OverlayDialog(
     largeScreen: Boolean? = null,
     cornerRadius: Dp? = null,
     dimColor: Color = GlassDialogDefaults.ScrimColor,
-    surface: (@Composable DialogSurfaceScope.() -> Modifier)? = null,
     content: @Composable () -> Unit,
 ) {
-    MiuixOverlayDialog(
+    GlassDialog(
         show = show,
+        backdrop = LocalBottomSheetBlurBackdrop.current,
         modifier = modifier,
         title = title,
         titleColor = titleColor,
         summary = summary,
         summaryColor = summaryColor,
-        backgroundColor = backgroundColor,
+        containerColor = backgroundColor,
         enableWindowDim = enableWindowDim,
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = onDismissRequest ?: {},
         onDismissFinished = onDismissFinished,
         outsideMargin = outsideMargin,
         insideMargin = insideMargin,
@@ -53,7 +52,6 @@ internal fun OverlayDialog(
         largeScreen = largeScreen,
         cornerRadius = cornerRadius,
         dimColor = dimColor,
-        surface = surface ?: top.yukonga.miuix.kmp.glass.glassDialogSurface(LocalBottomSheetBlurBackdrop.current),
         content = { CompositionLocalProvider(LocalTopBarScrollContent provides null, content = content) },
     )
 }

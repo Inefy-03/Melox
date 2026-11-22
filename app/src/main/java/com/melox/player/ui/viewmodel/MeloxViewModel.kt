@@ -603,21 +603,9 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setProgressiveTopBarBlurEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setProgressiveTopBarBlurEnabled(enabled)
-        }
-    }
-
     fun setSmallPlayerBar(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setSmallPlayerBar(enabled)
-        }
-    }
-
-    fun setHideBottomBar(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setHideBottomBar(enabled)
         }
     }
 

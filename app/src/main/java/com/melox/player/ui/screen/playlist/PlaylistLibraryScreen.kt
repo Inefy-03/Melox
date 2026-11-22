@@ -178,7 +178,7 @@ fun PlaylistLibraryScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .scrollEndHaptic()
-                        .overScrollVertical()
+                        .overScrollVertical(scrollBehavior = scrollBehavior)
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
                     contentPadding = gridContentPadding,
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),

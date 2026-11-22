@@ -446,7 +446,7 @@ fun PlaylistDetailScreen(
                         Modifier.onGloballyPositioned { coordinates -> locationCaptureCoordinates = coordinates }.glassLayerBackdrop(it)
                     } ?: Modifier)
                     .scrollEndHaptic()
-                    .overScrollVertical()
+                    .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = listState,
                 userScrollEnabled = !isDragging,

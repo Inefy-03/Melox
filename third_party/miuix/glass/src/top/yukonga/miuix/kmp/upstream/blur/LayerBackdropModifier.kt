@@ -5,13 +5,13 @@ package top.yukonga.miuix.kmp.upstream.blur
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.GlobalPositionAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.platform.InspectorInfo
-import top.yukonga.miuix.kmp.upstream.blur.internal.recordLayer
 
 /**
  * Captures the content of this composable into the given [LayerBackdrop]'s graphics layer.
@@ -31,8 +31,8 @@ private class LayerBackdropElement(
         if (node.backdrop !== backdrop) {
             node.backdrop.layerCoordinates = null
             node.backdrop = backdrop
+            node.invalidateDraw()
         }
-        node.invalidateDraw()
     }
 
     override fun InspectorInfo.inspectableProperties() {
@@ -55,9 +55,15 @@ private class LayerBackdropNode(
     DrawModifierNode,
     GlobalPositionAwareModifierNode {
 
+    private val recordBlock: DrawScope.() -> Unit = {
+        (this as? ContentDrawScope)?.let(backdrop.onDraw)
+    }
+
     override fun ContentDrawScope.draw() {
         drawContent()
-        recordLayer(backdrop.graphicsLayer) { backdrop.onDraw(this@draw) }
+        with(backdrop.graphicsLayer) {
+            record(block = recordBlock)
+        }
     }
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {

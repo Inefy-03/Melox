@@ -216,7 +216,6 @@
     <string name="close">关闭</string>
 
     <string name="settings_section_appearance">主界面</string>
-    <string name="settings_interface_style_title">界面样式</string>
     <string name="settings_immersive_mode_title">沉浸模式</string>
     <string name="settings_immersive_mode_summary">隐藏状态栏与精简播放界面，可通过播放页长按播放/暂停按钮切换</string>
     <string name="settings_hide_status_bar_title">隐藏状态栏</string>
@@ -283,10 +282,7 @@
     <string name="settings_blur_title">模糊</string>
     <string name="settings_blur_summary">为应用启用模糊效果</string>
     <string name="settings_blur_unsupported">模糊需要 Android 13 或更高版本</string>
-    <string name="settings_progressive_top_bar_blur_title">顶栏渐进模糊</string>
     <string name="settings_small_player_bar_title">小播放栏</string>
-    <string name="settings_hide_bottom_bar_title">始终隐藏底栏</string>
-    <string name="settings_hide_bottom_bar_summary">隐藏底栏后，主界面只能滑动切换页面</string>
     <string name="settings_predictive_back_title">预测性返回手势</string>
     <string name="settings_navigation_transition_style_title">过渡风格</string>
     <string name="settings_navigation_transition_style_miuix">Miuix</string>

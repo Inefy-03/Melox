@@ -107,7 +107,7 @@ fun AlbumLibraryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .scrollEndHaptic()
-                .overScrollVertical()
+                .overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             state = gridState,
             contentPadding = gridContentPadding,

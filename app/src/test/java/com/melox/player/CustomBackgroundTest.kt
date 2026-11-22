@@ -15,7 +15,6 @@ import com.melox.player.model.normalizeCustomBackgroundCardBlurPercent
 import com.melox.player.model.normalizeCustomBackgroundCardOpacityPercent
 import com.melox.player.model.resolveCustomBackgroundBlurPercent
 import com.melox.player.ui.component.pageSurfaceBlurEnabled
-import com.melox.player.ui.component.wallpaperTopBarVisible
 import com.melox.player.ui.component.topBarContainerColor
 import com.melox.player.ui.component.pageCardBlurRadius
 import com.melox.player.ui.component.pageCardSurfaceAlpha
@@ -163,34 +162,9 @@ class CustomBackgroundTest {
     }
 
     @Test
-    fun normalTopBarsShowWallpaperButActiveProgressiveBlurIsPreserved() {
-        for (hasImage in listOf(false, true)) {
-            for (blurEnabled in listOf(false, true)) {
-                for (progressive in listOf(false, true)) {
-                    for (supported in listOf(false, true)) {
-                        assertEquals(
-                            hasImage && !(blurEnabled && progressive && supported),
-                            wallpaperTopBarVisible(hasImage, blurEnabled, progressive, supported),
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    @Test
-    fun wallpaperBarColorStaysTransparentDuringBlurModeAndBackdropHandoff() {
-        for (blurEnabled in listOf(true, false, true)) {
-            for (progressive in listOf(true, false, true)) {
-                for (backdropAvailable in listOf(true, false, true)) {
-                    assertEquals(Color.Transparent, topBarContainerColor(true, backdropAvailable, Color.White))
-                    assertEquals(
-                        !(blurEnabled && progressive && backdropAvailable),
-                        wallpaperTopBarVisible(true, blurEnabled, progressive, backdropAvailable),
-                    )
-                }
-            }
-        }
+    fun wallpaperBarColorStaysTransparentDuringBackdropHandoff() {
+        assertEquals(Color.Transparent, topBarContainerColor(true, true, Color.White))
+        assertEquals(Color.Transparent, topBarContainerColor(true, false, Color.White))
     }
 
     @Test

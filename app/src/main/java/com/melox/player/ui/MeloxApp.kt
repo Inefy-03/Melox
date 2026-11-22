@@ -17,6 +17,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -106,6 +107,8 @@ import com.melox.player.model.ScanStatus
 import com.melox.player.model.MusicTrack
 import com.melox.player.ui.component.animation.InteractiveHighlight
 import com.melox.player.ui.component.playback.playerSheetBarAlpha
+import com.melox.player.ui.component.GlassMenuLayer
+import com.melox.player.ui.component.LocalGlassMenus
 import com.melox.player.ui.component.LocalBottomSheetBlurBackdrop
 import com.melox.player.ui.component.LocalTopBarBlurSettings
 import com.melox.player.ui.component.LocalCustomPageBackground
@@ -194,7 +197,6 @@ import com.melox.player.ui.screen.settings.AboutScreen
 import com.melox.player.ui.screen.settings.PlaybackBehaviorScreen
 import com.melox.player.ui.screen.settings.AudioOutputScreen
 import com.melox.player.ui.screen.settings.SponsorScreen
-import com.melox.player.ui.screen.settings.InterfaceStyleSettingsScreen
 import com.melox.player.ui.screen.settings.ThemeSettingsScreen
 import com.melox.player.ui.screen.settings.MainBackgroundScreen
 import com.melox.player.ui.screen.settings.LyricsSettingsScreen
@@ -366,19 +368,18 @@ fun MeloxApp(
         liquidGlassSupported,
     )
     val recommendationViewportWidth = if (
-        !settings.hideBottomBar &&
-            shouldUseNavigationRail(
-                windowWidth = windowWidth,
-                windowHeight = windowHeight,
-                effectiveStyle = requestedBottomBarStyle,
-            )
+        shouldUseNavigationRail(
+            windowWidth = windowWidth,
+            windowHeight = windowHeight,
+            effectiveStyle = requestedBottomBarStyle,
+        )
     ) {
         windowWidth - if (windowWidth >= 1200.dp) {
             NavigationRailDefaults.ExpandedWidth
         } else {
             NavigationRailDefaults.MinWidth
         }
-    } else if (!settings.hideBottomBar && landscape && requestedBottomBarStyle == BottomBarStyle.LIQUID_GLASS) {
+    } else if (landscape && requestedBottomBarStyle == BottomBarStyle.LIQUID_GLASS) {
         windowWidth - FloatingNavigationRailInset
     } else {
         windowWidth
@@ -473,6 +474,9 @@ fun MeloxApp(
     val frameRecordingGeneration = playerTransition.currentFrameRecordingGeneration
     var miniPlayerChrome by remember { mutableStateOf<MiniPlayerChrome?>(null) }
     var currentRoute by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
+    LaunchedEffect(currentRoute) {
+        if (currentRoute == AppRoute.INTERFACE_STYLE) currentRoute = AppRoute.THEME_SETTINGS
+    }
     var standaloneLibraryParent by rememberSaveable { mutableStateOf(AppRoute.ROOT) }
     var sidebarEntryRoute by rememberSaveable { mutableStateOf<AppRoute?>(null) }
     val bottomSearchActions = remember { mutableStateMapOf<Any, BottomSearchAction>() }
@@ -743,7 +747,6 @@ fun MeloxApp(
             )
         }
         val themeSettingsListState = rememberLazyListState()
-        val interfaceStyleListState = rememberLazyListState()
         val mainBackgroundListState = rememberLazyListState()
         val lyricsSettingsListState = rememberLazyListState()
         val lyricsInterfaceListState = rememberLazyListState()
@@ -756,7 +759,7 @@ fun MeloxApp(
             if (
                 renderedBottomBarStyle != settings.bottomBarStyle &&
                 (
-                    currentRoute == AppRoute.INTERFACE_STYLE ||
+                    currentRoute == AppRoute.THEME_SETTINGS ||
                         resolveBottomBarStyle(
                             renderedBottomBarStyle,
                             liquidGlassSupported,
@@ -782,7 +785,6 @@ fun MeloxApp(
         val libraryScrollBehavior = rememberSearchTopBarScrollBehavior(false)
         val settingsScrollBehavior = MiuixScrollBehavior()
         val themeSettingsScrollBehavior = MiuixScrollBehavior()
-        val interfaceStyleScrollBehavior = MiuixScrollBehavior()
         val mainBackgroundScrollBehavior = MiuixScrollBehavior()
         val lyricsSettingsScrollBehavior = MiuixScrollBehavior()
         val lyricsInterfaceScrollBehavior = MiuixScrollBehavior()
@@ -1619,8 +1621,7 @@ fun MeloxApp(
                         depth = 2,
                     ),
                 )
-                currentRoute == AppRoute.MAIN_BACKGROUND ||
-                    currentRoute == AppRoute.INTERFACE_STYLE -> listOf(
+                currentRoute == AppRoute.MAIN_BACKGROUND -> listOf(
                     root,
                     AppNavDestination(AppRoute.THEME_SETTINGS, depth = 1),
                     AppNavDestination(currentRoute, depth = 2),
@@ -1696,10 +1697,7 @@ fun MeloxApp(
                 currentRoute = AppRoute.SCAN_SETTINGS
             } else if (currentRoute == AppRoute.LYRICS_INTERFACE) {
                 currentRoute = AppRoute.LYRICS_SETTINGS
-            } else if (
-                currentRoute == AppRoute.MAIN_BACKGROUND ||
-                currentRoute == AppRoute.INTERFACE_STYLE
-            ) {
+            } else if (currentRoute == AppRoute.MAIN_BACKGROUND) {
                 currentRoute = AppRoute.THEME_SETTINGS
             } else if (currentRoute == AppRoute.SPONSOR) {
                 currentRoute = AppRoute.ABOUT
@@ -1792,7 +1790,6 @@ fun MeloxApp(
             ),
             LocalTopBarBlurSettings provides TopBarBlurSettings(
                 blurEnabled = settings.blurEnabled,
-                progressiveEnabled = settings.progressiveTopBarBlurEnabled,
             ),
         ) {
             FixedPageBackgroundHost(
@@ -1801,15 +1798,22 @@ fun MeloxApp(
             ) {
             val bottomSheetBackdrop = rememberBlurBackdrop()
             val useBottomSearch = requestedBottomBarStyle == BottomBarStyle.GLASS && !landscape
+            val glassMenus = remember {
+                mutableStateMapOf<Any, @Composable BoxScope.() -> Unit>()
+            }
             // Overlay content is composed by the root popup host.
             CompositionLocalProvider(
+                LocalGlassMenus provides glassMenus,
                 LocalBottomSheetBlurBackdrop provides bottomSheetBackdrop,
                 LocalBottomSearchActions provides bottomSearchActions.takeIf { useBottomSearch },
             ) {
                 Scaffold(
                     modifier = Modifier.customPageBackground(),
                     containerColor = customPageContainerColor(),
-                    popupHost = { MiuixPopupHost() },
+                    popupHost = {
+                        GlassMenuLayer(glassMenus)
+                        MiuixPopupHost()
+                    },
                 ) { _ ->
                 Box(
                     modifier = Modifier
@@ -1873,7 +1877,6 @@ fun MeloxApp(
                             navigationHideMotion = pageNavigationHideMotion,
                             showNavigation = shouldShowNavigation(
                                 currentRouteIsRoot = currentRoute == AppRoute.ROOT,
-                                hideBottomBar = settings.hideBottomBar,
                                 landscape = landscape,
                                 requestedBottomBarStyle = requestedBottomBarStyle,
                                 renderedBottomBarStyle = resolveBottomBarStyle(
@@ -1882,8 +1885,7 @@ fun MeloxApp(
                                 ),
                             ),
                             showNavigationRailOnSecondary =
-                                !settings.hideBottomBar &&
-                                    landscape &&
+                                landscape &&
                                     (requestedBottomBarStyle == BottomBarStyle.NORMAL || requestedBottomBarStyle == BottomBarStyle.LIQUID_GLASS),
                             persistedNavigationRailExpanded = settings.navigationRailExpanded,
                             onNavigationRailExpandedChange = viewModel::setNavigationRailExpanded,
@@ -2066,7 +2068,7 @@ fun MeloxApp(
                                                     modifier = Modifier.fillMaxSize(),
                                                 ) {
                                                     when (route.route) {
-                                                    AppRoute.THEME_SETTINGS ->
+                                                    AppRoute.INTERFACE_STYLE, AppRoute.THEME_SETTINGS ->
                                                         ThemeSettingsScreen(
                                                             settings = settings,
                                                             bottomContentPadding =
@@ -2105,34 +2107,13 @@ fun MeloxApp(
                                                                 viewModel::setNavigationTransitionStyle,
                                                             onHapticFeedbackEnabledChange =
                                                                 viewModel::setHapticFeedbackEnabled,
-                                                            onOpenInterfaceStyle = {
-                                                                interfaceStyleListState.requestScrollToItem(0)
-                                                                interfaceStyleScrollBehavior.state.heightOffset = 0f
-                                                                interfaceStyleScrollBehavior.state.contentOffset = 0f
-                                                                currentRoute = AppRoute.INTERFACE_STYLE
-                                                            },
+                                                            liquidGlassSupported = liquidGlassSupported,
+                                                            onBlurChange = viewModel::setBlurEnabled,
+                                                            onBottomBarStyleChange = viewModel::setBottomBarStyle,
+                                                            onSmallPlayerBarChange = viewModel::setSmallPlayerBar,
                                                             onOpenMainBackground = {
                                                                 currentRoute = AppRoute.MAIN_BACKGROUND
                                                             },
-                                                        )
-
-                                                    AppRoute.INTERFACE_STYLE ->
-                                                        InterfaceStyleSettingsScreen(
-                                                            settings = settings,
-                                                            bottomContentPadding = routeBottomPadding,
-                                                            liquidGlassSupported = liquidGlassSupported,
-                                                            listState = interfaceStyleListState,
-                                                            scrollBehavior = interfaceStyleScrollBehavior,
-                                                            onBack = navigateBack,
-                                                            onBlurChange =
-                                                                viewModel::setBlurEnabled,
-                                                            onProgressiveTopBarBlurChange =
-                                                                viewModel::setProgressiveTopBarBlurEnabled,
-                                                            onSmallPlayerBarChange =
-                                                                viewModel::setSmallPlayerBar,
-                                                            onHideBottomBarChange =
-                                                                viewModel::setHideBottomBar,
-                                                            onBottomBarStyleChange = viewModel::setBottomBarStyle,
                                                         )
 
                                                     AppRoute.MAIN_BACKGROUND ->

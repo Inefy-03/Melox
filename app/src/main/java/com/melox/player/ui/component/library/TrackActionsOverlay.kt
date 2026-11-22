@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,8 +38,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.melox.player.R
-import com.melox.player.ui.component.bottomSheetCardColor
-import com.melox.player.ui.component.bottomSheetMaterialColor
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.data.library.artistGroupKey
 import com.melox.player.data.library.displayArtistName
@@ -50,25 +47,25 @@ import com.melox.player.model.MusicTrack
 import java.util.Locale
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.glass.GlassCard as Card
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import com.melox.player.ui.component.Icon
+import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
 import com.melox.player.ui.icon.*
-import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import com.melox.player.ui.component.OverlayBottomSheet
+import com.melox.player.ui.component.BottomSheetHeaderButton
 import com.melox.player.ui.component.OverlayDialog
 import com.melox.player.ui.component.OverlayDropdownMenu
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
 
-private val TrackActionIconSize = 22.dp
+private val TrackActionIconSize = 24.dp
 private val TrackActionSummaryArtworkSize = 56.dp
 private val TrackActionSummaryArtworkCornerRadius = 8.dp
 @Composable
@@ -177,18 +174,12 @@ fun TrackActionsOverlay(
     OverlayBottomSheet(
         show = track != null,
         allowDismiss = artworkPreview == null,
-        backgroundColor = bottomSheetMaterialColor(),
         enableWindowDim = true,
         startAction = {
             (track ?: retainedTrack)?.let { selectedTrack ->
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        // Use 6 dp of the native header's 12 dp bottom padding.
-                        .offset(y = 6.dp),
-                    colors = CardDefaults.defaultColors(
-                        color = bottomSheetCardColor(),
-                    ),
+                        .fillMaxWidth(),
                 ) {
                     MusicTrackSummary(
                         track = selectedTrack,
@@ -223,15 +214,12 @@ fun TrackActionsOverlay(
     ) {
         (track ?: retainedTrack)?.let { selectedTrack ->
             SheetScrollableContent(
-                bottomPadding = navigationBarBottomPadding + 12.dp,
+                bottomPadding = navigationBarBottomPadding + 16.dp,
             ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 6.dp),
-                    colors = CardDefaults.defaultColors(
-                        color = bottomSheetCardColor(),
-                    ),
+                        .padding(top = 4.dp),
                 ) {
                     TrackAction(
                         icon = GlassIcons.Add,
@@ -450,7 +438,6 @@ fun TrackActionsOverlay(
 
     OverlayBottomSheet(
         show = songInfoTrack != null,
-        backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.music_song_info),
         startAction = {
             BottomSheetCloseButton(onClick = { songInfoTrack = null })
@@ -461,15 +448,12 @@ fun TrackActionsOverlay(
     ) {
         (songInfoTrack ?: retainedSongInfoTrack)?.let { infoTrack ->
             SheetScrollableContent(
-                bottomPadding = navigationBarBottomPadding + 12.dp,
+                bottomPadding = navigationBarBottomPadding + 16.dp,
             ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    colors = CardDefaults.defaultColors(
-                        color = bottomSheetCardColor(),
-                    ),
+                        .padding(bottom = 16.dp),
                 ) {
                     SongInfoRow(stringResource(R.string.song_info_title), infoTrack.title)
                     SongInfoRow(stringResource(R.string.song_info_artist), infoTrack.artist)
@@ -482,9 +466,6 @@ fun TrackActionsOverlay(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth(),
-                    colors = CardDefaults.defaultColors(
-                        color = bottomSheetCardColor(),
-                    ),
                 ) {
                     SongInfoRow(
                         stringResource(R.string.song_info_duration),
@@ -554,17 +535,15 @@ internal fun TrackArtistsSheet(
     val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     OverlayBottomSheet(
         show = artists.isNotEmpty(),
-        backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.participating_artists),
         startAction = { BottomSheetCloseButton(onClick = onDismiss) },
         enableWindowDim = true,
         onDismissRequest = onDismiss,
         onDismissFinished = { if (artists.isEmpty()) retainedArtists = emptyList() },
     ) {
-        SheetScrollableContent(bottomPadding = navigationBottom + 12.dp) {
+        SheetScrollableContent(bottomPadding = navigationBottom + 16.dp) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.defaultColors(color = bottomSheetCardColor()),
             ) {
                 artists.ifEmpty { retainedArtists }.forEach { artist ->
                     ArtistListItem(
@@ -672,9 +651,10 @@ private fun TrackAction(
 
 @Composable
 private fun BottomSheetCloseButton(onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Icon(
+    BottomSheetHeaderButton(onClick = onClick) {
+        MiuixIcon(
             imageVector = MiuixIcons.Close,
+            modifier = Modifier.size(24.dp),
             contentDescription = stringResource(R.string.close),
             tint = MiuixTheme.colorScheme.onBackground,
         )

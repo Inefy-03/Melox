@@ -3,7 +3,9 @@
 
 package top.yukonga.miuix.kmp.upstream.material.internal
 
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Density
 import top.yukonga.miuix.kmp.upstream.material.DefaultRuntimeShaderCache
@@ -11,8 +13,10 @@ import top.yukonga.miuix.kmp.upstream.material.EdgeLightSource
 import top.yukonga.miuix.kmp.upstream.material.EdgePeak
 import top.yukonga.miuix.kmp.upstream.material.EdgeStroke
 import top.yukonga.miuix.kmp.upstream.material.RuntimeShader
+import top.yukonga.miuix.kmp.upstream.material.ShaderBrushCache
 import top.yukonga.miuix.kmp.upstream.material.asBrush
 import top.yukonga.miuix.kmp.upstream.material.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.upstream.material.setSilhouetteRadiiUniforms
 import top.yukonga.miuix.kmp.upstream.material.setSilhouetteUniforms
 import kotlin.math.floor
 import kotlin.math.sqrt
@@ -35,6 +39,7 @@ internal fun DrawScope.drawEdgeStrokeShape(
     smoothing: Float,
     stroke: EdgeStroke,
     alpha: Float,
+    brushCache: ShaderBrushCache? = null,
 ) {
     if (stroke.width.value <= 0f || alpha <= 0f) return
     if (!isRuntimeShaderSupported()) return
@@ -42,9 +47,42 @@ internal fun DrawScope.drawEdgeStrokeShape(
     val heightPx = size.height
     if (widthPx <= 0f || heightPx <= 0f) return
 
+    val brush = if (brushCache != null) {
+        brushCache.obtain(this, shape, smoothing, alpha, stroke = stroke) { ts, te, be, bs ->
+            buildEdgeStrokeBrush(ts, te, be, bs, smoothing, widthPx, heightPx, stroke, alpha)
+        }
+    } else {
+        buildEdgeStrokeBrush(
+            shape.topStart.toPx(size, this),
+            shape.topEnd.toPx(size, this),
+            shape.bottomEnd.toPx(size, this),
+            shape.bottomStart.toPx(size, this),
+            smoothing,
+            widthPx,
+            heightPx,
+            stroke,
+            alpha,
+        )
+    }
+
+    drawRect(brush = brush, blendMode = stroke.blendMode)
+}
+
+@RequiresApi(33)
+private fun DrawScope.buildEdgeStrokeBrush(
+    topStart: Float,
+    topEnd: Float,
+    bottomEnd: Float,
+    bottomStart: Float,
+    smoothing: Float,
+    widthPx: Float,
+    heightPx: Float,
+    stroke: EdgeStroke,
+    alpha: Float,
+): ShaderBrush {
     val source = edgeStrokeShader(stroke.peak)
     val shader = sharedShaderCache.obtainRuntimeShader(source.key, source.source)
-    shader.setSilhouetteUniforms(shape, layoutDirection, size, this, smoothing)
+    shader.setSilhouetteRadiiUniforms(layoutDirection, size, topStart, topEnd, bottomEnd, bottomStart, smoothing)
     shader.setEdgeStrokeUniforms(
         widthPx = widthPx,
         heightPx = heightPx,
@@ -52,8 +90,7 @@ internal fun DrawScope.drawEdgeStrokeShape(
         alpha = alpha,
         density = this,
     )
-
-    drawRect(brush = shader.asBrush(), blendMode = stroke.blendMode)
+    return shader.asBrush()
 }
 
 /**

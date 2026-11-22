@@ -225,7 +225,6 @@
     <string name="close">Close</string>
 
     <string name="settings_section_appearance">Main screen</string>
-    <string name="settings_interface_style_title">Interface style</string>
     <string name="settings_immersive_mode_title">Immersive mode</string>
     <string name="settings_immersive_mode_summary">Hide the status bar and simplify the player. Long-press Play/Pause in the player to toggle this mode</string>
     <string name="settings_hide_status_bar_title">Hide status bar</string>
@@ -292,10 +291,7 @@
     <string name="settings_blur_title">Blur</string>
     <string name="settings_blur_summary">Enable blur effects for the app</string>
     <string name="settings_blur_unsupported">Blur requires Android 13 or later</string>
-    <string name="settings_progressive_top_bar_blur_title">Progressive top bar blur</string>
     <string name="settings_small_player_bar_title">Small player bar</string>
-    <string name="settings_hide_bottom_bar_title">Always hide bottom bar</string>
-    <string name="settings_hide_bottom_bar_summary">When the bottom bar is hidden, swipe to switch pages on the main screen</string>
     <string name="settings_predictive_back_title">Predictive back gesture</string>
     <string name="settings_navigation_transition_style_title">Transition style</string>
     <string name="settings_navigation_transition_style_miuix">Miuix</string>

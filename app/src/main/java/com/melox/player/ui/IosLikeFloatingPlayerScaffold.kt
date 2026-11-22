@@ -33,8 +33,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import top.yukonga.miuix.kmp.upstream.glass.rememberGlassSearchBarAlpha
 import androidx.compose.runtime.remember
-import top.yukonga.miuix.kmp.glass.popupShadowOutsets
-import top.yukonga.miuix.kmp.glass.GlassShadows
+import com.melox.player.ui.glass.popupShadowOutsets
+import com.melox.player.ui.glass.GlassShadows
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment

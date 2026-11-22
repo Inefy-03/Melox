@@ -234,9 +234,7 @@ data class AppSettings(
     val lyricsFormatPriority: LyricsFormatPriority =
         LyricsFormatPriority.LRC,
     val blurEnabled: Boolean = true,
-    val progressiveTopBarBlurEnabled: Boolean = false,
     val smallPlayerBar: Boolean = false,
-    val hideBottomBar: Boolean = false,
     val immersiveMode: Boolean = false,
     val hideStatusBar: Boolean = false,
     val navigationRailExpanded: Boolean = true,

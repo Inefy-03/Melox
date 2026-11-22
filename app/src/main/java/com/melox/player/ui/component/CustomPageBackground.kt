@@ -335,13 +335,13 @@ internal fun PageScaffold(
                         horizontalInsetsModifier = Modifier.windowInsetsPadding(searchHorizontalInsets),
                         topInsets = searchTopInsets,
                         searchTopPadding = searchTopPadding,
-                        scrollOffset = { -searchScrollContent.visualContentOffset(0f) },
+                        scrollOffset = { searchScrollContent.distance ?: 0f },
                         blurEnabled = effectsActive,
-                        progressiveBlur = blurSettings.progressiveEnabled,
                         searchIcon = glassSearchIcon,
                         closeIcon = glassCloseIcon,
-                        query = session.query.value,
-                        onQueryChange = session.onQueryChange.value,
+                        onQueryChange = { text ->
+                            if (text != session.query.value) session.onQueryChange.value(text)
+                        },
                         onFocusedChange = session.onFocusedChange.value,
                         onActiveChange = { searchPage.transitionActive = it },
                         clearContentDescription = stringResource(R.string.search_clear),
@@ -383,10 +383,3 @@ internal fun PageScaffold(
         }
     }
 }
-
-internal fun wallpaperTopBarVisible(
-    hasBackground: Boolean,
-    blurEnabled: Boolean,
-    progressiveEnabled: Boolean,
-    runtimeSupported: Boolean,
-): Boolean = hasBackground && !(blurEnabled && progressiveEnabled && runtimeSupported)

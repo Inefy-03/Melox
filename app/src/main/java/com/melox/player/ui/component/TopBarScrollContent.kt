@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.composed
 import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.utils.overScrollVertical as miuixOverScrollVertical
 import androidx.compose.ui.geometry.Rect
@@ -22,33 +21,31 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid as FoundationLazyV
 internal class TopBarScrollContent {
     var bounds by mutableStateOf(Rect.Zero)
     val lists = mutableStateMapOf<Any, ScrollContentPosition>()
-    val overscrolls = mutableStateMapOf<Any, ScrollContentPosition>()
-    val overscrollDistance: Float
-        get() = overscrolls.values.maxByOrNull {
-            val overlap = it.bounds.intersect(bounds)
-            overlap.width.coerceAtLeast(0f) * overlap.height.coerceAtLeast(0f)
-        }?.distance?.value?.invoke() ?: 0f
-    val distance: Float?
+    private val visibleList: ScrollContentPosition?
         get() = lists.values.maxByOrNull {
             val overlap = it.bounds.intersect(bounds)
             overlap.width.coerceAtLeast(0f) * overlap.height.coerceAtLeast(0f)
-        }?.distance?.value?.invoke()
+        }
 
-    fun visualContentOffset(fallback: Float): Float =
-        (distance?.let { -it } ?: fallback) + overscrollDistance
+    val distance: Float? get() = visibleList?.distance?.value?.invoke()
+    val canScrollBackward: Boolean? get() = visibleList?.canScrollBackward?.value?.invoke()
 }
 
-internal class ScrollContentPosition(val distance: State<() -> Float>) {
+internal class ScrollContentPosition(
+    val distance: State<() -> Float>,
+    val canScrollBackward: State<() -> Boolean>,
+) {
     var bounds by mutableStateOf(Rect.Zero)
 }
 
 internal val LocalTopBarScrollContent = staticCompositionLocalOf<TopBarScrollContent?> { null }
 
 @Composable
-private fun Modifier.topBarScrollContent(distance: () -> Float): Modifier {
+private fun Modifier.topBarScrollContent(canScrollBackward: () -> Boolean, distance: () -> Float): Modifier {
     val owner = LocalTopBarScrollContent.current ?: return this
     val latest = rememberUpdatedState(distance)
-    val position = remember(owner) { ScrollContentPosition(latest) }
+    val latestCanScrollBackward = rememberUpdatedState(canScrollBackward)
+    val position = remember(owner) { ScrollContentPosition(latest, latestCanScrollBackward) }
     DisposableEffect(owner, position) {
         owner.lists[position] = position
         onDispose { owner.lists.remove(position) }
@@ -59,17 +56,9 @@ private fun Modifier.topBarScrollContent(distance: () -> Float): Modifier {
 @Composable
 internal fun topBarContentScrolled(behavior: ScrollBehavior?): Boolean {
     val content = LocalTopBarScrollContent.current
-    return content?.distance?.let { it > 0f } ?: behavior?.state?.let { it.contentOffset < 0f } ?: true
-}
-
-@Composable
-internal fun rememberTopBarVisualContentOffset(behavior: ScrollBehavior?): (() -> Float)? {
-    val content = LocalTopBarScrollContent.current ?: return null
-    if (behavior == null) return null
-    // Programmatic jumps and filtering update lazy layout without nested-scroll callbacks.
-    return remember(content, behavior) {
-        { content.visualContentOffset(behavior.state.contentOffset) }
-    }
+    return content?.canScrollBackward ?: behavior?.state?.let {
+        it.contentOffset < -1f || it.overscrollOffset < -1f
+    } ?: true
 }
 
 @Composable
@@ -85,9 +74,9 @@ internal fun LazyColumn(
     overscrollEffect: OverscrollEffect? = androidx.compose.foundation.rememberOverscrollEffect(),
     content: LazyListScope.() -> Unit,
 ) = FoundationLazyColumn(
-    modifier.topBarScrollContent { if (!state.canScrollBackward) 0f else if (state.firstVisibleItemIndex > 0) Float.POSITIVE_INFINITY else state.firstVisibleItemScrollOffset.toFloat() },
+    modifier.topBarScrollContent(canScrollBackward = { state.canScrollBackward }) { if (!state.canScrollBackward) 0f else if (state.firstVisibleItemIndex > 0) Float.POSITIVE_INFINITY else state.firstVisibleItemScrollOffset.toFloat() },
     state, contentPadding, reverseLayout, verticalArrangement, horizontalAlignment,
-    flingBehavior, userScrollEnabled, overscrollEffect, content,
+    flingBehavior, userScrollEnabled, overscrollEffect, content = content,
 )
 
 @Composable
@@ -104,26 +93,19 @@ internal fun LazyVerticalGrid(
     overscrollEffect: OverscrollEffect? = androidx.compose.foundation.rememberOverscrollEffect(),
     content: LazyGridScope.() -> Unit,
 ) = FoundationLazyVerticalGrid(
-    columns, modifier.topBarScrollContent { if (!state.canScrollBackward) 0f else if (state.firstVisibleItemIndex > 0) Float.POSITIVE_INFINITY else state.firstVisibleItemScrollOffset.toFloat() },
+    columns, modifier.topBarScrollContent(canScrollBackward = { state.canScrollBackward }) { if (!state.canScrollBackward) 0f else if (state.firstVisibleItemIndex > 0) Float.POSITIVE_INFINITY else state.firstVisibleItemScrollOffset.toFloat() },
     state, contentPadding, reverseLayout, verticalArrangement, horizontalArrangement,
-    flingBehavior, userScrollEnabled, overscrollEffect, content,
+    flingBehavior, userScrollEnabled, overscrollEffect, content = content,
 )
 
-// Observe the native effect's translated content, including its spring settle frames.
+@Composable
 internal fun Modifier.overScrollVertical(
+    scrollBehavior: ScrollBehavior? = null,
     isEnabled: () -> Boolean = { true },
-): Modifier = composed {
-    val owner = LocalTopBarScrollContent.current
-    if (owner == null) return@composed this.miuixOverScrollVertical(isEnabled = isEnabled)
-    var displacement by remember { mutableFloatStateOf(0f) }
-    val distance = rememberUpdatedState<() -> Float> { displacement }
-    val position = remember(owner) { ScrollContentPosition(distance) }
-    DisposableEffect(owner, position) {
-        owner.overscrolls[position] = position
-        onDispose { owner.overscrolls.remove(position) }
+): Modifier {
+    val state = scrollBehavior?.state
+    val onOffsetChanged: ((Float) -> Unit)? = remember(state) {
+        state?.let { { offset -> it.overscrollOffset = offset } }
     }
-    val updateDisplacement = remember { { offset: Float -> displacement = offset } }
-    this
-        .onGloballyPositioned { position.bounds = it.boundsInRoot() }
-        .miuixOverScrollVertical(onOffsetChanged = updateDisplacement, isEnabled = isEnabled)
+    return miuixOverScrollVertical(onOffsetChanged = onOffsetChanged, isEnabled = isEnabled)
 }

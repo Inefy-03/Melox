@@ -55,7 +55,7 @@ public final class PatchSubcomposeOwner implements Opcodes {
                         instructions.add(new LineNumberNode(664, start));
                         instructions.add(new VarInsnNode(ALOAD, 0));
                         instructions.add(new FieldInsnNode(GETFIELD, STATE, "root", "L" + NODE + ";"));
-                        instructions.add(new MethodInsnNode(INVOKEVIRTUAL, NODE, "getOwner$ui", "()L" + OWNER + ";", false));
+                        instructions.add(new MethodInsnNode(INVOKEVIRTUAL, NODE, "getOwner$androidx_compose_ui_ui", "()L" + OWNER + ";", false));
                         instructions.add(new InsnNode(DUP));
                         instructions.add(new JumpInsnNode(IFNONNULL, attached));
                         instructions.add(new InsnNode(POP));

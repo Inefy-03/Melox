@@ -1,13 +1,7 @@
 package com.melox.player
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -125,12 +119,9 @@ class SearchFocusLifecycleTest {
     }
 
     @Test
-    fun returningToVisibleUnfocusedSearchNeverRequestsFocusOrShowsIme() {
+    fun reopeningSearchClearsThePageQuery() {
         val mounted = mutableStateOf(true)
-        val focused = mutableStateOf(false)
-        val query = mutableStateOf("retained query")
-        val focusRequests = mutableListOf<Boolean>()
-        var bounds = Rect.Zero
+        val query = mutableStateOf("previous query")
         lateinit var view: ComposeView
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
@@ -138,24 +129,19 @@ class SearchFocusLifecycleTest {
                     setContent {
                         MeloxTheme(AppSettings(blurEnabled = false)) {
                             CompositionLocalProvider(
-                                LocalTopBarBlurSettings provides TopBarBlurSettings(false, false),
+                                LocalTopBarBlurSettings provides TopBarBlurSettings(false),
                             ) {
                                 PageScaffold {
                                     if (mounted.value) {
-                                        Box(Modifier.fillMaxWidth().onGloballyPositioned { bounds = it.boundsInRoot() }) {
-                                            LibrarySearchBar(
-                                                visible = true,
-                                                focused = focused.value,
-                                                query = query.value,
-                                                label = "Search",
-                                                onQueryChange = { query.value = it },
-                                                onFocusedChange = {
-                                                    focusRequests += it
-                                                    focused.value = it
-                                                },
-                                                onVisibleChange = {},
-                                            )
-                                        }
+                                        LibrarySearchBar(
+                                            visible = true,
+                                            focused = false,
+                                            query = query.value,
+                                            label = "Search",
+                                            onQueryChange = { query.value = it },
+                                            onFocusedChange = {},
+                                            onVisibleChange = {},
+                                        )
                                     }
                                 }
                             }
@@ -165,18 +151,15 @@ class SearchFocusLifecycleTest {
                 activity.setContentView(view)
             }
             awaitFrames(scenario, view)
-            repeat(2) {
-                scenario.onActivity { mounted.value = false }
-                awaitFrames(scenario, view, count = 3)
-                scenario.onActivity { mounted.value = true }
-                awaitFrames(scenario, view)
-                scenario.onActivity {
-                    assertTrue("Visible search field was not laid out", bounds.height > 0f)
-                    assertFalse("Remount requested input focus", focusRequests.any { it })
-                    assertFalse(focused.value)
-                    assertEquals("retained query", query.value)
-                }
+            assertEquals("", query.value)
+            scenario.onActivity { mounted.value = false }
+            awaitFrames(scenario, view, count = 3)
+            scenario.onActivity {
+                query.value = "previous query"
+                mounted.value = true
             }
+            awaitFrames(scenario, view)
+            assertEquals("", query.value)
         }
     }
 

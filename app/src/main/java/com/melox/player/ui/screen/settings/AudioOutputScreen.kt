@@ -105,7 +105,7 @@ internal fun AudioOutputScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
                     .scrollEndHaptic()
-                    .overScrollVertical()
+                    .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = listState,
                 contentPadding = PaddingValues(

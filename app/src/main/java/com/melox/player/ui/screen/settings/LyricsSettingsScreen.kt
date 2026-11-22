@@ -37,7 +37,6 @@ import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.PageCard as Card
-import top.yukonga.miuix.kmp.basic.DropdownItem
 import com.melox.player.ui.component.Icon
 import com.melox.player.ui.component.IconButton
 import com.melox.player.ui.component.PageScaffold
@@ -46,7 +45,7 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
+import com.melox.player.ui.component.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -102,10 +101,10 @@ internal fun LyricsSettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             ) {
-                OverlaySpinnerPreference(
+                OverlayDropdownPreference(
                     items = listOf(
-                        DropdownItem(text = stringResource(R.string.lyrics_source_embedded)),
-                        DropdownItem(text = stringResource(R.string.lyrics_source_external)),
+                        stringResource(R.string.lyrics_source_embedded),
+                        stringResource(R.string.lyrics_source_external),
                     ),
                     selectedIndex = when (sourcePriority) {
                         LyricsSourcePriority.EMBEDDED -> 0
@@ -124,10 +123,10 @@ internal fun LyricsSettingsScreen(
                         }
                     },
                 )
-                OverlaySpinnerPreference(
+                OverlayDropdownPreference(
                     items = listOf(
-                        DropdownItem(text = stringResource(R.string.lyrics_format_lrc)),
-                        DropdownItem(text = stringResource(R.string.lyrics_format_ttml)),
+                        stringResource(R.string.lyrics_format_lrc),
+                        stringResource(R.string.lyrics_format_ttml),
                     ),
                     selectedIndex = when (formatPriority) {
                         LyricsFormatPriority.LRC -> 0
@@ -370,7 +369,7 @@ private fun LyricsSettingsPage(
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
                     .scrollEndHaptic()
-                    .overScrollVertical()
+                    .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = listState,
                 contentPadding = PaddingValues(

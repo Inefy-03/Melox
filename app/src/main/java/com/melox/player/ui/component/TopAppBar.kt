@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.glass.*
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -59,15 +59,13 @@ internal fun TopAppBar(
         val topInsets = WindowInsets.statusBarsIgnoringVisibility.union(WindowInsets.systemBars)
         GlassTopAppBar(
             title = title, modifier = modifier, subtitle = subtitle,
-            compact = com.melox.player.ui.usesMiuixSmallTopAppBar(),
             expandable = expandable,
             contentModifier = Modifier
                 .glassSearchBarTransition(searchExpanded, LocalTopBarBlurSettings.current.blurEnabled) { 1f }
                 .stableTopAppBarContentInsets(),
             backdrop = backdrop, scrollBehavior = scrollBehavior,
             isContentScrolled = topBarContentScrolled(scrollBehavior),
-            visualContentOffset = rememberTopBarVisualContentOffset(scrollBehavior),
-            progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
+            progressiveBlur = LocalTopBarBlurSettings.current.blurEnabled,
             defaultWindowInsetsPadding = defaultWindowInsetsPadding,
             titleAlpha = { (glassTitleAlpha?.invoke() ?: titleColor.alpha) },
             navigationIcon = { TopBarButtonHaptics { navigationIcon() } },

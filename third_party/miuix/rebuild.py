@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild the pinned Miuix Android artifacts used by Melox."""
+"""Rebuild the patched Miuix UI Android artifact used by Melox."""
 
 import argparse
 import hashlib
@@ -10,17 +10,18 @@ import tempfile
 from pathlib import Path
 
 
-UPSTREAM_COMMIT = "08d52d455bf1d62c45e979ec75b47f6b5dc377f3"
-UPSTREAM_VERSION = "0.9.5-beta01"
-MODULES = ("ui", "blur", "preference")
+UPSTREAM_COMMIT = "3c560868758f80cd97bbdab2f8e53612ad1c56be"
+UPSTREAM_ARCHIVE_SHA256 = "e4fcca8e6c27abfbd6d5c5ea4f251af37462bdea01db72b61381e4e2b3dccff4"
+UPSTREAM_VERSION = "0.9.5-beta04"
+ARTIFACT_ID = "miuix-ui-android"
 MAVEN_GROUP = Path("maven/top/yukonga/miuix/kmp")
 RAIL_SOURCE = "miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt"
-RAIL_SHA256 = "231daca7b4ba8352092a23cae6376eddbb73e97938dd9117c08c8e691d7f8e7f"
+RAIL_SHA256 = "9c9b84f84548db581e418488a874cfbbfa8054afca5eae45dd083f23b1f99842"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("upstream", type=Path, help="Local clone of compose-miuix-ui/miuix")
+    parser.add_argument("upstream", type=Path, help="Upstream Git clone or pinned GitHub .tar.gz archive")
     args = parser.parse_args()
     directory = Path(__file__).resolve().parent
     project = directory.parent.parent
@@ -28,23 +29,21 @@ def main():
     configured_version = re.search(r'^miuix\s*=\s*"([^"]+)"', catalog, re.MULTILINE)
     if configured_version is None or configured_version[1] != UPSTREAM_VERSION:
         parser.error(f"The Gradle Miuix version must match the pinned upstream version {UPSTREAM_VERSION}")
-    archive = subprocess.check_output(
-        ["git", "-C", str(args.upstream.resolve()), "archive", UPSTREAM_COMMIT],
-    )
+    upstream = args.upstream.resolve()
     with tempfile.TemporaryDirectory(prefix="melox-miuix-") as temporary:
         work = Path(temporary)
-        subprocess.run(["tar", "-x", "-C", str(work)], input=archive, check=True)
+        if upstream.is_file():
+            if hashlib.sha256(upstream.read_bytes()).hexdigest() != UPSTREAM_ARCHIVE_SHA256:
+                parser.error(f"Expected the GitHub archive of {UPSTREAM_COMMIT}")
+            subprocess.run(["tar", "-xzf", str(upstream), "-C", str(work), "--strip-components=1"], check=True)
+        else:
+            archive = subprocess.check_output(["git", "-C", str(upstream), "archive", UPSTREAM_COMMIT])
+            subprocess.run(["tar", "-x", "-C", str(work)], input=archive, check=True)
         assert hashlib.sha256((work / RAIL_SOURCE).read_bytes()).hexdigest() == RAIL_SHA256
         subprocess.run(
             ["git", "apply", "--include=miuix-ui/*", str(directory / "navigation-rail-insets.patch")],
             cwd=work, check=True,
         )
-        top_bar = work / RAIL_SOURCE.replace("NavigationRail.kt", "TopAppBar.kt")
-        source = top_bar.read_text()
-        old_limit = "var heightOffsetLimit = initialHeightOffsetLimit"
-        assert source.count(old_limit) == 1
-        top_bar.write_text(source.replace(old_limit, "var heightOffsetLimit by mutableFloatStateOf(initialHeightOffsetLimit)"))
-
         settings = work / "settings.gradle.kts"
         settings.write_text(
             "\n".join(
@@ -61,56 +60,41 @@ def main():
                 (work / "local.properties").write_text(sdk + "\n")
         subprocess.run(
             [str(work / "gradlew"), "-p", str(work),
-             *(f":miuix-{module}:assembleAndroidMain" for module in MODULES),
+             ":miuix-ui:assembleAndroidMain",
              "-Prelease", "-Pkotlin.compiler.execution.strategy=in-process",
              "--no-configuration-cache", "--no-watch-fs", "--max-workers=4"],
             cwd=project, check=True,
         )
-        install_artifacts(work, directory)
-        prune_inactive_artifacts(directory)
+        install_artifact(work, directory)
 
 
-def install_artifacts(work, directory):
-    for module in MODULES:
-        artifacts = list((work / f"miuix-{module}/build/outputs/aar").glob("*.aar"))
-        assert len(artifacts) == 1, artifacts
-        artifact_id = f"miuix-{module}-android"
-        output = directory / MAVEN_GROUP / artifact_id / UPSTREAM_VERSION
-        output.mkdir(parents=True, exist_ok=True)
-        name = f"{artifact_id}-{UPSTREAM_VERSION}"
-        target = output / f"{name}.aar"
-        pom = (directory / f"upstream-{module}-android-{UPSTREAM_VERSION}.pom").read_text()
-        pom = re.sub(r"<!--.*?-->", "", pom, flags=re.DOTALL)
-        pom = "\n".join(line.rstrip() for line in pom.splitlines()) + "\n"
-        with tempfile.TemporaryDirectory(dir=output) as temporary:
-            staged = Path(temporary)
-            shutil.copy2(artifacts[0], staged / target.name)
-            (staged / f"{name}.pom").write_text(pom)
-            (staged / target.name).replace(target)
-            (staged / f"{name}.pom").replace(output / f"{name}.pom")
-        print(f"{target}: {hashlib.sha256(target.read_bytes()).hexdigest()}")
+def install_artifact(work, directory):
+    artifacts = list((work / "miuix-ui/build/outputs/aar").glob("*.aar"))
+    assert len(artifacts) == 1, artifacts
+    repository = directory / MAVEN_GROUP / ARTIFACT_ID
+    output = repository / UPSTREAM_VERSION
+    output.mkdir(parents=True, exist_ok=True)
+    name = f"{ARTIFACT_ID}-{UPSTREAM_VERSION}"
+    target = output / f"{name}.aar"
+    pom = (directory / f"upstream-ui-android-{UPSTREAM_VERSION}.pom").read_text()
+    pom = re.sub(r"<!--.*?-->", "", pom, flags=re.DOTALL)
+    pom = "\n".join(line.rstrip() for line in pom.splitlines()) + "\n"
+    with tempfile.TemporaryDirectory(dir=output) as temporary:
+        staged = Path(temporary)
+        shutil.copy2(artifacts[0], staged / target.name)
+        (staged / f"{name}.pom").write_text(pom)
+        (staged / target.name).replace(target)
+        (staged / f"{name}.pom").replace(output / f"{name}.pom")
+    print(f"{target}: {hashlib.sha256(target.read_bytes()).hexdigest()}")
 
-
-def prune_inactive_artifacts(directory):
-    repository = directory / MAVEN_GROUP
-    for module in MODULES:
-        artifact_id = f"miuix-{module}-android"
-        active = repository / artifact_id / UPSTREAM_VERSION
+    for version_dir in repository.glob("[0-9]*"):
+        version = version_dir.name
+        if version == UPSTREAM_VERSION or not version_dir.is_dir() or version_dir.is_symlink():
+            continue
         for extension in ("aar", "pom"):
-            if not (active / f"{artifact_id}-{UPSTREAM_VERSION}.{extension}").is_file():
-                raise FileNotFoundError(f"Missing active artifacts in {active}")
-
-    for module in (*MODULES, "nav"):
-        artifact_id = f"miuix-{module}-android"
-        active_version = UPSTREAM_VERSION if module in MODULES else None
-        for version_dir in (repository / artifact_id).glob("[0-9]*"):
-            version = version_dir.name
-            if version == active_version or not version_dir.is_dir() or version_dir.is_symlink():
-                continue
-            for extension in ("aar", "pom"):
-                (version_dir / f"{artifact_id}-{version}.{extension}").unlink(missing_ok=True)
-            if not any(version_dir.iterdir()):
-                version_dir.rmdir()
+            (version_dir / f"{ARTIFACT_ID}-{version}.{extension}").unlink(missing_ok=True)
+        if not any(version_dir.iterdir()):
+            version_dir.rmdir()
 
 
 if __name__ == "__main__":

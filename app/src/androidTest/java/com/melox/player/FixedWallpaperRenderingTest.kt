@@ -100,7 +100,7 @@ class FixedWallpaperRenderingTest {
                             MeloxTheme(AppSettings(blurEnabled = false)) {
                                 CompositionLocalProvider(
                                     LocalCustomPageBackground provides image.takeIf { loaded.value },
-                                    LocalTopBarBlurSettings provides TopBarBlurSettings(false, false),
+                                    LocalTopBarBlurSettings provides TopBarBlurSettings(false),
                                 ) {
                                     Box(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.surface)) {
                                         FixedPageBackgroundHost(
@@ -189,28 +189,25 @@ class FixedWallpaperRenderingTest {
 
     @Test
     @SdkSuppress(minSdkVersion = 33)
-    fun wallpaperSearchUsesNativeEightyPercentFillOverTheExistingTopBar() {
+    fun wallpaperSearchUsesOfficialRestingFillBeforeResultsScroll() {
         val blurEnabled = mutableStateOf(false)
-        val progressiveEnabled = mutableStateOf(false)
         val source = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply {
             eraseColor(AndroidColor.RED)
         }
         val image = source.asImageBitmap()
-        var bounds = ComposeRect.Zero
         var fillColor = 0
-        var density = 1f
+        var searchCenterY = 0
         lateinit var view: ComposeView
         try {
             ActivityScenario.launch(MainActivity::class.java).use { scenario ->
                 scenario.onActivity { activity ->
-                    density = activity.resources.displayMetrics.density
                     view = ComposeView(activity).apply {
                         setContent {
                             MeloxTheme(AppSettings(blurEnabled = blurEnabled.value)) {
                                 fillColor = MiuixTheme.colorScheme.surfaceContainerHigh.toArgb()
                                 CompositionLocalProvider(
                                     LocalCustomPageBackground provides image,
-                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled.value, progressiveEnabled.value),
+                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled.value),
                                 ) {
                                     val backdrop = rememberBlurBackdrop()
                                     PageScaffold(
@@ -220,17 +217,15 @@ class FixedWallpaperRenderingTest {
                                                     title = "",
                                                     color = backdrop.miuixBarColor(),
                                                     bottomContent = {
-                                                        Box(Modifier.onGloballyPositioned { bounds = it.boundsInRoot() }) {
-                                                            LibrarySearchBar(
-                                                                visible = true,
-                                                                focused = false,
-                                                                query = "",
-                                                                label = "",
-                                                                onQueryChange = {},
-                                                                onFocusedChange = {},
-                                                                onVisibleChange = {},
-                                                            )
-                                                        }
+                                                        LibrarySearchBar(
+                                                            visible = true,
+                                                            focused = false,
+                                                            query = "",
+                                                            label = "",
+                                                            onQueryChange = {},
+                                                            onFocusedChange = {},
+                                                            onVisibleChange = {},
+                                                        )
                                                     },
                                                 )
                                             }
@@ -244,22 +239,23 @@ class FixedWallpaperRenderingTest {
                     }
                     activity.setContentView(view)
                 }
-                for ((blur, progressive) in listOf(false to false, true to false, true to true)) {
+                for (blur in listOf(false, true)) {
                     scenario.onActivity {
                         blurEnabled.value = blur
-                        progressiveEnabled.value = progressive
                     }
                     // Let the actual search entrance and backdrop captures finish.
                     repeat(16) { copyFrame(scenario, view).recycle() }
+                    scenario.onActivity { activity ->
+                        val inset = ViewCompat.getRootWindowInsets(view)?.getInsets(
+                            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+                        )?.top ?: 0
+                        searchCenterY = inset + (26 * activity.resources.displayMetrics.density).toInt()
+                    }
                     val frame = copyFrame(scenario, view)
                     try {
-                        assertTrue("Search field was not laid out", bounds.width > 0f && bounds.height > 0f)
-                        val y = (bounds.top + 22.5f * density).toInt()
-                        val base = frame.getPixel((bounds.left + density).toInt(), y)
-                        val actual = frame.getPixel((bounds.left + bounds.width * 0.7f).toInt(), y)
+                        val actual = frame.getPixel(frame.width / 2, searchCenterY)
                         for (channel in listOf(AndroidColor::red, AndroidColor::green, AndroidColor::blue)) {
-                            val expected = channel(fillColor) * 0.8f + channel(base) * 0.2f
-                            assertEquals("Search masks the top bar with blur=$blur progressive=$progressive", expected, channel(actual).toFloat(), 3f)
+                            assertEquals("Search uses the resting fill with blur=$blur", channel(fillColor).toFloat(), channel(actual).toFloat(), 3f)
                         }
                     } finally {
                         frame.recycle()
@@ -293,7 +289,7 @@ class FixedWallpaperRenderingTest {
                                 surfaceArgb = MiuixTheme.colorScheme.surface.toArgb()
                                 CompositionLocalProvider(
                                     LocalCustomPageBackground provides image.takeIf { wallpaperEnabled.value },
-                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled.value, true),
+                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled.value),
                                 ) {
                                     FixedPageBackgroundHost(Modifier.fillMaxSize(), refreshSignal = { 0f }) {
                                         if (visible.value) {
@@ -349,9 +345,8 @@ class FixedWallpaperRenderingTest {
 
     @Test
     @SdkSuppress(minSdkVersion = 33)
-    fun aboutWallpaperTopBarUsesTheSameBackgroundPolicyAsOtherPages() {
+    fun pinnedAboutTopBarRevealsWallpaperWhileAtRest() {
         val blurEnabled = mutableStateOf(true)
-        val progressiveEnabled = mutableStateOf(false)
         val source = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply {
             eraseColor(AndroidColor.RED)
         }
@@ -366,7 +361,7 @@ class FixedWallpaperRenderingTest {
                             MeloxTheme(AppSettings(blurEnabled = blurEnabled.value)) {
                                 CompositionLocalProvider(
                                     LocalCustomPageBackground provides image,
-                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled.value, progressiveEnabled.value),
+                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled.value),
                                 ) {
                                     FixedPageBackgroundHost(Modifier.fillMaxSize(), refreshSignal = { 0f }) {
                                         AboutScreen(
@@ -388,19 +383,14 @@ class FixedWallpaperRenderingTest {
                         ?.getInsets(WindowInsetsCompat.Type.statusBars())?.top ?: 0
                     sampleY = statusBarHeight + (24 * activity.resources.displayMetrics.density).toInt()
                 }
-                for ((blur, progressive) in listOf(true to false, false to false, true to true, false to true)) {
+                for (blur in listOf(false, true)) {
                     scenario.onActivity {
                         blurEnabled.value = blur
-                        progressiveEnabled.value = progressive
                     }
                     val frame = copyFrame(scenario, view)
                     try {
                         val pixel = frame.getPixel(1, sampleY)
-                        if (blur && progressive) {
-                            assertTrue("About top bar bypassed the shared progressive effect", pixel != AndroidColor.RED)
-                        } else {
-                            assertEquals("About top bar must preserve the page wallpaper without extra default blur", AndroidColor.RED, pixel)
-                        }
+                        assertEquals("The pinned bar has no overlap at rest with blur=$blur", AndroidColor.RED, pixel)
                     } finally {
                         frame.recycle()
                     }
@@ -590,7 +580,7 @@ class FixedWallpaperRenderingTest {
                                 CompositionLocalProvider(
                                     LocalCustomPageBackground provides source.asImageBitmap(),
                                     LocalRootPageWallpaperFixed provides fixedWallpaper,
-                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled, false),
+                                    LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled),
                                 ) {
                                     FixedPageBackgroundHost(
                                         modifier = Modifier.fillMaxSize(),

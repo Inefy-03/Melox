@@ -82,7 +82,7 @@ internal fun LibraryOverviewScreen(
                 top = contentPadding.calculateTopPadding() + 12.dp,
                 bottom = contentPadding.calculateBottomPadding() + 12.dp,
             ),
-            modifier = Modifier.fillMaxSize().scrollEndHaptic().overScrollVertical()
+            modifier = Modifier.fillMaxSize().scrollEndHaptic().overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             overscrollEffect = null,
         ) {

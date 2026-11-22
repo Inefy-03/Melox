@@ -31,17 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
-import com.melox.player.ui.component.bottomSheetCardColor
-import com.melox.player.ui.component.bottomSheetMaterialColor
 import com.melox.player.model.LocalPlaylist
 import com.melox.player.model.MusicTrack
 import com.melox.player.ui.component.library.PlaybackArtwork
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
-import com.melox.player.ui.component.Icon
-import com.melox.player.ui.component.IconButton
+import top.yukonga.miuix.kmp.glass.GlassCard as Card
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
@@ -49,6 +45,7 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Close
 import com.melox.player.ui.component.OverlayBottomSheet
+import com.melox.player.ui.component.BottomSheetHeaderButton
 import com.melox.player.ui.component.OverlayDialog
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -76,22 +73,22 @@ fun PlaylistPickerOverlay(
     val displayedPlaylists = if (tracks != null) playlists else retainedPlaylists
     val bottomPadding = WindowInsets.navigationBars
         .asPaddingValues()
-        .calculateBottomPadding() + 12.dp
+        .calculateBottomPadding() + 16.dp
 
     OverlayBottomSheet(
         show = tracks != null,
-        backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.playlist_picker_title),
         startAction = {
-            IconButton(onClick = onDismiss) {
+            BottomSheetHeaderButton(onClick = onDismiss) {
                 Icon(
                     imageVector = MiuixIcons.Close,
+                    modifier = Modifier.size(24.dp),
                     contentDescription = stringResource(R.string.close),
                 )
             }
         },
         endAction = {
-            IconButton(
+            BottomSheetHeaderButton(
                 onClick = {
                     pendingCreateTracks = displayedTracks
                     onCreateRequestDismiss()
@@ -99,6 +96,7 @@ fun PlaylistPickerOverlay(
             ) {
                 Icon(
                     imageVector = MiuixIcons.Add,
+                    modifier = Modifier.size(24.dp),
                     contentDescription = stringResource(R.string.playlist_create),
                 )
             }
@@ -138,9 +136,6 @@ fun PlaylistPickerOverlay(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = bottomPadding),
-                    colors = CardDefaults.defaultColors(
-                        color = bottomSheetCardColor(),
-                    ),
                 ) {
                     displayedPlaylists.forEach { playlist ->
                         val cover = playlist.entries.firstOrNull()?.trackSnapshot

@@ -42,11 +42,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.model.BottomBarStyle
-import top.yukonga.miuix.kmp.glass.GlassShape
-import top.yukonga.miuix.kmp.glass.GlassShadows
-import top.yukonga.miuix.kmp.glass.glassShadow
-import top.yukonga.miuix.kmp.glass.GlassNavigationBarDefaults
-import top.yukonga.miuix.kmp.glass.internal.drawGlassStroke
+import com.melox.player.ui.glass.GlassShape
+import com.melox.player.ui.glass.GlassShadows
+import com.melox.player.ui.glass.glassShadow
+import com.melox.player.ui.glass.GlassNavigationBarDefaults
+import com.melox.player.ui.glass.internal.drawGlassStroke
 import com.melox.player.ui.MiniPlayerChrome
 import com.melox.player.ui.NORMAL_BAR_STROKE_ALPHA
 import com.melox.player.ui.component.animation.InteractiveHighlight

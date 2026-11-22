@@ -51,7 +51,7 @@ fun SettingsScreen(
         modifier = modifier
             .fillMaxSize()
             .scrollEndHaptic()
-            .overScrollVertical()
+            .overScrollVertical(scrollBehavior = scrollBehavior)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = contentPadding,
         overscrollEffect = null,

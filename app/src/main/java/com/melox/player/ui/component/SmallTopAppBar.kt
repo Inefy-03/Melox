@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.glass.*
+import com.melox.player.ui.glass.*
 
 @Composable
 internal fun SmallTopAppBar(
@@ -62,8 +62,7 @@ internal fun SmallTopAppBar(
             backgroundAlpha = glassBackgroundAlpha,
             backdrop = backdrop, scrollBehavior = scrollBehavior,
             isContentScrolled = topBarContentScrolled(scrollBehavior),
-            visualContentOffset = rememberTopBarVisualContentOffset(scrollBehavior),
-            progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled && LocalTopBarBlurSettings.current.blurEnabled,
+            progressiveBlur = LocalTopBarBlurSettings.current.blurEnabled,
             defaultWindowInsetsPadding = defaultWindowInsetsPadding,
             centerObstructionStart = if (secondary) landscapeNavigation?.centerObstructionStart ?: Dp.Unspecified else Dp.Unspecified,
             titleAlpha = {

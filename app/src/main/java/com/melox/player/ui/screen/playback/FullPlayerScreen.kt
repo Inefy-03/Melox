@@ -111,7 +111,6 @@ import com.melox.player.ui.component.library.TrackArtistsSheet
 import com.melox.player.ui.component.library.TrackActionsOverlay
 import com.melox.player.ui.component.library.participatingArtistGroups
 import com.melox.player.ui.component.bottomSheetCardColor
-import com.melox.player.ui.component.bottomSheetMaterialColor
 import com.melox.player.ui.component.playback.ArtworkTransitionState
 import com.melox.player.ui.component.playback.BlurredArtworkBackground
 import com.melox.player.ui.component.playback.DynamicFlowBackground
@@ -790,7 +789,7 @@ internal fun FullPlayerScreen(
                                             else R.string.player_show_lyrics,
                                         ),
                                         onClick = onToggle,
-                                        size = 24.dp,
+                                        size = 28.dp,
                                         tint = emphasisControlColor.copy(alpha = 0.6f),
                                         enabled = enabled,
                                     )
@@ -1411,7 +1410,6 @@ private fun PlayerSettingsSheet(
         .calculateBottomPadding()
     OverlayBottomSheet(
         show = show,
-        backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.player_settings),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
@@ -1441,7 +1439,7 @@ private fun PlayerSettingsSheet(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
-                .padding(bottom = bottomPadding + 12.dp),
+                .padding(bottom = bottomPadding + 16.dp),
             cardColor = bottomSheetCardColor(),
             usePageMaterial = false,
             showHideControls = !wideLayout,
@@ -1464,7 +1462,6 @@ private fun LyricsTranslationSheet(
     val bottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     OverlayBottomSheet(
         show = show,
-        backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.lyrics_translation),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
@@ -1475,7 +1472,7 @@ private fun LyricsTranslationSheet(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
-                .padding(bottom = bottomPadding + 12.dp),
+                .padding(bottom = bottomPadding + 16.dp),
         ) {
             LyricsTranslationPreferences(
                 showLyricsTranslation = showLyricsTranslation,

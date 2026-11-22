@@ -220,7 +220,7 @@ private fun AboutContent(
             modifier = Modifier
                 .fillMaxSize()
                 .scrollEndHaptic()
-                .overScrollVertical()
+                .overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(
                 start = padding.calculateStartPadding(layoutDirection),

@@ -26,18 +26,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.AppSettings
+import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.CoverShape
 import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.DynamicFlowStyle
 import com.melox.player.model.NavigationTransitionStyle
 import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.ThemeMode
+import com.melox.player.ui.isMiuixWideLayout
+import com.melox.player.ui.adaptiveWindowSize
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
@@ -46,6 +50,8 @@ import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.PageCard as Card
 import com.melox.player.ui.component.Icon
 import com.melox.player.ui.component.IconButton
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -79,9 +85,16 @@ fun ThemeSettingsScreen(
     onNavigationTransitionStyleChange: (NavigationTransitionStyle) -> Unit,
     onHapticFeedbackEnabledChange: (Boolean) -> Unit,
     onOpenMainBackground: () -> Unit,
-    onOpenInterfaceStyle: () -> Unit,
+    liquidGlassSupported: Boolean,
+    onBlurChange: (Boolean) -> Unit,
+    onBottomBarStyleChange: (BottomBarStyle) -> Unit,
+    onSmallPlayerBarChange: (Boolean) -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
+    val size = adaptiveWindowSize()
+    val landscape = with(LocalDensity.current) { isMiuixWideLayout(size.width.toDp(), size.height.toDp()) }
+    var blurChecked by remember(settings.blurEnabled) { mutableStateOf(settings.blurEnabled) }
+    var smallPlayerBarChecked by remember(settings.smallPlayerBar) { mutableStateOf(settings.smallPlayerBar) }
     val dynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     var immersiveModeChecked by remember(settings.immersiveMode) {
         mutableStateOf(settings.immersiveMode)
@@ -177,7 +190,7 @@ fun ThemeSettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .scrollEndHaptic()
-                    .overScrollVertical()
+                    .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = listState,
                 contentPadding = PaddingValues(
@@ -226,10 +239,52 @@ fun ThemeSettingsScreen(
                             title = stringResource(R.string.settings_custom_background_title),
                             onClick = onOpenMainBackground,
                         )
-                        ArrowPreference(
-                            title = stringResource(R.string.settings_interface_style_title),
-                            onClick = onOpenInterfaceStyle,
+                        SwitchPreference(
+                            title = stringResource(R.string.settings_blur_title),
+                            summary = stringResource(
+                                if (liquidGlassSupported) R.string.settings_blur_summary else R.string.settings_blur_unsupported,
+                            ),
+                            checked = blurChecked && liquidGlassSupported,
+                            enabled = liquidGlassSupported,
+                            onCheckedChange = { checked ->
+                                blurChecked = checked
+                                onBlurChange(checked)
+                            },
                         )
+                        val styles = listOf(
+                            BottomBarStyle.GLASS, BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS,
+                        )
+                        val labels = listOf(
+                            stringResource(R.string.settings_bottom_bar_glass),
+                            stringResource(R.string.settings_bottom_bar_original),
+                            stringResource(R.string.settings_bottom_bar_ios_like),
+                        )
+                        OverlayDropdownPreference(
+                            title = stringResource(R.string.settings_bottom_bar_style_title),
+                            summary = if (!liquidGlassSupported) stringResource(R.string.settings_glass_styles_unsupported) else null,
+                            entry = DropdownEntry(items = styles.mapIndexed { index, style ->
+                                DropdownItem(
+                                    text = labels[index],
+                                    selected = settings.bottomBarStyle == style,
+                                    enabled = liquidGlassSupported || style != BottomBarStyle.LIQUID_GLASS,
+                                    onClick = { onBottomBarStyleChange(style) },
+                                )
+                            }),
+                        )
+                        AnimatedVisibility(
+                            visible = settings.bottomBarStyle.supportsSmallPlayerBar && !landscape,
+                            enter = fadeIn(tween(200)) + expandVertically(tween(250)),
+                            exit = fadeOut(tween(150)) + shrinkVertically(tween(200)),
+                        ) {
+                            SwitchPreference(
+                                checked = smallPlayerBarChecked,
+                                onCheckedChange = { checked ->
+                                    smallPlayerBarChecked = checked
+                                    onSmallPlayerBarChange(checked)
+                                },
+                                title = stringResource(R.string.settings_small_player_bar_title),
+                            )
+                        }
                         SwitchPreference(
                             title = stringResource(R.string.settings_immersive_mode_title),
                             summary = stringResource(R.string.settings_immersive_mode_summary),

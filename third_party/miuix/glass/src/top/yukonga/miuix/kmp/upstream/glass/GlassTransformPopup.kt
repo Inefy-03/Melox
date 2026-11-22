@@ -77,6 +77,7 @@ internal data class GlassAnchorSurface(
     val underlayMaterial: GlassMaterial?,
     val stroke: EdgeStroke?,
     val fill: Color,
+    val shadow: GlassShadow?,
 )
 
 /** Marks the button's modifier so its renderer can publish the actual surface to this anchor. */

@@ -54,8 +54,6 @@ class MeloxInstrumentedTest {
             repository.setCircularArtwork(true)
             repository.setShowSongListFileName(true)
             repository.setBlurEnabled(false)
-            repository.setProgressiveTopBarBlurEnabled(true)
-            repository.setHideBottomBar(true)
             repository.setBottomBarStyle(BottomBarStyle.LIQUID_GLASS)
             repository.setPredictiveBackEnabled(true)
             repository.setNavigationTransitionStyle(NavigationTransitionStyle.AOSP)
@@ -73,8 +71,6 @@ class MeloxInstrumentedTest {
             assertEquals(true, restored.circularArtwork)
             assertEquals(true, restored.showSongListFileName)
             assertEquals(false, restored.blurEnabled)
-            assertEquals(true, restored.progressiveTopBarBlurEnabled)
-            assertEquals(true, restored.hideBottomBar)
             assertEquals(BottomBarStyle.LIQUID_GLASS, restored.bottomBarStyle)
             assertEquals(true, restored.predictiveBackEnabled)
             assertEquals(
@@ -95,10 +91,6 @@ class MeloxInstrumentedTest {
             repository.setCoverShape(original.coverShape)
             repository.setShowSongListFileName(original.showSongListFileName)
             repository.setBlurEnabled(original.blurEnabled)
-            repository.setProgressiveTopBarBlurEnabled(
-                original.progressiveTopBarBlurEnabled,
-            )
-            repository.setHideBottomBar(original.hideBottomBar)
             repository.setBottomBarStyle(original.bottomBarStyle)
             repository.setPredictiveBackEnabled(original.predictiveBackEnabled)
             repository.setNavigationTransitionStyle(original.navigationTransitionStyle)

@@ -253,29 +253,27 @@ class NavigationAndThemeTest {
     }
 
     @Test
-    fun topBarUsesVisibleListPositionAfterReboundAndPagerSwitch() {
+    fun topBarUsesVisibleListScrollabilityAfterPagerSwitch() {
         val page = com.melox.player.ui.component.TopBarScrollContent()
         page.bounds = androidx.compose.ui.geometry.Rect(0f, 0f, 600f, 800f)
-        val scrolled = com.melox.player.ui.component.ScrollContentPosition(androidx.compose.runtime.mutableStateOf({ 180f }))
-        val atTop = com.melox.player.ui.component.ScrollContentPosition(androidx.compose.runtime.mutableStateOf({ 0f }))
+        val scrolled = com.melox.player.ui.component.ScrollContentPosition(
+            androidx.compose.runtime.mutableStateOf({ 180f }),
+            androidx.compose.runtime.mutableStateOf({ true }),
+        )
+        val atTop = com.melox.player.ui.component.ScrollContentPosition(
+            androidx.compose.runtime.mutableStateOf({ 0f }),
+            androidx.compose.runtime.mutableStateOf({ false }),
+        )
         scrolled.bounds = page.bounds
         atTop.bounds = androidx.compose.ui.geometry.Rect(600f, 0f, 1200f, 800f)
         page.lists[scrolled] = scrolled
         page.lists[atTop] = atTop
         assertEquals(180f, page.distance)
-        assertEquals(-180f, page.visualContentOffset(0f))
+        assertEquals(true, page.canScrollBackward)
         scrolled.bounds = androidx.compose.ui.geometry.Rect(-600f, 0f, 0f, 800f)
         atTop.bounds = page.bounds
         assertEquals(0f, page.distance)
-        assertEquals(0f, page.visualContentOffset(-900f))
-        val rebound = com.melox.player.ui.component.ScrollContentPosition(
-            androidx.compose.runtime.mutableStateOf({ -48f }))
-        rebound.bounds = page.bounds
-        page.overscrolls[rebound] = rebound
-        assertEquals(-48f, page.overscrollDistance)
-        assertEquals(0f, page.distance)
-        assertEquals(-48f, page.visualContentOffset(-900f))
-
+        assertEquals(false, page.canScrollBackward)
     }
 
     @Test
@@ -384,8 +382,6 @@ class NavigationAndThemeTest {
             settings.lyricsFormatPriority,
         )
         assertEquals(true, settings.blurEnabled)
-        assertFalse(settings.progressiveTopBarBlurEnabled)
-        assertFalse(settings.hideBottomBar)
         assertEquals(true, settings.predictiveBackEnabled)
         assertEquals(NavigationTransitionStyle.MIUIX, settings.navigationTransitionStyle)
         assertTrue(settings.songListPullToRefresh)
@@ -557,7 +553,6 @@ class NavigationAndThemeTest {
         assertTrue(
             shouldShowNavigation(
                 currentRouteIsRoot = true,
-                hideBottomBar = false,
                 landscape = false,
                 requestedBottomBarStyle = BottomBarStyle.FLOATING,
             ),
@@ -565,7 +560,6 @@ class NavigationAndThemeTest {
         assertTrue(
             shouldShowNavigation(
                 currentRouteIsRoot = true,
-                hideBottomBar = false,
                 landscape = true,
                 requestedBottomBarStyle = BottomBarStyle.FLOATING,
             ),
@@ -573,7 +567,6 @@ class NavigationAndThemeTest {
         assertFalse(
             shouldShowNavigation(
                 currentRouteIsRoot = true,
-                hideBottomBar = false,
                 landscape = true,
                 requestedBottomBarStyle = BottomBarStyle.FLOATING,
                 renderedBottomBarStyle = BottomBarStyle.NORMAL,
@@ -582,25 +575,23 @@ class NavigationAndThemeTest {
     }
 
     @Test
-    fun sidebarNavigationRemainsAvailableOnSecondaryPagesAndPreservesHidePreference() {
+    fun glassNavigationRemainsAvailableOnSecondaryPages() {
         for (landscape in listOf(false, true)) {
             assertTrue(shouldShowNavigation(
-                currentRouteIsRoot = false, hideBottomBar = true, landscape = landscape,
+                currentRouteIsRoot = false, landscape = landscape,
                 requestedBottomBarStyle = BottomBarStyle.GLASS,
             ))
         }
         for (style in listOf(BottomBarStyle.NORMAL, BottomBarStyle.LIQUID_GLASS)) {
             assertFalse(shouldShowNavigation(
-                currentRouteIsRoot = false, hideBottomBar = false, landscape = false,
+                currentRouteIsRoot = false, landscape = false,
                 requestedBottomBarStyle = style,
             ))
-            assertFalse(shouldShowNavigation(
-                currentRouteIsRoot = true, hideBottomBar = true, landscape = false,
+            assertTrue(shouldShowNavigation(
+                currentRouteIsRoot = true, landscape = false,
                 requestedBottomBarStyle = style,
             ))
         }
-        val settings = AppSettings(hideBottomBar = true, selectedBottomBarStyle = BottomBarStyle.GLASS)
-        assertTrue(settings.copy(selectedBottomBarStyle = BottomBarStyle.NORMAL).hideBottomBar)
     }
 
     @Test

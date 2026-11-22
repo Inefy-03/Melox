@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.*
 import androidx.compose.foundation.layout.*
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.glass.*
+import com.melox.player.ui.glass.*
 import top.yukonga.miuix.kmp.utils.*
 
 
@@ -17,7 +17,6 @@ internal fun OverlayIconDropdownMenu(
     enabled: Boolean = true,
     maxHeight: Dp? = null,
     dropdownColors: DropdownColors = DropdownDefaults.dropdownColors(),
-    renderInRootScaffold: Boolean = true,
     collapseOnSelection: Boolean = true,
     onExpandedChange: ((Boolean) -> Unit)? = null,
     backgroundColor: Color = Color.Unspecified,
@@ -26,7 +25,7 @@ internal fun OverlayIconDropdownMenu(
     minWidth: Dp = IconButtonDefaults.MinWidth,
     content: @Composable () -> Unit,
 ) {
-    GlassMenuHost(listOf(entry), modifier, enabled, renderInRootScaffold, collapseOnSelection, onExpandedChange, content, maxHeight = maxHeight)
+    GlassMenuHost(listOf(entry), modifier, enabled, collapseOnSelection, onExpandedChange, content, maxHeight = maxHeight)
 }
 
 @Composable
@@ -36,7 +35,6 @@ internal fun OverlayIconDropdownMenu(
     enabled: Boolean = true,
     maxHeight: Dp? = null,
     dropdownColors: DropdownColors = DropdownDefaults.dropdownColors(),
-    renderInRootScaffold: Boolean = true,
     collapseOnSelection: Boolean = entries.size <= 1,
     onExpandedChange: ((Boolean) -> Unit)? = null,
     backgroundColor: Color = Color.Unspecified,
@@ -45,6 +43,6 @@ internal fun OverlayIconDropdownMenu(
     minWidth: Dp = IconButtonDefaults.MinWidth,
     content: @Composable () -> Unit,
 ) {
-    GlassMenuHost(entries, modifier, enabled, renderInRootScaffold, collapseOnSelection, onExpandedChange, content, maxHeight = maxHeight)
+    GlassMenuHost(entries, modifier, enabled, collapseOnSelection, onExpandedChange, content, maxHeight = maxHeight)
 }
 

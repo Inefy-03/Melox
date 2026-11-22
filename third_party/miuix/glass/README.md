@@ -1,5 +1,30 @@
 # Miuix Glass source integration
 
+## Beta 04 synchronization (2026-11-24)
+
+The official Maven Central Glass AAR and vendored source manifest use the Beta 04 tag
+(`3c560868`). The vendored search overlay follows upstream release timing:
+after dismissal it releases touch interception once visual progress falls to
+`1 / 255`. Melox's search callbacks and localized action descriptions remain
+part of its integration.
+
+## Official overlays and top bar progress (2026-11-24)
+
+Glass menus, dialogs, and bottom sheets use the pinned Glass Android AAR.
+The root Scaffold hosts the official icon menu beyond the captured scene.
+The top bar background band follows upstream collapse or mask progress while
+Melox retains the compact layout, custom detail header, and stable insets.
+Glass search owns the query field and uses the upstream blur band and fallback.
+Page-facing callbacks connect text, focus, and transition state to Melox.
+
+## Beta 03 source synchronization (2026-11-24)
+
+The selected Glass navigation, search, blur and material sources follow Miuix
+main at `07d48590`. Glass search uses the state-based text field and the
+localized upstream clear button. Melox retains ownership of the search query,
+focus, header geometry and result list. Toolbar, dialog and popup adapters
+retain the app's existing layout and hosting contracts.
+
 ## Post-Beta 01 synchronization (2026-11-19)
 
 Glass navigation uses the pinned upstream `GlassNavigationBar` in portrait and
@@ -19,7 +44,7 @@ The search field and cancel button follow the Icon page's scroll-triggered
 transition from solid fill to glass. Melox supplies query and result state,
 localized action descriptions, and the page header gradient and blur settings.
 
-The relocated source manifest records the 52 selected files at `08d52d45`,
+The relocated source manifest records the 52 selected files at `5ff41ba9`,
 including the latest progressive blur renderer and dynamic-color navigation
 materials. The existing legacy Glass adapters also receive the upstream
 dynamic colors and lazy dropdown anchor tracking.
@@ -53,9 +78,9 @@ application-owned.
   Melox adds 2 dp padding inside each original 28 dp icon slot for 24 dp
   visible icons, preserving navigation height and interaction geometry.
 
-The app compiles the Glass sources alongside Miuix `0.9.5-beta01` and uses
-the UI patch `0.9.5-beta01-melox` for native rail insets and observable top-bar
-collapse limits. The official Blur and Material packages expose float recording
+The app compiles Glass sources alongside the pinned Miuix Android snapshot.
+The UI AAR includes the Melox rail inset patch and the upstream observable
+top-bar collapse limit. The official Blur and Material packages expose float recording
 scales and shader support. The backdrop adapter forwards the scale directly.
 The iOS-like bottom bar follows the Beta 01 example's Lens and Vibrancy
 sources. Its mini player shares the example's navigation body material.

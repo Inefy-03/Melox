@@ -1,6 +1,7 @@
+diff --git a/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt b/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt
 --- a/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt
 +++ b/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt
-@@ -170,6 +170,51 @@
+@@ -170,6 +170,47 @@ fun NavigationRail(
      )
  }
 
@@ -8,8 +9,6 @@
 + * Melox extension: an expandable [NavigationRail] with explicit content-top [statusBarInsets].
 + *
 + * These insets apply only to the inner scroll column when [defaultWindowInsetsPadding] is true.
-+ * Optional [contentBottomInsets] reserve a clipped viewport above an overlapping surface.
-+ * These bottom insets are consumed before scrolling to avoid duplicate navigation-bar spacing.
 + * The rail background, divider, start cutout and navigation-bar insets retain their native bounds.
 + * The overload without [statusBarInsets] continues to use [WindowInsets.statusBars].
 + */
@@ -27,14 +26,12 @@
 +    expandContentDescription: String = NavigationRailDefaults.ExpandContentDescription,
 +    collapseContentDescription: String = NavigationRailDefaults.CollapseContentDescription,
 +    scrollState: ScrollState = rememberScrollState(),
-+    contentBottomInsets: WindowInsets? = null,
 +    content: @Composable ColumnScope.() -> Unit,
 +) {
 +    NavigationRailImpl(
 +        modifier = modifier,
 +        state = state,
 +        statusBarInsets = statusBarInsets,
-+        contentBottomInsets = contentBottomInsets,
 +        expanded = false,
 +        header = header,
 +        color = color,
@@ -52,124 +49,20 @@
  @Composable
  private fun NavigationRailImpl(
      state: NavigationRailState?,
-@@ -184,6 +229,8 @@
+@@ -184,6 +225,7 @@ private fun NavigationRailImpl(
      collapseContentDescription: String,
      scrollState: ScrollState,
      modifier: Modifier = Modifier,
 +    statusBarInsets: WindowInsets = WindowInsets.statusBars,
-+    contentBottomInsets: WindowInsets? = null,
      content: @Composable ColumnScope.() -> Unit,
  ) {
      val isExpandable = state != null
-@@ -239,7 +286,12 @@
+@@ -239,7 +281,7 @@ private fun NavigationRailImpl(
                  .then(
                      if (defaultWindowInsetsPadding) {
                          Modifier
 -                            .windowInsetsPadding(WindowInsets.statusBars.only(WindowInsetsSides.Top))
 +                            .windowInsetsPadding(statusBarInsets.only(WindowInsetsSides.Top))
-+                            .then(
-+                                contentBottomInsets?.let {
-+                                    Modifier.windowInsetsPadding(it.only(WindowInsetsSides.Bottom))
-+                                } ?: Modifier,
-+                            )
                              .verticalScroll(scrollState)
                              .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
                      } else {
---- a/docs/components/navigationrail.md
-+++ b/docs/components/navigationrail.md
-@@ -79,6 +79,8 @@
- | Parameter | Type | Description | Default | Required |
- | --------- | ---- | ----------- | ------- | -------- |
- | state | NavigationRailState | Controls the layout and displays the toggle | - | Yes |
-+| statusBarInsets | WindowInsets | Content-top insets in the explicit stateful overload (Melox local patch) | Required in that overload | Yes |
-+| contentBottomInsets | WindowInsets? | Optional bottom viewport insets, consumed before scrolling (Melox local patch) | null | No |
- | expandContentDescription | String | Toggle description when collapsed | NavigationRailDefaults.ExpandContentDescription | No |
- | collapseContentDescription | String | Toggle description when expanded | NavigationRailDefaults.CollapseContentDescription | No |
-
-@@ -152,3 +154,16 @@
- | --------- | ----------------------------------------------- |
- | Collapsed | The rail is collapsed to `MinWidth`.            |
- | Expanded  | The rail is expanded to `ExpandedWidth`.        |
-+
-+## Stable Content-top Insets
-+
-+The stateful overload also accepts explicit `statusBarInsets`, applied only to the inner content column when `defaultWindowInsetsPadding` is enabled. The existing overload retains its original behavior. The background, divider and other system insets are unchanged. With the Compose experimental layout API opt-in, retain space while the status bar is hidden:
-+
-+```kotlin
-+NavigationRail(
-+    state = railState,
-+    statusBarInsets = WindowInsets.statusBarsIgnoringVisibility,
-+) {
-+    // NavigationRailItem content
-+}
-+```
---- a/docs/zh_CN/components/navigationrail.md
-+++ b/docs/zh_CN/components/navigationrail.md
-@@ -78,6 +78,8 @@
- | 参数 | 类型 | 说明 | 默认值 | 是否必须 |
- | ---- | ---- | ---- | ------ | -------- |
- | state | NavigationRailState | 控制布局并显示切换按钮 | - | 是 |
-+| statusBarInsets | WindowInsets | 显式有状态重载的内容顶部边距（Melox 本地补丁） | 该重载必须传入 | 是 |
-+| contentBottomInsets | WindowInsets? | 可选的底部视口边距，在滚动之前预留并消费（Melox 本地补丁） | null | 否 |
- | expandContentDescription | String | 收起时切换按钮的描述 | NavigationRailDefaults.ExpandContentDescription | 否 |
- | collapseContentDescription | String | 展开时切换按钮的描述 | NavigationRailDefaults.CollapseContentDescription | 否 |
-
-@@ -151,3 +153,16 @@
- | --------- | --------------------------------- |
- | Collapsed | 导航栏收起到 `MinWidth`。         |
- | Expanded  | 导航栏展开到 `ExpandedWidth`。    |
-+
-+## 稳定内容顶部边距
-+
-+有状态重载还支持显式传入 `statusBarInsets`，仅控制内部内容列的顶部边距。默认重载保持原有行为；背景、分隔线和其他安全区域处理不变。需要隐藏状态栏后仍保留顶部空间时，可在启用 Compose 实验性布局 API 后使用：
-+
-+```kotlin
-+NavigationRail(
-+    state = railState,
-+    statusBarInsets = WindowInsets.statusBarsIgnoringVisibility,
-+) {
-+    // NavigationRailItem content
-+}
-+```
---- a/docs/demo/src/commonMain/kotlin/NavigationRailDemo.kt
-+++ b/docs/demo/src/commonMain/kotlin/NavigationRailDemo.kt
-@@ -6,11 +6,13 @@
- import androidx.compose.foundation.layout.Box
- import androidx.compose.foundation.layout.Column
- import androidx.compose.foundation.layout.Row
-+import androidx.compose.foundation.layout.WindowInsets
- import androidx.compose.foundation.layout.fillMaxHeight
- import androidx.compose.foundation.layout.fillMaxSize
- import androidx.compose.foundation.layout.fillMaxWidth
- import androidx.compose.foundation.layout.height
- import androidx.compose.foundation.layout.padding
-+import androidx.compose.foundation.layout.statusBars
- import androidx.compose.foundation.layout.widthIn
- import androidx.compose.runtime.Composable
- import androidx.compose.runtime.getValue
-@@ -68,6 +70,7 @@
-                     Row(modifier = Modifier.fillMaxSize()) {
-                         NavigationRail(
-                             state = railState,
-+                            statusBarInsets = WindowInsets.statusBars, // Melox patch: exercise the explicit inset overload.
-                         ) {
-                             items.forEachIndexed { index, item ->
-                                 NavigationRailItem(
---- a/example/shared/src/commonMain/kotlin/AppContent.kt
-+++ b/example/shared/src/commonMain/kotlin/AppContent.kt
-@@ -28,6 +28,7 @@
- import androidx.compose.foundation.layout.imePadding
- import androidx.compose.foundation.layout.only
- import androidx.compose.foundation.layout.padding
-+import androidx.compose.foundation.layout.statusBars
- import androidx.compose.foundation.layout.statusBarsPadding
- import androidx.compose.foundation.layout.systemBars
- import androidx.compose.foundation.layout.union
-@@ -363,6 +364,7 @@
-     }
-     NavigationRail(
-         state = railState,
-+        statusBarInsets = WindowInsets.statusBars, // Melox patch: exercise the explicit inset overload.
-     ) {
-         navigationItems.forEachIndexed { index, item ->
-             NavigationRailItem(

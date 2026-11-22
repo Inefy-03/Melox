@@ -49,7 +49,7 @@ class NavigationChromeMotionTest {
         for (position in -100..400 step 10) {
             for (delta in listOf(-100f, -5f, 0f, 5f, 100f)) {
                 for (changed in listOf(false, true)) {
-                    val target = top.yukonga.miuix.kmp.glass.navigationDragTarget(position.toFloat(), 80f, 320f, delta, changed)
+                    val target = com.melox.player.ui.glass.navigationDragTarget(position.toFloat(), 80f, 320f, delta, changed)
                     val start = position.toFloat().coerceIn(0f, 240f)
                     val trail = if (changed) 0f else (kotlin.math.abs(delta) * 4f).coerceAtMost(60f)
                     assertEquals(if (delta > 0f && start + 80f < 320f) start - trail else start, target.left, 0f)
@@ -62,7 +62,7 @@ class NavigationChromeMotionTest {
     @Test
     fun glassIndicatorStartsAtTheSuppliedDefaultDestinationThenAnimates() = kotlinx.coroutines.runBlocking {
         for (initialIndex in 0..3) {
-            val motion = top.yukonga.miuix.kmp.glass.GlassNavigationIndicatorMotion()
+            val motion = com.melox.player.ui.glass.GlassNavigationIndicatorMotion()
             val targets = mutableListOf<Pair<Float, Float>>()
             val animate: (Float, Float) -> Unit = { left, right -> targets += left to right }
             org.junit.Assert.assertFalse(motion.useAnimatedBounds())
@@ -82,7 +82,7 @@ class NavigationChromeMotionTest {
 
     @Test
     fun glassIndicatorKeepsItsFirstDragAndReleaseOnAnimatedBounds() = kotlinx.coroutines.runBlocking {
-        val motion = top.yukonga.miuix.kmp.glass.GlassNavigationIndicatorMotion()
+        val motion = com.melox.player.ui.glass.GlassNavigationIndicatorMotion()
         motion.syncTarget(3f, 83f) { _, _ -> error("Startup must snap") }
         assertTrue(motion.useAnimatedBounds())
         motion.left.snapTo(18f)
@@ -100,7 +100,7 @@ class NavigationChromeMotionTest {
     @Test
     fun draggedGlassIndicatorWidthIsContinuousAcrossVariableAndEqualSlots() {
         val widths = listOf(70f, 96f, 58f)
-        fun width(x: Float) = top.yukonga.miuix.kmp.glass.navigationDragWidth(x, widths)
+        fun width(x: Float) = com.melox.player.ui.glass.navigationDragWidth(x, widths)
         assertEquals(70f, width(-100f), 0f)
         assertEquals(70f, width(35f), 0f)
         assertEquals(96f, width(118f), 0f)
@@ -110,7 +110,7 @@ class NavigationChromeMotionTest {
             assertEquals(width(boundary - 0.001f), width(boundary + 0.001f), 0.002f)
         }
         for (position in -10..400) {
-            assertEquals(80f, top.yukonga.miuix.kmp.glass.navigationDragWidth(position.toFloat(), listOf(80f, 80f, 80f)), 0f)
+            assertEquals(80f, com.melox.player.ui.glass.navigationDragWidth(position.toFloat(), listOf(80f, 80f, 80f)), 0f)
         }
     }
 
@@ -242,21 +242,21 @@ class NavigationChromeMotionTest {
         val widths = listOf(70f, 96f, 58f)
         val edges = listOf(0f, 70f, 166f, 224f)
         edges.forEachIndexed { slot, position ->
-            assertEquals(position, top.yukonga.miuix.kmp.glass.navigationSlotPosition(slot.toFloat(), widths), 0.001f)
-            assertEquals(slot.toFloat(), top.yukonga.miuix.kmp.glass.navigationSlotAt(position, widths), 0.001f)
+            assertEquals(position, com.melox.player.ui.glass.navigationSlotPosition(slot.toFloat(), widths), 0.001f)
+            assertEquals(slot.toFloat(), com.melox.player.ui.glass.navigationSlotAt(position, widths), 0.001f)
         }
-        assertEquals(118f, top.yukonga.miuix.kmp.glass.navigationSlotPosition(1.5f, widths), 0.001f)
-        assertEquals(1.5f, top.yukonga.miuix.kmp.glass.navigationSlotAt(118f, widths), 0.001f)
+        assertEquals(118f, com.melox.player.ui.glass.navigationSlotPosition(1.5f, widths), 0.001f)
+        assertEquals(1.5f, com.melox.player.ui.glass.navigationSlotAt(118f, widths), 0.001f)
         // Full indicator widths become adjacent top slots, retaining both former 5 px wings.
         val fullWidths = widths.map { it + 10f }
-        val firstRight = top.yukonga.miuix.kmp.glass.navigationSlotPosition(1f, fullWidths)
-        val secondRight = top.yukonga.miuix.kmp.glass.navigationSlotPosition(2f, fullWidths)
+        val firstRight = com.melox.player.ui.glass.navigationSlotPosition(1f, fullWidths)
+        val secondRight = com.melox.player.ui.glass.navigationSlotPosition(2f, fullWidths)
         assertEquals(80f, firstRight, 0.001f)
         assertEquals(106f, secondRight - firstRight, 0.001f)
-        val bounds = top.yukonga.miuix.kmp.glass.navigationIndicatorBounds(240f, 340f, 300f, 43f, 3f)
+        val bounds = com.melox.player.ui.glass.navigationIndicatorBounds(240f, 340f, 300f, 43f, 3f)
         assertEquals(240f, bounds.x, 0.001f)
         assertEquals(297f, bounds.y, 0.001f)
-        val symmetric = top.yukonga.miuix.kmp.glass.navigationIndicatorBounds(240f, 340f, 300f, 3f)
+        val symmetric = com.melox.player.ui.glass.navigationIndicatorBounds(240f, 340f, 300f, 3f)
         assertEquals(297f, symmetric.y, 0.001f)
     }
 

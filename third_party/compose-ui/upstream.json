@@ -1,7 +1,7 @@
 {
-  "baseVersion": "1.12.0",
-  "patchVersion": "1.12.0-melox",
-  "aarSha256": "3d2d83c96546c380cbc582329ece0da74a4f9267d52c6dead69c2272bfce0313",
-  "pomSha256": "aabfd1a533c2de912fda349dd062a89148e6d02dcaf62c89befc62a13f09e199",
-  "targetClassSha256": "9806de08a9297e34213f4f024bec6c68312f326b54cda31a1ca0993f49f81543"
+  "baseVersion": "1.13.0-rc01",
+  "patchVersion": "1.13.0-rc01-melox",
+  "aarSha256": "59821c8a1198b0e48cefb2a36c22eaa7bf086ef0073ac1ba40d6f352ae939a00",
+  "pomSha256": "1f35b1e98712871dfcae2a342a0fc349aabe6b28b0bcaad74b02cc9635452f37",
+  "targetClassSha256": "bec7c2a9caf073ef8c94df775435158e5513107cacd0870d799b1b2798efcc9e"
 }

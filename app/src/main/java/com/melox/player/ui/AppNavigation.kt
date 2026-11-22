@@ -38,7 +38,7 @@ internal enum class AppRoute {
     PLAYBACK_BEHAVIOR,
     AUDIO_OUTPUT,
     THEME_SETTINGS,
-    INTERFACE_STYLE,
+    INTERFACE_STYLE, // Saved routes from older versions redirect to Theme Settings.
     MAIN_BACKGROUND,
     LYRICS_SETTINGS,
     LYRICS_INTERFACE,

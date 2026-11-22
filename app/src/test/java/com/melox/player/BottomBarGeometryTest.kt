@@ -20,7 +20,7 @@ class BottomBarGeometryTest {
             // Upstream: (status bar + collapsed 52 dp bar + bottom slot + 20 dp) * 1.2.
             for (bottom in listOf(0, 48, 104)) {
                 val expected = kotlin.math.round((24 + 52 + bottom + 20) * scale * 1.2f).toInt()
-                assertEquals(expected, top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults
+                assertEquals(expected, com.melox.player.ui.glass.GlassTopAppBarDefaults
                     .progressiveBandHeight((bottom * scale).toInt(), topInset, density))
             }
         }

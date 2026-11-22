@@ -7,18 +7,18 @@ import androidx.compose.ui.graphics.Color
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
-import top.yukonga.miuix.kmp.glass.internal.asCurrentBlurColors
+import com.melox.player.ui.glass.internal.asCurrentBlurColors
 import androidx.compose.ui.unit.LayoutDirection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import top.yukonga.miuix.kmp.glass.GlassPopupAnchor
-import top.yukonga.miuix.kmp.glass.isTransformPopupInteractive
-import top.yukonga.miuix.kmp.glass.placeGlassDropdownPopup
-import top.yukonga.miuix.kmp.glass.placeGlassPopup
-import top.yukonga.miuix.kmp.glass.placeGlassSecondaryPopup
-import top.yukonga.miuix.kmp.glass.transformPanelAlpha
+import com.melox.player.ui.glass.GlassPopupAnchor
+import com.melox.player.ui.glass.isTransformPopupInteractive
+import com.melox.player.ui.glass.placeGlassDropdownPopup
+import com.melox.player.ui.glass.placeGlassPopup
+import com.melox.player.ui.glass.placeGlassSecondaryPopup
+import com.melox.player.ui.glass.transformPanelAlpha
 
 class GlassPopupTest {
     private val window = Rect(80f, 24f, 480f, 824f)

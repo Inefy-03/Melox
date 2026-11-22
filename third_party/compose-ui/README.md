@@ -1,9 +1,7 @@
 # Detached-owner cleanup patch for Compose UI
 
-This is a Melox-local build of `androidx.compose.ui:ui-android:1.12.0`,
-published only in this repository as `1.12.0-melox`. It is not an official
-AndroidX release. Gradle substitutes only this Android artifact; other Compose
-modules and their versions are unchanged.
+Melox uses `androidx.compose.ui:ui-android:1.13.0-rc01-melox`, a local build of
+AndroidX Compose UI `1.13.0-rc01` with the detached-owner cleanup fix.
 
 ## Reason and scope
 
@@ -14,7 +12,7 @@ even though its result is nullable and the caller already supports synchronous
 cleanup when no executor is available.
 
 The sole behavior change is equivalent to this source change in
-`commonMain/androidx/compose/ui/layout/SubcomposeLayout.kt`, line 664:
+`commonMain/androidx/compose/ui/layout/SubcomposeLayout.kt`:
 
 ```diff
 -        get() = root.requireOwner().outOfFrameExecutor
@@ -28,9 +26,9 @@ handler, list-state replacement, or other framework changes are introduced.
 
 ## Provenance and license
 
-- [Official upstream AAR](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.12.0/ui-android-1.12.0.aar)
-- [Official upstream POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.12.0/ui-android-1.12.0.pom)
-- [Official upstream sources](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.12.0/ui-android-1.12.0-sources.jar)
+- [Official upstream AAR](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.13.0-rc01/ui-android-1.13.0-rc01.aar)
+- [Official upstream POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.13.0-rc01/ui-android-1.13.0-rc01.pom)
+- [Official upstream sources](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.13.0-rc01/ui-android-1.13.0-rc01-sources.jar)
 
 AndroidX is authored by the Android Open Source Project and licensed under
 Apache-2.0; see `LICENSE`. Original AAR/JAR entries, including metadata and
@@ -45,7 +43,7 @@ and POM, plus the two ASM JARs:
 
 ```sh
 python3 third_party/compose-ui/rebuild.py \
-  --aar /path/to/ui-android-1.12.0.aar \
+  --aar /path/to/ui-android-1.13.0-rc01.aar \
   --pom third_party/compose-ui/upstream-ui-android.pom \
   --asm /path/to/asm-9.9.jar \
   --asm-tree /path/to/asm-tree-9.9.jar \
@@ -60,7 +58,7 @@ versions remain intact; only the local artifact version and unavailable Gradle
 metadata marker change.
 
 The generated AAR SHA-256 is
-`247bcd9e9444e0a095fcd74e875c855692f9106bfe0c2276ff508ed7f62e3def`.
+`158e5812af521d333e9736edce950fbc0693e1e63610c66ab8fb6ab9c1d933ec`.
 `verification.json` records the checks. The local Maven artifact is bundled
 as an input to ordinary app builds; ASM is not an app dependency.
 
@@ -71,7 +69,3 @@ reported exception and passes the attached case. This isolates the reported
 failure without claiming device-level navigation or rendering coverage.
 The patched artifact passes all three cases, including the unchanged
 attached-owner control.
-
-Build, test, dependency-selection and APK evidence is retained in
-`artifacts/prefetch-crashes-2026-10-18/`. The user's current instruction permits
-package delivery only; no emulator or device execution is part of this repair.

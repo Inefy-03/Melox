@@ -189,10 +189,7 @@ class SettingsRepository(context: Context) {
                     floating = preferences[Keys.FloatingBottomBar],
                 ).let { availableBottomBarStyle(it, Build.VERSION.SDK_INT >= 33) },
                 blurEnabled = preferences[Keys.BlurEnabled] ?: true,
-                progressiveTopBarBlurEnabled =
-                    preferences[Keys.ProgressiveTopBarBlurEnabled] ?: false,
                 smallPlayerBar = preferences[Keys.SmallPlayerBar] ?: false,
-                hideBottomBar = preferences[Keys.HideBottomBar] ?: false,
                 immersiveMode = preferences[Keys.ImmersiveMode] ?: false,
                 hideStatusBar = preferences[Keys.HideStatusBar] ?: false,
                 navigationRailExpanded = preferences[Keys.NavigationRailExpanded] ?: true,
@@ -527,21 +524,9 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    suspend fun setProgressiveTopBarBlurEnabled(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[Keys.ProgressiveTopBarBlurEnabled] = enabled
-        }
-    }
-
     suspend fun setSmallPlayerBar(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.SmallPlayerBar] = enabled
-        }
-    }
-
-    suspend fun setHideBottomBar(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[Keys.HideBottomBar] = enabled
         }
     }
 
@@ -738,12 +723,9 @@ class SettingsRepository(context: Context) {
         val NavigationBarStyle = stringPreferencesKey("navigation_bar_style")
         val BottomBarStyle = stringPreferencesKey("bottom_bar_style")
         val BlurEnabled = booleanPreferencesKey("blur_enabled")
-        val ProgressiveTopBarBlurEnabled =
-            booleanPreferencesKey("progressive_top_bar_blur_enabled")
         val FloatingBottomBar = booleanPreferencesKey("floating_bottom_bar")
         val NavigationRailExpanded = booleanPreferencesKey("navigation_rail_expanded")
         val SmallPlayerBar = booleanPreferencesKey("small_player_bar")
-        val HideBottomBar = booleanPreferencesKey("hide_bottom_bar")
         val ImmersiveMode = booleanPreferencesKey("immersive_mode")
         val HideStatusBar = booleanPreferencesKey("hide_status_bar")
         val LiquidGlass = booleanPreferencesKey("liquid_glass")

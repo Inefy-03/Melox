@@ -1,32 +1,29 @@
 # Miuix Android Integration
 
-Melox follows [Miuix main at `08d52d45`](https://github.com/compose-miuix-ui/miuix/commit/08d52d455bf1d62c45e979ec75b47f6b5dc377f3),
-covering [the 28 commits after `v0.9.5-beta01`](https://github.com/compose-miuix-ui/miuix/compare/v0.9.5-beta01...08d52d455bf1d62c45e979ec75b47f6b5dc377f3).
-UI, Blur and Preference use the bundled Android AARs at `0.9.5-beta01` from the
-local Maven repository.
-Other Miuix Android modules retain the Beta 01 release artifacts.
-
-The current snapshot includes the upstream top-bar title alignment and collapsed
-Glass rail avoidance, plus horizontal cutout and navigation-bar insets for the
-bottom bars. Adaptive layout uses the measured root constraints so the window
-size updates on Android 10 rotation.
+Melox uses [Miuix `0.9.5-beta04`](https://github.com/compose-miuix-ui/miuix/tree/v0.9.5-beta04)
+at commit `3c560868758f80cd97bbdab2f8e53612ad1c56be`.
+Blur, Core, Glass, Icons, Material, Nav, Preference and Squircle resolve from
+Maven Central. UI resolves from the local Maven repository to supply the
+explicit NavigationRail top inset overload. The Glass AAR keeps its official
+package, while Melox's Glass adapters compile in `com.melox.player.ui.glass`.
 
 - License [Apache-2.0](LICENSE)
 - Source patch [navigation-rail-insets.patch](navigation-rail-insets.patch)
 - Vendored Glass source hashes [portrait-glass-sources.json](portrait-glass-sources.json)
 
-The new stateful `NavigationRail` overload requires `statusBarInsets` and accepts
-optional `contentBottomInsets`. The top input replaces the existing inner
-content column's top inset. The bottom input reserves and consumes viewport
-space before scrolling, avoiding duplicate native navigation-bar spacing. Both
-apply when default inset handling is enabled. Existing overloads keep their
-original JVM signatures and behavior. The native background, divider, expand
-toggle and start-cutout handling are unchanged. Melox passes
-`WindowInsets.statusBarsIgnoringVisibility` and a bottom inset ending at the
-mini-player surface top; it adds no outer rail padding/background.
+## NavigationRail top inset
 
-The source patch also documents the API in English/Chinese and exercises the
-new overload in upstream demo/example code with the original inset behavior.
+Beta 04 uses `WindowInsets.statusBars.only(WindowInsetsSides.Top)` for the
+scrolling content column. It has no public top inset override. Melox's overload
+takes `statusBarInsets` and passes `WindowInsets.statusBarsIgnoringVisibility`.
+That keeps the same top space while the status bar is hidden. The outer rail
+background, start insets and divider still use the stock layout.
+
+The content column uses the stock bottom inset after `verticalScroll`, so its
+navigation-bar padding scrolls with the content. The earlier
+`contentBottomInsets` viewport extension is removed. To switch the last local
+AAR to Maven Central, migrate the call site to an upstream equivalent top inset
+API and remove the `miuix-ui-android` repository exception in `settings.gradle.kts`.
 
 ## Upstream Source Audit (2026-11-18)
 
@@ -46,34 +43,30 @@ Melox. Use an upstream clone containing the pinned commit:
 python3 third_party/miuix/rebuild.py /path/to/miuix
 ```
 
-The script reads that clone without changing it, exports the pinned source to
-a temporary directory, verifies the original rail source hash, applies the
-patch, builds the three Android AARs and updates this directory's local Maven artifacts.
-It copies only `sdk.dir` from Melox's local configuration when present.
-The isolated build omits demo and baseline-profile generation projects.
-The packaged AARs carry the corresponding Beta 01 dependency metadata.
-Ordinary Melox builds resolve the bundled modules exclusively from the local
-repository. Rebuilds use the upstream version in the Gradle version catalog,
-replace existing artifacts at that version, and remove superseded versions
-after all active AAR/POM pairs are installed.
+The script also accepts the [pinned GitHub source archive](https://codeload.github.com/compose-miuix-ui/miuix/tar.gz/3c560868758f80cd97bbdab2f8e53612ad1c56be)
+and verifies its SHA-256. It extracts source into a temporary directory,
+verifies the original rail source hash, applies the top inset patch and
+installs the rebuilt UI Android AAR with its corresponding Beta 04 POM.
+The build reads only `sdk.dir` from Melox's local configuration when present.
+It omits demo and baseline-profile generation projects.
 
 ## Compatibility
 
-Miuix Beta 01 requires Android compile SDK 37.2. The Melox app targets API 37
-with minimum API 28. The original public Beta 01 UI entry points are retained.
+Miuix Beta 04 requires Android compile SDK 37.2 and Compose 1.13.0-rc01.
+Melox targets API 37 with minimum API 28. The AndroidX Compose UI AAR carries
+the [detached-owner fix](../compose-ui/README.md) on the matching version.
 `verify_binary_compat.py BASELINE_AAR CANDIDATE_AAR DEPENDENCY_AAR...`
 checks dependent AAR references against the patched UI.
 
-The Android app consumes the official Material, Nav and Icons artifacts.
 The iOS-like style follows the Beta 01 example's Lens and Vibrancy sources
 and uses Material's tilt sensor and Axial stroke model. The navigation body
 and mini player use 4 dp blur and a 24 dp lens. The selected capsule applies
 the example's press-scaled lens, depth and chromatic dispersion. Melox compiles
 the selected Glass component sources for its layout and popup adapters.
 
-The bundled Glass top bar uses statusBarsIgnoringVisibility when measuring its
-progressive band. Melox reserves that same inset on foreground content, so both
-background modes include the hidden status-bar region. Navigation icons render
+The bundled Glass top bar unions system bars with the stable status-bar inset
+when measuring its progressive band. Melox's foreground content reserves the
+stable inset, so the background modes include the hidden status-bar region. Navigation icons render
 at 25 dp within the upstream 28 dp slots. App adapters preserve custom/no-feedback
 icon controls and use the upstream example's 8 dp spacing for grouped Glass controls.
 
@@ -87,7 +80,7 @@ host pane. App menu anchors mark only the icon as transform content.
 The historical blur artifact `miuix-blur-android:0.9.4.1-melox` was built from
 the original v0.9.4 blur sources. `progressive-blur-downsample.patch` caps both progressive
 sampling branches at exponent 3 (1/8 resolution) without reducing blur radii or
-changing ordinary blur. The current rebuild generates the pinned UI, Blur and Preference AARs.
+changing ordinary blur. Current Blur resolves from Maven Central.
 GlassTransformPopup reports dismissal only after all transition channels settle;
 menu hosts start the morph after PopupLayout's asynchronous mount. GlassIconButton
 adds an enabled argument so the independent navigation search preserves disabled
@@ -277,10 +270,10 @@ are retained in `glass/src/com/melox/player/ui/icon`. The app-side Icon adapter
 selects these vectors for OS4. Home uses the original Miuix vector, RecordingTape
 represents sidebar playlists, and AiScan represents albums and album empty states.
 
-The UI patch `top-app-bar-state-observation.patch` makes the collapse limit
-snapshot-observable. Native cached title visibility now refreshes when rotation
-or title measurement changes the limit without changing the current offset.
-The app regression test reproduces the stale derived visibility with the prior AAR.
+Miuix main makes the collapse limit snapshot-observable in
+[`4c4c85a1`](https://github.com/compose-miuix-ui/miuix/commit/4c4c85a1).
+The app regression test covers visibility updates when rotation or measurement
+changes the collapse limit without changing the current offset.
 
 The navigation indicator draws the initial selected destination directly across
 startup width measurements and trailing-action changes. Both edges snap to each

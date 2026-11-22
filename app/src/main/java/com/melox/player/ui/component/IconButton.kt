@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
+import top.yukonga.miuix.kmp.glass.GlassIconButton as MiuixGlassIconButton
 
 internal val LocalTopBarButtonHaptics = staticCompositionLocalOf { false }
 
@@ -42,18 +43,27 @@ internal fun IconButton(
         onClick()
     }
     // Custom/no indication and display-only wrappers retain their original interaction owner.
-    if (glassEnabled && !holdDownState && LocalIndication.current is MiuixIndication) {
-        top.yukonga.miuix.kmp.glass.GlassIconButton(
+    if (glassEnabled && !holdDownState && LocalIndication.current is MiuixIndication &&
+        (enabled || !topBarButtonHaptics)
+    ) {
+        if (topBarButtonHaptics && enabled) {
+            MiuixGlassIconButton(onClick = onClickWithHaptic, modifier = modifier, content = content)
+            return
+        }
+        com.melox.player.ui.glass.GlassIconButton(
             onClick = onClickWithHaptic,
             modifier = modifier,
             enabled = enabled,
             content = content,
-            size = if (topBarButtonHaptics) top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ButtonSize else maxOf(minHeight, minWidth),
+            size = maxOf(minHeight, minWidth),
             // The root scene includes this button; only the separate wallpaper layer is safe here.
             backdrop = if (com.melox.player.ui.component.LocalGlassTopBackdrop.current == null) LocalPageSurfaceBackdrop.current else null,
         )
         return
     }
+    val topBarButtonSize = if (topBarButtonHaptics && glassEnabled && !enabled) {
+        top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults.ButtonSize
+    } else null
     MiuixIconButton(
         onClick = onClickWithHaptic,
         modifier = modifier,
@@ -61,8 +71,8 @@ internal fun IconButton(
         holdDownState = holdDownState,
         backgroundColor = backgroundColor,
         cornerRadius = cornerRadius,
-        minHeight = minHeight,
-        minWidth = minWidth,
+        minHeight = topBarButtonSize ?: minHeight,
+        minWidth = topBarButtonSize ?: minWidth,
         content = content,
     )
 }

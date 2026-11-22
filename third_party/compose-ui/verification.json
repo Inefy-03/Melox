@@ -1,11 +1,11 @@
 {
-  "baseVersion": "1.12.0",
-  "patchVersion": "1.12.0-melox",
+  "baseVersion": "1.13.0-rc01",
+  "patchVersion": "1.13.0-rc01-melox",
   "changedClasses": [
     "androidx/compose/ui/layout/LayoutNodeSubcompositionsState.class"
   ],
   "allOtherAarEntriesUnchanged": true,
   "allOtherClassesUnchanged": true,
   "allOtherMethodsUnchanged": true,
-  "aarSha256": "247bcd9e9444e0a095fcd74e875c855692f9106bfe0c2276ff508ed7f62e3def"
+  "aarSha256": "158e5812af521d333e9736edce950fbc0693e1e63610c66ab8fb6ab9c1d933ec"
 }

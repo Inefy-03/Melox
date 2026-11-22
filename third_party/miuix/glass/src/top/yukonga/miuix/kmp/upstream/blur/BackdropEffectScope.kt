@@ -4,6 +4,7 @@
 package top.yukonga.miuix.kmp.upstream.blur
 
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -125,6 +126,23 @@ fun BackdropEffectScope.runtimeShaderEffect(
     renderEffect = renderEffect.chain(effect)
 }
 
+/**
+ * Builds a standalone [RenderEffect] from [key] / [shaderString] without chaining it onto
+ * [BackdropEffectScope.renderEffect], or returns `null` when runtime shaders are unsupported.
+ */
+fun BackdropEffectScope.buildRuntimeShaderEffect(
+    key: String,
+    shaderString: String,
+    uniformShaderName: String,
+    block: RuntimeShader.() -> Unit,
+): RenderEffect? {
+    if (!isRuntimeShaderSupported()) return null
+    return createRuntimeShaderEffect(
+        runtimeShader = obtainRuntimeShader(key, shaderString).apply(block),
+        uniformShaderName = uniformShaderName,
+    )
+}
+
 internal abstract class BackdropEffectScopeImpl :
     BackdropEffectScope,
     RuntimeShaderCache {
@@ -150,7 +168,7 @@ internal abstract class BackdropEffectScopeImpl :
     private val shaderWeightsByTaps: Array<FloatArray?> = arrayOfNulls(MAX_BLUR_TAPS + 1)
 
     internal fun obtainShaderOffsetsBuffer(tapCount: Int): FloatArray = shaderOffsetsByTaps[tapCount]
-        ?: FloatArray(tapCount * 2).also { shaderOffsetsByTaps[tapCount] = it }
+        ?: FloatArray(tapCount).also { shaderOffsetsByTaps[tapCount] = it }
 
     internal fun obtainShaderWeightsBuffer(tapCount: Int): FloatArray = shaderWeightsByTaps[tapCount]
         ?: FloatArray(tapCount).also { shaderWeightsByTaps[tapCount] = it }
@@ -199,6 +217,8 @@ internal abstract class BackdropEffectScopeImpl :
     internal var cachedProgStart: Float = Float.NaN
     internal var cachedProgEnd: Float = Float.NaN
     internal var cachedProgCurve: Float = Float.NaN
+    internal var cachedProgDitherCoeff: Float = Float.NaN
+    internal var cachedProgTintColor: Color = Color.Unspecified
     internal var cachedProgResult: RenderEffect? = null
 
     /** True while the draw path runs the single-layer progressive ramp with folded post blend/fade. */
@@ -230,6 +250,11 @@ internal abstract class BackdropEffectScopeImpl :
     internal var cachedNoiseChainInput: RenderEffect? = null
     internal var cachedNoiseChainCoeff: Float = Float.NaN
     internal var cachedNoiseChainResult: RenderEffect? = null
+
+    internal var maxPadLeft: Float = Float.POSITIVE_INFINITY
+    internal var maxPadTop: Float = Float.POSITIVE_INFINITY
+    internal var maxPadRight: Float = Float.POSITIVE_INFINITY
+    internal var maxPadBottom: Float = Float.POSITIVE_INFINITY
 
     override fun obtainRuntimeShader(key: String, string: String): RuntimeShader = runtimeShaderCache.obtainRuntimeShader(key, string)
 
@@ -271,8 +296,10 @@ internal abstract class BackdropEffectScopeImpl :
         // blur() bakes its sampling clamp from the padding at its call site. If a later effect
         // raised the padding, re-run once (padding only grows, so one pass converges) — otherwise
         // the clamp sits inside the recording and the bottom/right edge smears.
+        val expectedPaddedW = size.width + minOf(padding, maxPadLeft) + minOf(padding, maxPadRight)
+        val expectedPaddedH = size.height + minOf(padding, maxPadTop) + minOf(padding, maxPadBottom)
         if (!blurBuiltPaddedW.isNaN() &&
-            (blurBuiltPaddedW != size.width + padding * 2f || blurBuiltPaddedH != size.height + padding * 2f)
+            (blurBuiltPaddedW != expectedPaddedW || blurBuiltPaddedH != expectedPaddedH)
         ) {
             val finalPadding = padding
             renderEffect = null
@@ -332,6 +359,8 @@ internal abstract class BackdropEffectScopeImpl :
         cachedProgStart = Float.NaN
         cachedProgEnd = Float.NaN
         cachedProgCurve = Float.NaN
+        cachedProgDitherCoeff = Float.NaN
+        cachedProgTintColor = Color.Unspecified
         cachedProgResult = null
         progressiveRampActive = false
         progRecordedRadiusX = Float.NaN
@@ -345,6 +374,10 @@ internal abstract class BackdropEffectScopeImpl :
         progressivePostBlend = null
         cachedNoiseChainInput = null
         cachedNoiseChainResult = null
+        maxPadLeft = Float.POSITIVE_INFINITY
+        maxPadTop = Float.POSITIVE_INFINITY
+        maxPadRight = Float.POSITIVE_INFINITY
+        maxPadBottom = Float.POSITIVE_INFINITY
     }
 }
 

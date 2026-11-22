@@ -67,9 +67,9 @@ import com.melox.player.R
 import com.melox.player.model.BottomBarStyle
 import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
-import top.yukonga.miuix.kmp.glass.GlassShape
-import top.yukonga.miuix.kmp.glass.GlassShadows
-import top.yukonga.miuix.kmp.glass.glassShadow
+import com.melox.player.ui.glass.GlassShape
+import com.melox.player.ui.glass.GlassShadows
+import com.melox.player.ui.glass.glassShadow
 import com.melox.player.ui.MiniPlayerChrome
 import com.melox.player.ui.NORMAL_BAR_STROKE_ALPHA
 import com.melox.player.ui.component.animation.InteractiveHighlight

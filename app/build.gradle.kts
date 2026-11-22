@@ -201,6 +201,7 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.material.color.utilities)
     implementation(libs.miuix.blur)
+    implementation(libs.miuix.glass)
     implementation(libs.miuix.icons)
     implementation(libs.miuix.material)
     implementation(libs.miuix.nav)

@@ -10,7 +10,7 @@ import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import com.melox.player.model.BottomBarStyle
-import top.yukonga.miuix.kmp.glass.GlassShape
+import com.melox.player.ui.glass.GlassShape
 import top.yukonga.miuix.kmp.upstream.glass.GlassNavigationBarDefaults
 import top.yukonga.miuix.kmp.upstream.glass.glassPanel
 import top.yukonga.miuix.kmp.upstream.material.GlassDefaults

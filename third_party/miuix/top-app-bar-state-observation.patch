@@ -1,5 +1,0 @@
---- a/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/TopAppBar.kt
-+++ b/miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/TopAppBar.kt
-@@ -389 +389 @@
--    var heightOffsetLimit = initialHeightOffsetLimit
-+    var heightOffsetLimit by mutableFloatStateOf(initialHeightOffsetLimit)

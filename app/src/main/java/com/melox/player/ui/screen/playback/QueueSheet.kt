@@ -53,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.melox.player.R
-import com.melox.player.ui.component.bottomSheetMaterialColor
 import com.melox.player.data.library.displayArtistName
 import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
@@ -398,7 +397,6 @@ fun QueueSheet(
                 }
             }
         },
-        backgroundColor = bottomSheetMaterialColor(),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
     ) {

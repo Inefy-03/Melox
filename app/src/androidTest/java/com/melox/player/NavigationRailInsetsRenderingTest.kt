@@ -83,32 +83,30 @@ class NavigationRailInsetsRenderingTest {
     }
 
     @Test
-    fun bottomInsetsReserveTheScrollViewportWhileNativeRailDrawingStaysFullHeight() = withRail { rail ->
-        val originalBounds = rail.bounds.get()
-        val bottomInset = (100 * rail.view.resources.displayMetrics.density).roundToInt()
+    fun explicitTopInsetUsesTheStockBottomScrollLayout() = withRail { rail ->
         rail.update {
+            rail.legacy.value = true
             rail.itemCount.value = 20
-            rail.bottomInsets.value = WindowInsets(bottom = bottomInset)
         }
         rail.onMain { runBlocking { rail.scrollState.scrollTo(rail.scrollState.maxValue) } }
         rail.update {}
 
-        assertEquals(originalBounds, rail.bounds.get())
-        assertEquals(rail.view.height - bottomInset, rail.scrollState.viewportSize)
-        assertTrue(rail.lastItemBounds.get().height > 0)
-        assertTrue(rail.lastItemBounds.get().bottom <= originalBounds.bottom - bottomInset)
-        rail.onMain {
-            val bitmap = rail.view.drawToBitmap()
-            try {
-                val centerX = originalBounds.center.x.roundToInt()
-                val dividerX = originalBounds.right.roundToInt() - 1
-                val reservedY = bitmap.height - bottomInset / 2
-                assertEquals(RAIL_COLOR.toArgb(), bitmap.getPixel(centerX, reservedY))
-                assertNotEquals(RAIL_COLOR.toArgb(), bitmap.getPixel(dividerX, reservedY))
-            } finally {
-                bitmap.recycle()
-            }
+        val stockViewport = rail.scrollState.viewportSize
+        val stockScrollRange = rail.scrollState.maxValue
+        val stockLastItem = rail.lastItemBounds.get()
+        assertTrue(stockScrollRange > 0)
+        assertTrue(stockLastItem.height > 0)
+
+        rail.update {
+            rail.topInsets.value = null
+            rail.legacy.value = false
         }
+        rail.onMain { runBlocking { rail.scrollState.scrollTo(rail.scrollState.maxValue) } }
+        rail.update {}
+
+        assertEquals(stockViewport, rail.scrollState.viewportSize)
+        assertEquals(stockScrollRange, rail.scrollState.maxValue)
+        assertEquals(stockLastItem, rail.lastItemBounds.get())
     }
 
     private fun withRail(check: (RailFixture) -> Unit) {
@@ -156,7 +154,6 @@ class NavigationRailInsetsRenderingTest {
                                     modifier = modifier,
                                     color = RAIL_COLOR,
                                     scrollState = fixture.scrollState,
-                                    contentBottomInsets = fixture.bottomInsets.value,
                                     content = content,
                                 )
                             }
@@ -180,7 +177,6 @@ class NavigationRailInsetsRenderingTest {
         val itemCount = mutableStateOf(1)
         val scrollState = ScrollState(0)
         val topInsets: MutableState<WindowInsets?> = mutableStateOf(WindowInsets(0, 0, 0, 0))
-        val bottomInsets: MutableState<WindowInsets?> = mutableStateOf(null)
 
         fun onMain(action: () -> Unit) =
             InstrumentationRegistry.getInstrumentation().runOnMainSync(action)

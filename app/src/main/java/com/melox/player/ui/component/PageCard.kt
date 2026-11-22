@@ -29,6 +29,20 @@ internal fun PageCard(
     onLongPress: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    if (!usePageMaterial) {
+        top.yukonga.miuix.kmp.glass.GlassCard(
+            modifier = modifier,
+            insideMargin = insideMargin,
+            colors = top.yukonga.miuix.kmp.glass.GlassCardDefaults.colors(color = colors.color),
+            pressFeedbackType = pressFeedbackType,
+            showIndication = showIndication,
+            holdDownState = holdDownState,
+            onClick = onClick,
+            onLongPress = onLongPress,
+            content = content,
+        )
+        return
+    }
     val backdrop = if (usePageMaterial && colors.color.alpha > 0f) LocalPageSurfaceBackdrop.current else null
     val blurRadius = if (usePageMaterial) LocalPageCardBlurRadius.current else NormalBarBlurRadius
     val surfaceAlpha = if (usePageMaterial) LocalPageCardSurfaceAlpha.current else 1f

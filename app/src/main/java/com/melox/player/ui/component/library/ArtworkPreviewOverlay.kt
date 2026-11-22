@@ -94,9 +94,9 @@ import com.melox.player.ui.component.LocalTopBarBlurSettings
 import com.melox.player.ui.icon.GlassIcons
 import com.melox.player.ui.icon.Download
 import com.melox.player.ui.icon.Share
-import top.yukonga.miuix.kmp.glass.GlassTopAppBar
-import top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults
-import top.yukonga.miuix.kmp.glass.GlassIconButton
+import com.melox.player.ui.glass.GlassTopAppBar
+import com.melox.player.ui.glass.GlassTopAppBarDefaults
+import com.melox.player.ui.glass.GlassIconButton
 import com.melox.player.model.MusicTrack
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.playback.sourceOverAlphas
@@ -517,7 +517,7 @@ internal fun ArtworkPreviewOverlay(
                     compact = true,
                     isContentScrolled = true,
                     backdrop = topBarBackdrop,
-                    progressiveBlur = LocalTopBarBlurSettings.current.progressiveEnabled,
+                    progressiveBlur = LocalTopBarBlurSettings.current.blurEnabled,
                     bandBrush = GlassTopAppBarDefaults.bandBrush(toolbarSurfaceColor),
                     backgroundModifier = Modifier.drawWithContent {
                         // The shared backdrop already colors the rest of the screen.

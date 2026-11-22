@@ -179,7 +179,7 @@ fun MusicListScreen(
                     Modifier.onGloballyPositioned { coordinates -> locationCaptureCoordinates = coordinates }.layerBackdrop(it)
                 } ?: Modifier)
                 .scrollEndHaptic()
-                .overScrollVertical()
+                .overScrollVertical(scrollBehavior = scrollBehavior)
                 .then(
                     if (onRefresh == null) {
                         Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)

@@ -5,7 +5,11 @@ package top.yukonga.miuix.kmp.upstream.blur.internal
 
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import androidx.compose.ui.util.fastCoerceIn
+import androidx.compose.ui.util.fastRoundToInt
 import top.yukonga.miuix.kmp.upstream.blur.BackdropEffectScopeImpl
 import kotlin.math.PI
 import kotlin.math.abs
@@ -14,7 +18,6 @@ import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.pow
-import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -43,18 +46,25 @@ private const val BUCKETS_PER_OCTAVE = 4
 internal const val LEVEL_BUCKETS = 17
 
 /**
- * Gaussian shader-cache keys, `[tapCount][bucket]`: the bucket separates levels live in the same
- * frame without giving every level value its own shader instance.
+ * Gaussian shader-cache keys, `[tapCount][bucket]`: lazily populated so unused combinations do not
+ * allocate at startup.
  */
-private val BLUR_H_KEYS: Array<Array<String>> = Array(MAX_BLUR_TAPS + 1) { n ->
-    Array(LEVEL_BUCKETS) { b -> "LMGauss${n}_H_b$b" }
+private val BLUR_H_KEYS = arrayOfNulls<String>((MAX_BLUR_TAPS + 1) * 2)
+private val BLUR_V_KEYS = arrayOfNulls<String>(MAX_BLUR_TAPS + 1)
+
+private fun blurHShaderKey(tapCount: Int, unpremul: Boolean): String {
+    val slot = tapCount * 2 + if (unpremul) 1 else 0
+    return BLUR_H_KEYS[slot] ?: (if (unpremul) "LMGauss${tapCount}_H_u" else "LMGauss${tapCount}_H").also { BLUR_H_KEYS[slot] = it }
 }
-private val BLUR_V_KEYS: Array<Array<String>> = Array(MAX_BLUR_TAPS + 1) { n ->
-    Array(LEVEL_BUCKETS) { b -> "LMGauss${n}_V_b$b" }
+
+private fun blurVShaderKey(tapCount: Int): String = BLUR_V_KEYS[tapCount] ?: "LMGauss${tapCount}_V".also { BLUR_V_KEYS[tapCount] = it }
+
+private val LEVEL_SCALES = FloatArray(LEVEL_BUCKETS) { b ->
+    2f.pow(b.toFloat() / BUCKETS_PER_OCTAVE)
 }
 
 /** Cache-key bucket for a level: log2(scale) in [BUCKETS_PER_OCTAVE]-ths, i.e. the grid index. */
-internal fun levelBucket(scale: Float): Int = ((ln(scale.coerceIn(1f, 16f)) / LN2) * BUCKETS_PER_OCTAVE).roundToInt().coerceIn(0, LEVEL_BUCKETS - 1)
+internal fun levelBucket(scale: Float): Int = ((ln(scale.fastCoerceIn(1f, 16f)) / LN2) * BUCKETS_PER_OCTAVE).fastRoundToInt().fastCoerceIn(0, LEVEL_BUCKETS - 1)
 
 /**
  * Builds the separable Blur [RenderEffect] (H then V) at [downScale] from variances already
@@ -80,63 +90,79 @@ internal fun createBlurEffect(
     val paramOffsets = scope.blurParamOffsets
     val paramWeights = scope.blurParamWeights
 
-    val bucket = levelBucket(downScale)
-
     var effect: RenderEffect? = null
 
     // H / V keep separate keys (each pass owns its shader instance); the bucket splits the levels
     // that can share a frame.
-    if (radiusX > 0f) {
-        val n = computeBlurParamsInto(adjustedVarianceX, rawScratch, paramOffsets, paramWeights)
-        if (n > 0) {
-            val shaderOffsets = scope.obtainShaderOffsetsBuffer(n)
-            val shaderWeights = scope.obtainShaderWeightsBuffer(n)
-            var pairWeightSum = 0f
-            for (i in 0 until n) {
-                shaderOffsets[i * 2] = paramOffsets[i]
-                shaderOffsets[i * 2 + 1] = 0f
+    val hN = if (radiusX > 0f) computeBlurParamsInto(adjustedVarianceX, rawScratch, paramOffsets, paramWeights) else 0
+    var hOffsets: FloatArray? = null
+    var hWeights: FloatArray? = null
+    var hPairWeightSum = 0f
+    if (hN > 0) {
+        val shaderOffsets = scope.obtainShaderOffsetsBuffer(hN)
+        val shaderWeights = scope.obtainShaderWeightsBuffer(hN)
+        var pairWeightSum = 0f
+        for (i in 0 until hN) {
+            shaderOffsets[i] = paramOffsets[i]
+            shaderWeights[i] = paramWeights[i]
+            pairWeightSum += paramWeights[i]
+        }
+        hOffsets = shaderOffsets
+        hWeights = shaderWeights
+        hPairWeightSum = pairWeightSum
+    }
+
+    val reuseFromX = radiusY > 0f && hN > 0 && adjustedVarianceX == adjustedVarianceY
+    val vN = when {
+        radiusY <= 0f -> 0
+        reuseFromX -> hN
+        else -> computeBlurParamsInto(adjustedVarianceY, rawScratch, paramOffsets, paramWeights)
+    }
+
+    if (hN > 0) {
+        val hUnpremul = vN <= 0
+        val hShader = scope.obtainRuntimeShader(
+            blurHShaderKey(hN, hUnpremul),
+            blurShaderForTap(hN, axis = 0, unpremul = hUnpremul),
+        ).apply {
+            setFloatUniform("in_blurOffset", hOffsets!!)
+            setFloatUniform("in_blurWeight", hWeights!!)
+            setFloatUniform("in_centerWeight", (1f - 2f * hPairWeightSum).coerceAtLeast(0f))
+            setFloatUniform("in_maxCoord", texW - 0.5f, texH - 0.5f)
+        }
+        effect = runtimeShaderEffect(hShader, "child")
+    }
+
+    if (vN > 0) {
+        val shaderOffsets: FloatArray
+        val shaderWeights: FloatArray
+        var pairWeightSum: Float
+        if (reuseFromX) {
+            shaderOffsets = hOffsets!!
+            shaderWeights = hWeights!!
+            pairWeightSum = hPairWeightSum
+        } else {
+            shaderOffsets = scope.obtainShaderOffsetsBuffer(vN)
+            shaderWeights = scope.obtainShaderWeightsBuffer(vN)
+            pairWeightSum = 0f
+            for (i in 0 until vN) {
+                shaderOffsets[i] = paramOffsets[i]
                 shaderWeights[i] = paramWeights[i]
                 pairWeightSum += paramWeights[i]
             }
-            val hShader = scope.obtainRuntimeShader(
-                BLUR_H_KEYS[n][bucket],
-                BLUR_SHADER_BY_TAP[n],
-            ).apply {
-                setFloatUniform("in_blurOffset", shaderOffsets)
-                setFloatUniform("in_blurWeight", shaderWeights)
-                setFloatUniform("in_centerWeight", (1f - 2f * pairWeightSum).coerceAtLeast(0f))
-                setFloatUniform("in_maxCoord", texW - 0.5f, texH - 0.5f)
-            }
-            effect = runtimeShaderEffect(hShader, "child")
         }
-    }
-
-    if (radiusY > 0f) {
-        val n = computeBlurParamsInto(adjustedVarianceY, rawScratch, paramOffsets, paramWeights)
-        if (n > 0) {
-            val shaderOffsets = scope.obtainShaderOffsetsBuffer(n)
-            val shaderWeights = scope.obtainShaderWeightsBuffer(n)
-            var pairWeightSum = 0f
-            for (i in 0 until n) {
-                shaderOffsets[i * 2] = 0f
-                shaderOffsets[i * 2 + 1] = paramOffsets[i]
-                shaderWeights[i] = paramWeights[i]
-                pairWeightSum += paramWeights[i]
-            }
-            val vShader = scope.obtainRuntimeShader(
-                BLUR_V_KEYS[n][bucket],
-                BLUR_SHADER_BY_TAP[n],
-            ).apply {
-                setFloatUniform("in_blurOffset", shaderOffsets)
-                setFloatUniform("in_blurWeight", shaderWeights)
-                setFloatUniform("in_centerWeight", (1f - 2f * pairWeightSum).coerceAtLeast(0f))
-                setFloatUniform("in_maxCoord", texW - 0.5f, texH - 0.5f)
-            }
-            effect = effect?.chain(runtimeShaderEffect(vShader, "child"))
-                ?: runtimeShaderEffect(vShader, "child")
+        val vShader = scope.obtainRuntimeShader(
+            blurVShaderKey(vN),
+            blurShaderForTap(vN, axis = 1, unpremul = true),
+        ).apply {
+            setFloatUniform("in_blurOffset", shaderOffsets)
+            setFloatUniform("in_blurWeight", shaderWeights)
+            setFloatUniform("in_centerWeight", (1f - 2f * pairWeightSum).coerceAtLeast(0f))
+            setFloatUniform("in_maxCoord", texW - 0.5f, texH - 0.5f)
         }
+        effect = effect?.chain(runtimeShaderEffect(vShader, "child"))
+            ?: runtimeShaderEffect(vShader, "child")
     }
-
     return effect
 }
 
@@ -188,6 +214,8 @@ internal fun createProgressiveBlurEffect(
     adjustedVarianceY: Float,
     padLeft: Float,
     padTop: Float,
+    padRight: Float,
+    padBottom: Float,
     compW: Float,
     compH: Float,
     angleDeg: Float,
@@ -195,6 +223,8 @@ internal fun createProgressiveBlurEffect(
     endFraction: Float,
     curve: Float,
     scope: BackdropEffectScopeImpl,
+    tintColor: Color = Color.Unspecified,
+    ditherCoeff: Float = 0f,
 ): RenderEffect? {
     computeProgressiveGradient(
         downScale = downScale,
@@ -214,6 +244,8 @@ internal fun createProgressiveBlurEffect(
     val gradVecY = scope.progGradVecY
     val gradOffset = scope.progGradOffset
     val clampedCurve = scope.progClampedCurve
+    val texW = ((compW + padLeft + padRight) / downScale).coerceAtLeast(1f)
+    val texH = ((compH + padTop + padBottom) / downScale).coerceAtLeast(1f)
     val curveKind = progressiveCurveKind(clampedCurve)
 
     // Shader uses σ = radius·0.5 + 0.5, so radius = 2·σ_ds − 1; capped at the constant loop bound.
@@ -225,34 +257,83 @@ internal fun createProgressiveBlurEffect(
 
     val hasH = radiusX > 0f && maxRadiusX >= 0.5f
     val hasV = radiusY > 0f && maxRadiusY >= 0.5f
+    val hasInlineTint = tintColor != Color.Unspecified
+    var tintR = 0f
+    var tintG = 0f
+    var tintB = 0f
+    var tintA = 0f
+    if (hasInlineTint && (hasH || hasV)) {
+        val srgb = tintColor.convert(ColorSpaces.Srgb)
+        tintA = srgb.alpha
+        tintR = srgb.red * tintA
+        tintG = srgb.green * tintA
+        tintB = srgb.blue * tintA
+    }
 
     if (hasH) {
         val tap = progressiveLoopTapBound(maxRadiusX)
         val hUnpremul = !hasV
+        val hInlineTint = hasInlineTint && !hasV
+        val hInlineNoise = ditherCoeff > 0f && !hasV
         val hShader = scope.obtainRuntimeShader(
-            progressiveLoopShaderKey(axis = 0, downScale = downScale, tap = tap, curveKind = curveKind, unpremul = hUnpremul),
-            progressiveBlurShaderForTap(tap, curveKind = curveKind, unpremul = hUnpremul),
+            progressiveLoopShaderKey(
+                axis = 0,
+                downScale = downScale,
+                tap = tap,
+                curveKind = curveKind,
+                unpremul = hUnpremul,
+                inlineTint = hInlineTint,
+                inlineNoise = hInlineNoise,
+            ),
+            progressiveBlurShaderForTap(
+                tap,
+                curveKind = curveKind,
+                unpremul = hUnpremul,
+                axis = 0,
+                inlineTint = hInlineTint,
+                inlineNoise = hInlineNoise,
+            ),
         ).apply {
-            setFloatUniform("in_step", 1f, 0f)
+            setFloatUniform("in_maxCoord", texW - 0.5f, texH - 0.5f)
             setFloatUniform("in_maxRadius", maxRadiusX)
             setFloatUniform("in_gradVec", gradVecX, gradVecY)
             setFloatUniform("in_gradOffset", gradOffset)
             if (curveKind == 3) setFloatUniform("in_curve", clampedCurve)
+            if (hInlineTint) setFloatUniform("in_tintColor", tintR, tintG, tintB, tintA)
+            if (hInlineNoise) setFloatUniform("noise_coeff", ditherCoeff)
         }
         effect = runtimeShaderEffect(hShader, "child")
     }
 
     if (hasV) {
         val tap = progressiveLoopTapBound(maxRadiusY)
+        val vInlineNoise = ditherCoeff > 0f
         val vShader = scope.obtainRuntimeShader(
-            progressiveLoopShaderKey(axis = 1, downScale = downScale, tap = tap, curveKind = curveKind, unpremul = true),
-            progressiveBlurShaderForTap(tap, curveKind = curveKind, unpremul = true),
+            progressiveLoopShaderKey(
+                axis = 1,
+                downScale = downScale,
+                tap = tap,
+                curveKind = curveKind,
+                unpremul = true,
+                inlineTint = hasInlineTint,
+                inlineNoise = vInlineNoise,
+            ),
+            progressiveBlurShaderForTap(
+                tap,
+                curveKind = curveKind,
+                unpremul = true,
+                axis = 1,
+                inlineTint = hasInlineTint,
+                inlineNoise = vInlineNoise,
+            ),
         ).apply {
-            setFloatUniform("in_step", 0f, 1f)
+            setFloatUniform("in_maxCoord", texW - 0.5f, texH - 0.5f)
             setFloatUniform("in_maxRadius", maxRadiusY)
             setFloatUniform("in_gradVec", gradVecX, gradVecY)
             setFloatUniform("in_gradOffset", gradOffset)
             if (curveKind == 3) setFloatUniform("in_curve", clampedCurve)
+            if (hasInlineTint) setFloatUniform("in_tintColor", tintR, tintG, tintB, tintA)
+            if (vInlineNoise) setFloatUniform("noise_coeff", ditherCoeff)
         }
         effect = effect?.chain(runtimeShaderEffect(vShader, "child"))
             ?: runtimeShaderEffect(vShader, "child")
@@ -263,16 +344,20 @@ internal fun createProgressiveBlurEffect(
 
 /**
  * Normalized `smoothRaw` threshold where the 2× intermediate sharp band takes over from
- * [primary] when `exp >= 3`, bridging 8×/16× down to a narrow 1× sharp end.
+ * [primary] when `exp >= 2`, bridging 4×/8×/16× down to a narrow 1× sharp end.
  */
-internal fun progressiveMidSharpThreshold(exp: Int): Float = if (exp <= 3) 0.76f else 0.80f
+internal fun progressiveMidSharpThreshold(exp: Int): Float = when {
+    exp <= 2 -> 0.72f
+    exp == 3 -> 0.83f
+    else -> 0.80f
+}
 
 /** Normalized `smoothRaw` threshold where the 1× sharp band takes over for [exp]. */
 internal fun progressiveSharpThreshold(exp: Int): Float = when (exp) {
-    1 -> 0.80f
-    2 -> 0.85f
-    3 -> 0.94f
-    else -> 0.95f
+    1 -> 0.84f
+    2 -> 0.92f
+    3 -> 0.972f
+    else -> 0.967f
 }
 
 private fun progressivePrimarySigmaAt(radius: Float, exp: Int, threshold: Float): Float {
@@ -288,22 +373,22 @@ private fun progressivePrimarySigmaAt(radius: Float, exp: Int, threshold: Float)
 
 /**
  * 2× loop-shader radius matching the downscaled primary pass at [progressiveMidSharpThreshold]
- * when `exp >= 3`; 0 for lower levels that bridge straight to 1×.
+ * when `exp >= 2`; 0 for `exp <= 1` that bridge straight to 1×.
  */
 internal fun progressiveMidSharpLoopRadius(radius: Float, exp: Int): Float {
-    if (radius <= 0f || exp < 3) return 0f
+    if (radius <= 0f || exp < 2) return 0f
     val effSigma = progressivePrimarySigmaAt(radius, exp, progressiveMidSharpThreshold(exp))
     val adjVar2x = adjustedVarianceForExp(effSigma * effSigma, 1)
     return (2f * sqrt(adjVar2x) - 1f).coerceIn(0f, PROGRESSIVE_BLUR_MAX_TAP.toFloat())
 }
 
 /**
- * 1× loop-shader radius (`2σ_eff − 1`) matching the underlying tier (`primary` for `exp <= 2`,
- * `2×` mid-sharp for `exp >= 3`) at [progressiveSharpThreshold].
+ * 1× loop-shader radius (`2σ_eff − 1`) matching the underlying tier (`primary` for `exp == 1`,
+ * `2×` mid-sharp for `exp >= 2`) at [progressiveSharpThreshold].
  */
 internal fun progressiveSharpLoopRadius(radius: Float, exp: Int): Float {
     if (radius <= 0f || exp <= 0) return 0f
-    if (exp < 3) {
+    if (exp < 2) {
         val effSigma = progressivePrimarySigmaAt(radius, exp, progressiveSharpThreshold(exp))
         return (2f * effSigma - 1f).coerceIn(0f, PROGRESSIVE_BLUR_MAX_TAP.toFloat())
     }
@@ -386,14 +471,21 @@ internal fun createProgressiveSharpOverlayEffect(
         return preEffect?.chain(maskEffect) ?: maskEffect
     }
 
-    fun loopPass(axis: Int, maxRadius: Float, stepX: Float, stepY: Float, masked: Boolean, unpremul: Boolean): RenderEffect {
+    fun loopPass(axis: Int, maxRadius: Float, masked: Boolean, unpremul: Boolean): RenderEffect {
         val tap = progressiveLoopTapBound(maxRadius)
         val shader = scope.obtainRuntimeShader(
             progressiveSharpShaderKey(axis = axis, tap = tap, curveKind = curveKind, masked = masked, midDecay = midDecay),
-            progressiveBlurShaderForTap(tap, curveKind = curveKind, sharpBand = true, sharpMask = masked, midDecay = midDecay, unpremul = unpremul),
+            progressiveBlurShaderForTap(
+                tap,
+                curveKind = curveKind,
+                sharpBand = true,
+                sharpMask = masked,
+                midDecay = midDecay,
+                unpremul = unpremul,
+                axis = axis,
+            ),
         ).apply {
             setFloatUniform("in_maxCoord", bandW - 0.5f, bandH - 0.5f)
-            setFloatUniform("in_step", stepX, stepY)
             setFloatUniform("in_maxRadius", maxRadius)
             setFloatUniform("in_gradVec", gradVecX, gradVecY)
             setFloatUniform("in_gradOffset", gradOffset)
@@ -405,12 +497,12 @@ internal fun createProgressiveSharpOverlayEffect(
     }
 
     val blurEffect = when {
-        hasH && hasV -> loopPass(0, maxRadiusX, 1f, 0f, masked = false, unpremul = false)
-            .chain(loopPass(1, maxRadiusY, 0f, 1f, masked = true, unpremul = true))
+        hasH && hasV -> loopPass(0, maxRadiusX, masked = false, unpremul = false)
+            .chain(loopPass(1, maxRadiusY, masked = true, unpremul = true))
 
-        hasH -> loopPass(0, maxRadiusX, 1f, 0f, masked = true, unpremul = true)
+        hasH -> loopPass(0, maxRadiusX, masked = true, unpremul = true)
 
-        else -> loopPass(1, maxRadiusY, 0f, 1f, masked = true, unpremul = true)
+        else -> loopPass(1, maxRadiusY, masked = true, unpremul = true)
     }
     return preEffect?.chain(blurEffect) ?: blurEffect
 }
@@ -559,7 +651,7 @@ private fun levelScaleFor(sigmaSquared: Float): Float = (sqrt(sigmaSquared.coerc
  * Recording level for [sigmaSquared], snapped to the 1/4-octave grid. The first step (1.19×) stays:
  * one full-resolution noise layer is still ~0.4 ms cheaper than the full-resolution blur.
  */
-internal fun quantizedLevelScale(sigmaSquared: Float): Float = 2f.pow(levelBucket(levelScaleFor(sigmaSquared)).toFloat() / BUCKETS_PER_OCTAVE)
+internal fun quantizedLevelScale(sigmaSquared: Float): Float = LEVEL_SCALES[levelBucket(levelScaleFor(sigmaSquared))]
 
 /** Implied box-prefilter variance (source px²) at level [scale]. */
 internal fun impliedBoxVarianceForScale(scale: Float): Float {
@@ -573,7 +665,11 @@ internal fun impliedBoxVarianceForScale(scale: Float): Float {
 internal fun adjustedVarianceForScale(sigmaSquared: Float, scale: Float): Float = ((sigmaSquared - impliedBoxVarianceForScale(scale)) / (scale * scale)).coerceAtLeast(0.1f)
 
 /** [adjustedVarianceForScale] at a ladder level. */
-internal fun adjustedVarianceForExp(sigmaSquared: Float, exp: Int): Float = adjustedVarianceForScale(sigmaSquared, (1 shl exp).toFloat())
+internal fun adjustedVarianceForExp(sigmaSquared: Float, exp: Int): Float {
+    val clampedExp = exp.coerceIn(0, 4)
+    val scale = (1 shl clampedExp).toFloat()
+    return ((sigmaSquared - IMPLIED_BOX_VARIANCE[clampedExp]) / (scale * scale)).coerceAtLeast(0.1f)
+}
 
 /**
  * Generates a 27-tap discrete kernel (-13..+13) from [variance], normalizes it, and merges

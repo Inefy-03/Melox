@@ -17,11 +17,10 @@ import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.upstream.blur.drawBackdrop
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.glass.internal.currentTextureBlur as textureBlur
-import top.yukonga.miuix.kmp.glass.internal.asCurrentBackdrop
-import top.yukonga.miuix.kmp.glass.internal.asCurrentBlurColors
+import com.melox.player.ui.glass.internal.currentTextureBlur as textureBlur
+import com.melox.player.ui.glass.internal.asCurrentBackdrop
+import com.melox.player.ui.glass.internal.asCurrentBlurColors
 import top.yukonga.miuix.kmp.upstream.blur.textureBlurEffect
-import top.yukonga.miuix.kmp.layout.BottomSheetDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.model.DEFAULT_CUSTOM_BACKGROUND_CARD_BLUR_PERCENT
 import com.melox.player.model.normalizeCustomBackgroundCardBlurPercent
@@ -29,7 +28,6 @@ import com.melox.player.model.normalizeCustomBackgroundCardOpacityPercent
 
 internal data class TopBarBlurSettings(
     val blurEnabled: Boolean,
-    val progressiveEnabled: Boolean,
 )
 
 internal val LocalTopBarBlurSettings = compositionLocalOf<TopBarBlurSettings> {
@@ -153,23 +151,8 @@ internal fun topBarContainerColor(hasWallpaper: Boolean, hasBackdrop: Boolean, f
     if (hasWallpaper || hasBackdrop) Color.Transparent else fallbackColor
 
 @Composable
-internal fun bottomSheetMaterialColor(): Color =
-    if (LocalBottomSheetBlurBackdrop.current == null) {
-        BottomSheetDefaults.backgroundColor()
-    } else {
-        Color.Transparent
-    }
-
-@Composable
-internal fun bottomSheetCardColor(): Color {
-    if (LocalBottomSheetBlurBackdrop.current == null) {
-        return MiuixTheme.colorScheme.secondaryContainer
-    }
-    val isDark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
-    return MiuixTheme.colorScheme.onSurface.copy(
-        alpha = if (isDark) 0x26 / 255f else 0x0F / 255f,
-    )
-}
+internal fun bottomSheetCardColor(): Color =
+    top.yukonga.miuix.kmp.glass.GlassCardDefaults.color()
 
 @Composable
 internal fun bottomSheetDirectContentColor(): Color =

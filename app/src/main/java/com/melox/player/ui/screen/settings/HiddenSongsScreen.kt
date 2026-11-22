@@ -185,7 +185,7 @@ internal fun HiddenSongsScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize()
-                    .scrollEndHaptic().overScrollVertical()
+                    .scrollEndHaptic().overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 contentPadding = PaddingValues(
                     start = padding.calculateStartPadding(layoutDirection),

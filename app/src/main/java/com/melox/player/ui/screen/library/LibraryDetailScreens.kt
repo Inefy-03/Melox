@@ -77,8 +77,12 @@ import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRow
-import top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults
-import top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.utils.springAnimateToPage
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.melox.player.ui.glass.GlassTopAppBarDefaults
+import com.melox.player.ui.glass.LocalGlassTopAppBarContext
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.component.navigationBackIcon
@@ -93,22 +97,15 @@ private fun LibraryDetailTabs(
     backdrop: Backdrop?,
     modifier: Modifier = Modifier,
 ) {
-    var requestedPage by remember(pagerState) { mutableStateOf<Int?>(null) }
-    LaunchedEffect(pagerState, requestedPage) {
-        val page = requestedPage ?: return@LaunchedEffect
-        try {
-            pagerState.animateScrollToPage(page)
-        } finally {
-            if (requestedPage == page) requestedPage = null
-        }
-    }
+    val scope = rememberCoroutineScope()
+    val fallbackBackdrop = rememberLayerBackdrop()
     GlassSegmentedTabRow(
         tabs = tabs,
-        selectedIndex = requestedPage ?: pagerState.currentPage,
-        onSelect = { requestedPage = it },
-        backdrop = backdrop,
+        selectedIndex = pagerState.targetPage,
+        onSelect = { index -> scope.launch { pagerState.springAnimateToPage(index) } },
+        backdrop = backdrop ?: fallbackBackdrop,
         modifier = modifier,
-        surfaceAlpha = LocalGlassTopAppBarContext.current?.materialProgress?.value ?: 1f,
+        surfaceAlpha = if (backdrop != null) LocalGlassTopAppBarContext.current?.materialProgress?.value ?: 1f else 0f,
     )
 }
 
@@ -270,12 +267,13 @@ fun AlbumDetailScreen(
                 userScrollEnabled = true,
                 key = { it },
             ) { page ->
+                val activeScrollBehavior = scrollBehavior.takeIf { page == pagerState.currentPage }
                 if (page == 0) {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .scrollEndHaptic()
-                            .overScrollVertical()
+                            .overScrollVertical(scrollBehavior = activeScrollBehavior)
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         contentPadding = PaddingValues(
                             start = padding.calculateStartPadding(layoutDirection),
@@ -346,7 +344,7 @@ fun AlbumDetailScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .scrollEndHaptic()
-                            .overScrollVertical()
+                            .overScrollVertical(scrollBehavior = activeScrollBehavior)
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         contentPadding = PaddingValues(
                             start = padding.calculateStartPadding(layoutDirection),
@@ -579,12 +577,13 @@ fun ArtistDetailScreen(
                 userScrollEnabled = true,
                 key = { it },
             ) { page ->
+                val activeScrollBehavior = scrollBehavior.takeIf { page == pagerState.currentPage }
                 if (page == 0) {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .scrollEndHaptic()
-                            .overScrollVertical()
+                            .overScrollVertical(scrollBehavior = activeScrollBehavior)
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         contentPadding = PaddingValues(
                             start = padding.calculateStartPadding(layoutDirection),
@@ -633,7 +632,7 @@ fun ArtistDetailScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .scrollEndHaptic()
-                                .overScrollVertical()
+                                .overScrollVertical(scrollBehavior = activeScrollBehavior)
                                 .nestedScroll(scrollBehavior.nestedScrollConnection),
                             contentPadding = PaddingValues(
                                 start = padding.calculateStartPadding(layoutDirection) + AlbumGridHorizontalPadding,

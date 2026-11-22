@@ -52,7 +52,7 @@ internal fun LyricsInterfacePreferences(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (usePageMaterial) 12.dp else 16.dp),
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -170,7 +170,7 @@ internal fun LyricsTranslationPreferences(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(if (usePageMaterial) 12.dp else 16.dp),
     ) {
         Card(
             modifier = Modifier.fillMaxWidth(),

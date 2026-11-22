@@ -5,7 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.*
 import androidx.compose.foundation.layout.*
 import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.glass.*
+import top.yukonga.miuix.kmp.glass.GlassDropdownPreference
+import top.yukonga.miuix.kmp.glass.GlassPopupDefaults
+import top.yukonga.miuix.kmp.glass.GlassPopupSizing
 import top.yukonga.miuix.kmp.utils.*
 
 
@@ -59,17 +61,17 @@ internal fun OverlayDropdownPreference(
     collapseOnSelection: Boolean = true,
     onExpandedChange: ((Boolean) -> Unit)? = null,
 ) {
+    val availableItems = entry.items.filter { it.enabled || it.selected }
     GlassDropdownPreference(
         title = title, modifier = modifier, backdrop = LocalBottomSheetBlurBackdrop.current,
-        enabled = enabled, showValue = showValue, renderInRootScaffold = renderInRootScaffold,
+        enabled = enabled && entry.enabled, showValue = showValue, renderInRootScaffold = renderInRootScaffold,
         titleColor = titleColor, summary = summary, summaryColor = summaryColor,
         startAction = startAction, bottomAction = bottomAction, insideMargin = insideMargin,
         onExpandedChange = onExpandedChange,
         sizing = GlassPopupSizing(maxHeight = maxHeight ?: GlassPopupDefaults.MaxHeight),
-        items = entry.items.map { it.text },
-        itemEnabled = entry.items.map { entry.enabled && it.enabled },
-        selectedIndex = entry.items.indexOfFirst { it.selected },
-        onSelectedIndexChange = { entry.items[it].onClick?.invoke() },
+        items = availableItems.map { it.text },
+        selectedIndex = availableItems.indexOfFirst { it.selected },
+        onSelectedIndexChange = { availableItems[it].takeIf { item -> item.enabled }?.onClick?.invoke() },
     )
 }
 

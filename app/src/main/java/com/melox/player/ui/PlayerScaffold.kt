@@ -307,7 +307,6 @@ internal fun PlayerScaffold(
         } else {
             0.dp
         }
-        val railBottomInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)
         FixedPageBackgroundHost(Modifier.fillMaxSize(), refreshSignal = backdropRefreshSignal) {
             val navigationRailBackdrop = rememberPageSurfaceBackdrop()
             val navigationRailModifier = navigationRailBackdrop?.let {
@@ -338,7 +337,6 @@ internal fun PlayerScaffold(
                     NavigationRail(
                         state = navigationRailState,
                         statusBarInsets = WindowInsets.statusBarsIgnoringVisibility,
-                        contentBottomInsets = railBottomInsets,
                         modifier = navigationRailModifier,
                         color = navigationRailColor,
                         expandContentDescription = stringResource(R.string.navigation_expand),
@@ -589,11 +587,10 @@ internal fun shouldUseImmediateSidebarNavigation(
 
 internal fun shouldShowNavigation(
     currentRouteIsRoot: Boolean,
-    hideBottomBar: Boolean,
     landscape: Boolean,
     requestedBottomBarStyle: BottomBarStyle,
     renderedBottomBarStyle: BottomBarStyle = requestedBottomBarStyle,
-): Boolean = requestedBottomBarStyle == BottomBarStyle.GLASS || currentRouteIsRoot && !hideBottomBar &&
+): Boolean = requestedBottomBarStyle == BottomBarStyle.GLASS || currentRouteIsRoot &&
     (!landscape || requestedBottomBarStyle == BottomBarStyle.NORMAL ||
         renderedBottomBarStyle != BottomBarStyle.NORMAL)
 

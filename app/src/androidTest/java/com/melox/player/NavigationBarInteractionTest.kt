@@ -32,11 +32,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRow
-import top.yukonga.miuix.kmp.glass.GlassNavigationBar
+import com.melox.player.ui.glass.GlassSegmentedTabRow
+import com.melox.player.ui.glass.GlassNavigationBar
 import top.yukonga.miuix.kmp.upstream.glass.GlassNavigationBar as OfficialGlassNavigationBar
 import top.yukonga.miuix.kmp.upstream.glass.GlassNavigationItem as OfficialGlassNavigationItem
-import top.yukonga.miuix.kmp.glass.GlassNavigationItem
+import com.melox.player.ui.glass.GlassNavigationItem
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.theme.MiuixTheme

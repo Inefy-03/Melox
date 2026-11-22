@@ -37,8 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
-import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRowDefaults
-import top.yukonga.miuix.kmp.glass.GlassStroke
+import com.melox.player.ui.glass.GlassSegmentedTabRowDefaults
+import com.melox.player.ui.glass.GlassStroke
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -53,13 +53,12 @@ import com.melox.player.model.PLAYBACK_SPEED_VALUES
 import com.melox.player.model.SleepTimerState
 import com.melox.player.ui.component.playback.AudioEffectPreferences
 import com.melox.player.ui.component.bottomSheetCardColor
-import com.melox.player.ui.component.bottomSheetMaterialColor
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.glass.GlassCard as Card
+import top.yukonga.miuix.kmp.glass.GlassCardDefaults
 import top.yukonga.miuix.kmp.basic.NumberPickerDefaults
-import top.yukonga.miuix.kmp.glass.GlassSegmentedTabRow
+import com.melox.player.ui.glass.GlassSegmentedTabRow
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.component.LocalPageSurfaceBackdrop
@@ -211,7 +210,6 @@ internal fun SleepTimerSheet(
     OverlayBottomSheet(
         show = show,
         modifier = modifier,
-        backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.playback_sleep_timer),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
@@ -223,15 +221,14 @@ internal fun SleepTimerSheet(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
-                .padding(bottom = bottomPadding + 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(bottom = bottomPadding + 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(timerCardHeight)
-                    .squircleClip(cornerRadius = CardDefaults.CornerRadius),
-                colors = CardDefaults.defaultColors(color = bottomSheetCardColor()),
+                    .squircleClip(cornerRadius = GlassCardDefaults.CornerRadius),
             ) {
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     Row(
@@ -299,7 +296,6 @@ internal fun SleepTimerSheet(
             }
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.defaultColors(color = bottomSheetCardColor()),
             ) {
                 SwitchPreference(
                     title = stringResource(R.string.playback_timer_auto_extend),
@@ -382,7 +378,6 @@ internal fun AudioSettingsSheet(
     OverlayBottomSheet(
         show = show,
         modifier = modifier,
-        backgroundColor = bottomSheetMaterialColor(),
         title = stringResource(R.string.playback_audio_settings),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
@@ -393,8 +388,8 @@ internal fun AudioSettingsSheet(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
-                .padding(bottom = bottomPadding + 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(bottom = bottomPadding + 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             PlaybackSpeedSelector(
                 playbackSpeed = playbackSpeed,
@@ -403,13 +398,11 @@ internal fun AudioSettingsSheet(
             )
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.defaultColors(color = bottomSheetCardColor()),
             ) {
                 AudioEffectPreferences(audioSessionId = audioSessionId)
             }
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.defaultColors(color = bottomSheetCardColor()),
             ) {
                 SwitchPreference(
                     title = stringResource(R.string.playback_pause_fade),

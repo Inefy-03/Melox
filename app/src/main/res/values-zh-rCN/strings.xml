@@ -100,6 +100,9 @@
     <string name="music_tag_editor_not_found">未发现 音乐标签 应用</string>
     <string name="lyrico_not_found">未发现 Lyrico 应用</string>
     <string name="luna_beat_not_found">未发现 LunaBeat 应用</string>
+    <string name="salt_audio_analyzer_not_found">未发现椒盐音频分析应用</string>
+    <string name="salt_audio_analyzer_update_required">请将椒盐音频分析更新到支持元数据编辑的版本</string>
+    <string name="salt_audio_analysis_unavailable">无法打开音频分析</string>
     <string name="music_album_label">专辑：%1$s</string>
     <string name="music_artist_label">艺术家：%1$s</string>
     <string name="music_quality_raw">RAW</string>
@@ -407,10 +410,12 @@
     <string name="lyrics_display_section">歌词显示</string>
     <string name="lyrics_artwork_page">封面页歌词</string>
     <string name="lyrics_artwork_page_summary">仅竖屏显示</string>
-    <string name="lyrics_editor_menu">歌词编辑菜单</string>
+    <string name="song_menu_management">歌曲菜单管理</string>
     <string name="lyrics_editor_music_tag">音乐标签</string>
     <string name="lyrics_editor_lyrico">Lyrico</string>
     <string name="lyrics_editor_luna_beat">LunaBeat</string>
+    <string name="lyrics_editor_salt_audio_editor">椒盐音频编辑</string>
+    <string name="lyrics_editor_salt_audio_analyzer">椒盐音频分析</string>
     <string name="settings_lyrics_interface_title">歌词界面</string>
     <string name="lyrics_format_lrc">LRC</string>
     <string name="lyrics_format_ttml">TTML</string>

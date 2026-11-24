@@ -585,6 +585,18 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setShowSaltAudioEditor(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowSaltAudioEditor(enabled)
+        }
+    }
+
+    fun setShowSaltAudioAnalyzer(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowSaltAudioAnalyzer(enabled)
+        }
+    }
+
     fun setLyricsFormatPriority(priority: LyricsFormatPriority) {
         viewModelScope.launch {
             settingsRepository.setLyricsFormatPriority(priority)

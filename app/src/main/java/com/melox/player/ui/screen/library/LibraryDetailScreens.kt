@@ -129,6 +129,8 @@ fun AlbumDetailScreen(
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
     showLunaBeatEditor: Boolean,
+    showSaltAudioEditor: Boolean,
+    showSaltAudioAnalyzer: Boolean,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     var backdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -384,6 +386,8 @@ fun AlbumDetailScreen(
             showMusicTagEditor = showMusicTagEditor,
             showLyricoEditor = showLyricoEditor,
             showLunaBeatEditor = showLunaBeatEditor,
+            showSaltAudioEditor = showSaltAudioEditor,
+            showSaltAudioAnalyzer = showSaltAudioAnalyzer,
         )
     }
 }
@@ -446,6 +450,8 @@ fun ArtistDetailScreen(
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
     showLunaBeatEditor: Boolean,
+    showSaltAudioEditor: Boolean,
+    showSaltAudioAnalyzer: Boolean,
 ) {
     val scrollBehavior = MiuixScrollBehavior()
     var backdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -672,6 +678,8 @@ fun ArtistDetailScreen(
             showMusicTagEditor = showMusicTagEditor,
             showLyricoEditor = showLyricoEditor,
             showLunaBeatEditor = showLunaBeatEditor,
+            showSaltAudioEditor = showSaltAudioEditor,
+            showSaltAudioAnalyzer = showSaltAudioAnalyzer,
         )
     }
 }

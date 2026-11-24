@@ -7,9 +7,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.Process
 import android.provider.MediaStore
+import androidx.annotation.DrawableRes
 import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
+import com.melox.player.R
 import com.melox.player.model.MusicTrack
 import java.io.File
 
@@ -20,15 +24,18 @@ internal const val LyricoPackage = "com.lonx.lyrico"
 internal const val LyricoEditTagAction = "com.lonx.lyrico.action.EDIT_TAG"
 internal const val LunaBeatPackage = "com.example.LyricBox"
 internal const val LunaBeatMetadataActivity = "com.example.LyricBox.SongMetadataEditActivity"
+private const val SaltAudioAnalyzerPackage = "com.xuncorp.saltaudioanalyzer"
 
 private const val ExternalEditorUriGrantFlags =
     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 private const val FileProviderSuffix = ".fileprovider"
 
-internal enum class ExternalEditorKind {
-    MusicTagEditor,
-    Lyrico,
-    LunaBeat,
+internal enum class ExternalAudioAction(@get:DrawableRes val iconRes: Int) {
+    MusicTagEditor(R.drawable.ic_external_music_tag),
+    Lyrico(R.drawable.ic_external_lyrico),
+    LunaBeat(R.drawable.ic_external_lunabeat),
+    SaltAudioEditor(R.drawable.ic_external_salt_audio_analyzer),
+    SaltAudioAnalyzer(R.drawable.ic_external_salt_audio_analyzer),
 }
 
 private data class ExternalEditorUris(
@@ -39,13 +46,14 @@ private data class ExternalEditorUris(
 internal fun launchExternalEditor(
     context: Context,
     track: MusicTrack,
-    kind: ExternalEditorKind,
+    kind: ExternalAudioAction,
 ): Boolean {
     val uris = track.externalEditorUris(context) ?: return false
     val candidates = when (kind) {
-        ExternalEditorKind.MusicTagEditor -> track.musicTagEditorIntents(context, uris)
-        ExternalEditorKind.Lyrico -> listOf(track.lyricoEditorIntent(context, uris))
-        ExternalEditorKind.LunaBeat -> listOf(track.lunaBeatEditorIntent(context, uris))
+        ExternalAudioAction.MusicTagEditor -> track.musicTagEditorIntents(context, uris)
+        ExternalAudioAction.Lyrico -> listOf(track.lyricoEditorIntent(context, uris))
+        ExternalAudioAction.LunaBeat -> listOf(track.lunaBeatEditorIntent(context, uris))
+        ExternalAudioAction.SaltAudioEditor, ExternalAudioAction.SaltAudioAnalyzer -> return false
     }
     val availableCandidates = candidates.filter(context::canOpenExternalEditor)
     return availableCandidates.any { intent ->
@@ -71,15 +79,18 @@ internal fun launchExternalEditor(
     }
 }
 
-internal fun Context.hasExternalEditor(kind: ExternalEditorKind): Boolean = when (kind) {
-    ExternalEditorKind.MusicTagEditor -> runCatching {
+internal fun Context.hasExternalEditor(kind: ExternalAudioAction): Boolean = when (kind) {
+    ExternalAudioAction.MusicTagEditor -> runCatching {
         packageManager.getPackageInfo(MusicTagEditorPackage, 0)
     }.isSuccess
-    ExternalEditorKind.Lyrico -> runCatching {
+    ExternalAudioAction.Lyrico -> runCatching {
         packageManager.getPackageInfo(LyricoPackage, 0)
     }.isSuccess
-    ExternalEditorKind.LunaBeat -> runCatching {
+    ExternalAudioAction.LunaBeat -> runCatching {
         packageManager.getPackageInfo(LunaBeatPackage, 0)
+    }.isSuccess
+    ExternalAudioAction.SaltAudioEditor, ExternalAudioAction.SaltAudioAnalyzer -> runCatching {
+        packageManager.getPackageInfo(SaltAudioAnalyzerPackage, 0)
     }.isSuccess
 }
 
@@ -90,20 +101,50 @@ private fun MusicTrack.externalEditorUris(context: Context): ExternalEditorUris?
         ?: mediaStoreId?.let { trackId ->
             ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
         }
-    val fileUri = displayFileLocation()
-        ?.let(::File)
-        ?.takeIf { it.isFile && it.canRead() }
-        ?.let { file ->
-            runCatching {
-                FileProvider.getUriForFile(
-                    context,
-                    context.packageName + FileProviderSuffix,
-                    file,
-                )
-            }.getOrNull()
-        }
+    val fileUri = localEditorFile()?.editorFileUri(context)
     val editUri = fileUri ?: mediaStoreUri ?: return null
     return ExternalEditorUris(editUri = editUri, mediaStoreUri = mediaStoreUri)
+}
+
+private fun MusicTrack.localEditorFile(): File? =
+    displayFileLocation()?.let(::File)?.takeIf { it.isFile && it.canRead() }
+
+private fun File.editorFileUri(context: Context): Uri? = runCatching {
+    FileProvider.getUriForFile(context, context.packageName + FileProviderSuffix, this)
+}.getOrNull()
+
+internal fun MusicTrack.saltAudioIntent(context: Context, action: String): Intent? {
+    val edit = action == Intent.ACTION_EDIT
+    val sourceUri = Uri.parse(contentUri)
+        .takeIf { it.scheme == "content" && !it.authority.isNullOrBlank() }
+    val legacyMediaSource = edit && sourceUri?.authority == MediaStore.AUTHORITY &&
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+    val file = if (sourceUri == null || legacyMediaSource) {
+        localEditorFile()
+    } else {
+        null
+    }
+    val fileUri = file?.editorFileUri(context)
+    val writableFileUri = fileUri?.takeIf { edit && file.canWrite() }
+    val audioUri = writableFileUri ?: sourceUri ?: fileUri ?: return null
+    val canWrite = edit && (audioUri == writableFileUri ||
+        context.checkUriPermission(
+            audioUri,
+            Process.myPid(),
+            Process.myUid(),
+            Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+        ) == PackageManager.PERMISSION_GRANTED)
+    val audioType = when (mimeType) {
+        "application/ogg", "application/x-ogg" -> mimeType
+        else -> externalEditorMimeType()
+    }
+    return Intent(action).apply {
+        setPackage(SaltAudioAnalyzerPackage)
+        setDataAndType(audioUri, audioType)
+        clipData = ClipData.newRawUri("audio", audioUri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        if (canWrite) addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+    }
 }
 
 private fun MusicTrack.musicTagEditorIntents(
@@ -223,7 +264,7 @@ private fun MusicTrack.externalEditorMimeType(): String =
     mimeType?.takeIf { it.startsWith("audio/", ignoreCase = true) } ?: "audio/*"
 
 @Suppress("DEPRECATION")
-private fun Context.canOpenExternalEditor(intent: Intent): Boolean {
+internal fun Context.canOpenExternalEditor(intent: Intent): Boolean {
     intent.component?.let { component ->
         if (runCatching { packageManager.getActivityInfo(component, 0) }.isSuccess) {
             return true

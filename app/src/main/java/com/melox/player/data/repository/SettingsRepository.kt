@@ -173,6 +173,8 @@ class SettingsRepository(context: Context) {
                 showMusicTagEditor = preferences[Keys.ShowMusicTagEditor] ?: true,
                 showLyricoEditor = preferences[Keys.ShowLyricoEditor] ?: true,
                 showLunaBeatEditor = preferences[Keys.ShowLunaBeatEditor] ?: true,
+                showSaltAudioEditor = preferences[Keys.ShowSaltAudioEditor] ?: true,
+                showSaltAudioAnalyzer = preferences[Keys.ShowSaltAudioAnalyzer] ?: true,
                 lyricsSourcePriority = preferences[Keys.LyricsSourcePriority]
                     ?.let { storedValue ->
                         enumValueOrDefault(storedValue, LyricsSourcePriority.EMBEDDED)
@@ -503,6 +505,14 @@ class SettingsRepository(context: Context) {
         dataStore.edit { it[Keys.ShowLunaBeatEditor] = enabled }
     }
 
+    suspend fun setShowSaltAudioEditor(enabled: Boolean) {
+        dataStore.edit { it[Keys.ShowSaltAudioEditor] = enabled }
+    }
+
+    suspend fun setShowSaltAudioAnalyzer(enabled: Boolean) {
+        dataStore.edit { it[Keys.ShowSaltAudioAnalyzer] = enabled }
+    }
+
     suspend fun setLyricsFormatPriority(priority: LyricsFormatPriority) {
         dataStore.edit { preferences ->
             preferences[Keys.LyricsFormatPriority] = priority.name
@@ -717,6 +727,8 @@ class SettingsRepository(context: Context) {
         val ShowMusicTagEditor = booleanPreferencesKey("show_music_tag_editor")
         val ShowLyricoEditor = booleanPreferencesKey("show_lyrico_editor")
         val ShowLunaBeatEditor = booleanPreferencesKey("show_luna_beat_editor")
+        val ShowSaltAudioEditor = booleanPreferencesKey("show_salt_audio_editor")
+        val ShowSaltAudioAnalyzer = booleanPreferencesKey("show_salt_audio_analyzer")
         val LyricsSourcePriority = stringPreferencesKey("lyrics_source_priority")
         // Keep the existing key so saved external-format preferences apply to both sources.
         val LyricsFormatPriority = stringPreferencesKey("lyrics_sidecar_format_priority")

@@ -205,6 +205,8 @@ internal fun FullPlayerScreen(
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
     showLunaBeatEditor: Boolean,
+    showSaltAudioEditor: Boolean,
+    showSaltAudioAnalyzer: Boolean,
     backgroundLayer: GraphicsLayer,
     contentLayer: GraphicsLayer,
     frameRecordingGeneration: Int,
@@ -1266,6 +1268,8 @@ internal fun FullPlayerScreen(
                     showMusicTagEditor = showMusicTagEditor,
                     showLyricoEditor = showLyricoEditor,
                     showLunaBeatEditor = showLunaBeatEditor,
+                    showSaltAudioEditor = showSaltAudioEditor,
+                    showSaltAudioAnalyzer = showSaltAudioAnalyzer,
                 )
                 TrackArtistsSheet(
                     artists = selectedArtists,

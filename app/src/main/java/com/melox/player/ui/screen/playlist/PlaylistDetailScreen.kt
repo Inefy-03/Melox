@@ -120,6 +120,8 @@ fun PlaylistDetailScreen(
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
     showLunaBeatEditor: Boolean,
+    showSaltAudioEditor: Boolean,
+    showSaltAudioAnalyzer: Boolean,
     onRename: (String) -> Unit,
     onDelete: () -> Unit,
     onRemoveEntries: (Set<String>) -> Unit,
@@ -609,6 +611,8 @@ fun PlaylistDetailScreen(
         showMusicTagEditor = showMusicTagEditor,
         showLyricoEditor = showLyricoEditor,
         showLunaBeatEditor = showLunaBeatEditor,
+        showSaltAudioEditor = showSaltAudioEditor,
+        showSaltAudioAnalyzer = showSaltAudioAnalyzer,
     )
     OverlayDialog(
         show = showRemoveSelectedConfirm,

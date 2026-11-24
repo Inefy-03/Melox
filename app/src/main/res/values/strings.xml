@@ -102,6 +102,9 @@
     <string name="music_tag_editor_not_found">Music Tag Editor app not found</string>
     <string name="lyrico_not_found">Lyrico app not found</string>
     <string name="luna_beat_not_found">LunaBeat app not found</string>
+    <string name="salt_audio_analyzer_not_found">Salt Audio Analyzer app not found</string>
+    <string name="salt_audio_analyzer_update_required">Update Salt Audio Analyzer to a version that supports metadata editing</string>
+    <string name="salt_audio_analysis_unavailable">Unable to open audio analysis</string>
     <string name="music_album_label">Album: %1$s</string>
     <string name="music_artist_label">Artist: %1$s</string>
     <string name="music_quality_raw">RAW</string>
@@ -420,10 +423,12 @@
     <string name="lyrics_display_section">Lyrics display</string>
     <string name="lyrics_artwork_page">Artwork page lyrics</string>
     <string name="lyrics_artwork_page_summary">Only shown in portrait</string>
-    <string name="lyrics_editor_menu">Lyrics editing menu</string>
+    <string name="song_menu_management">Song menu management</string>
     <string name="lyrics_editor_music_tag">Music Tag Editor</string>
     <string name="lyrics_editor_lyrico">Lyrico</string>
     <string name="lyrics_editor_luna_beat">LunaBeat</string>
+    <string name="lyrics_editor_salt_audio_editor">Salt Audio Editor</string>
+    <string name="lyrics_editor_salt_audio_analyzer">Salt Audio Analyzer</string>
     <string name="settings_lyrics_interface_title">Lyrics interface</string>
     <string name="lyrics_format_lrc">LRC</string>
     <string name="lyrics_format_ttml">TTML</string>

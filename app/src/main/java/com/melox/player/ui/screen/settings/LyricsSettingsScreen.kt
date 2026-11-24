@@ -21,8 +21,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,6 +50,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import com.melox.player.ui.component.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import com.melox.player.ui.component.overScrollVertical
+import com.melox.player.ui.component.library.ExternalAudioAction
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 @Composable
@@ -65,6 +68,8 @@ internal fun LyricsSettingsScreen(
     onShowMusicTagEditorChange: (Boolean) -> Unit,
     onShowLyricoEditorChange: (Boolean) -> Unit,
     onShowLunaBeatEditorChange: (Boolean) -> Unit,
+    onShowSaltAudioEditorChange: (Boolean) -> Unit,
+    onShowSaltAudioAnalyzerChange: (Boolean) -> Unit,
 ) {
     var sourcePriority by remember(settings.lyricsSourcePriority) {
         mutableStateOf(settings.lyricsSourcePriority)
@@ -86,6 +91,12 @@ internal fun LyricsSettingsScreen(
     }
     var showLunaBeatEditor by remember(settings.showLunaBeatEditor) {
         mutableStateOf(settings.showLunaBeatEditor)
+    }
+    var showSaltAudioEditor by remember(settings.showSaltAudioEditor) {
+        mutableStateOf(settings.showSaltAudioEditor)
+    }
+    var showSaltAudioAnalyzer by remember(settings.showSaltAudioAnalyzer) {
+        mutableStateOf(settings.showSaltAudioAnalyzer)
     }
     LyricsSettingsPage(
         titleRes = R.string.settings_lyrics_title,
@@ -182,7 +193,7 @@ internal fun LyricsSettingsScreen(
         }
         item(key = "lyrics_editor_menu_title") {
             SmallTitle(
-                text = stringResource(R.string.lyrics_editor_menu),
+                text = stringResource(R.string.song_menu_management),
                 modifier = Modifier.padding(top = 12.dp),
             )
         }
@@ -190,6 +201,7 @@ internal fun LyricsSettingsScreen(
             Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
                 SwitchPreference(
                     title = stringResource(R.string.lyrics_editor_music_tag),
+                    startAction = { SongMenuOptionIcon(ExternalAudioAction.MusicTagEditor) },
                     checked = showMusicTagEditor,
                     onCheckedChange = {
                         showMusicTagEditor = it
@@ -198,6 +210,7 @@ internal fun LyricsSettingsScreen(
                 )
                 SwitchPreference(
                     title = stringResource(R.string.lyrics_editor_lyrico),
+                    startAction = { SongMenuOptionIcon(ExternalAudioAction.Lyrico) },
                     checked = showLyricoEditor,
                     onCheckedChange = {
                         showLyricoEditor = it
@@ -206,15 +219,43 @@ internal fun LyricsSettingsScreen(
                 )
                 SwitchPreference(
                     title = stringResource(R.string.lyrics_editor_luna_beat),
+                    startAction = { SongMenuOptionIcon(ExternalAudioAction.LunaBeat) },
                     checked = showLunaBeatEditor,
                     onCheckedChange = {
                         showLunaBeatEditor = it
                         onShowLunaBeatEditorChange(it)
                     },
                 )
+                SwitchPreference(
+                    title = stringResource(R.string.lyrics_editor_salt_audio_editor),
+                    startAction = { SongMenuOptionIcon(ExternalAudioAction.SaltAudioEditor) },
+                    checked = showSaltAudioEditor,
+                    onCheckedChange = {
+                        showSaltAudioEditor = it
+                        onShowSaltAudioEditorChange(it)
+                    },
+                )
+                SwitchPreference(
+                    title = stringResource(R.string.lyrics_editor_salt_audio_analyzer),
+                    startAction = { SongMenuOptionIcon(ExternalAudioAction.SaltAudioAnalyzer) },
+                    checked = showSaltAudioAnalyzer,
+                    onCheckedChange = {
+                        showSaltAudioAnalyzer = it
+                        onShowSaltAudioAnalyzerChange(it)
+                    },
+                )
             }
         }
     }
+}
+
+@Composable
+private fun SongMenuOptionIcon(action: ExternalAudioAction) {
+    Icon(
+        painter = painterResource(action.iconRes),
+        contentDescription = null,
+        tint = Color.Unspecified,
+    )
 }
 
 @Composable

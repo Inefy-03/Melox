@@ -230,6 +230,8 @@ data class AppSettings(
     val showMusicTagEditor: Boolean = true,
     val showLyricoEditor: Boolean = true,
     val showLunaBeatEditor: Boolean = true,
+    val showSaltAudioEditor: Boolean = true,
+    val showSaltAudioAnalyzer: Boolean = true,
     val lyricsSourcePriority: LyricsSourcePriority = LyricsSourcePriority.EMBEDDED,
     val lyricsFormatPriority: LyricsFormatPriority =
         LyricsFormatPriority.LRC,

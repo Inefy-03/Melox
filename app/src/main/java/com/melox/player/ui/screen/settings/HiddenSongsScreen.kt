@@ -271,5 +271,7 @@ internal fun HiddenSongsScreen(
         showMusicTagEditor = settings.showMusicTagEditor,
         showLyricoEditor = settings.showLyricoEditor,
         showLunaBeatEditor = settings.showLunaBeatEditor,
+        showSaltAudioEditor = settings.showSaltAudioEditor,
+        showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
     )
 }

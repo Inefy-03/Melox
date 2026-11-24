@@ -1,25 +1,29 @@
 package com.melox.player
 
 import com.melox.player.model.AppSettings
-import com.melox.player.ui.component.library.ExternalEditorKind
-import com.melox.player.ui.component.library.visibleExternalEditors
+import com.melox.player.ui.component.library.ExternalAudioAction
+import com.melox.player.ui.component.library.visibleExternalAudioActions
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExternalEditorVisibilityTest {
     @Test
-    fun defaultSettingsEnableAllEditors() {
+    fun defaultSettingsEnableAllActions() {
         val settings = AppSettings()
         assertTrue(settings.showMusicTagEditor)
         assertTrue(settings.showLyricoEditor)
         assertTrue(settings.showLunaBeatEditor)
+        assertTrue(settings.showSaltAudioEditor)
+        assertTrue(settings.showSaltAudioAnalyzer)
         assertEquals(
-            ExternalEditorKind.entries,
-            visibleExternalEditors(
+            ExternalAudioAction.entries,
+            visibleExternalAudioActions(
                 settings.showMusicTagEditor,
                 settings.showLyricoEditor,
                 settings.showLunaBeatEditor,
+                settings.showSaltAudioEditor,
+                settings.showSaltAudioAnalyzer,
             ),
         )
     }
@@ -27,11 +31,13 @@ class ExternalEditorVisibilityTest {
     @Test
     fun hidingMusicTagEditorPreservesLyrico() {
         assertEquals(
-            listOf(ExternalEditorKind.Lyrico),
-            visibleExternalEditors(
+            listOf(ExternalAudioAction.Lyrico),
+            visibleExternalAudioActions(
                 showMusicTagEditor = false,
                 showLyricoEditor = true,
                 showLunaBeatEditor = false,
+                showSaltAudioEditor = false,
+                showSaltAudioAnalyzer = false,
             ),
         )
     }
@@ -39,47 +45,58 @@ class ExternalEditorVisibilityTest {
     @Test
     fun hidingLyricoPreservesMusicTagEditor() {
         assertEquals(
-            listOf(ExternalEditorKind.MusicTagEditor),
-            visibleExternalEditors(
+            listOf(ExternalAudioAction.MusicTagEditor),
+            visibleExternalAudioActions(
                 showMusicTagEditor = true,
                 showLyricoEditor = false,
                 showLunaBeatEditor = false,
+                showSaltAudioEditor = false,
+                showSaltAudioAnalyzer = false,
             ),
         )
     }
 
     @Test
     fun hidingAllEditorsRemovesAllEntries() {
-        assertTrue(visibleExternalEditors(false, false, false).isEmpty())
+        assertTrue(visibleExternalAudioActions(false, false, false, false, false).isEmpty())
     }
 
     @Test
     fun enablingEditorsAgainRestoresTheirOrder() {
-        val settings = AppSettings(showMusicTagEditor = false, showLyricoEditor = false, showLunaBeatEditor = false)
-            .copy(showMusicTagEditor = true, showLyricoEditor = true)
+        val settings = AppSettings(
+            showMusicTagEditor = false,
+            showLyricoEditor = false,
+            showLunaBeatEditor = false,
+            showSaltAudioEditor = false,
+            showSaltAudioAnalyzer = false,
+        ).copy(showMusicTagEditor = true, showLyricoEditor = true)
         assertEquals(
-            listOf(ExternalEditorKind.MusicTagEditor, ExternalEditorKind.Lyrico),
-            visibleExternalEditors(
+            listOf(ExternalAudioAction.MusicTagEditor, ExternalAudioAction.Lyrico),
+            visibleExternalAudioActions(
                 settings.showMusicTagEditor,
                 settings.showLyricoEditor,
                 settings.showLunaBeatEditor,
+                settings.showSaltAudioEditor,
+                settings.showSaltAudioAnalyzer,
             ),
         )
     }
 
     @Test
-    fun allSwitchCombinationsKeepOnlyEnabledEditorsInOrder() {
+    fun allSwitchCombinationsKeepOnlyEnabledActionsInOrder() {
         val editors = listOf(
-            ExternalEditorKind.MusicTagEditor,
-            ExternalEditorKind.Lyrico,
-            ExternalEditorKind.LunaBeat,
+            ExternalAudioAction.MusicTagEditor,
+            ExternalAudioAction.Lyrico,
+            ExternalAudioAction.LunaBeat,
+            ExternalAudioAction.SaltAudioEditor,
+            ExternalAudioAction.SaltAudioAnalyzer,
         )
-        for (mask in 0..7) {
-            val enabled = List(3) { index -> mask and (1 shl index) != 0 }
+        for (mask in 0..31) {
+            val enabled = List(5) { index -> mask and (1 shl index) != 0 }
             assertEquals(
                 "Switch combination $mask",
                 editors.filterIndexed { index, _ -> enabled[index] },
-                visibleExternalEditors(enabled[0], enabled[1], enabled[2]),
+                visibleExternalAudioActions(enabled[0], enabled[1], enabled[2], enabled[3], enabled[4]),
             )
         }
     }

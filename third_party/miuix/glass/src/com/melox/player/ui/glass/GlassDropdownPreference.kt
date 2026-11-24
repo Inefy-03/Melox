@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -42,6 +43,7 @@ import top.yukonga.miuix.kmp.utils.MiuixPopupUtils.Companion.PopupLayout
  *
  * @param onSelectedIndexChange Called with the selected option's index.
  * @param items Available options. An empty list disables the preference.
+ * @param itemIcons Optional leading icons corresponding to the options.
  * @param selectedIndex Index of the currently selected option.
  * @param title Preference title, using the standard [BasicComponent] typography.
  * @param backdrop Page backdrop; `null` uses an opaque popup fill.
@@ -80,6 +82,7 @@ fun GlassDropdownPreference(
     sizing: GlassPopupSizing = GlassPopupSizing(),
     visuals: GlassPopupVisuals = GlassPopupDefaults.visuals(),
     onExpandedChange: ((Boolean) -> Unit)? = null,
+    itemIcons: List<ImageVector?> = emptyList(),
 ) {
     var expanded by remember { mutableStateOf(false) }
     val mounted = remember { mutableStateOf(false) }
@@ -171,6 +174,7 @@ fun GlassDropdownPreference(
                 items.forEachIndexed { index, item ->
                     GlassPopupItem(
                         text = item,
+                        icon = itemIcons.getOrNull(index),
                         enabled = itemEnabled.getOrElse(index) { true },
                         selected = selectedIndex == index,
                         onClick = {

@@ -86,6 +86,8 @@ fun MusicListScreen(
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
     showLunaBeatEditor: Boolean,
+    showSaltAudioEditor: Boolean,
+    showSaltAudioAnalyzer: Boolean,
     scrollBehavior: ScrollBehavior,
     listState: LazyListState,
     modifier: Modifier = Modifier,
@@ -322,6 +324,8 @@ fun MusicListScreen(
         showMusicTagEditor = showMusicTagEditor,
         showLyricoEditor = showLyricoEditor,
         showLunaBeatEditor = showLunaBeatEditor,
+        showSaltAudioEditor = showSaltAudioEditor,
+        showSaltAudioAnalyzer = showSaltAudioAnalyzer,
     )
 }
 

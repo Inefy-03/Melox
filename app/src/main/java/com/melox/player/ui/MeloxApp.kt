@@ -1470,6 +1470,8 @@ fun MeloxApp(
                             showMusicTagEditor = settings.showMusicTagEditor,
                             showLyricoEditor = settings.showLyricoEditor,
                             showLunaBeatEditor = settings.showLunaBeatEditor,
+                            showSaltAudioEditor = settings.showSaltAudioEditor,
+                            showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
                             scrollBehavior = scrollBehavior,
                             listState = if (showingSearch) songsSearchListState else songsListState,
                             onRefresh = if (settings.songListPullToRefresh && !showingSearch) {
@@ -2167,6 +2169,10 @@ fun MeloxApp(
                                                                 viewModel::setShowLyricoEditor,
                                                             onShowLunaBeatEditorChange =
                                                                 viewModel::setShowLunaBeatEditor,
+                                                            onShowSaltAudioEditorChange =
+                                                                viewModel::setShowSaltAudioEditor,
+                                                            onShowSaltAudioAnalyzerChange =
+                                                                viewModel::setShowSaltAudioAnalyzer,
                                                             onOpenLyricsInterface = {
                                                                 currentRoute = AppRoute.LYRICS_INTERFACE
                                                             },
@@ -2380,6 +2386,8 @@ fun MeloxApp(
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
                                                                 showLunaBeatEditor = settings.showLunaBeatEditor,
+                                                                showSaltAudioEditor = settings.showSaltAudioEditor,
+                                                                showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
                                                             )
                                                         }
                                                     }
@@ -2434,6 +2442,8 @@ fun MeloxApp(
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
                                                                 showLunaBeatEditor = settings.showLunaBeatEditor,
+                                                                showSaltAudioEditor = settings.showSaltAudioEditor,
+                                                                showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
                                                             )
                                                         }
                                                     }
@@ -2494,6 +2504,8 @@ fun MeloxApp(
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
                                                                 showLunaBeatEditor = settings.showLunaBeatEditor,
+                                                                showSaltAudioEditor = settings.showSaltAudioEditor,
+                                                                showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
                                                             )
                                                         }
                                                     }
@@ -2579,6 +2591,8 @@ fun MeloxApp(
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
                                                                 showLunaBeatEditor = settings.showLunaBeatEditor,
+                                                                showSaltAudioEditor = settings.showSaltAudioEditor,
+                                                                showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
                                                             )
                                                         }
                                                     }
@@ -2668,6 +2682,8 @@ fun MeloxApp(
                                                                 showMusicTagEditor = settings.showMusicTagEditor,
                                                                 showLyricoEditor = settings.showLyricoEditor,
                                                                 showLunaBeatEditor = settings.showLunaBeatEditor,
+                                                                showSaltAudioEditor = settings.showSaltAudioEditor,
+                                                                showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
                                                                 onRename = { name ->
                                                                     viewModel.renamePlaylist(
                                                                         it.id,
@@ -2754,6 +2770,8 @@ fun MeloxApp(
                             showMusicTagEditor = settings.showMusicTagEditor,
                             showLyricoEditor = settings.showLyricoEditor,
                             showLunaBeatEditor = settings.showLunaBeatEditor,
+                            showSaltAudioEditor = settings.showSaltAudioEditor,
+                            showSaltAudioAnalyzer = settings.showSaltAudioAnalyzer,
                             onDismiss = closePlayer,
                             onOpenQueue = { showQueue = true },
                             onAddToPlaylist = { track ->

@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -82,6 +83,8 @@ fun TrackActionsOverlay(
     showMusicTagEditor: Boolean,
     showLyricoEditor: Boolean,
     showLunaBeatEditor: Boolean,
+    showSaltAudioEditor: Boolean,
+    showSaltAudioAnalyzer: Boolean,
 ) {
     val context = LocalContext.current
     val mutations = LocalTrackMutationActions.current
@@ -103,7 +106,17 @@ fun TrackActionsOverlay(
     var songInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var retainedSongInfoTrack by remember { mutableStateOf<MusicTrack?>(null) }
     var selectedArtists by remember { mutableStateOf(emptyList<ArtistGroup>()) }
-    val editors = visibleExternalEditors(showMusicTagEditor, showLyricoEditor, showLunaBeatEditor)
+    val audioActions = visibleExternalAudioActions(
+        showMusicTagEditor,
+        showLyricoEditor,
+        showLunaBeatEditor,
+        showSaltAudioEditor,
+        showSaltAudioAnalyzer,
+    )
+    val openSaltAudioEditor = rememberSaltAudioEditorLauncher(
+        onLaunched = onDismiss,
+        onOriginalSaved = onExternalEditReturned,
+    )
     var pendingExternalEditTrackId by rememberSaveable { mutableStateOf<Long?>(null) }
     val finishExternalEdit = {
         pendingExternalEditTrackId?.let { trackId ->
@@ -122,12 +135,29 @@ fun TrackActionsOverlay(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-    val openExternalEditor: (MusicTrack, ExternalEditorKind) -> Unit =
-        { selectedTrack, editorKind ->
+    val openExternalEditor: (MusicTrack, ExternalAudioAction) -> Unit =
+        open@{ selectedTrack, editorKind ->
             val notFoundMessage = when (editorKind) {
-                ExternalEditorKind.MusicTagEditor -> musicTagEditorNotFoundMessage
-                ExternalEditorKind.Lyrico -> lyricoNotFoundMessage
-                ExternalEditorKind.LunaBeat -> lunaBeatNotFoundMessage
+                ExternalAudioAction.MusicTagEditor -> musicTagEditorNotFoundMessage
+                ExternalAudioAction.Lyrico -> lyricoNotFoundMessage
+                ExternalAudioAction.LunaBeat -> lunaBeatNotFoundMessage
+                ExternalAudioAction.SaltAudioEditor -> {
+                    openSaltAudioEditor(selectedTrack)
+                    return@open
+                }
+                ExternalAudioAction.SaltAudioAnalyzer -> {
+                    if (launchSaltAudioAnalysis(context, selectedTrack)) {
+                        onDismiss()
+                    } else {
+                        val message = if (context.hasExternalEditor(editorKind)) {
+                            R.string.salt_audio_analysis_unavailable
+                        } else {
+                            R.string.salt_audio_analyzer_not_found
+                        }
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                    return@open
+                }
             }
             val launched = runCatching {
                 launchExternalEditor(
@@ -290,21 +320,30 @@ fun TrackActionsOverlay(
                             )
                         }
                     }
-                    val directEditor = editors.singleOrNull()
-                    if (directEditor != null) {
-                        val titleRes = when (directEditor) {
-                            ExternalEditorKind.MusicTagEditor -> R.string.music_edit_with_music_tag_editor
-                            ExternalEditorKind.Lyrico -> R.string.music_edit_with_lyrico
-                            ExternalEditorKind.LunaBeat -> R.string.music_edit_with_luna_beat
+                    val directAction = audioActions.singleOrNull()
+                    if (directAction != null) {
+                        val titleRes = when (directAction) {
+                            ExternalAudioAction.MusicTagEditor -> R.string.music_edit_with_music_tag_editor
+                            ExternalAudioAction.Lyrico -> R.string.music_edit_with_lyrico
+                            ExternalAudioAction.LunaBeat -> R.string.music_edit_with_luna_beat
+                            ExternalAudioAction.SaltAudioEditor -> R.string.lyrics_editor_salt_audio_editor
+                            ExternalAudioAction.SaltAudioAnalyzer -> R.string.lyrics_editor_salt_audio_analyzer
                         }
                         TrackAction(
-                            icon = GlassIcons.Edit,
+                            icon = {
+                                MiuixIcon(
+                                    imageVector = ImageVector.vectorResource(directAction.iconRes),
+                                    contentDescription = null,
+                                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                )
+                            },
                             text = stringResource(titleRes),
-                            onClick = { openExternalEditor(selectedTrack, directEditor) },
+                            onClick = { openExternalEditor(selectedTrack, directAction) },
                         )
-                    } else if (editors.isNotEmpty()) {
+                    } else if (audioActions.isNotEmpty()) {
                         OverlayDropdownMenu(
                             title = stringResource(R.string.music_edit_metadata),
+                            itemIcons = audioActions.map { ImageVector.vectorResource(it.iconRes) },
                             modifier = Modifier.fillMaxWidth(),
                             startAction = {
                                 Icon(
@@ -315,13 +354,15 @@ fun TrackActionsOverlay(
                                 )
                             },
                             entry = DropdownEntry(
-                                items = editors.map { editor ->
+                                items = audioActions.map { editor ->
                                     DropdownItem(
                                         text = stringResource(
                                             when (editor) {
-                                                ExternalEditorKind.MusicTagEditor -> R.string.lyrics_editor_music_tag
-                                                ExternalEditorKind.Lyrico -> R.string.lyrics_editor_lyrico
-                                                ExternalEditorKind.LunaBeat -> R.string.lyrics_editor_luna_beat
+                                                ExternalAudioAction.MusicTagEditor -> R.string.lyrics_editor_music_tag
+                                                ExternalAudioAction.Lyrico -> R.string.lyrics_editor_lyrico
+                                                ExternalAudioAction.LunaBeat -> R.string.lyrics_editor_luna_beat
+                                                ExternalAudioAction.SaltAudioEditor -> R.string.lyrics_editor_salt_audio_editor
+                                                ExternalAudioAction.SaltAudioAnalyzer -> R.string.lyrics_editor_salt_audio_analyzer
                                             },
                                         ),
                                         onClick = { openExternalEditor(selectedTrack, editor) },

@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import com.melox.player.model.BottomBarStyle
@@ -17,17 +18,19 @@ import top.yukonga.miuix.kmp.upstream.material.GlassDefaults
 import top.yukonga.miuix.kmp.upstream.material.GlassShape as UpstreamGlassShape
 import top.yukonga.miuix.kmp.upstream.blur.LayerBackdrop as GlassLayerBackdrop
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.blur
 import top.yukonga.miuix.kmp.blur.drawBackdrop
+import top.yukonga.miuix.kmp.blur.effect
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -81,28 +84,38 @@ internal fun Modifier.miniPlayerSurface(
                         .background(MiuixTheme.colorScheme.surfaceContainer),
                 )
             }
-            usableBackdrop != null && liquidGlassActive -> Modifier.drawBackdrop(
-                backdrop = usableBackdrop,
-                shape = { samplingShape },
-                effects = {
-                    padding = maxOf(padding, 40.dp.toPx())
-                    vibrancy()
-                    blur(4.dp.toPx(), 4.dp.toPx())
-                    lens(
-                        refractionHeight = 24.dp.toPx(),
-                        refractionAmount = 24.dp.toPx(),
-                    )
-                },
-                layerBlock = layerBlock,
-                onDrawFront = {
-                    val stroke = floatingHighlight?.value ?: GlassEdgeStrokes.forTheme(isDark)
-                    val alpha = if (floatingHighlight != null) 0.75f else 1f
-                    drawEdgeStroke(samplingShape, stroke, alpha * resolvedHighlightAlpha)
-                },
-                onDrawSurface = {
-                    drawRect(surfaceColor.copy(alpha = 0.4f))
-                },
-            )
+            usableBackdrop != null && liquidGlassActive -> {
+                val blurRadiusPx = with(LocalDensity.current) { 4.dp.toPx() }
+                val containerBlur = remember(blurRadiusPx) {
+                    // Match the original full-resolution blur sigma on Android.
+                    val radius = (blurRadiusPx * 0.45f - 0.5f) / 0.57735f
+                    BlurEffect(radius, radius)
+                }
+                Modifier.drawBackdrop(
+                    backdrop = usableBackdrop,
+                    shape = { samplingShape },
+                    effects = {
+                        padding = maxOf(padding, 40.dp.toPx())
+                        vibrancy()
+                        effect(containerBlur)
+                        lens(
+                            refractionHeight = 24.dp.toPx(),
+                            refractionAmount = 24.dp.toPx(),
+                        )
+                    },
+                    // The lens uses symmetric padding for its origin. An identity transform also
+                    // keeps Miuix from clamping the recorded padding per edge during expansion.
+                    layerBlock = layerBlock ?: {},
+                    onDrawFront = {
+                        val stroke = floatingHighlight?.value ?: GlassEdgeStrokes.forTheme(isDark)
+                        val alpha = if (floatingHighlight != null) 0.75f else 1f
+                        drawEdgeStroke(samplingShape, stroke, alpha * resolvedHighlightAlpha)
+                    },
+                    onDrawSurface = {
+                        drawRect(surfaceColor.copy(alpha = 0.4f))
+                    },
+                )
+            }
 
             usableBackdrop != null && blurActive -> Modifier.textureBlur(
                 backdrop = usableBackdrop,

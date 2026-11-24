@@ -579,6 +579,7 @@ fun LiquidGlassNavigationBar(
                                 backdrop = glassBackdrop,
                                 shape = { pillShape },
                                 effects = {
+                                    padding = maxOf(padding, 40.dp.toPx())
                                     vibrancy()
                                     blur(4.dp.toPx(), 4.dp.toPx())
                                     lens(
@@ -586,6 +587,8 @@ fun LiquidGlassNavigationBar(
                                         refractionAmount = 24.dp.toPx(),
                                     )
                                 },
+                                // Keep the tab capture's recorded padding symmetric for the lens.
+                                layerBlock = {},
                                 onDrawSurface = { drawRect(containerColor) },
                             )
                             .then(interactiveHighlight.modifier)

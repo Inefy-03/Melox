@@ -33,6 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
@@ -292,11 +295,14 @@ internal fun FolderListItem(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Icon(
+        val layoutDirection = LocalLayoutDirection.current
+        Image(
             imageVector = MiuixIcons.Basic.ArrowRight,
             contentDescription = null,
-            modifier = Modifier.size(width = 10.dp, height = 16.dp),
-            tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+            modifier = Modifier.size(width = 10.dp, height = 16.dp).graphicsLayer {
+                scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
+            },
+            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurfaceVariantActions),
         )
     }
 }

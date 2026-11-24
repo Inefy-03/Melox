@@ -124,7 +124,7 @@ fun MusicTrackRow(
             .padding(
                 start = 16.dp,
                 top = 8.dp,
-                end = TopAppBarDefaults.ActionIconPadding,
+                end = if (!selectionMode && onMoreClick != null) 14.dp else TopAppBarDefaults.ActionIconPadding,
                 bottom = 8.dp,
             ),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -202,7 +202,7 @@ fun MusicTrackRow(
                     Icon(
                         imageVector = MiuixIcons.More,
                         contentDescription = moreActionLabel,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(24.dp),
                         tint = if (moreActionEnabled) {
                             MiuixTheme.colorScheme.onSurfaceVariantActions
                         } else {

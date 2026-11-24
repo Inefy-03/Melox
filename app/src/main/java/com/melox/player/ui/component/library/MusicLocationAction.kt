@@ -71,7 +71,7 @@ internal fun MusicLocationAction(
     var locateJob by remember { mutableStateOf<Job?>(null) }
     val locateActionSize = ButtonDefaults.MinHeight
     val trailingPadding = maxOf(
-        TopAppBarDefaults.ActionIconPadding,
+        14.dp,
         if (alphabetIndexVisible) AlphabetSideBarWidth else 0.dp,
     )
     var actionAreaBounds by remember { mutableStateOf(Rect.Zero) }

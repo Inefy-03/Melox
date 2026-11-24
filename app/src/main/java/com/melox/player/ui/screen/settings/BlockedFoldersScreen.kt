@@ -43,6 +43,10 @@ import com.melox.player.ui.screen.library.MusicLibraryEmptyMessage
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import com.melox.player.ui.component.Icon
 import com.melox.player.ui.component.IconButton
+import com.melox.player.ui.icon.GlassIcons
+import com.melox.player.ui.icon.Remove
+import com.melox.player.ui.glass.GlassTopAppBarDefaults
+import top.yukonga.miuix.kmp.basic.IconButtonDefaults
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
 import top.yukonga.miuix.kmp.basic.Text
@@ -163,7 +167,13 @@ private fun BlockedFolderRow(path: String, displayPath: String, onRemove: () -> 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 30.dp, end = 28.dp, top = 16.dp, bottom = 16.dp),
+            .padding(
+                start = 30.dp,
+                end = GlassTopAppBarDefaults.HorizontalPadding +
+                    (GlassTopAppBarDefaults.ButtonSize - IconButtonDefaults.MinWidth) / 2,
+                top = 16.dp,
+                bottom = 16.dp,
+            ),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -189,11 +199,10 @@ private fun BlockedFolderRow(path: String, displayPath: String, onRemove: () -> 
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             )
         }
-        IconButton(onClick = onRemove) {
+        IconButton(onClick = onRemove, glassEnabled = false) {
             Icon(
-                painter = painterResource(R.drawable.ic_remove_circle),
+                imageVector = GlassIcons.Remove,
                 contentDescription = stringResource(R.string.scan_remove_blocked_folder_title),
-                modifier = Modifier.size(22.dp),
             )
         }
     }

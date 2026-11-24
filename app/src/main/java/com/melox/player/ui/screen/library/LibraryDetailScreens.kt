@@ -249,7 +249,7 @@ fun AlbumDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = GlassTopAppBarDefaults.HorizontalPadding)
-                                .padding(top = 6.dp, bottom = 12.dp),
+                                .padding(top = 6.dp, bottom = 6.dp),
                         )
                     },
                 )
@@ -277,7 +277,7 @@ fun AlbumDetailScreen(
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         contentPadding = PaddingValues(
                             start = padding.calculateStartPadding(layoutDirection),
-                            top = padding.calculateTopPadding() + 12.dp,
+                            top = padding.calculateTopPadding() + 6.dp,
                             end = padding.calculateEndPadding(layoutDirection),
                             bottom = maxOf(
                                 padding.calculateBottomPadding(),
@@ -286,10 +286,10 @@ fun AlbumDetailScreen(
                         ),
                         overscrollEffect = null,
                     ) {
-                        trackSections.forEach { section ->
+                        trackSections.forEachIndexed { sectionIndex, section ->
                             section.discNumber?.let { discNumber ->
                                 item(key = "disc:$discNumber") {
-                                    AlbumDiscSectionHeader(section)
+                                    AlbumDiscSectionHeader(section, isFirst = sectionIndex == 0)
                                 }
                             }
                             items(
@@ -348,7 +348,7 @@ fun AlbumDetailScreen(
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         contentPadding = PaddingValues(
                             start = padding.calculateStartPadding(layoutDirection),
-                            top = padding.calculateTopPadding(),
+                            top = padding.calculateTopPadding() + 6.dp,
                             end = padding.calculateEndPadding(layoutDirection),
                             bottom = maxOf(
                                 padding.calculateBottomPadding(),
@@ -389,7 +389,7 @@ fun AlbumDetailScreen(
 }
 
 @Composable
-private fun AlbumDiscSectionHeader(section: AlbumDiscSection) {
+private fun AlbumDiscSectionHeader(section: AlbumDiscSection, isFirst: Boolean) {
     val discTitle = stringResource(
         R.string.album_disc_title,
         requireNotNull(section.discNumber),
@@ -404,7 +404,7 @@ private fun AlbumDiscSectionHeader(section: AlbumDiscSection) {
     Text(
         modifier = Modifier.padding(
             start = 28.dp,
-            top = 20.dp,
+            top = if (isFirst) 6.dp else 16.dp,
             end = 28.dp,
             bottom = 8.dp,
         ),
@@ -559,7 +559,7 @@ fun ArtistDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = GlassTopAppBarDefaults.HorizontalPadding)
-                                .padding(top = 6.dp, bottom = 12.dp),
+                                .padding(top = 6.dp, bottom = 6.dp),
                         )
                     },
                 )
@@ -587,7 +587,7 @@ fun ArtistDetailScreen(
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         contentPadding = PaddingValues(
                             start = padding.calculateStartPadding(layoutDirection),
-                            top = padding.calculateTopPadding() + 12.dp,
+                            top = padding.calculateTopPadding() + 6.dp,
                             end = padding.calculateEndPadding(layoutDirection),
                             bottom = maxOf(
                                 padding.calculateBottomPadding(),
@@ -636,7 +636,7 @@ fun ArtistDetailScreen(
                                 .nestedScroll(scrollBehavior.nestedScrollConnection),
                             contentPadding = PaddingValues(
                                 start = padding.calculateStartPadding(layoutDirection) + AlbumGridHorizontalPadding,
-                                top = padding.calculateTopPadding() + 12.dp,
+                                top = padding.calculateTopPadding() + 6.dp,
                                 end = padding.calculateEndPadding(layoutDirection) + AlbumGridHorizontalPadding,
                                 bottom = maxOf(
                                     padding.calculateBottomPadding(),

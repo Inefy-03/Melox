@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -27,7 +30,7 @@ import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.model.MusicTrack
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import com.melox.player.ui.component.Icon
+import androidx.compose.ui.platform.LocalLayoutDirection
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
@@ -47,6 +50,7 @@ internal fun ArtistListItem(
     ),
     showNavigationIcon: Boolean = true,
 ) {
+    val layoutDirection = LocalLayoutDirection.current
     BasicComponent(
         modifier = modifier.fillMaxWidth(),
         startAction = {
@@ -57,11 +61,13 @@ internal fun ArtistListItem(
         },
         endActions = if (showNavigationIcon) {
             {
-                Icon(
+                Image(
                     imageVector = MiuixIcons.Basic.ArrowRight,
                     contentDescription = null,
-                    modifier = Modifier.size(width = 10.dp, height = 16.dp),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                    modifier = Modifier.size(width = 10.dp, height = 16.dp).graphicsLayer {
+                        scaleX = if (layoutDirection == LayoutDirection.Rtl) -1f else 1f
+                    },
+                    colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurfaceVariantActions),
                 )
             }
         } else {

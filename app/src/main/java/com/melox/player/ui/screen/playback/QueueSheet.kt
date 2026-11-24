@@ -36,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -56,28 +55,31 @@ import com.melox.player.R
 import com.melox.player.data.library.displayArtistName
 import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
-import com.melox.player.ui.component.library.PlaybackArtwork
+import com.melox.player.ui.component.library.TrackArtwork
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import com.melox.player.ui.component.Icon
+import top.yukonga.miuix.kmp.basic.Icon
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Delete
+import com.melox.player.ui.icon.GlassIcons
+import com.melox.player.ui.icon.Remove
 import com.melox.player.ui.component.OverlayBottomSheet
+import com.melox.player.ui.component.BottomSheetHeaderButton
 import com.melox.player.ui.component.OverlayDialog
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-private val QueueArtworkSize = 44.dp
+private val QueueArtworkSize = 48.dp
 private val QueueArtworkCornerRadius = 6.dp
-private val QueueRowHeight = QueueArtworkSize + 24.dp
+private val QueueRowHeight = QueueArtworkSize + 16.dp
 private val QueuePositionRowHeight = 16.dp
 private val QueueTitlePositionSpacing = 6.dp
 private val QueueSheetHeaderHeight = 82.dp + QueueTitlePositionSpacing
@@ -344,13 +346,13 @@ fun QueueSheet(
         title = stringResource(R.string.playback_queue),
         insideMargin = DpSize(0.dp, 0.dp),
         startAction = {
-            IconButton(
+            BottomSheetHeaderButton(
                 onClick = onDismiss,
-                glassEnabled = false,
-                modifier = Modifier.padding(start = 16.dp),
+                modifier = Modifier.padding(start = 12.dp),
             ) {
                 Icon(
                     imageVector = MiuixIcons.Close,
+                    modifier = Modifier.size(24.dp),
                     contentDescription = stringResource(R.string.close),
                     tint = MiuixTheme.colorScheme.onBackground,
                 )
@@ -360,10 +362,10 @@ fun QueueSheet(
             val currentTrackAvailable = displayedCurrentIndex in draftQueue.indices
             val queueNotEmpty = playback.queue.isNotEmpty()
             Row(
-                modifier = Modifier.padding(end = 20.dp),
+                modifier = Modifier.padding(end = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                IconButton(
+                BottomSheetHeaderButton(
                     onClick = {
                         if (displayedCurrentIndex in draftQueue.indices) {
                             queueCoroutineScope.launch {
@@ -372,25 +374,23 @@ fun QueueSheet(
                         }
                     },
                     enabled = currentTrackAvailable,
-                    glassEnabled = false,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_locate_current_track),
-                        contentDescription = stringResource(R.string.locate_current_track),
                         modifier = Modifier.size(24.dp),
+                        contentDescription = stringResource(R.string.locate_current_track),
                         tint = if (currentTrackAvailable) LocalContentColor.current
                         else MiuixTheme.colorScheme.disabledOnSurface,
                     )
                 }
-                IconButton(
+                BottomSheetHeaderButton(
                     onClick = { showClearConfirm = true },
                     enabled = queueNotEmpty,
-                    glassEnabled = false,
                 ) {
                     Icon(
                         imageVector = MiuixIcons.Delete,
-                        contentDescription = stringResource(R.string.clear_queue),
                         modifier = Modifier.size(24.dp),
+                        contentDescription = stringResource(R.string.clear_queue),
                         tint = if (queueNotEmpty) LocalContentColor.current
                         else MiuixTheme.colorScheme.disabledOnSurface,
                     )
@@ -502,14 +502,16 @@ fun QueueSheet(
                                 ),
                             holdDownState = isCurrent || isDragging,
                             startAction = {
-                                PlaybackArtwork(
-                                    contentUri = item.contentUri,
-                                    dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
-                                    fileSizeBytes = item.fileSizeBytes,
-                                    size = QueueArtworkSize,
-                                    cornerRadius = QueueArtworkCornerRadius,
-                                    contentScale = ContentScale.Fit,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TrackArtwork(
+                                        contentUri = item.contentUri,
+                                        dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
+                                        fileSizeBytes = item.fileSizeBytes,
+                                        size = QueueArtworkSize,
+                                        cornerRadius = QueueArtworkCornerRadius,
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                }
                             },
                             endActions = {
                                 if (
@@ -542,21 +544,20 @@ fun QueueSheet(
                                 IconButton(
                                     onClick = { onRemove(index) },
                                     glassEnabled = false,
-                                    modifier = Modifier.padding(end = 3.dp),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.ic_remove_circle),
+                                        imageVector = GlassIcons.Remove,
                                         contentDescription =
                                             stringResource(R.string.remove_from_queue),
-                                        modifier = Modifier.size(22.dp),
+                                        modifier = Modifier.size(24.dp),
                                     )
                                 }
                             },
                             insideMargin = PaddingValues(
-                                start = 24.dp,
-                                top = 12.dp,
-                                end = 16.dp,
-                                bottom = 12.dp,
+                                start = 16.dp,
+                                top = 8.dp,
+                                end = 12.dp,
+                                bottom = 8.dp,
                             ),
                             onClick = {
                                 onJumpTo(index)

@@ -63,6 +63,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -506,7 +507,10 @@ internal fun ArtworkPreviewOverlay(
             val toolbarInteractive = toolbarVisible && pinchChromeAlpha > 0f && !closing
             Box(
                 Modifier
-                    .graphicsLayer { alpha = previewAlpha * toolbarAlpha }
+                    .graphicsLayer {
+                        alpha = previewAlpha * toolbarAlpha
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
+                    }
                     .semantics {
                         if (!toolbarInteractive) hideFromAccessibility()
                     },

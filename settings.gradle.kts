@@ -33,6 +33,7 @@ dependencyResolutionManagement {
             forRepository { maven { url = uri("third_party/miuix/maven") } }
             filter {
                 includeModule("top.yukonga.miuix.kmp", "miuix-ui-android")
+                includeModule("top.yukonga.miuix.kmp", "miuix-glass-android")
             }
         }
         google()

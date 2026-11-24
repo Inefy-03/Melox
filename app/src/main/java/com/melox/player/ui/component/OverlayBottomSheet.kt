@@ -1,14 +1,17 @@
 package com.melox.player.ui.component
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.layout.BottomSheetDefaults
 import top.yukonga.miuix.kmp.glass.GlassBottomSheet
 import top.yukonga.miuix.kmp.glass.GlassBottomSheetDefaults
+import top.yukonga.miuix.kmp.glass.GlassIconButton
 
 @Composable
 internal fun OverlayBottomSheet(
@@ -31,7 +34,9 @@ internal fun OverlayBottomSheet(
     enableNestedScroll: Boolean = true,
     renderInRootScaffold: Boolean = true,
     dimColor: Color = GlassBottomSheetDefaults.ScrimColor,
-    content: @Composable () -> Unit,
+    headerBottomContent: @Composable () -> Unit = {},
+    scrollOffset: (() -> Float)? = null,
+    content: @Composable (PaddingValues) -> Unit,
 ) {
     GlassBottomSheet(
         show = show,
@@ -40,6 +45,7 @@ internal fun OverlayBottomSheet(
         title = title,
         startAction = startAction,
         endAction = endAction,
+        headerBottomContent = headerBottomContent,
         containerColor = backgroundColor,
         enableWindowDim = enableWindowDim,
         cornerRadius = cornerRadius,
@@ -54,7 +60,12 @@ internal fun OverlayBottomSheet(
         enableNestedScroll = enableNestedScroll,
         renderInRootScaffold = renderInRootScaffold,
         dimColor = dimColor,
-        content = { CompositionLocalProvider(LocalTopBarScrollContent provides null, content = content) },
+        scrollOffset = scrollOffset,
+        content = { headerPadding ->
+            CompositionLocalProvider(LocalTopBarScrollContent provides null) {
+                content(headerPadding)
+            }
+        },
     )
 }
 
@@ -65,11 +76,16 @@ internal fun BottomSheetHeaderButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        glassEnabled = false,
-        content = content,
-    )
+    if (enabled) {
+        GlassIconButton(onClick = onClick, modifier = modifier, content = content)
+    } else {
+        IconButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = false,
+            minWidth = GlassBottomSheetDefaults.ButtonSize,
+            minHeight = GlassBottomSheetDefaults.ButtonSize,
+            content = content,
+        )
+    }
 }

@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.widget.Toast
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -57,7 +58,6 @@ import com.melox.player.ui.icon.*
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import com.melox.player.ui.component.OverlayBottomSheet
 import com.melox.player.ui.component.BottomSheetHeaderButton
@@ -241,9 +241,10 @@ fun TrackActionsOverlay(
             retainedTrack = null
             if (mutationTrack != null) showMutationConfirm = true
         },
-    ) {
+    ) { headerPadding ->
         (track ?: retainedTrack)?.let { selectedTrack ->
             SheetScrollableContent(
+                headerPadding = headerPadding,
                 bottomPadding = navigationBarBottomPadding + 16.dp,
             ) {
                 Card(
@@ -486,16 +487,13 @@ fun TrackActionsOverlay(
         enableWindowDim = true,
         onDismissRequest = { songInfoTrack = null },
         onDismissFinished = { retainedSongInfoTrack = null },
-    ) {
+    ) { headerPadding ->
         (songInfoTrack ?: retainedSongInfoTrack)?.let { infoTrack ->
             SheetScrollableContent(
+                headerPadding = headerPadding,
                 bottomPadding = navigationBarBottomPadding + 16.dp,
             ) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                ) {
+                Card(modifier = Modifier.fillMaxWidth()) {
                     SongInfoRow(stringResource(R.string.song_info_title), infoTrack.title)
                     SongInfoRow(stringResource(R.string.song_info_artist), infoTrack.artist)
                     SongInfoRow(stringResource(R.string.song_info_album), infoTrack.album)
@@ -581,8 +579,11 @@ internal fun TrackArtistsSheet(
         enableWindowDim = true,
         onDismissRequest = onDismiss,
         onDismissFinished = { if (artists.isEmpty()) retainedArtists = emptyList() },
-    ) {
-        SheetScrollableContent(bottomPadding = navigationBottom + 16.dp) {
+    ) { headerPadding ->
+        SheetScrollableContent(
+            headerPadding = headerPadding,
+            bottomPadding = navigationBottom + 16.dp,
+        ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -605,6 +606,7 @@ internal fun TrackArtistsSheet(
 
 @Composable
 private fun SheetScrollableContent(
+    headerPadding: PaddingValues,
     bottomPadding: Dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -616,7 +618,9 @@ private fun SheetScrollableContent(
                 isEnabled = { scrollState.maxValue > 0 },
             )
             .verticalScroll(scrollState, overscrollEffect = null)
+            .padding(headerPadding)
             .padding(bottom = bottomPadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
     )
 }
@@ -694,10 +698,9 @@ private fun TrackAction(
 private fun BottomSheetCloseButton(onClick: () -> Unit) {
     BottomSheetHeaderButton(onClick = onClick) {
         MiuixIcon(
-            imageVector = MiuixIcons.Close,
-            modifier = Modifier.size(24.dp),
+            imageVector = GlassIcons.Close,
             contentDescription = stringResource(R.string.close),
-            tint = MiuixTheme.colorScheme.onBackground,
+            tint = MiuixTheme.colorScheme.onSurface,
         )
     }
 }

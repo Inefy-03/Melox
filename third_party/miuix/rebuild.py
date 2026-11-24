@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild the patched Miuix UI Android artifact used by Melox."""
+"""Rebuild the Miuix Android source snapshot used by Melox."""
 
 import argparse
 import hashlib
@@ -10,10 +10,11 @@ import tempfile
 from pathlib import Path
 
 
-UPSTREAM_COMMIT = "3c560868758f80cd97bbdab2f8e53612ad1c56be"
-UPSTREAM_ARCHIVE_SHA256 = "e4fcca8e6c27abfbd6d5c5ea4f251af37462bdea01db72b61381e4e2b3dccff4"
+UPSTREAM_COMMIT = "a09d4f3268ece3fc262d0bba433a3941a312bb9a"
+UPSTREAM_ARCHIVE_SHA256 = "d544c4e7a84e019f6d62e166ef56efb0aba61e3f8aee1817cdbc08165b0e9b50"
 UPSTREAM_VERSION = "0.9.5-beta04"
-ARTIFACT_ID = "miuix-ui-android"
+SNAPSHOT_VERSION = "0.9.5-beta04.1-melox-a09d4f32"
+SNAPSHOT_MODULES = ("miuix-ui", "miuix-glass")
 MAVEN_GROUP = Path("maven/top/yukonga/miuix/kmp")
 RAIL_SOURCE = "miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt"
 RAIL_SHA256 = "9c9b84f84548db581e418488a874cfbbfa8054afca5eae45dd083f23b1f99842"
@@ -22,6 +23,7 @@ RAIL_SHA256 = "9c9b84f84548db581e418488a874cfbbfa8054afca5eae45dd083f23b1f99842"
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("upstream", type=Path, help="Upstream Git clone or pinned GitHub .tar.gz archive")
+    parser.add_argument("--offline", action="store_true", help="Build from cached Gradle dependencies")
     args = parser.parse_args()
     directory = Path(__file__).resolve().parent
     project = directory.parent.parent
@@ -29,6 +31,9 @@ def main():
     configured_version = re.search(r'^miuix\s*=\s*"([^"]+)"', catalog, re.MULTILINE)
     if configured_version is None or configured_version[1] != UPSTREAM_VERSION:
         parser.error(f"The Gradle Miuix version must match the pinned upstream version {UPSTREAM_VERSION}")
+    configured_snapshot = re.search(r'^miuixSnapshot\s*=\s*"([^"]+)"', catalog, re.MULTILINE)
+    if configured_snapshot is None or configured_snapshot[1] != SNAPSHOT_VERSION:
+        parser.error(f"The Gradle snapshot must match {SNAPSHOT_VERSION}")
     upstream = args.upstream.resolve()
     with tempfile.TemporaryDirectory(prefix="melox-miuix-") as temporary:
         work = Path(temporary)
@@ -60,24 +65,33 @@ def main():
                 (work / "local.properties").write_text(sdk + "\n")
         subprocess.run(
             [str(work / "gradlew"), "-p", str(work),
-             ":miuix-ui:assembleAndroidMain",
+             *(f":{module}:assembleAndroidMain" for module in SNAPSHOT_MODULES),
              "-Prelease", "-Pkotlin.compiler.execution.strategy=in-process",
-             "--no-configuration-cache", "--no-watch-fs", "--max-workers=4"],
+             "--no-configuration-cache", "--no-watch-fs", "--max-workers=4",
+             *(["--offline"] if args.offline else [])],
             cwd=project, check=True,
         )
-        install_artifact(work, directory)
+        for module in SNAPSHOT_MODULES:
+            install_artifact(work, directory, module)
 
 
-def install_artifact(work, directory):
-    artifacts = list((work / "miuix-ui/build/outputs/aar").glob("*.aar"))
+def install_artifact(work, directory, module):
+    artifact_id = f"{module}-android"
+    artifacts = list((work / module / "build/outputs/aar").glob("*.aar"))
     assert len(artifacts) == 1, artifacts
-    repository = directory / MAVEN_GROUP / ARTIFACT_ID
-    output = repository / UPSTREAM_VERSION
+    repository = directory / MAVEN_GROUP / artifact_id
+    output = repository / SNAPSHOT_VERSION
     output.mkdir(parents=True, exist_ok=True)
-    name = f"{ARTIFACT_ID}-{UPSTREAM_VERSION}"
+    name = f"{artifact_id}-{SNAPSHOT_VERSION}"
     target = output / f"{name}.aar"
-    pom = (directory / f"upstream-ui-android-{UPSTREAM_VERSION}.pom").read_text()
+    pom = (directory / f"upstream-{artifact_id.removeprefix('miuix-')}-{UPSTREAM_VERSION}.pom").read_text()
     pom = re.sub(r"<!--.*?-->", "", pom, flags=re.DOTALL)
+    for artifact in SNAPSHOT_MODULES:
+        pom = re.sub(
+            rf"(<artifactId>{artifact}-android</artifactId>\s*<version>){re.escape(UPSTREAM_VERSION)}",
+            rf"\g<1>{SNAPSHOT_VERSION}",
+            pom,
+        )
     pom = "\n".join(line.rstrip() for line in pom.splitlines()) + "\n"
     with tempfile.TemporaryDirectory(dir=output) as temporary:
         staged = Path(temporary)
@@ -89,10 +103,10 @@ def install_artifact(work, directory):
 
     for version_dir in repository.glob("[0-9]*"):
         version = version_dir.name
-        if version == UPSTREAM_VERSION or not version_dir.is_dir() or version_dir.is_symlink():
+        if version == SNAPSHOT_VERSION or not version_dir.is_dir() or version_dir.is_symlink():
             continue
         for extension in ("aar", "pom"):
-            (version_dir / f"{ARTIFACT_ID}-{version}.{extension}").unlink(missing_ok=True)
+            (version_dir / f"{artifact_id}-{version}.{extension}").unlink(missing_ok=True)
         if not any(version_dir.iterdir()):
             version_dir.rmdir()
 

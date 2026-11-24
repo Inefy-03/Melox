@@ -12,14 +12,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.captionBar
-import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -37,10 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -66,9 +61,8 @@ import top.yukonga.miuix.kmp.basic.Icon
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Close
-import top.yukonga.miuix.kmp.icon.extended.Delete
+import com.melox.player.ui.icon.Close
+import com.melox.player.ui.icon.Delete
 import com.melox.player.ui.icon.GlassIcons
 import com.melox.player.ui.icon.Remove
 import com.melox.player.ui.component.OverlayBottomSheet
@@ -82,7 +76,6 @@ private val QueueArtworkCornerRadius = 6.dp
 private val QueueRowHeight = QueueArtworkSize + 16.dp
 private val QueuePositionRowHeight = 16.dp
 private val QueueTitlePositionSpacing = 6.dp
-private val QueueSheetHeaderHeight = 82.dp + QueueTitlePositionSpacing
 
 @Composable
 private fun QueueSheetPosition(position: String, modifier: Modifier = Modifier) {
@@ -229,13 +222,6 @@ fun QueueSheet(
     val currentOnMove by rememberUpdatedState(onMove)
     val density = LocalDensity.current
     val hapticFeedback = LocalHapticFeedback.current
-    val queueReorderState = rememberReorderableLazyListState(queueListState) { from, to ->
-        val fromIndex = draftQueue.indexOfFirst { item -> item.queueSlotKey() == from.key }
-        val toIndex = draftQueue.indexOfFirst { item -> item.queueSlotKey() == to.key }
-        if (fromIndex in draftQueue.indices && toIndex in draftQueue.indices) {
-            draftQueue = moveQueueListItem(draftQueue, fromIndex, toIndex)
-        }
-    }
 
     fun finishDraggedItem(activeKey: String) {
         if (draggedKey != activeKey) return
@@ -265,26 +251,9 @@ fun QueueSheet(
             }
         }
     }
-    LaunchedEffect(show, playback.queue) {
-        if (show && !queueReorderState.isAnyItemDragging && playNextExitKey == null) {
-            draftQueue = playback.queue
-        }
-    }
     val queueListBottomPadding = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding() + 12.dp
-    val queueSheetTopInset = maxOf(
-        WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
-        WindowInsets.captionBar.asPaddingValues().calculateTopPadding(),
-        WindowInsets.displayCutout.asPaddingValues().calculateTopPadding(),
-    )
-    var queuePositionHeight by remember { mutableStateOf(QueueTitlePositionSpacing) }
-    val queueMaxListHeight = (
-        LocalWindowInfo.current.containerDpSize.height -
-            queueSheetTopInset -
-            QueueSheetHeaderHeight -
-            (queuePositionHeight - QueueTitlePositionSpacing)
-    ).coerceAtLeast(0.dp)
     val currentKey = playback.currentItem?.queueSlotKey()
     val displayedCurrentIndex = draftQueue.indexOfFirst { item ->
         item.queueSlotKey() == currentKey
@@ -300,8 +269,9 @@ fun QueueSheet(
             itemCount = draftQueue.size,
         ) ?: return
         val layoutInfo = queueListState.layoutInfo
+        val viewportStart = layoutInfo.viewportStartOffset + layoutInfo.beforeContentPadding
         val currentVisible = layoutInfo.visibleItemsInfo.any { itemInfo ->
-            itemInfo.key == currentKey
+            itemInfo.key == currentKey && itemInfo.offset + itemInfo.size > viewportStart
         }
         val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { visibleItem ->
             visibleItem.key == slotKey
@@ -318,7 +288,7 @@ fun QueueSheet(
             currentIndex = displayedCurrentIndex,
             itemOffsetPx = itemInfo.offset,
             itemSizePx = itemInfo.size,
-            viewportStartPx = layoutInfo.viewportStartOffset,
+            viewportStartPx = viewportStart,
             viewportEndPx = layoutInfo.viewportEndOffset,
         )
         queueCoroutineScope.launch {
@@ -326,7 +296,7 @@ fun QueueSheet(
             playNextExitTranslationY = exitTranslationY
             playNextExitItemOffsetPx = itemInfo.offset
             playNextExitItemSizePx = itemInfo.size
-            playNextExitViewportStartPx = layoutInfo.viewportStartOffset
+            playNextExitViewportStartPx = viewportStart
             playNextExitViewportEndPx = layoutInfo.viewportEndOffset
             playNextExitProgress.snapTo(0f)
             playNextExitProgress.animateTo(
@@ -351,10 +321,9 @@ fun QueueSheet(
                 modifier = Modifier.padding(start = 12.dp),
             ) {
                 Icon(
-                    imageVector = MiuixIcons.Close,
-                    modifier = Modifier.size(24.dp),
+                    imageVector = GlassIcons.Close,
                     contentDescription = stringResource(R.string.close),
-                    tint = MiuixTheme.colorScheme.onBackground,
+                    tint = MiuixTheme.colorScheme.onSurface,
                 )
             }
         },
@@ -388,8 +357,7 @@ fun QueueSheet(
                     enabled = queueNotEmpty,
                 ) {
                     Icon(
-                        imageVector = MiuixIcons.Delete,
-                        modifier = Modifier.size(24.dp),
+                        imageVector = GlassIcons.Delete,
                         contentDescription = stringResource(R.string.clear_queue),
                         tint = if (queueNotEmpty) LocalContentColor.current
                         else MiuixTheme.colorScheme.disabledOnSurface,
@@ -397,21 +365,43 @@ fun QueueSheet(
                 }
             }
         },
+        headerBottomContent = { QueueSheetPosition(queuePosition) },
         enableWindowDim = true,
         onDismissRequest = onDismiss,
-    ) {
-        QueueSheetPosition(
-            position = queuePosition,
-            modifier = Modifier.onSizeChanged { size ->
-                queuePositionHeight = with(density) { size.height.toDp() }
-            },
-        )
+        scrollOffset = {
+            when {
+                draftQueue.isEmpty() -> 0f
+                queueListState.firstVisibleItemIndex > 0 -> Float.MAX_VALUE
+                else -> queueListState.firstVisibleItemScrollOffset.toFloat()
+            }
+        },
+    ) { headerPadding ->
+        val queueReorderState = rememberReorderableLazyListState(
+            lazyListState = queueListState,
+            scrollThresholdPadding = headerPadding,
+        ) { from, to ->
+            val fromIndex = draftQueue.indexOfFirst { item -> item.queueSlotKey() == from.key }
+            val toIndex = draftQueue.indexOfFirst { item -> item.queueSlotKey() == to.key }
+            if (fromIndex in draftQueue.indices && toIndex in draftQueue.indices) {
+                draftQueue = moveQueueListItem(draftQueue, fromIndex, toIndex)
+            }
+        }
+        LaunchedEffect(show, playback.queue) {
+            if (show && !queueReorderState.isAnyItemDragging && playNextExitKey == null) {
+                draftQueue = playback.queue
+            }
+        }
+        val listPadding = remember(headerPadding, queueListBottomPadding) {
+            object : PaddingValues by headerPadding {
+                override fun calculateBottomPadding() = queueListBottomPadding
+            }
+        }
         if (draftQueue.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(queueMaxListHeight)
-                    .padding(bottom = queueListBottomPadding),
+                    .fillMaxHeight()
+                    .padding(listPadding),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -423,10 +413,10 @@ fun QueueSheet(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(queueMaxListHeight),
+                    .fillMaxHeight(),
                 state = queueListState,
                 userScrollEnabled = !queueReorderState.isAnyItemDragging,
-                contentPadding = PaddingValues(bottom = queueListBottomPadding),
+                contentPadding = listPadding,
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 itemsIndexed(

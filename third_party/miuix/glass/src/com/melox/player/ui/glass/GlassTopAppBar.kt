@@ -67,9 +67,9 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.glass.internal.currentProgressiveTextureBlur
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.glass.GlassMotion as OfficialGlassMotion
-import top.yukonga.miuix.kmp.glass.GlassTopAppBarContext as OfficialTopAppBarContext
+import top.yukonga.miuix.kmp.glass.internal.GlassHeaderContext as OfficialTopAppBarContext
 import top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults as OfficialTopAppBarDefaults
-import top.yukonga.miuix.kmp.glass.LocalGlassTopAppBarContext as LocalOfficialTopAppBarContext
+import top.yukonga.miuix.kmp.glass.internal.LocalGlassHeaderContext as LocalOfficialTopAppBarContext
 import top.yukonga.miuix.kmp.material.GlassDefaults as OfficialGlassDefaults
 import top.yukonga.miuix.kmp.material.GlassShape as OfficialGlassShape
 import top.yukonga.miuix.kmp.material.GlassShadow as OfficialGlassShadow
@@ -139,7 +139,7 @@ object GlassTopAppBarDefaults {
     fun bandBrush(color: Color): Brush = TopAppBarBandBrush(color)
 
     /** How far the band reaches past the bottom of the bar. */
-    val BandOverhang: Dp = 36.dp
+    val BandOverhang: Dp = OfficialTopAppBarDefaults.BandOverhang
 
     internal const val ProgressiveBandCurve = 0.25f
 

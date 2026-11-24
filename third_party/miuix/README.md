@@ -1,11 +1,24 @@
 # Miuix Android Integration
 
-Melox uses [Miuix `0.9.5-beta04`](https://github.com/compose-miuix-ui/miuix/tree/v0.9.5-beta04)
-at commit `3c560868758f80cd97bbdab2f8e53612ad1c56be`.
-Blur, Core, Glass, Icons, Material, Nav, Preference and Squircle resolve from
-Maven Central. UI resolves from the local Maven repository to supply the
-explicit NavigationRail top inset overload. The Glass AAR keeps its official
-package, while Melox's Glass adapters compile in `com.melox.player.ui.glass`.
+Melox uses [Miuix main at `a09d4f32`](https://github.com/compose-miuix-ui/miuix/commit/a09d4f3268ece3fc262d0bba433a3941a312bb9a),
+seven commits after [`0.9.5-beta04`](https://github.com/compose-miuix-ui/miuix/tree/v0.9.5-beta04).
+Glass and UI resolve from the local repository as
+`0.9.5-beta04.1-melox-a09d4f32`. UI carries the NavigationRail top inset
+overload. Blur, Core, Icons, Material, Nav, Preference, and Squircle still
+resolve from Maven Central at Beta 04. The only upstream Blur change was
+whitespace; the relocated Blur sources are synchronized with the snapshot.
+
+The snapshot includes the menu anchor's closing rebound, dialog and sheet
+predictive-back reset, bottom-sheet overscroll and progressive header APIs,
+dynamic color contrast updates, and a 32 dp top-bar band overhang. The compact
+Melox bar bridges to the upstream internal GlassHeaderContext at this revision.
+
+The app's OverlayBottomSheet forwards the stock progressive header's measured
+`PaddingValues` to each body. Scrollable columns apply them inside
+`verticalScroll`, and the queue uses them as lazy content padding. Enabled
+header actions use the stock GlassIconButton and inherit the sheet's scroll
+material. The queue keeps its position label in the header's bottom slot.
+Melox also follows the Demo's 12 dp vertical card spacing from `6bf1a4b0`.
 
 - License [Apache-2.0](LICENSE)
 - Source patch [navigation-rail-insets.patch](navigation-rail-insets.patch)
@@ -21,9 +34,8 @@ background, start insets and divider still use the stock layout.
 
 The content column uses the stock bottom inset after `verticalScroll`, so its
 navigation-bar padding scrolls with the content. The earlier
-`contentBottomInsets` viewport extension is removed. To switch the last local
-AAR to Maven Central, migrate the call site to an upstream equivalent top inset
-API and remove the `miuix-ui-android` repository exception in `settings.gradle.kts`.
+`contentBottomInsets` viewport extension is removed. To switch UI to Maven Central, migrate the call site to an upstream equivalent
+top inset API and remove the `miuix-ui-android` repository exception in `settings.gradle.kts`.
 
 ## Upstream Source Audit (2026-11-18)
 
@@ -43,12 +55,13 @@ Melox. Use an upstream clone containing the pinned commit:
 python3 third_party/miuix/rebuild.py /path/to/miuix
 ```
 
-The script also accepts the [pinned GitHub source archive](https://codeload.github.com/compose-miuix-ui/miuix/tar.gz/3c560868758f80cd97bbdab2f8e53612ad1c56be)
-and verifies its SHA-256. It extracts source into a temporary directory,
-verifies the original rail source hash, applies the top inset patch and
-installs the rebuilt UI Android AAR with its corresponding Beta 04 POM.
+The script also accepts the [pinned GitHub source archive](https://api.github.com/repos/compose-miuix-ui/miuix/tarball/a09d4f3268ece3fc262d0bba433a3941a312bb9a)
+and verifies its SHA-256. It applies the rail patch and builds the UI and Glass
+Android AARs. The corresponding official Beta 04 POMs supply dependency metadata,
+with the two locally rebuilt coordinates updated to the snapshot version.
 The build reads only `sdk.dir` from Melox's local configuration when present.
-It omits demo and baseline-profile generation projects.
+It omits demo and baseline-profile generation projects. Use `--offline`
+when the required Gradle dependencies are already cached.
 
 ## Compatibility
 

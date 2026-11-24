@@ -41,9 +41,9 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Add
-import top.yukonga.miuix.kmp.icon.extended.Close
+import com.melox.player.ui.icon.Add
+import com.melox.player.ui.icon.Close
+import com.melox.player.ui.icon.GlassIcons
 import com.melox.player.ui.component.OverlayBottomSheet
 import com.melox.player.ui.component.BottomSheetHeaderButton
 import com.melox.player.ui.component.OverlayDialog
@@ -81,9 +81,9 @@ fun PlaylistPickerOverlay(
         startAction = {
             BottomSheetHeaderButton(onClick = onDismiss) {
                 Icon(
-                    imageVector = MiuixIcons.Close,
-                    modifier = Modifier.size(24.dp),
+                    imageVector = GlassIcons.Close,
                     contentDescription = stringResource(R.string.close),
+                    tint = MiuixTheme.colorScheme.onSurface,
                 )
             }
         },
@@ -95,9 +95,9 @@ fun PlaylistPickerOverlay(
                 },
             ) {
                 Icon(
-                    imageVector = MiuixIcons.Add,
-                    modifier = Modifier.size(24.dp),
+                    imageVector = GlassIcons.Add,
                     contentDescription = stringResource(R.string.playlist_create),
+                    tint = MiuixTheme.colorScheme.onSurface,
                 )
             }
         },
@@ -110,12 +110,13 @@ fun PlaylistPickerOverlay(
             retainedPlaylists = emptyList()
             tracksForCreation?.let(onCreatePlaylist)
         },
-    ) {
+    ) { headerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState(), overscrollEffect = null)
-                .overScrollVertical(),
+                .overScrollVertical()
+                .padding(headerPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (displayedPlaylists.isEmpty()) {

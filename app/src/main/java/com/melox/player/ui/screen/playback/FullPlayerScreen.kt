@@ -1417,7 +1417,7 @@ private fun PlayerSettingsSheet(
         title = stringResource(R.string.player_settings),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
-    ) {
+    ) { headerPadding ->
         val scrollState = rememberScrollState()
         LyricsInterfacePreferences(
             leftAlignPlayerTitle = leftAlignPlayerTitle,
@@ -1443,6 +1443,7 @@ private fun PlayerSettingsSheet(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
+                .padding(headerPadding)
                 .padding(bottom = bottomPadding + 16.dp),
             cardColor = bottomSheetCardColor(),
             usePageMaterial = false,
@@ -1469,13 +1470,15 @@ private fun LyricsTranslationSheet(
         title = stringResource(R.string.lyrics_translation),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
-    ) {
+        scrollOffset = { scrollState.value.toFloat() },
+    ) { headerPadding ->
         Column(
             modifier = Modifier.fillMaxWidth()
                 .overScrollVertical(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
+                .padding(headerPadding)
                 .padding(bottom = bottomPadding + 16.dp),
         ) {
             LyricsTranslationPreferences(

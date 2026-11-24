@@ -1,5 +1,12 @@
 # Miuix Glass source integration
 
+## Main source synchronization (2026-11-25)
+
+The app uses the Glass and UI Android snapshot from `a09d4f32`.
+The relocated source manifest tracks the same commit, including the upstream
+GlassHeaderContext used by GlassIconButton. The Melox compact/detail top bar
+continues to provide the upstream header context to its stock buttons.
+
 ## Beta 04 synchronization (2026-11-24)
 
 The official Maven Central Glass AAR and vendored source manifest use the Beta 04 tag

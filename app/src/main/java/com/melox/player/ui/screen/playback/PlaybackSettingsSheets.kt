@@ -213,7 +213,8 @@ internal fun SleepTimerSheet(
         title = stringResource(R.string.playback_sleep_timer),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
-    ) {
+        scrollOffset = { scrollState.value.toFloat() },
+    ) { headerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -221,8 +222,9 @@ internal fun SleepTimerSheet(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
+                .padding(headerPadding)
                 .padding(bottom = bottomPadding + 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Card(
                 modifier = Modifier
@@ -381,15 +383,17 @@ internal fun AudioSettingsSheet(
         title = stringResource(R.string.playback_audio_settings),
         enableWindowDim = true,
         onDismissRequest = onDismiss,
-    ) {
+        scrollOffset = { scrollState.value.toFloat() },
+    ) { headerPadding ->
         Column(
             modifier = Modifier.fillMaxWidth()
                 .overScrollVertical(
                     isEnabled = { scrollState.maxValue > 0 },
                 )
                 .verticalScroll(scrollState, overscrollEffect = null)
+                .padding(headerPadding)
                 .padding(bottom = bottomPadding + 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PlaybackSpeedSelector(
                 playbackSpeed = playbackSpeed,

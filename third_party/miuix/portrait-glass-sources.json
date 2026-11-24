@@ -1,5 +1,5 @@
 {
-  "commit": "3c560868758f80cd97bbdab2f8e53612ad1c56be",
+  "commit": "a09d4f3268ece3fc262d0bba433a3941a312bb9a",
   "files": [
     {
       "source": "miuix-blur/src/androidMain/kotlin/top/yukonga/miuix/kmp/blur/internal/RenderEffectCompat.android.kt",
@@ -25,8 +25,8 @@
     {
       "source": "miuix-blur/src/commonMain/kotlin/top/yukonga/miuix/kmp/blur/BackdropEffects.kt",
       "target": "blur/BackdropEffects.kt",
-      "source_sha256": "219a8e3fb6fae7840e8b76cad3400aaf56e65ffa11b36fa459e3cb9830d61d37",
-      "sha256": "bdc364be9500503631fd7766fd9903e4c33e474655b51ea7576282cae4e7e8b1",
+      "source_sha256": "86c4885cd53cea6252bc8b453f791bd9d0e3eae935c6e78a4d8f1e25ccd082ee",
+      "sha256": "597141577a967793f516e0e65226f5ed5efef5b97058e9209815c50a400d6c00",
       "selection": null
     },
     {
@@ -305,8 +305,8 @@
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassIconButton.kt",
       "target": "glass/GlassIconButton.kt",
-      "source_sha256": "a10e5e3a0bb5cfdfde0133d6f1329f8ec9668f20a2ca2dec11aebdbabc8186a0",
-      "sha256": "2a0e0270078e69a96f222fe78613a376bfbc59d79683191428e7b40e1191a861",
+      "source_sha256": "8f1325ac0dab3abaa3b35f8ffe6bec029cdb2130c4141694eea53db0beb4ed76",
+      "sha256": "c7655d6ae8188b661f838682073ed41419a56d5cfa6195289b8d52339e799c20",
       "selection": null
     },
     {
@@ -326,16 +326,23 @@
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassTopAppBar.kt",
       "target": "glass/GlassTopAppBar.kt",
-      "source_sha256": "63c086039b200d7500a83ea190756a394c01cf4c68defb6fbe8a18d9a20ed717",
-      "sha256": "44577354fe11013a2bd6aefc172ffd0de541adfd3d8048f6b62ace93e2c566cc",
-      "selection": "GlassTopAppBarDefaults button defaults, GlassTopAppBarContext, LocalGlassTopAppBarContext"
+      "source_sha256": "2f19a4b604f6568552ee6132babf3b3a3be23dce46266525023c4ae94bfbed75",
+      "sha256": "04265e1cba1bdc7bab67786da32cd35387bc1bf0eac074f7fd7e0a8f5eeea1a0",
+      "selection": "GlassTopAppBarDefaults button and search defaults"
     },
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassTransformPopup.kt",
       "target": "glass/GlassTransformPopup.kt",
-      "source_sha256": "02fa29d6040f47ad2494245194307214ce59620470b0b7c52c646405477bbc6a",
+      "source_sha256": "3a4b17de6c433d40d7666b2dccde57673f84a57e50ac26a13948124454bcabba",
       "sha256": "fcc6a27c403c2bd6106e7f3305daf30a9cc06e8fb708e1c34aec564967dc1aae",
       "selection": "GlassPopupAnchor, GlassAnchorSurface, GlassPopupAnchorElement"
+    },
+    {
+      "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/internal/GlassHeaderContext.kt",
+      "target": "glass/internal/GlassHeaderContext.kt",
+      "source_sha256": "50082a38f0d582b1cf9a59cbbacb312ba9c7161069060ec3e47919bdb253ebe8",
+      "sha256": "12b4af966040d72f6d25640e14cfbe5e5661be203b5e783e1d92e47a1ce9e643",
+      "selection": null
     },
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassPopupSurface.kt",

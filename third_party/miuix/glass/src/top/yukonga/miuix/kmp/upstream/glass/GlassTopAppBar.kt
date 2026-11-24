@@ -4,13 +4,10 @@
 package top.yukonga.miuix.kmp.upstream.glass
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import top.yukonga.miuix.kmp.upstream.blur.Backdrop
 import top.yukonga.miuix.kmp.upstream.material.*
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -75,26 +72,3 @@ object GlassTopAppBarDefaults {
     @Composable
     private fun isDarkTheme(): Boolean = MiuixTheme.colorScheme.background.luminance() < 0.5f
 }
-
-internal data class GlassTopAppBarContext(
-    val backdrop: Backdrop?,
-    val buttonBackdrop: Backdrop?,
-    val material: GlassMaterial,
-    val underlayMaterial: GlassMaterial?,
-    val buttonUnderlayMaterial: GlassMaterial?,
-    val floating: Boolean,
-    val alpha: Float,
-    val ramp: State<Float>,
-    val materialProgress: State<Float>,
-    val keepMaterial: Boolean,
-    val style: GlassStyle,
-    val size: Dp,
-    val shape: GlassShape,
-    val fill: Color,
-    val stroke: EdgeStroke?,
-    val shadow: GlassShadow?,
-    val onButtonBackdropConsumerChange: ((Int) -> Unit)? = null,
-)
-
-internal val LocalGlassTopAppBarContext = staticCompositionLocalOf<GlassTopAppBarContext?> { null }
-

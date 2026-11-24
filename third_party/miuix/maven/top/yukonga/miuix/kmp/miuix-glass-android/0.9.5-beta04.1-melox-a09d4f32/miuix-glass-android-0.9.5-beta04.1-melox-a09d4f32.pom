@@ -7,11 +7,11 @@
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>top.yukonga.miuix.kmp</groupId>
-  <artifactId>miuix-ui-android</artifactId>
-  <version>0.9.5-beta04</version>
+  <artifactId>miuix-glass-android</artifactId>
+  <version>0.9.5-beta04.1-melox-a09d4f32</version>
   <packaging>aar</packaging>
-  <name>miuix-ui</name>
-  <description>A UI library for Compose Multiplatform</description>
+  <name>miuix-glass</name>
+  <description>Glass material library for Miuix</description>
   <url>https://github.com/compose-miuix-ui/miuix</url>
   <licenses>
     <license>
@@ -37,20 +37,20 @@
   <dependencies>
     <dependency>
       <groupId>top.yukonga.miuix.kmp</groupId>
-      <artifactId>miuix-core-android</artifactId>
+      <artifactId>miuix-blur-android</artifactId>
       <version>0.9.5-beta04</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>top.yukonga.miuix.kmp</groupId>
-      <artifactId>miuix-squircle-android</artifactId>
+      <artifactId>miuix-material-android</artifactId>
       <version>0.9.5-beta04</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>org.jetbrains.compose.foundation</groupId>
-      <artifactId>foundation-android</artifactId>
-      <version>1.13.0-rc01</version>
+      <groupId>top.yukonga.miuix.kmp</groupId>
+      <artifactId>miuix-ui-android</artifactId>
+      <version>0.9.5-beta04.1-melox-a09d4f32</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -60,21 +60,15 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.jetbrains.compose.foundation</groupId>
+      <artifactId>foundation-android</artifactId>
+      <version>1.13.0-rc01</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
       <groupId>androidx.navigationevent</groupId>
       <artifactId>navigationevent-compose-android</artifactId>
       <version>1.2.0</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.jetbrains.compose.material3</groupId>
-      <artifactId>material3-window-size-class-android</artifactId>
-      <version>1.12.0-alpha03</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.materialkolor</groupId>
-      <artifactId>material-color-utilities-android</artifactId>
-      <version>6.0.0</version>
       <scope>runtime</scope>
     </dependency>
   </dependencies>

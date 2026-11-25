@@ -243,7 +243,7 @@ data class AppSettings(
     val predictiveBackEnabled: Boolean = true,
     val navigationTransitionStyle: NavigationTransitionStyle =
         NavigationTransitionStyle.MIUIX,
-    val hapticFeedbackEnabled: Boolean = true,
+    val hapticFeedbackEnabled: Boolean = false,
     val songListPullToRefresh: Boolean = true,
     val refreshLibraryOnStart: Boolean = false,
     val skipShortAudio: Boolean = false,

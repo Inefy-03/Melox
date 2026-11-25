@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import com.melox.player.ui.theme.LocalHapticFeedbackEnabled
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
@@ -82,7 +81,6 @@ fun AlphabetSideBar(
     onTargetIndexChanged: (targetIndex: Int, restoreLargeTitle: Boolean) -> Unit,
 ) {
     val view = LocalView.current
-    val hapticFeedbackEnabled by rememberUpdatedState(LocalHapticFeedbackEnabled.current)
     val density = LocalDensity.current
     val touchSlop = LocalViewConfiguration.current.touchSlop
     val scope = rememberCoroutineScope()
@@ -159,9 +157,7 @@ fun AlphabetSideBar(
                 }
             }
         }
-        if (hapticFeedbackEnabled) {
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-        }
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
     }
 
     fun clearSelection() {

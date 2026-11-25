@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -30,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -209,7 +213,8 @@ fun TrackActionsOverlay(
             (track ?: retainedTrack)?.let { selectedTrack ->
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .offset(y = (-6).dp),
                 ) {
                     MusicTrackSummary(
                         track = selectedTrack,
@@ -246,11 +251,12 @@ fun TrackActionsOverlay(
             SheetScrollableContent(
                 headerPadding = headerPadding,
                 bottomPadding = navigationBarBottomPadding + 16.dp,
+                headerTopReduction = 12.dp,
             ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
+                        .padding(top = 6.dp),
                 ) {
                     TrackAction(
                         icon = GlassIcons.Add,
@@ -608,9 +614,17 @@ internal fun TrackArtistsSheet(
 private fun SheetScrollableContent(
     headerPadding: PaddingValues,
     bottomPadding: Dp,
+    headerTopReduction: Dp = 0.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val layoutDirection = LocalLayoutDirection.current
+    val adjustedPadding = PaddingValues(
+        start = headerPadding.calculateStartPadding(layoutDirection),
+        top = (headerPadding.calculateTopPadding() - headerTopReduction).coerceAtLeast(0.dp),
+        end = headerPadding.calculateEndPadding(layoutDirection),
+        bottom = headerPadding.calculateBottomPadding(),
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -618,7 +632,7 @@ private fun SheetScrollableContent(
                 isEnabled = { scrollState.maxValue > 0 },
             )
             .verticalScroll(scrollState, overscrollEffect = null)
-            .padding(headerPadding)
+            .padding(adjustedPadding)
             .padding(bottom = bottomPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,

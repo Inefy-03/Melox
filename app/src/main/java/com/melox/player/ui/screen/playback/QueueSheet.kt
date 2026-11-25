@@ -56,6 +56,7 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.glass.GlassBottomSheetDefaults
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import com.melox.player.ui.component.IconButton
@@ -247,7 +248,10 @@ fun QueueSheet(
             draftQueue = playback.queue
             withFrameNanos { }
             if (playback.currentIndex in playback.queue.indices) {
-                queueListState.scrollToItem(playback.currentIndex)
+                queueListState.scrollToItem(
+                    playback.currentIndex,
+                    -with(density) { 16.dp.roundToPx() },
+                )
             }
         }
     }
@@ -338,7 +342,10 @@ fun QueueSheet(
                     onClick = {
                         if (displayedCurrentIndex in draftQueue.indices) {
                             queueCoroutineScope.launch {
-                                queueListState.animateScrollToItem(displayedCurrentIndex)
+                                queueListState.animateScrollToItem(
+                                    displayedCurrentIndex,
+                                    -with(density) { 16.dp.roundToPx() },
+                                )
                             }
                         }
                     },
@@ -513,6 +520,7 @@ fun QueueSheet(
                                 ) {
                                     IconButton(
                                         onClick = { moveAfterCurrent(index, slotKey) },
+                                        minWidth = GlassBottomSheetDefaults.ButtonSize,
                                         glassEnabled = false,
                                         enabled = playNextExitKey == null,
                                     ) {
@@ -533,6 +541,7 @@ fun QueueSheet(
                                 }
                                 IconButton(
                                     onClick = { onRemove(index) },
+                                    minWidth = GlassBottomSheetDefaults.ButtonSize,
                                     glassEnabled = false,
                                 ) {
                                     Icon(

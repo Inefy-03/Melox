@@ -201,8 +201,7 @@ class SettingsRepository(context: Context) {
                         enumValueOrDefault(storedValue, NavigationTransitionStyle.MIUIX)
                     }
                     ?: NavigationTransitionStyle.MIUIX,
-                hapticFeedbackEnabled = preferences[Keys.HapticFeedbackEnabled]
-                    ?: preferences[Keys.LegacyTabSwitchHapticsEnabled] ?: true,
+                hapticFeedbackEnabled = preferences[Keys.TabSwitchHapticsEnabled] ?: false,
                 songListPullToRefresh = preferences[Keys.SongListPullToRefresh] ?: true,
                 refreshLibraryOnStart = preferences[Keys.RefreshLibraryOnStart] ?: false,
                 skipShortAudio = preferences[Keys.SkipShortAudio] ?: false,
@@ -572,7 +571,7 @@ class SettingsRepository(context: Context) {
 
     suspend fun setHapticFeedbackEnabled(enabled: Boolean) {
         dataStore.edit { preferences ->
-            preferences[Keys.HapticFeedbackEnabled] = enabled
+            preferences[Keys.TabSwitchHapticsEnabled] = enabled
         }
     }
 
@@ -743,8 +742,7 @@ class SettingsRepository(context: Context) {
         val LiquidGlass = booleanPreferencesKey("liquid_glass")
         val PredictiveBackEnabled = booleanPreferencesKey("predictive_back_enabled")
         val NavigationTransitionStyle = stringPreferencesKey("navigation_transition_style")
-        val HapticFeedbackEnabled = booleanPreferencesKey("haptic_feedback_enabled")
-        val LegacyTabSwitchHapticsEnabled = booleanPreferencesKey("tab_switch_haptics_enabled")
+        val TabSwitchHapticsEnabled = booleanPreferencesKey("bottom_bar_switch_haptics_enabled")
         val SongListPullToRefresh = booleanPreferencesKey("song_list_pull_to_refresh")
         val RefreshLibraryOnStart = booleanPreferencesKey("refresh_library_on_start")
         val SkipShortAudio = booleanPreferencesKey("skip_short_audio")

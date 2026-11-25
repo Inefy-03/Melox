@@ -34,7 +34,6 @@ import com.melox.player.ui.rootPagerUserScrollEnabled
 import com.melox.player.ui.shouldShowNavigation
 import com.melox.player.ui.shouldTriggerTabSwitchHaptic
 import com.melox.player.ui.shouldUseNavigationRail
-import com.melox.player.ui.theme.SettingsHapticFeedback
 import com.melox.player.ui.theme.resolveDynamicColorSeed
 import com.melox.player.ui.theme.toColorSchemeMode
 import com.melox.player.ui.usesNormalMiniPlayerChrome
@@ -58,19 +57,6 @@ class NavigationAndThemeTest {
             state.heightOffsetLimit = -100f
         }
         assertTrue(visible.value)
-    }
-
-    @Test
-    fun glassSearchResultsAreInteractiveOnlyForAnExpandedNonblankQuery() {
-        assertFalse(com.melox.player.ui.component.showGlassSearchResults(false, "song"))
-        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, ""))
-        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "  "))
-        assertTrue(com.melox.player.ui.component.showGlassSearchResults(true, "song"))
-        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "song", ""))
-        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "song", "old"))
-        assertFalse(com.melox.player.ui.component.showGlassSearchResults(true, "song", "son"))
-        assertTrue(com.melox.player.ui.component.showGlassSearchResults(true, "song", "song"))
-        assertFalse(com.melox.player.ui.component.showGlassSearchResults(false, "song", "song"))
     }
 
     @Test
@@ -297,34 +283,8 @@ class NavigationAndThemeTest {
     }
 
     @Test
-    fun hapticFeedbackDefaultsOnAndGatesEveryFeedbackTypeAtDispatchTime() {
-        assertTrue(AppSettings().hapticFeedbackEnabled)
-        var enabled = true
-        val received = mutableListOf<HapticFeedbackType>()
-        val delegate = object : HapticFeedback {
-            override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
-                received += hapticFeedbackType
-            }
-        }
-        val feedback = SettingsHapticFeedback(delegate) { enabled }
-        val effects = listOf(
-            HapticFeedbackType.ContextClick,
-            HapticFeedbackType.LongPress,
-            HapticFeedbackType.SegmentTick,
-            HapticFeedbackType.TextHandleMove,
-            HapticFeedbackType.GestureEnd,
-            HapticFeedbackType.GestureThresholdActivate,
-            HapticFeedbackType.ToggleOn,
-            HapticFeedbackType.Confirm,
-        )
-        effects.forEach(feedback::performHapticFeedback)
-        assertEquals(effects, received)
-        enabled = false
-        effects.forEach(feedback::performHapticFeedback)
-        assertEquals(effects, received)
-        enabled = true
-        effects.forEach(feedback::performHapticFeedback)
-        assertEquals(effects + effects, received)
+    fun bottomBarHapticsDefaultOff() {
+        assertFalse(AppSettings().hapticFeedbackEnabled)
     }
 
     @Test

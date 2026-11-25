@@ -1,6 +1,6 @@
 package com.melox.player.ui.screen.library
 
-import com.melox.player.ui.component.LocalGlassSearchResults
+import com.melox.player.ui.component.LocalGlassSearchQuery
 
 import com.melox.player.ui.adaptiveWindowSize
 import androidx.compose.runtime.getValue
@@ -102,7 +102,7 @@ fun AlbumLibraryScreen(
             end = contentPadding.calculateEndPadding(layoutDirection) + AlbumGridHorizontalPadding,
             bottom = contentPadding.calculateBottomPadding() + 12.dp,
         )
-        val showingSearchResults = LocalGlassSearchResults.current
+        val showingSearchResults = LocalGlassSearchQuery.current != null
         LazyVerticalGrid(
             columns = GridCells.Fixed(
                 albumGridColumns(sortConfig.gridStyle, maxWidth, contentPadding),
@@ -170,16 +170,8 @@ fun AlbumLibraryScreen(
                 },
                 scrollToItem = gridState::scrollToItem,
                 sections = sections,
-                onTargetIndexChanged = { _, restoreLargeTitle ->
-                    val state = scrollBehavior.state
-                    if (restoreLargeTitle && !scrollBehavior.isPinned) {
-                        state.heightOffset = 0f
-                        state.contentOffset = 0f
-                    } else if (state.heightOffsetLimit != -Float.MAX_VALUE) {
-                        state.heightOffset = state.heightOffsetLimit
-                        state.contentOffset = state.heightOffsetLimit
-                    }
-                },
+                canScrollBackward = { gridState.canScrollBackward },
+                scrollBehavior = scrollBehavior,
                 modifier = Modifier
                     .align(Alignment.TopEnd),
             )

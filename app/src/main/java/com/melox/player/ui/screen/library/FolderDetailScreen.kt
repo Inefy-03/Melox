@@ -1,5 +1,7 @@
 package com.melox.player.ui.screen.library
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.melox.player.ui.icon.*
@@ -66,7 +68,7 @@ import top.yukonga.miuix.kmp.basic.BreadcrumbItem
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.melox.player.ui.component.PageScaffold
-import com.melox.player.ui.component.LocalGlassSearchResults
+import com.melox.player.ui.component.LocalGlassSearchQuery
 import com.melox.player.ui.component.library.LocalSongListFileNameVisible
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.melox.player.ui.component.navigationBackIcon
@@ -108,7 +110,7 @@ fun FolderDetailScreen(
     onBlockFolder: (String) -> Unit = {},
     scanStatus: ScanStatus = ScanStatus.Success(folder.tracks.size),
 ) {
-    var query by rememberSaveable(folder.key) { mutableStateOf("") }
+    val searchDraft = remember(folder.key) { TextFieldState() }
     var searchVisible by rememberSaveable(folder.key) { mutableStateOf(false) }
     var searchFocused by remember(folder.key) { mutableStateOf(false) }
     val canSearch = folder.tracks.isNotEmpty()
@@ -116,7 +118,6 @@ fun FolderDetailScreen(
         if (!canSearch) {
             searchVisible = false
             searchFocused = false
-            query = ""
         }
     }
     val searchFields = SongSearchFields(
@@ -128,8 +129,8 @@ fun FolderDetailScreen(
     }
     var selectionMode by remember(folder.key) { mutableStateOf(false) }
     val onDirectorySearchBack: () -> Unit = {
-        if (query.isNotEmpty()) {
-            query = ""
+        if (searchDraft.text.isNotEmpty()) {
+            searchDraft.clearText()
         } else {
             searchVisible = false
             searchFocused = false
@@ -146,9 +147,6 @@ fun FolderDetailScreen(
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
     val layoutDirection = LocalLayoutDirection.current
     val sortedTracks = remember(folder.tracks, sortConfig) { sortMusicTracks(folder.tracks, sortConfig) }
-    val displayedTracks = remember(sortedTracks, query, searchFields, canSearch) {
-        if (canSearch) filterMusicTracks(sortedTracks, query, searchFields) else sortedTracks
-    }
     val sectionIndexMap = remember(sortedTracks, sortConfig.field) {
         buildMap {
             sortedTracks.forEachIndexed { index, track ->
@@ -162,7 +160,7 @@ fun FolderDetailScreen(
         }
     }
     var pendingBlockFolder by remember(folder.key) { mutableStateOf<FolderGroup?>(null) }
-    val displayedKeys = displayedTracks.map(MusicTrack::contentUri)
+    val displayedKeys = sortedTracks.map(MusicTrack::contentUri)
     BackHandler(enabled = selectionMode) {
         selectedTrackUris = emptySet()
         selectionMode = false
@@ -213,8 +211,8 @@ fun FolderDetailScreen(
                                     }
                                     if (showSongActions) {
                                         ShufflePlayButton(
-                                            enabled = displayedTracks.isNotEmpty(),
-                                            onClick = { onShufflePlay(displayedTracks) },
+                                            enabled = sortedTracks.isNotEmpty(),
+                                            onClick = { onShufflePlay(sortedTracks) },
                                         )
                                     }
                                 }
@@ -237,7 +235,7 @@ fun FolderDetailScreen(
                                     },
                                     onAction = {
                                         val tracks = selectedItemsInDisplayedOrder(
-                                            displayedTracks,
+                                            sortedTracks,
                                             selectedTrackUris,
                                             MusicTrack::contentUri,
                                         )
@@ -260,7 +258,6 @@ fun FolderDetailScreen(
                                     onSearchVisibleChange = { visible ->
                                         searchVisible = visible
                                         searchFocused = visible
-                                        if (!visible) query = ""
                                     },
                                     onSortConfigChange = onSortConfigChange,
                                 )
@@ -273,16 +270,14 @@ fun FolderDetailScreen(
                                 LibrarySearchBar(
                                     visible = searchVisible,
                                     focused = searchFocused,
-                                    query = query,
+                                    queryState = searchDraft,
                                     label = stringResource(R.string.search_hint),
                                     onBackRequest = onDirectorySearchBack.takeIf { breadcrumbItems.isNotEmpty() },
-                                    onQueryChange = { query = it },
                                     onFocusedChange = { searchFocused = it },
                                     onVisibleChange = { visible ->
                                         searchVisible = visible
                                         if (!visible) {
                                             searchFocused = false
-                                            query = ""
                                         }
                                     },
                                 )
@@ -320,25 +315,34 @@ fun FolderDetailScreen(
             }
         },
         ) { padding ->
+        val searchQuery = LocalGlassSearchQuery.current
+        val showingResults = searchQuery != null
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(backdrop?.let { Modifier.onGloballyPositioned { coordinates -> backdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
+                .then(backdrop?.takeUnless { showingResults }?.let { Modifier.onGloballyPositioned { coordinates -> backdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
         ) {
-            val showingResults = LocalGlassSearchResults.current
             val displayedChildFolders = if (showingResults) emptyList() else childFolders
+            val displayedTracks = if (searchQuery == null) sortedTracks else remember(sortedTracks, searchQuery, searchFields) {
+                if (searchQuery.isBlank()) emptyList() else filterMusicTracks(sortedTracks, searchQuery, searchFields)
+            }
+            val searchQueueTracks = remember(displayedTracks, sortedTracks, sortConfig) {
+                if (displayedTracks === sortedTracks) sortedTracks else sortMusicTracks(displayedTracks, sortConfig)
+            }
             val listContent: @Composable (LazyListState) -> Unit = { listState ->
                 MusicListScreen(
-                    showLocateAction = true,
+                    showLocateAction = !showingResults,
+                    showIndex = !showingResults,
                     currentTrackContentUri = currentTrackContentUri,
                     miniPlayerBounds = miniPlayerBounds,
                     playerContentBounds = playerContentBounds,
                     onTrackClick = onTrackClick,
-                    displayedTracks = if (showingResults) displayedTracks else sortedTracks,
+                    displayedTracks = displayedTracks,
+                    queueTracks = searchQueueTracks,
                     sectionIndexMap = if (showingResults) emptyMap() else sectionIndexMap,
                     scanStatus = scanStatus,
                     currentTrackId = currentTrackId,
-                    query = if (showingResults) query else "",
+                    query = searchQuery.orEmpty(),
                     sortConfig = sortConfig,
                     onPlayNext = onPlayNext,
                     onAppendToQueue = onAppendToQueue,
@@ -372,7 +376,7 @@ fun FolderDetailScreen(
                         { emptyModifier ->
                             MusicLibraryEmptyState(
                                 scanStatus = scanStatus,
-                                query = query,
+                                query = searchQuery.orEmpty(),
                                 emptyMessageRes = R.string.folder_empty,
                                 noSearchResultsRes = R.string.folder_no_search_results,
                                 icon = GlassIcons.FolderFill,
@@ -397,7 +401,7 @@ fun FolderDetailScreen(
                     },
                 )
             }
-            // The search overlay is a separate composition and may overlap the directory's disposal.
+            // The browse viewport keeps its saved position while the overlay has its own list state.
             if (showingResults) {
                 listContent(rememberLazyListState())
             } else {

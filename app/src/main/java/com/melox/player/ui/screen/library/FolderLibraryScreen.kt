@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,9 +57,8 @@ import com.melox.player.ui.component.PageCard
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.ArrowRight
 import top.yukonga.miuix.kmp.icon.extended.FolderFill
@@ -180,16 +178,8 @@ fun FolderLibraryScreen(
                 },
                 scrollToItem = listState::scrollToItem,
                 sections = sections,
-                onTargetIndexChanged = { _, restoreLargeTitle ->
-                    val state = scrollBehavior.state
-                    if (restoreLargeTitle && !scrollBehavior.isPinned) {
-                        state.heightOffset = 0f
-                        state.contentOffset = 0f
-                    } else if (state.heightOffsetLimit != -Float.MAX_VALUE) {
-                        state.heightOffset = state.heightOffsetLimit
-                        state.contentOffset = state.heightOffsetLimit
-                    }
-                },
+                canScrollBackward = { listState.canScrollBackward },
+                scrollBehavior = scrollBehavior,
                 modifier = Modifier
                     .align(Alignment.TopEnd),
             )
@@ -219,27 +209,16 @@ internal fun FolderHideDialog(
         enableWindowDim = true,
         onDismissRequest = onDismiss,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_cancel),
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_confirm),
-                onClick = {
-                    val path = folder?.path
-                    onDismiss()
-                    path?.let(onBlockFolder)
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+            confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+            onDismiss = onDismiss,
+            onConfirm = {
+                val path = folder?.path
+                onDismiss()
+                path?.let(onBlockFolder)
+            },
+        )
     }
 }
 

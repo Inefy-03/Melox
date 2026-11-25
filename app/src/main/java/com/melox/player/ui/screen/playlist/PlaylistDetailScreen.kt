@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.playlist
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,7 +45,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
+import com.melox.player.data.library.SearchMatch
 import com.melox.player.data.library.createMusicSortKeys
+import com.melox.player.data.library.rankSearchResults
 import com.melox.player.data.library.SongSearchFields
 import com.melox.player.data.playlist.PlaylistSortConfig
 import com.melox.player.data.playlist.PlaylistSortField
@@ -60,7 +62,7 @@ import com.melox.player.ui.component.library.LibrarySearchBar
 import com.melox.player.ui.component.library.LibrarySearchButton
 import com.melox.player.ui.component.TopAppBar
 import com.melox.player.ui.component.TopBarBackdrop
-import com.melox.player.ui.component.LocalGlassSearchResults
+import com.melox.player.ui.component.LocalGlassSearchQuery
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.rememberSearchTopBarScrollBehavior
 import com.melox.player.ui.component.library.AlphabetSections
@@ -69,6 +71,7 @@ import com.melox.player.ui.component.library.ShufflePlayButton
 import com.melox.player.ui.component.library.MusicLocationAction
 import com.melox.player.ui.component.library.MusicTrackRow
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
+import com.melox.player.ui.component.library.ResetSearchResultScroll
 import com.melox.player.ui.component.library.LocalSongListFileNameVisible
 import com.melox.player.ui.component.library.SelectionActionsAnimatedContent
 import com.melox.player.ui.component.library.SelectionNavigationIconAnimatedContent
@@ -88,15 +91,16 @@ import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import com.melox.player.ui.component.Icon
 import com.melox.player.ui.component.IconButton
 import com.melox.player.ui.component.PageScaffold
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.icon.extended.Music
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.glass.GlassDialogButtonRole
 
 @Composable
 fun PlaylistDetailScreen(
@@ -132,7 +136,7 @@ fun PlaylistDetailScreen(
     miniPlayerBounds: Rect = Rect.Zero,
     playerContentBounds: Rect = Rect.Zero,
 ) {
-    var query by rememberSaveable(playlist.id) { mutableStateOf("") }
+    val searchDraft = remember(playlist.id) { TextFieldState() }
     var searchVisible by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var searchFocused by remember(playlist.id) { mutableStateOf(false) }
     val scrollBehavior = rememberSearchTopBarScrollBehavior(searchVisible)
@@ -151,14 +155,8 @@ fun PlaylistDetailScreen(
         showFileName = LocalSongListFileNameVisible.current,
         unknownTitle = stringResource(R.string.music_unknown_title),
     )
-    val filteredTracks = remember(resolvedTracks, query, searchFields) {
-        val keyword = query.trim()
-        if (keyword.isEmpty()) resolvedTracks else resolvedTracks.filter { item ->
-            searchFields.matches(item.track, keyword)
-        }
-    }
-    val persistedDisplayedTracks = remember(filteredTracks, sortConfig) {
-        sortPlaylistTracks(filteredTracks, sortConfig)
+    val persistedDisplayedTracks = remember(resolvedTracks, sortConfig) {
+        sortPlaylistTracks(resolvedTracks, sortConfig)
     }
     var selectedEntryIds by remember(playlist.id) {
         mutableStateOf<Set<String>>(emptySet())
@@ -180,7 +178,7 @@ fun PlaylistDetailScreen(
     var reorderScrollTopPadding by remember { mutableStateOf(0.dp) }
     var reorderScrollBottomPadding by remember { mutableStateOf(0.dp) }
     val reorderEnabled =
-        selectionMode && sortConfig.field == PlaylistSortField.CUSTOM && query.isBlank()
+        selectionMode && sortConfig.field == PlaylistSortField.CUSTOM && !searchVisible
     val currentOnMoveEntry by rememberUpdatedState(onMoveEntry)
     val currentCanonicalEntryIds by rememberUpdatedState(
         playlist.entries.map { entry -> entry.id },
@@ -214,8 +212,7 @@ fun PlaylistDetailScreen(
     }
     val showAlphabetIndex = displayedTracks.isNotEmpty() &&
         (sortConfig.field == PlaylistSortField.TITLE ||
-            sortConfig.field == PlaylistSortField.FILE_NAME) &&
-        query.isBlank()
+            sortConfig.field == PlaylistSortField.FILE_NAME)
     val locateActionVisible = currentIndex >= 0 && !selectionMode &&
         miniPlayerBounds.width > 0f && playerContentBounds.width > 0f
     val locateBottomPadding = if (locateActionVisible) {
@@ -226,7 +223,7 @@ fun PlaylistDetailScreen(
         0.dp
     }
     val displayedEntryIds = displayedTracks.map { item -> item.entry.id }
-    PreserveSortScrollPosition(sortConfig, query, displayedTracks.size, listState) {
+    PreserveSortScrollPosition(sortConfig, "", displayedTracks.size, listState) {
         listState.requestScrollToItem(
             listState.firstVisibleItemIndex,
             listState.firstVisibleItemScrollOffset,
@@ -391,7 +388,6 @@ fun PlaylistDetailScreen(
                                     onClick = {
                                         searchVisible = !searchVisible
                                         searchFocused = searchVisible
-                                        if (!searchVisible) query = ""
                                     },
                                 )
                                 PlaylistSortButton(
@@ -409,15 +405,13 @@ fun PlaylistDetailScreen(
                         LibrarySearchBar(
                             visible = searchVisible,
                             focused = searchFocused,
-                            query = query,
+                            queryState = searchDraft,
                             label = stringResource(R.string.search_hint),
-                            onQueryChange = { query = it },
                             onFocusedChange = { searchFocused = it },
                             onVisibleChange = { visible ->
                                 searchVisible = visible
                                 if (!visible) {
                                     searchFocused = false
-                                    query = ""
                                 }
                             },
                         )
@@ -426,31 +420,52 @@ fun PlaylistDetailScreen(
             }
         },
     ) { padding ->
-        val selectionAllowed = !LocalGlassSearchResults.current
+        val searchQuery = LocalGlassSearchQuery.current
+        val selectionAllowed = searchQuery == null
         val selectingTracks = selectionAllowed && selectionMode
+        val playbackTracks = if (searchQuery == null) displayedTracks else {
+            remember(displayedTracks, searchQuery, searchFields) {
+                val keyword = searchQuery.trim()
+                if (keyword.isEmpty()) emptyList() else displayedTracks.filter { item ->
+                    searchFields.match(item.track, keyword) != SearchMatch.NONE
+                }
+            }
+        }
+        val resultTracks = if (searchQuery == null) displayedTracks else {
+            remember(playbackTracks, searchQuery, searchFields) {
+                playbackTracks.rankSearchResults(searchQuery) { item, keyword -> searchFields.match(item.track, keyword) }
+            }
+        }
+        val contentListState = if (searchQuery == null) listState else {
+            val searchListState = rememberLazyListState()
+            ResetSearchResultScroll(searchQuery, searchListState)
+            searchListState
+        }
         val indexBottomPadding = maxOf(
             padding.calculateBottomPadding(),
             bottomContentPadding,
         )
-        SideEffect {
-            reorderScrollTopPadding = padding.calculateTopPadding()
-            reorderScrollBottomPadding = indexBottomPadding
+        if (selectionAllowed) {
+            SideEffect {
+                reorderScrollTopPadding = padding.calculateTopPadding()
+                reorderScrollBottomPadding = indexBottomPadding
+            }
         }
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(backdrop?.let { Modifier.onGloballyPositioned { coordinates -> backdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
+                .then(backdrop?.takeIf { selectionAllowed }?.let { Modifier.onGloballyPositioned { coordinates -> backdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
         ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(locationBackdrop?.let {
+                    .then(locationBackdrop?.takeIf { selectionAllowed }?.let {
                         Modifier.onGloballyPositioned { coordinates -> locationCaptureCoordinates = coordinates }.glassLayerBackdrop(it)
                     } ?: Modifier)
                     .scrollEndHaptic()
                     .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
-                state = listState,
+                state = contentListState,
                 userScrollEnabled = !isDragging,
                 contentPadding = PaddingValues(
                     start = padding.calculateStartPadding(layoutDirection),
@@ -464,7 +479,7 @@ fun PlaylistDetailScreen(
                 ),
                 overscrollEffect = null,
             ) {
-                if (displayedTracks.isEmpty()) {
+                if (resultTracks.isEmpty() && selectionAllowed) {
                     item(key = "empty_playlist_detail") {
                         Box(
                             modifier = Modifier.fillParentMaxSize(),
@@ -478,7 +493,7 @@ fun PlaylistDetailScreen(
                     }
                 } else {
                     itemsIndexed(
-                        items = displayedTracks,
+                        items = resultTracks,
                         key = { _, item -> item.entry.id },
                     ) { _, item ->
                         val entryId = item.entry.id
@@ -495,7 +510,7 @@ fun PlaylistDetailScreen(
                                             )
                                         } else {
                                             resolvePlaylistPlaybackSelection(
-                                                displayedTracks = displayedTracks,
+                                                displayedTracks = playbackTracks,
                                                 selectedEntryId = entryId,
                                             )?.let { (tracks, startIndex) ->
                                                 onTrackClick(tracks, startIndex)
@@ -549,36 +564,28 @@ fun PlaylistDetailScreen(
                 }
             }
 
-            if (showAlphabetIndex) {
+            if (selectionAllowed && showAlphabetIndex) {
                 AlphabetSideBar(
                     contentPadding = LocalPageAlphabetIndexPadding.current,
                     sectionIndexMap = sectionIndexMap,
                     itemCount = displayedTracks.size,
-                    scrollStateKey = listState,
+                    scrollStateKey = contentListState,
                     isAtTarget = { targetIndex ->
-                        listState.firstVisibleItemIndex == targetIndex &&
-                            listState.firstVisibleItemScrollOffset == 0
+                        contentListState.firstVisibleItemIndex == targetIndex &&
+                            contentListState.firstVisibleItemScrollOffset == 0
                     },
-                    scrollToItem = listState::scrollToItem,
+                    scrollToItem = contentListState::scrollToItem,
                     sections = sections,
-                    onTargetIndexChanged = { _, restoreLargeTitle ->
-                        val topBarState = scrollBehavior.state
-                        if (restoreLargeTitle && !scrollBehavior.isPinned) {
-                            topBarState.heightOffset = 0f
-                            topBarState.contentOffset = 0f
-                        } else if (topBarState.heightOffsetLimit != -Float.MAX_VALUE) {
-                            topBarState.heightOffset = topBarState.heightOffsetLimit
-                            topBarState.contentOffset = topBarState.heightOffsetLimit
-                        }
-                    },
+                    canScrollBackward = { contentListState.canScrollBackward },
+                    scrollBehavior = scrollBehavior,
                     modifier = Modifier
                         .align(Alignment.TopEnd),
                 )
             }
             MusicLocationAction(
-                visible = locateActionVisible,
+                visible = selectionAllowed && locateActionVisible,
                 currentIndex = currentIndex,
-                listState = listState,
+                listState = contentListState,
                 scrollBehavior = scrollBehavior,
                 miniPlayerBounds = miniPlayerBounds,
                 contentPadding = padding,
@@ -592,6 +599,7 @@ fun PlaylistDetailScreen(
         show = showRename,
         title = stringResource(R.string.playlist_rename_title),
         initialName = playlist.name,
+        requestFocusOnShow = true,
         onDismiss = { showRename = false },
         onConfirm = { name ->
             onRename(name)
@@ -624,31 +632,21 @@ fun PlaylistDetailScreen(
         enableWindowDim = true,
         onDismissRequest = { showRemoveSelectedConfirm = false },
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
-                text = stringResource(R.string.playlist_remove_selected_cancel),
-                onClick = { showRemoveSelectedConfirm = false },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.playlist_remove_selected_confirm),
-                onClick = {
-                    val entryIds = selectedEntryIds
-                    showRemoveSelectedConfirm = false
-                    if (entryIds.isNotEmpty()) {
-                        onRemoveEntries(entryIds)
-                        selectedEntryIds = emptySet()
-                        selectionMode = false
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.playlist_remove_selected_cancel),
+            confirmText = stringResource(R.string.playlist_remove_selected_confirm),
+            onDismiss = { showRemoveSelectedConfirm = false },
+            onConfirm = {
+                val entryIds = selectedEntryIds
+                showRemoveSelectedConfirm = false
+                if (entryIds.isNotEmpty()) {
+                    onRemoveEntries(entryIds)
+                    selectedEntryIds = emptySet()
+                    selectionMode = false
+                }
+            },
+            confirmRole = GlassDialogButtonRole.Destructive,
+        )
     }
     OverlayDialog(
         show = showDelete,
@@ -657,26 +655,16 @@ fun PlaylistDetailScreen(
         enableWindowDim = true,
         onDismissRequest = { showDelete = false },
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_cancel),
-                onClick = { showDelete = false },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_confirm),
-                onClick = {
-                    showDelete = false
-                    onDelete()
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+            confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+            onDismiss = { showDelete = false },
+            onConfirm = {
+                showDelete = false
+                onDelete()
+            },
+            confirmRole = GlassDialogButtonRole.Destructive,
+        )
     }
 }
 

@@ -1,14 +1,14 @@
 package com.melox.player.ui.component
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 
 internal class GlassSearchSession(
     val expanded: State<Boolean>,
     val pageActive: State<Boolean>,
-    val query: State<String>,
+    val queryState: State<TextFieldState>,
     val focused: State<Boolean>,
     val label: State<String>,
-    val onQueryChange: State<(String) -> Unit>,
     val onFocusedChange: State<(Boolean) -> Unit>,
     val onDismiss: State<() -> Unit>,
 )
@@ -20,25 +20,24 @@ internal class GlassSearchPage {
 }
 
 internal val LocalGlassSearchPage = staticCompositionLocalOf<GlassSearchPage?> { null }
-internal val LocalGlassSearchResults = staticCompositionLocalOf { false }
+internal val LocalGlassSearchQuery = compositionLocalOf<String?> { null }
 
 @Composable
 internal fun registerGlassSearchSession(
-    expanded: Boolean, pageActive: Boolean, query: String, label: String, focused: Boolean,
-    onQueryChange: (String) -> Unit, onFocusedChange: (Boolean) -> Unit,
+    expanded: Boolean, pageActive: Boolean, queryState: TextFieldState, label: String, focused: Boolean,
+    onFocusedChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ): Boolean {
     val page = LocalGlassSearchPage.current
     if (page == null) return false
     val expandedState = rememberUpdatedState(expanded)
     val pageActiveState = rememberUpdatedState(pageActive)
-    val queryState = rememberUpdatedState(query)
+    val editor = rememberUpdatedState(queryState)
     val focusedState = rememberUpdatedState(focused)
     val labelState = rememberUpdatedState(label)
-    val queryCallback = rememberUpdatedState(onQueryChange)
     val focusCallback = rememberUpdatedState(onFocusedChange)
     val dismissCallback = rememberUpdatedState(onDismiss)
-    val session = remember(page) { GlassSearchSession(expandedState, pageActiveState, queryState, focusedState, labelState, queryCallback, focusCallback, dismissCallback) }
+    val session = remember(page) { GlassSearchSession(expandedState, pageActiveState, editor, focusedState, labelState, focusCallback, dismissCallback) }
     DisposableEffect(page, session) {
         page.session = session
         onDispose { if (page.session === session) page.session = null }

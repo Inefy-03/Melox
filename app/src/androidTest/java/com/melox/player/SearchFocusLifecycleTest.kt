@@ -1,6 +1,11 @@
 package com.melox.player
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.ViewCompat
@@ -10,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.melox.player.model.AppSettings
 import com.melox.player.model.NavigationTransitionStyle
 import com.melox.player.ui.component.library.LibrarySearchBar
+import com.melox.player.ui.component.LocalGlassSearchQuery
 import com.melox.player.ui.component.LocalTopBarBlurSettings
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.TopBarBlurSettings
@@ -66,9 +72,8 @@ class SearchFocusLifecycleTest {
                                                 LibrarySearchBar(
                                                     visible = visible.value,
                                                     focused = false,
-                                                    query = "retained query",
+                                                    queryState = rememberTextFieldState("retained query"),
                                                     label = "Search",
-                                                    onQueryChange = {},
                                                     onFocusedChange = {},
                                                     onVisibleChange = {
                                                         visible.value = it
@@ -119,9 +124,82 @@ class SearchFocusLifecycleTest {
     }
 
     @Test
+    fun queryEditsKeepBothViewportsMountedAndDismissPreservesTheOutgoingDraft() {
+        val expanded = mutableStateOf(false)
+        val query = TextFieldState()
+        val resultQueries = mutableListOf<String>()
+        var browseMounts = 0
+        var browseDisposals = 0
+        var resultMounts = 0
+        var resultDisposals = 0
+        var draftOnDisposal: String? = null
+        lateinit var view: ComposeView
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                view = ComposeView(activity).apply {
+                    setContent {
+                        MeloxTheme(AppSettings(blurEnabled = false)) {
+                            PageScaffold(topBar = {
+                                LibrarySearchBar(
+                                    visible = expanded.value,
+                                    focused = false,
+                                    queryState = query,
+                                    label = "Search",
+                                    onFocusedChange = {},
+                                    onVisibleChange = { expanded.value = it },
+                                )
+                            }) {
+                                val draft = LocalGlassSearchQuery.current
+                                if (draft == null) {
+                                    DisposableEffect(Unit) {
+                                        browseMounts++
+                                        onDispose { browseDisposals++ }
+                                    }
+                                } else {
+                                    DisposableEffect(Unit) {
+                                        resultMounts++
+                                        onDispose {
+                                            resultDisposals++
+                                            draftOnDisposal = query.text.toString()
+                                        }
+                                    }
+                                    SideEffect { resultQueries.add(draft) }
+                                }
+                            }
+                        }
+                    }
+                }
+                activity.setContentView(view)
+            }
+            awaitFrames(scenario, view)
+            scenario.onActivity { expanded.value = true }
+            awaitFrames(scenario, view, count = 36)
+            for (draft in listOf("test", "", "final query")) {
+                scenario.onActivity { query.setTextAndPlaceCursorAtEnd(draft) }
+                awaitFrames(scenario, view, count = 4)
+                scenario.onActivity { assertEquals(draft, resultQueries.last()) }
+            }
+            scenario.onActivity {
+                resultQueries.clear()
+                expanded.value = false
+            }
+            awaitFrames(scenario, view, count = 85)
+            scenario.onActivity {
+                assertEquals(1, browseMounts)
+                assertEquals(0, browseDisposals)
+                assertEquals(1, resultMounts)
+                assertEquals(1, resultDisposals)
+                assertEquals("final query", draftOnDisposal)
+                assertEquals("", query.text.toString())
+                assertTrue(resultQueries.all { it == "final query" })
+            }
+        }
+    }
+
+    @Test
     fun reopeningSearchClearsThePageQuery() {
         val mounted = mutableStateOf(true)
-        val query = mutableStateOf("previous query")
+        val query = TextFieldState("previous query")
         lateinit var view: ComposeView
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
@@ -136,9 +214,8 @@ class SearchFocusLifecycleTest {
                                         LibrarySearchBar(
                                             visible = true,
                                             focused = false,
-                                            query = query.value,
+                                            queryState = query,
                                             label = "Search",
-                                            onQueryChange = { query.value = it },
                                             onFocusedChange = {},
                                             onVisibleChange = {},
                                         )
@@ -151,15 +228,15 @@ class SearchFocusLifecycleTest {
                 activity.setContentView(view)
             }
             awaitFrames(scenario, view)
-            assertEquals("", query.value)
+            assertEquals("", query.text.toString())
             scenario.onActivity { mounted.value = false }
             awaitFrames(scenario, view, count = 3)
             scenario.onActivity {
-                query.value = "previous query"
+                query.setTextAndPlaceCursorAtEnd("previous query")
                 mounted.value = true
             }
             awaitFrames(scenario, view)
-            assertEquals("", query.value)
+            assertEquals("", query.text.toString())
         }
     }
 

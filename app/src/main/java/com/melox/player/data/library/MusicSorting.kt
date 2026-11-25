@@ -25,22 +25,58 @@ data class SongSearchFields(
     val showFileName: Boolean = false,
     val unknownTitle: String? = null,
 ) {
-    internal fun matches(track: MusicTrack, query: String): Boolean {
-        val title = track.songListTitle(showFileName) ?: unknownTitle
-        return title?.contains(query, ignoreCase = true) == true ||
-            track.artist?.contains(query, ignoreCase = true) == true ||
-            track.album?.contains(query, ignoreCase = true) == true
-    }
+    internal fun match(track: MusicTrack, query: String): SearchMatch = maxOf(
+        searchMatch(track.songListTitle(showFileName) ?: unknownTitle, query),
+        searchMatch(track.artist, query),
+        searchMatch(track.album, query),
+    )
 }
 
 internal fun filterMusicTracks(
     tracks: List<MusicTrack>,
     query: String,
     fields: SongSearchFields = SongSearchFields(),
-): List<MusicTrack> {
-    val normalizedQuery = query.trim()
-    if (normalizedQuery.isEmpty()) return tracks
-    return tracks.filter { fields.matches(it, normalizedQuery) }
+): List<MusicTrack> = tracks.rankSearchResults(query, fields::match)
+
+internal enum class SearchMatch {
+    NONE,
+    SUBSTRING,
+    WORD_START,
+    PREFIX,
+    EXACT,
+}
+
+internal fun searchMatch(text: String?, query: String): SearchMatch {
+    if (text == null) return SearchMatch.NONE
+    var index = text.indexOf(query, ignoreCase = true)
+    if (index < 0) return SearchMatch.NONE
+    if (text.length == query.length) return SearchMatch.EXACT
+    if (index == 0) return SearchMatch.PREFIX
+    while (index > 0) {
+        if (text[index].isUpperCase() || !text[index - 1].isLetterOrDigit()) {
+            return SearchMatch.WORD_START
+        }
+        index = text.indexOf(query, startIndex = index + 1, ignoreCase = true)
+    }
+    return SearchMatch.SUBSTRING
+}
+
+internal inline fun <T> List<T>.rankSearchResults(
+    query: String,
+    match: (T, String) -> SearchMatch,
+): List<T> {
+    val keyword = query.trim()
+    if (keyword.isEmpty()) return this
+    val results = List(SearchMatch.entries.size) { mutableListOf<T>() }
+    for (item in this) {
+        val rank = match(item, keyword)
+        if (rank != SearchMatch.NONE) results[rank.ordinal].add(item)
+    }
+    return buildList {
+        for (rank in SearchMatch.EXACT.ordinal downTo SearchMatch.SUBSTRING.ordinal) {
+            addAll(results[rank])
+        }
+    }
 }
 
 internal fun sortMusicTracks(

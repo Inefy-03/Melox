@@ -2,6 +2,7 @@ package com.melox.player.ui.component.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -51,14 +52,14 @@ internal fun LibrarySearchButton(
 internal fun LibrarySearchBar(
     visible: Boolean,
     focused: Boolean,
-    query: String,
+    queryState: TextFieldState,
     label: String,
-    onQueryChange: (String) -> Unit,
     onFocusedChange: (Boolean) -> Unit,
     onVisibleChange: (Boolean) -> Unit,
     backEnabled: Boolean = true,
     onBackRequest: (() -> Unit)? = null,
 ) {
+    if (LocalGlassSearchPage.current == null) return
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val ordinaryBackOwner = LocalOrdinaryBackDispatcherOwner.current
     val searchBackOwner = LocalWindowBackDispatcherOwner.current.takeIf { onBackRequest != null }
@@ -74,7 +75,7 @@ internal fun LibrarySearchBar(
         }
     }
     registerGlassSearchSession(
-        visible, backEnabled, query, label, focused, onQueryChange, onFocusedChange,
+        visible, backEnabled, queryState, label, focused, onFocusedChange,
     ) { onVisibleChange(false) }
 }
 

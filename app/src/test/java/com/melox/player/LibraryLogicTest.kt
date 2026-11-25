@@ -712,7 +712,7 @@ class LibraryLogicTest {
     }
 
     @Test
-    fun musicSearchMatchesVisibleMetadataAndPreservesSourceOrder() {
+    fun musicSearchMatchesVisibleMetadataAndRanksResults() {
         val tracks = listOf(
             musicTrack(1L, "Blue Hour", 1L, "blue.mp3", 1L, 1L)
                 .copy(artist = "TXT", album = "Minisode"),
@@ -731,6 +731,19 @@ class LibraryLogicTest {
         val hyphenatedAlbum = tracks.first().copy(album = "Mini-Sode")
         assertEquals(listOf(hyphenatedAlbum), filterMusicTracks(listOf(hyphenatedAlbum), "-"))
         assertEquals(listOf(1L, 2L), filterMusicTracks(tracks, "  ").map(MusicTrack::id))
+
+        val rankedTracks = listOf(
+            tracks[0].copy(id = 10L, title = "Midnight"),
+            tracks[0].copy(id = 11L, title = "Midnight Night"),
+            tracks[0].copy(id = 12L, title = "Night Sky"),
+            tracks[0].copy(id = 13L, title = "Nightfall"),
+            tracks[0].copy(id = 14L, title = "Night"),
+            tracks[0].copy(id = 15L, title = "Another Song", artist = "Night"),
+        )
+        assertEquals(
+            listOf(14L, 15L, 12L, 13L, 11L, 10L),
+            filterMusicTracks(rankedTracks, " night ").map(MusicTrack::id),
+        )
     }
 
     @Test

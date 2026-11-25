@@ -5,7 +5,7 @@ import top.yukonga.miuix.kmp.upstream.blur.layerBackdrop
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 
-import com.melox.player.ui.component.LocalGlassSearchResults
+import com.melox.player.ui.component.LocalGlassSearchQuery
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.MusicLocationAction
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
@@ -108,8 +108,8 @@ fun MusicListScreen(
     onRefresh: (() -> Unit)? = null,
 ) {
     val layoutDirection = LocalLayoutDirection.current
-    val selectionAllowed = !LocalGlassSearchResults.current
-    val showingSearchResults = LocalGlassSearchResults.current
+    val showingSearchResults = LocalGlassSearchQuery.current != null
+    val selectionAllowed = !showingSearchResults
     val selectingTracks = selectionAllowed && selectionMode
     val density = LocalDensity.current
     val locateActionSize = ButtonDefaults.MinHeight
@@ -161,8 +161,8 @@ fun MusicListScreen(
     val displayedTrackUris = remember(displayedTracks) {
         displayedTracks.map(MusicTrack::contentUri).toSet()
     }
-    LaunchedEffect(displayedTrackUris, selectedTrackUris) {
-        if (selectedTrackUris.isNotEmpty()) {
+    LaunchedEffect(selectionAllowed, displayedTrackUris, selectedTrackUris) {
+        if (selectionAllowed && selectedTrackUris.isNotEmpty()) {
             val retainedSelection = selectedTrackUris intersect displayedTrackUris
             if (retainedSelection != selectedTrackUris) {
                 onSelectionChange?.invoke(retainedSelection)
@@ -284,16 +284,8 @@ fun MusicListScreen(
                 },
                 scrollToItem = listState::scrollToItem,
                 sections = sections,
-                onTargetIndexChanged = { targetIndex, restoreLargeTitle ->
-                    val topBarState = scrollBehavior.state
-                    if (restoreLargeTitle && !scrollBehavior.isPinned) {
-                        topBarState.heightOffset = 0f
-                        topBarState.contentOffset = 0f
-                    } else if (topBarState.heightOffsetLimit != -Float.MAX_VALUE) {
-                        topBarState.heightOffset = topBarState.heightOffsetLimit
-                        topBarState.contentOffset = topBarState.heightOffsetLimit
-                    }
-                },
+                canScrollBackward = { listState.canScrollBackward },
+                scrollBehavior = scrollBehavior,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
             )

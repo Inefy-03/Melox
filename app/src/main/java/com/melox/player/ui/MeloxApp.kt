@@ -1,5 +1,6 @@
 package com.melox.player.ui
 
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -415,12 +416,12 @@ fun MeloxApp(
         mutableIntStateOf(MusicSortField.TITLE.ordinal)
     }
     var musicSortDescending by rememberSaveable { mutableStateOf(false) }
-    var songSearchQuery by rememberSaveable { mutableStateOf("") }
+    val songSearchQuery = rememberTextFieldState()
     var songSearchVisible by rememberSaveable { mutableStateOf(false) }
     var songSearchFocused by remember { mutableStateOf(false) }
     var selectedSongUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var songsSelectionMode by remember { mutableStateOf(false) }
-    val secondarySearchQuery = List(LIBRARY_TAB_COUNT) { rememberSaveable { mutableStateOf("") } }
+    val secondarySearchQuery = List(LIBRARY_TAB_COUNT) { rememberTextFieldState() }
     val secondarySearchVisible = List(LIBRARY_TAB_COUNT) { rememberSaveable { mutableStateOf(false) } }
     val secondarySearchFocused = List(LIBRARY_TAB_COUNT) { remember { mutableStateOf(false) } }
     var albumSortFieldOrdinal by rememberSaveable {
@@ -588,18 +589,16 @@ fun MeloxApp(
         showFileName = settings.showSongListFileName,
         unknownTitle = stringResource(R.string.music_unknown_title),
     )
-    LaunchedEffect(songSearchQuery, musicSortConfig, songSearchFields) {
-        viewModel.updateMusicPresentation(songSearchQuery, musicSortConfig, songSearchFields)
+    LaunchedEffect(musicSortConfig, songSearchFields) {
+        viewModel.updateMusicPresentation("", musicSortConfig, songSearchFields)
     }
-    val albumSearchQuery = secondarySearchQuery[LIBRARY_ALBUMS_TAB_INDEX].value
-    val artistSearchQuery = secondarySearchQuery[LIBRARY_ARTISTS_TAB_INDEX].value
     val unknownAlbumName = stringResource(R.string.album_unknown)
-    LaunchedEffect(albumSearchQuery, albumSortConfig, unknownAlbumName) {
-        viewModel.updateAlbumPresentation(albumSearchQuery, albumSortConfig, unknownAlbumName)
+    LaunchedEffect(albumSortConfig, unknownAlbumName) {
+        viewModel.updateAlbumPresentation("", albumSortConfig, unknownAlbumName)
     }
     val unknownArtistName = stringResource(R.string.artist_unknown)
-    LaunchedEffect(artistSearchQuery, artistSortConfig, unknownArtistName) {
-        viewModel.updateArtistPresentation(artistSearchQuery, artistSortConfig, unknownArtistName)
+    LaunchedEffect(artistSortConfig, unknownArtistName) {
+        viewModel.updateArtistPresentation("", artistSortConfig, unknownArtistName)
     }
     LaunchedEffect(folderSortConfig) {
         viewModel.updateFolderPresentation(folderSortConfig)
@@ -923,7 +922,7 @@ fun MeloxApp(
             { outerPadding, section, onBack ->
                 val overview = section == null
                 val canSearch = section == LIBRARY_ALBUMS_TAB_INDEX || section == LIBRARY_ARTISTS_TAB_INDEX
-                var librarySearchQuery by secondarySearchQuery[section ?: LIBRARY_ALBUMS_TAB_INDEX]
+                val librarySearchQuery = secondarySearchQuery[section ?: LIBRARY_ALBUMS_TAB_INDEX]
                 var librarySearchVisible by secondarySearchVisible[section ?: LIBRARY_ALBUMS_TAB_INDEX]
                 var librarySearchFocused by secondarySearchFocused[section ?: LIBRARY_ALBUMS_TAB_INDEX]
                 val pageLibraryScrollBehavior = if (section == null) {
@@ -979,7 +978,6 @@ fun MeloxApp(
                                         if (librarySearchVisible) {
                                             librarySearchVisible = false
                                             librarySearchFocused = false
-                                            librarySearchQuery = ""
                                         } else {
                                             librarySearchVisible = true
                                             librarySearchFocused = true
@@ -1031,15 +1029,13 @@ fun MeloxApp(
                                     visible = librarySearchVisible,
                                     focused = librarySearchFocused,
                                     backEnabled = currentRoute == libraryRoutes[checkNotNull(section)],
-                                    query = librarySearchQuery,
+                                    queryState = librarySearchQuery,
                                     label = stringResource(R.string.search_hint),
-                                    onQueryChange = { query -> librarySearchQuery = query },
                                     onFocusedChange = { librarySearchFocused = it },
                                     onVisibleChange = { visible ->
                                         librarySearchVisible = visible
                                         if (!visible) {
                                             librarySearchFocused = false
-                                            librarySearchQuery = ""
                                         }
                                     },
                                 )
@@ -1074,29 +1070,21 @@ fun MeloxApp(
                             },
                         )
                     } else {
-                        val onLibraryIndexTargetChanged: (Int, Boolean) -> Unit =
-                            { _, restoreLargeTitle ->
-                                val state = pageLibraryScrollBehavior.state
-                                if (restoreLargeTitle && !pageLibraryScrollBehavior.isPinned) {
-                                    state.heightOffset = 0f
-                                    state.contentOffset = 0f
-                                } else if (state.heightOffsetLimit != -Float.MAX_VALUE) {
-                                    state.heightOffset = state.heightOffsetLimit
-                                    state.contentOffset = state.heightOffsetLimit
-                                }
-                            }
+                        val searchQuery = LocalGlassSearchQuery.current
                         Box(modifier = Modifier.fillMaxSize()) {
                             val libraryIndexModifier = Modifier
                                 .align(Alignment.TopEnd)
                             val renderLibrarySection: @Composable (Int) -> Unit = { libraryPage ->
                                 when (libraryPage) {
                                     LIBRARY_ALBUMS_TAB_INDEX -> AlbumLibraryScreen(
-                                        displayedAlbums = if (LocalGlassSearchResults.current) {
+                                        displayedAlbums = if (searchQuery == null) albumPresentation.items else {
                                             val sorted = remember(uiState.albums, albumSortConfig) { sortAlbums(uiState.albums, albumSortConfig) }
-                                            remember(sorted, librarySearchQuery, unknownAlbumName) { filterAlbums(sorted, librarySearchQuery, unknownAlbumName) }
-                                        } else albumPresentation.items,
+                                            remember(sorted, searchQuery, unknownAlbumName) {
+                                                if (searchQuery.isBlank()) emptyList() else filterAlbums(sorted, searchQuery, unknownAlbumName)
+                                            }
+                                        },
                                         sectionIndexMap = albumPresentation.sectionIndexMap,
-                                        query = if (LocalGlassSearchResults.current) librarySearchQuery else albumPresentation.query,
+                                        query = searchQuery.orEmpty(),
                                         scanStatus = uiState.scanStatus,
                                         sortConfig = albumPresentation.sortConfig.copy(
                                             gridStyle = albumSortConfig.gridStyle,
@@ -1110,18 +1098,20 @@ fun MeloxApp(
                                             currentRoute = AppRoute.ALBUM_DETAIL
                                         },
                                         scrollBehavior = pageLibraryScrollBehavior,
-                                        gridState = if (LocalGlassSearchResults.current) secondaryAlbumsSearchGridState else pageAlbumsGridState,
+                                        gridState = if (searchQuery != null) secondaryAlbumsSearchGridState else pageAlbumsGridState,
                                         contentPadding = contentPadding,
                                         showIndex = false,
                                     )
 
                                     LIBRARY_ARTISTS_TAB_INDEX -> ArtistLibraryScreen(
-                                        displayedArtists = if (LocalGlassSearchResults.current) {
+                                        displayedArtists = if (searchQuery == null) artistPresentation.items else {
                                             val sorted = remember(uiState.artists, artistSortConfig) { sortArtists(uiState.artists, artistSortConfig) }
-                                            remember(sorted, librarySearchQuery, unknownArtistName) { filterArtists(sorted, librarySearchQuery, unknownArtistName) }
-                                        } else artistPresentation.items,
+                                            remember(sorted, searchQuery, unknownArtistName) {
+                                                if (searchQuery.isBlank()) emptyList() else filterArtists(sorted, searchQuery, unknownArtistName)
+                                            }
+                                        },
                                         sectionIndexMap = artistPresentation.sectionIndexMap,
-                                        query = if (LocalGlassSearchResults.current) librarySearchQuery else artistPresentation.query,
+                                        query = searchQuery.orEmpty(),
                                         scanStatus = uiState.scanStatus,
                                         sortConfig = artistPresentation.sortConfig,
                                         onArtistClick = { artist ->
@@ -1130,7 +1120,7 @@ fun MeloxApp(
                                             openTrackArtist(artist)
                                         },
                                         scrollBehavior = pageLibraryScrollBehavior,
-                                        listState = if (LocalGlassSearchResults.current) secondaryArtistsSearchListState else pageArtistsListState,
+                                        listState = if (searchQuery != null) secondaryArtistsSearchListState else pageArtistsListState,
                                         contentPadding = contentPadding,
                                         showIndex = false,
                                     )
@@ -1164,10 +1154,9 @@ fun MeloxApp(
                             }
                             renderLibrarySection(checkNotNull(section))
 
-                            when (section) {
+                            if (searchQuery == null) when (section) {
                                 LIBRARY_ALBUMS_TAB_INDEX -> if (
                                     albumPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
                                     (
                                         albumSortConfig.field == AlbumSortField.ALBUM ||
                                             albumSortConfig.field ==
@@ -1189,14 +1178,14 @@ fun MeloxApp(
                                         } else {
                                             AlphabetSections
                                         },
-                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
+                                        canScrollBackward = { pageAlbumsGridState.canScrollBackward },
+                                        scrollBehavior = pageLibraryScrollBehavior,
                                         modifier = libraryIndexModifier,
                                     )
                                 }
 
                                 LIBRARY_ARTISTS_TAB_INDEX -> if (
                                     artistPresentation.items.isNotEmpty() &&
-                                    librarySearchQuery.isBlank() &&
                                     artistSortConfig.field == ArtistSortField.NAME
                                 ) {
                                     AlphabetSideBar(
@@ -1214,7 +1203,8 @@ fun MeloxApp(
                                         } else {
                                             AlphabetSections
                                         },
-                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
+                                        canScrollBackward = { pageArtistsListState.canScrollBackward },
+                                        scrollBehavior = pageLibraryScrollBehavior,
                                         modifier = libraryIndexModifier,
                                     )
                                 }
@@ -1238,7 +1228,8 @@ fun MeloxApp(
                                         } else {
                                             AlphabetSections
                                         },
-                                        onTargetIndexChanged = onLibraryIndexTargetChanged,
+                                        canScrollBackward = { pageFoldersListState.canScrollBackward },
+                                        scrollBehavior = pageLibraryScrollBehavior,
                                         modifier = libraryIndexModifier,
                                     )
                                 }
@@ -1411,7 +1402,6 @@ fun MeloxApp(
                                         if (songSearchVisible) {
                                             songSearchVisible = false
                                             songSearchFocused = false
-                                            songSearchQuery = ""
                                         } else {
                                             songSearchVisible = true
                                             songSearchFocused = true
@@ -1434,21 +1424,20 @@ fun MeloxApp(
                                 visible = songSearchVisible,
                                 focused = songSearchFocused,
                                 backEnabled = pagerState.currentPage == SONGS_TAB_INDEX,
-                                query = songSearchQuery,
+                                queryState = songSearchQuery,
                                 label = stringResource(R.string.search_hint),
-                                onQueryChange = { songSearchQuery = it },
                                 onFocusedChange = { songSearchFocused = it },
                                 onVisibleChange = { visible ->
                                     songSearchVisible = visible
                                     if (!visible) {
                                         songSearchFocused = false
-                                        songSearchQuery = ""
                                     }
                                 },
                             )
                         },
                     ) { contentPadding, scrollBehavior ->
-                        val showingSearch = LocalGlassSearchResults.current
+                        val searchQuery = LocalGlassSearchQuery.current
+                        val showingSearch = searchQuery != null
                         MusicListScreen(
                             showLocateAction = !showingSearch,
                             showIndex = !showingSearch,
@@ -1456,16 +1445,16 @@ fun MeloxApp(
                             miniPlayerBounds = playerTransition.miniPlayerBounds,
                             playerContentBounds = playerContentBounds,
                             onTrackClick = onSongListTrackClick,
-                            displayedTracks = if (showingSearch) {
-                                remember(musicPresentation.queueItems, songSearchQuery, songSearchFields) {
-                                    filterMusicTracks(musicPresentation.queueItems, songSearchQuery, songSearchFields)
+                            displayedTracks = if (searchQuery == null) musicPresentation.queueItems else {
+                                remember(musicPresentation.queueItems, searchQuery, songSearchFields) {
+                                    if (searchQuery.isBlank()) emptyList() else filterMusicTracks(musicPresentation.queueItems, searchQuery, songSearchFields)
                                 }
-                            } else musicPresentation.queueItems,
+                            },
                             queueTracks = musicPresentation.queueItems,
                             sectionIndexMap = musicPresentation.queueSectionIndexMap,
                             scanStatus = uiState.scanStatus,
                             currentTrackId = currentTrackId,
-                            query = if (showingSearch) songSearchQuery else "",
+                            query = searchQuery.orEmpty(),
                             sortConfig = musicPresentation.sortConfig,
                             onPlayNext = viewModel::playNext,
                             onAppendToQueue = viewModel::appendToQueue,

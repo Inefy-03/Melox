@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -230,8 +232,6 @@ internal fun PageScaffold(
     val searchPage = remember { GlassSearchPage() }
     val searchExpanded = searchPage.isExpanded
     val searchAlpha = rememberGlassSearchBarAlpha(searchExpanded)
-    val query = searchPage.session?.query?.value.orEmpty()
-    val resultsVisible = searchExpanded && query.isNotBlank()
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
     val image = LocalCustomPageBackground.current
@@ -253,7 +253,7 @@ internal fun PageScaffold(
             Scaffold(
                 modifier = Modifier.fillMaxSize()
                     .graphicsLayer { alpha = searchAlpha.value }
-                    .then(if (searchExpanded) Modifier.clearAndSetSemantics { } else Modifier),
+                    .then(if (searchExpanded || searchPage.transitionActive) Modifier.clearAndSetSemantics { } else Modifier),
                 containerColor = surfaceColor,
                 contentWindowInsets = safeInsets.union(statusBarSpace),
                 topBar = {
@@ -302,12 +302,8 @@ internal fun PageScaffold(
                                 .background(Color.Black.copy(alpha = dimAlpha.coerceIn(0f, 1f))))
                         }
                     }
-                    // The result overlay and the page share the screen content. Only one may own
-                    // the list while search results are being displayed.
-                    if (!resultsVisible) {
-                        CompositionLocalProvider(LocalPageAlphabetIndexPadding provides indexPadding) {
-                            content(pagePadding)
-                        }
+                    CompositionLocalProvider(LocalPageAlphabetIndexPadding provides indexPadding) {
+                        content(pagePadding)
                     }
                 }
             }
@@ -335,38 +331,42 @@ internal fun PageScaffold(
                         blurEnabled = effectsActive,
                         searchIcon = glassSearchIcon,
                         closeIcon = glassCloseIcon,
-                        query = session.query.value,
+                        queryState = session.queryState.value,
                         pageActive = session.pageActive.value,
                         requestFocusOnExpand = session.focused.value,
-                        onQueryChange = { text ->
-                            if (text != session.query.value) session.onQueryChange.value(text)
-                        },
                         onFocusedChange = session.onFocusedChange.value,
                         onActiveChange = { searchPage.transitionActive = it },
                         clearContentDescription = stringResource(R.string.search_clear),
                         cancelContentDescription = stringResource(R.string.search_cancel),
-                    ) {
-                        if (resultsVisible) {
-                            Box(
-                                Modifier.fillMaxSize()
-                                    .windowInsetsPadding(searchHorizontalInsets)
-                                    .onGloballyPositioned { searchScrollContent.bounds = it.boundsInRoot() },
-                            ) {
-                                CompositionLocalProvider(
-                                    LocalPageSurfaceBackdrop provides null,
-                                    LocalCustomPageBackground provides null,
-                                    LocalTopBarScrollContent provides searchScrollContent,
-                                    LocalGlassSearchResults provides true,
-                                ) {
-                                    content(
-                                        PaddingValues(
-                                            top = with(density) { searchTopInsets.getTop(this).toDp() } +
-                                                searchTopPadding() + GlassSearchOverlayDefaults.BarHeight +
-                                                GlassSearchOverlayDefaults.VerticalPadding * 2,
-                                            bottom = safeInsets.asPaddingValues().calculateBottomPadding(),
-                                        ),
-                                    )
+                    ) { draft ->
+                        val exiting = if (searchExpanded) Modifier else Modifier.clearAndSetSemantics { }
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                    }
                                 }
+                            }
+                        Box(
+                            Modifier.fillMaxSize().then(exiting)
+                                .windowInsetsPadding(searchHorizontalInsets)
+                                .onGloballyPositioned { searchScrollContent.bounds = it.boundsInRoot() },
+                        ) {
+                            CompositionLocalProvider(
+                                LocalPageSurfaceBackdrop provides null,
+                                LocalCustomPageBackground provides null,
+                                LocalTopBarScrollContent provides searchScrollContent,
+                                LocalGlassSearchPage provides null,
+                                LocalGlassSearchQuery provides draft,
+                            ) {
+                                content(
+                                    PaddingValues(
+                                        top = with(density) { searchTopInsets.getTop(this).toDp() } +
+                                            searchTopPadding() + GlassSearchOverlayDefaults.BarHeight +
+                                            GlassSearchOverlayDefaults.VerticalPadding * 2,
+                                        bottom = safeInsets.asPaddingValues().calculateBottomPadding(),
+                                    ),
+                                )
                             }
                         }
                     }

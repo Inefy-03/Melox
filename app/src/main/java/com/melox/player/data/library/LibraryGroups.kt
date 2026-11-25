@@ -141,12 +141,8 @@ internal fun filterAlbums(
     albums: List<AlbumGroup>,
     query: String,
     unknownName: String? = null,
-): List<AlbumGroup> {
-    val normalizedQuery = query.trim()
-    if (normalizedQuery.isEmpty()) return albums
-    return albums.filter { album ->
-        (album.name ?: unknownName)?.contains(normalizedQuery, ignoreCase = true) == true
-    }
+): List<AlbumGroup> = albums.rankSearchResults(query) { album, keyword ->
+    searchMatch(album.name ?: unknownName, keyword)
 }
 
 internal fun sortAlbums(
@@ -173,12 +169,8 @@ internal fun filterArtists(
     artists: List<ArtistGroup>,
     query: String,
     unknownName: String? = null,
-): List<ArtistGroup> {
-    val normalizedQuery = query.trim()
-    if (normalizedQuery.isEmpty()) return artists
-    return artists.filter { artist ->
-        (artist.name ?: unknownName)?.contains(normalizedQuery, ignoreCase = true) == true
-    }
+): List<ArtistGroup> = artists.rankSearchResults(query) { artist, keyword ->
+    searchMatch(artist.name ?: unknownName, keyword)
 }
 
 internal fun sortArtists(

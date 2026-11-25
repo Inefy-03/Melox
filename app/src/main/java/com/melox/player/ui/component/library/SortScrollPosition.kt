@@ -5,8 +5,25 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import com.melox.player.ui.component.LocalGlassSearchQuery
 
 private class RenderedSort(var value: Any)
+private class RenderedSearchQuery(var value: String? = null)
+
+@Composable
+internal fun ResetSearchResultScroll(query: String, scrollState: Any) {
+    val previous = remember(scrollState) { RenderedSearchQuery() }
+    SideEffect {
+        if (previous.value != query) {
+            // Use the new result set's first position in the next measurement, before key anchoring.
+            when (scrollState) {
+                is LazyListState -> scrollState.requestScrollToItem(0)
+                is LazyGridState -> scrollState.requestScrollToItem(0)
+            }
+            previous.value = query
+        }
+    }
+}
 
 internal class SearchScrollPosition {
     private var searching = false
@@ -32,6 +49,10 @@ internal fun PreserveSortScrollPosition(
     layoutKey: Any = Unit,
     preservePosition: () -> Unit,
 ) {
+    if (LocalGlassSearchQuery.current != null) {
+        ResetSearchResultScroll(query, scrollState)
+        return
+    }
     val searchPosition = remember(scrollState) { SearchScrollPosition() }
     // Search, source-size and geometry changes establish a new baseline.
     val previous = remember(scrollState, query, itemCount, layoutKey) {

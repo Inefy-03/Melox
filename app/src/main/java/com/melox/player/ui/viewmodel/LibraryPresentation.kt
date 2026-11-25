@@ -189,9 +189,8 @@ internal fun albumPresentations(
     library: Flow<LibraryProjection>,
     requests: Flow<AlbumPresentationRequest>,
 ): Flow<AlbumPresentationState> = combine(library, requests) { projection, request ->
-    val items = sortAlbums(
-        filterAlbums(projection.albums, request.query, request.unknownName),
-        request.sortConfig,
+    val items = filterAlbums(
+        sortAlbums(projection.albums, request.sortConfig), request.query, request.unknownName,
     )
     val columns = request.sortConfig.gridStyle.columns
     val sectionIndexMap = if (
@@ -222,9 +221,8 @@ internal fun artistPresentations(
     library: Flow<LibraryProjection>,
     requests: Flow<ArtistPresentationRequest>,
 ): Flow<ArtistPresentationState> = combine(library, requests) { projection, request ->
-    val items = sortArtists(
-        filterArtists(projection.artists, request.query, request.unknownName),
-        request.sortConfig,
+    val items = filterArtists(
+        sortArtists(projection.artists, request.sortConfig), request.query, request.unknownName,
     )
     val sectionIndexMap = if (
         request.query.isBlank() &&

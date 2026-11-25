@@ -3,7 +3,6 @@
 
 package top.yukonga.miuix.kmp.upstream.glass
 
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
@@ -34,7 +33,6 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonRestartableComposable
@@ -45,7 +43,6 @@ import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -221,19 +218,16 @@ fun GlassSearchOverlay(
     shadow: GlassShadow? = GlassSearchOverlayDefaults.shadow(),
     searchIcon: ImageVector = MiuixIcons.Basic.Search,
     closeIcon: ImageVector = MiuixIcons.Basic.Close,
-    query: String = "",
+    queryState: TextFieldState = rememberTextFieldState(),
     pageActive: Boolean = true,
     requestFocusOnExpand: Boolean = true,
-    onQueryChange: (String) -> Unit = {},
     onFocusedChange: (Boolean) -> Unit = {},
     onActiveChange: (Boolean) -> Unit = {},
     clearContentDescription: String = "Clear",
     cancelContentDescription: String = "Cancel",
     content: @Composable ColumnScope.(String) -> Unit = {},
 ) {
-    val transitionState = remember { MutableTransitionState(expanded) }
-    transitionState.targetState = expanded
-    val transition = updateTransition(transitionState, label = "glassSearch")
+    val transition = updateTransition(expanded, label = "glassSearch")
     val progress = transition.animateFloat(
         transitionSpec = { tween(400, easing = SearchModeEasing) },
         label = "glassSearchGeometry",
@@ -242,14 +236,6 @@ fun GlassSearchOverlay(
         transitionSpec = { tween(150, delayMillis = if (targetState) 100 else 0, easing = LinearEasing) },
         label = "glassSearchCancelMaterial",
     ) { if (it) 1f else 0f }
-    val queryState = rememberTextFieldState(initialText = query)
-    LaunchedEffect(query) {
-        if (queryState.text.toString() != query) queryState.setTextAndPlaceCursorAtEnd(query)
-    }
-    val currentOnQueryChange by rememberUpdatedState(onQueryChange)
-    LaunchedEffect(queryState) {
-        snapshotFlow { queryState.text.toString() }.collect { currentOnQueryChange(it) }
-    }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -258,8 +244,9 @@ fun GlassSearchOverlay(
         computedStateOf { expanded || progress.value > 1f / 255f }
     }
     SideEffect { onActiveChange(active) }
-    LaunchedEffect(expanded) {
+    LaunchedEffect(expanded, queryState) {
         if (expanded && pageActive) {
+            queryState.clearText()
             if (requestFocusOnExpand) {
                 focusRequester.requestFocus()
                 keyboard?.show()
@@ -268,6 +255,9 @@ fun GlassSearchOverlay(
             focusManager.clearFocus()
             keyboard?.hide()
         }
+    }
+    LaunchedEffect(active, queryState) {
+        if (!active) queryState.clearText()
     }
     if (!active) return
     NavigationBackHandler(
@@ -281,7 +271,7 @@ fun GlassSearchOverlay(
         modifier = modifier
             .fillMaxSize()
             .onPreviewKeyEvent {
-                if (pageActive && it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
+                if (expanded && pageActive && it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
                     onDismissRequest()
                     true
                 } else {

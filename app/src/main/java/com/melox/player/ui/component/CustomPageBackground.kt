@@ -209,6 +209,24 @@ internal fun customPageContainerColor(): Color =
     if (LocalCustomPageBackground.current == null) MiuixTheme.colorScheme.surface else Color.Transparent
 
 @Composable
+private fun PageWallpaper(
+    image: ImageBitmap?,
+    dimAlpha: Float,
+    fixedWallpaper: FixedPageBackground?,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.background(MiuixTheme.colorScheme.surface)
+        .then(fixedWallpaper?.let { Modifier.fixedWallpaperRegion(it) } ?: Modifier)) {
+        if (image != null && fixedWallpaper == null) {
+            Image(bitmap = image, contentDescription = null,
+                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            if (dimAlpha > 0f) Box(Modifier.matchParentSize()
+                .background(Color.Black.copy(alpha = dimAlpha.coerceIn(0f, 1f))))
+        }
+    }
+}
+
+@Composable
 @OptIn(ExperimentalLayoutApi::class)
 internal fun PageScaffold(
     modifier: Modifier = Modifier,
@@ -293,15 +311,8 @@ internal fun PageScaffold(
                 }
                 Box(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
                     // Root pages sample the stationary window image; secondary pages crop locally.
-                    Box(Modifier.matchParentSize().layerBackdrop(wallpaperBackdrop).background(surfaceColor)
-                        .then(fixedWallpaper?.let { Modifier.fixedWallpaperRegion(it) } ?: Modifier)) {
-                        if (image != null && fixedWallpaper == null) {
-                            Image(bitmap = image, contentDescription = null,
-                                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                            if (dimAlpha > 0f) Box(Modifier.matchParentSize()
-                                .background(Color.Black.copy(alpha = dimAlpha.coerceIn(0f, 1f))))
-                        }
-                    }
+                    PageWallpaper(image, dimAlpha, fixedWallpaper,
+                        Modifier.matchParentSize().layerBackdrop(wallpaperBackdrop))
                     CompositionLocalProvider(LocalPageAlphabetIndexPadding provides indexPadding) {
                         content(pagePadding)
                     }
@@ -309,6 +320,13 @@ internal fun PageScaffold(
             }
             searchPage.session?.let { session ->
                 val searchScrollContent = remember { TopBarScrollContent() }
+                val searchWallpaperBackdrop = if (image != null && effectsActive) rememberLayerBackdrop() else null
+                val searchWallpaper: (@Composable BoxScope.() -> Unit)? = if (image != null) {
+                    {
+                        val layer = searchWallpaperBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier
+                        PageWallpaper(image, dimAlpha, fixedWallpaper, Modifier.matchParentSize().then(layer))
+                    }
+                } else null
                 val backOwner = LocalWindowBackDispatcherOwner.current ?: LocalNavigationEventDispatcherOwner.current
                 DisposableEffect(searchPage) {
                     onDispose {
@@ -338,6 +356,7 @@ internal fun PageScaffold(
                         onActiveChange = { searchPage.transitionActive = it },
                         clearContentDescription = stringResource(R.string.search_clear),
                         cancelContentDescription = stringResource(R.string.search_cancel),
+                        background = searchWallpaper,
                     ) { draft ->
                         val exiting = if (searchExpanded) Modifier else Modifier.clearAndSetSemantics { }
                             .pointerInput(Unit) {
@@ -353,8 +372,7 @@ internal fun PageScaffold(
                                 .onGloballyPositioned { searchScrollContent.bounds = it.boundsInRoot() },
                         ) {
                             CompositionLocalProvider(
-                                LocalPageSurfaceBackdrop provides null,
-                                LocalCustomPageBackground provides null,
+                                LocalPageSurfaceBackdrop provides searchWallpaperBackdrop,
                                 LocalTopBarScrollContent provides searchScrollContent,
                                 LocalGlassSearchPage provides null,
                                 LocalGlassSearchQuery provides draft,

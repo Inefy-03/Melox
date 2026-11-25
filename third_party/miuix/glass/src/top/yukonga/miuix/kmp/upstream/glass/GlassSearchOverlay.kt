@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -199,6 +200,7 @@ fun GlassSearchOverlay(
  * @param scrollMaterialThreshold The result-list scroll distance before the input and cancel button gain glass.
  *   [Dp.Unspecified] keeps both glass at all scroll positions.
  * @param scrollOffset The result-list scroll offset in pixels, or zero when there are no results.
+ * @param background Optional full-window backdrop behind the results and search chrome.
  */
 @Composable
 fun GlassSearchOverlay(
@@ -225,6 +227,7 @@ fun GlassSearchOverlay(
     onActiveChange: (Boolean) -> Unit = {},
     clearContentDescription: String = "Clear",
     cancelContentDescription: String = "Cancel",
+    background: (@Composable BoxScope.() -> Unit)? = null,
     content: @Composable ColumnScope.(String) -> Unit = {},
 ) {
     val transition = updateTransition(expanded, label = "glassSearch")
@@ -283,7 +286,9 @@ fun GlassSearchOverlay(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .drawBehind { drawRect(colors.surface.copy(alpha = progress.value.coerceIn(0f, 1f))) }
+                .drawBehind {
+                    if (background == null) drawRect(colors.surface.copy(alpha = progress.value.coerceIn(0f, 1f)))
+                }
                 .clickable(interactionSource = null, indication = null) { keyboard?.hide() },
         )
         val blurActive = blurEnabled && isRuntimeShaderSupported()
@@ -314,15 +319,21 @@ fun GlassSearchOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = progress.value }
-                .imePadding(),
+                .then(if (background == null) Modifier.imePadding() else Modifier),
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(if (contentBackdrop != null) Modifier.layerBackdrop(contentBackdrop) else Modifier)
-                    .background(colors.surface),
+                    .then(if (contentBackdrop != null) Modifier.layerBackdrop(contentBackdrop) else Modifier),
             ) {
-                SearchOverlayContent(queryState, content)
+                background?.invoke(this)
+                Column(
+                    Modifier.fillMaxSize().then(
+                        if (background == null) Modifier.background(colors.surface) else Modifier.imePadding(),
+                    ),
+                ) {
+                    SearchOverlayContent(queryState, content)
+                }
             }
             if (contentBackdrop != null) {
                 val blendColors = remember(colors.surface) {

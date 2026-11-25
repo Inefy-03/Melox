@@ -49,6 +49,7 @@ import com.melox.player.ui.component.LocalRootPageWallpaperFixed
 import com.melox.player.ui.component.LocalFixedPageBackground
 import com.melox.player.ui.component.trackFixedWallpaperMotion
 import com.melox.player.ui.component.LocalCustomPageBackground
+import com.melox.player.ui.component.LocalCustomBackgroundDimAlpha
 import com.melox.player.ui.component.LocalPageCardBlurRadius
 import com.melox.player.ui.component.LocalPageCardSurfaceAlpha
 import com.melox.player.ui.component.LocalPageSurfaceBackdrop
@@ -191,7 +192,7 @@ class FixedWallpaperRenderingTest {
 
     @Test
     @SdkSuppress(minSdkVersion = 33)
-    fun wallpaperSearchUsesOfficialRestingFillBeforeResultsScroll() {
+    fun wallpaperSearchUsesTheDimmedImageAndOfficialRestingFillBeforeResultsScroll() {
         val blurEnabled = mutableStateOf(false)
         val source = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply {
             eraseColor(AndroidColor.RED)
@@ -209,6 +210,7 @@ class FixedWallpaperRenderingTest {
                                 fillColor = MiuixTheme.colorScheme.surfaceContainerHigh.toArgb()
                                 CompositionLocalProvider(
                                     LocalCustomPageBackground provides image,
+                                    LocalCustomBackgroundDimAlpha provides 0.25f,
                                     LocalTopBarBlurSettings provides TopBarBlurSettings(blurEnabled.value),
                                 ) {
                                     val backdrop = rememberBlurBackdrop()
@@ -258,6 +260,11 @@ class FixedWallpaperRenderingTest {
                         for (channel in listOf(AndroidColor::red, AndroidColor::green, AndroidColor::blue)) {
                             assertEquals("Search uses the resting fill with blur=$blur", channel(fillColor).toFloat(), channel(actual).toFloat(), 3f)
                         }
+                        val wallpaper = frame.getPixel(frame.width / 2, frame.height / 2)
+                        assertEquals("Search results use the dimmed wallpaper with blur=$blur",
+                            191f, AndroidColor.red(wallpaper).toFloat(), 3f)
+                        assertEquals(0, AndroidColor.green(wallpaper))
+                        assertEquals(0, AndroidColor.blue(wallpaper))
                     } finally {
                         frame.recycle()
                     }

@@ -36,16 +36,18 @@ import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import kotlin.math.roundToInt
 
-// The track exports its viewport height after measuring the controls once.
+// The track exports geometry after measuring the controls once.
 private val CompactLandscapeViewportHeight = HorizontalAlignmentLine { first, second ->
     maxOf(first, second)
 }
+private val CompactLandscapeHeaderTop = HorizontalAlignmentLine(::minOf)
 
 @Composable
 internal fun CompactLandscapePlayerLayout(
     pagerState: PagerState,
     lyricsPagingEnabled: Boolean,
     immersiveMode: Boolean,
+    chromeVerticalInset: Dp,
     artworkContent: @Composable (Dp) -> Unit,
     headerContent: @Composable (contentWidth: Dp) -> Unit,
     lyricsToggleContent: @Composable (showLyrics: Boolean, enabled: Boolean, onToggle: () -> Unit) -> Unit,
@@ -69,7 +71,8 @@ internal fun CompactLandscapePlayerLayout(
     BoxWithConstraints(modifier = modifier) {
         val artworkPaneWidth = compactLandscapeArtworkPaneWidth(maxWidth)
         val controlsPaneWidth = maxWidth - artworkPaneWidth
-        val artworkSize = compactLandscapeArtworkSize(artworkPaneWidth, maxHeight)
+        val chromeHeight = (maxHeight - chromeVerticalInset * 2).coerceAtLeast(0.dp)
+        val artworkSize = compactLandscapeArtworkSize(artworkPaneWidth, chromeHeight)
         val contentWidth = compactLandscapePaneContentWidth(controlsPaneWidth)
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -97,6 +100,8 @@ internal fun CompactLandscapePlayerLayout(
                 .fillMaxHeight()) { constraints ->
                 val paneWidth = constraints.maxWidth
                 val paneHeight = constraints.maxHeight
+                val chromeInset = chromeVerticalInset.roundToPx()
+                val chromeBottom = paneHeight - chromeInset
                 val naturalConstraints = Constraints(maxWidth = paneWidth)
                 val extensionPx = COMPACT_LANDSCAPE_LYRICS_EXTENSION.roundToPx()
                 val toggle = subcompose("lyricsToggle") {
@@ -113,7 +118,6 @@ internal fun CompactLandscapePlayerLayout(
                     Box(contentAlignment = Alignment.Center) { headerContent(headerWidth.toDp()) }
                 }.single().measure(Constraints(maxWidth = headerWidth))
                 val headerHeight = maxOf(header.height, toggle.height)
-                val reservedHeaderHeight = if (immersiveMode) 0 else headerHeight
                 val page = subcompose("page") {
                     Layout(
                         modifier = Modifier.clipToBounds()
@@ -149,11 +153,13 @@ internal fun CompactLandscapePlayerLayout(
                                         controlsContent(controlsPaneWidth, contentWidth)
                                     }
                                 }.single().measure(Constraints(maxWidth = paneWidth))
-                                val headerTop = compactLandscapeHeaderTop(
-                                    paneHeight.toDp(), headerHeight.toDp(), controls.height.toDp(),
+                                val headerTop = chromeInset + compactLandscapeHeaderTop(
+                                    chromeHeight, headerHeight.toDp(), controls.height.toDp(),
                                 ).roundToPx()
-                                val viewportHeight = (paneHeight - headerTop - reservedHeaderHeight).coerceAtLeast(0) +
-                                    extensionPx * 2
+                                val headerBottom = headerTop + headerHeight
+                                val viewportHeight = if (immersiveMode) paneHeight else {
+                                    (chromeBottom - headerBottom).coerceAtLeast(0) + extensionPx * 2
+                                }
                                 val lyrics = subcompose("lyrics") {
                                     Box(
                                         modifier = Modifier.compactLandscapePaneInput(showLyrics),
@@ -163,14 +169,17 @@ internal fun CompactLandscapePlayerLayout(
                                             viewportHeight.toDp(), lyricsActive)
                                     }
                                 }.single().measure(Constraints.fixed(paneWidth, viewportHeight))
+                                // At progress zero, the viewport origin and track offset cancel out this gap.
                                 val controlsTop = viewportHeight +
                                     COMPACT_LANDSCAPE_HEADER_TO_CONTROLS_SPACING.roundToPx() +
-                                    // Reclaim the hidden header for lyrics without moving resting controls.
-                                    (headerHeight - reservedHeaderHeight)
+                                    if (immersiveMode) headerBottom else 0
                                 layout(
                                     trackConstraints.maxWidth,
                                     controlsTop + controls.height,
-                                    mapOf(CompactLandscapeViewportHeight to viewportHeight),
+                                    mapOf(
+                                        CompactLandscapeViewportHeight to viewportHeight,
+                                        CompactLandscapeHeaderTop to headerTop,
+                                    ),
                                 ) {
                                     lyrics.placeRelative(0, 0)
                                     controls.placeRelative(0, controlsTop)
@@ -180,10 +189,12 @@ internal fun CompactLandscapePlayerLayout(
                     ) { measurables, viewportConstraints ->
                         val track = measurables.single().measure(Constraints(maxWidth = paneWidth))
                         val viewportHeight = track[CompactLandscapeViewportHeight]
-                        val visibleHeight = (viewportHeight - extensionPx * (1f - lyricsProgress.value))
-                            .roundToInt().coerceAtLeast(0)
+                        val visibleHeight = if (immersiveMode) viewportHeight else {
+                            (viewportHeight - extensionPx * (1f - lyricsProgress.value))
+                                .roundToInt().coerceAtLeast(0)
+                        }
                         layout(viewportConstraints.maxWidth, visibleHeight,
-                            mapOf(CompactLandscapeViewportHeight to viewportHeight)) {
+                            mapOf(CompactLandscapeHeaderTop to track[CompactLandscapeHeaderTop])) {
                             // Lyrics and controls share one physical track and one translation.
                             track.placeRelativeWithLayer(0, -viewportHeight) {
                                 translationY = lyricsProgress.value * viewportHeight
@@ -191,8 +202,7 @@ internal fun CompactLandscapePlayerLayout(
                         }
                     }
                 }.single().measure(naturalConstraints)
-                val baseViewportHeight = page[CompactLandscapeViewportHeight] - extensionPx * 2
-                val headerTop = (paneHeight - reservedHeaderHeight - baseViewportHeight).coerceAtLeast(0)
+                val headerTop = page[CompactLandscapeHeaderTop]
                 layout(paneWidth, paneHeight) {
                     header.placeRelativeWithLayer(contentStart, headerTop + (headerHeight - header.height) / 2) {
                         translationY = -extensionPx * lyricsProgress.value
@@ -200,8 +210,12 @@ internal fun CompactLandscapePlayerLayout(
                     toggle.placeRelativeWithLayer(toggleStart, headerTop + (headerHeight - toggle.height) / 2) {
                         translationY = -extensionPx * lyricsProgress.value
                     }
-                    page.placeRelativeWithLayer(0, headerTop + reservedHeaderHeight) {
-                        translationY = -extensionPx * lyricsProgress.value
+                    if (immersiveMode) {
+                        page.placeRelative(0, 0)
+                    } else {
+                        page.placeRelativeWithLayer(0, headerTop + headerHeight) {
+                            translationY = -extensionPx * lyricsProgress.value
+                        }
                     }
                 }
             }

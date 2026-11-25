@@ -420,6 +420,7 @@ class ImmersivePlayerLayoutTest {
         val selectedPage = AtomicInteger()
         val immersive = mutableStateOf(false)
         val controlClicks = AtomicInteger()
+        val chromeInset = 24.dp
         var density = 1f
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             lateinit var view: ComposeView
@@ -434,6 +435,7 @@ class ImmersivePlayerLayoutTest {
                                 pagerState = pager,
                                 lyricsPagingEnabled = true,
                                 immersiveMode = immersive.value,
+                                chromeVerticalInset = chromeInset,
                                 artworkContent = {
                                     Box(Modifier.size(96.dp).onGloballyPositioned {
                                         cover.set(it.boundsInRoot())
@@ -495,7 +497,7 @@ class ImmersivePlayerLayoutTest {
             assertEquals(1, selectedPage.get())
             assertEquals(originalHeader.top - 12f * density, header.get().top, 1f)
             assertEquals(header.get().bottom, lyrics.get().top, 1f)
-            assertEquals(pane.get().bottom + 12f * density, lyrics.get().bottom, 1f)
+            assertEquals(pane.get().bottom - (chromeInset.value - 12f) * density, lyrics.get().bottom, 1f)
             assertEquals(originalPageGap, controls.get().top - lyrics.get().bottom, 1f)
             assertEquals(controls.get().width, lyrics.get().width, 1f)
             assertFalse(hasDescription(instrumentation.uiAutomation.rootInActiveWindow, "Compact controls"))
@@ -512,14 +514,17 @@ class ImmersivePlayerLayoutTest {
             instrumentation.waitForIdleSync()
             assertFalse(hasDescription(instrumentation.uiAutomation.rootInActiveWindow, "Compact lyrics toggle"))
             assertEquals(originalControls, controls.get())
+            assertEquals(pane.get().top, lyrics.get().bottom, 1f)
             tap(toggle.get().center)
             assertEquals(0, selectedPage.get())
             tap(cover.get().center)
             assertEquals(1, selectedPage.get())
-            assertEquals(header.get().top, lyrics.get().top, 1f)
-            assertEquals(pane.get().bottom + 12f * density, lyrics.get().bottom, 1f)
+            assertEquals(pane.get().top, lyrics.get().top, 1f)
+            assertEquals(pane.get().bottom, lyrics.get().bottom, 1f)
+            assertTrue(controls.get().top > pane.get().bottom)
             tap(cover.get().center)
             assertEquals(0, selectedPage.get())
+            assertEquals(originalControls, controls.get())
             instrumentation.runOnMainSync { immersive.value = false }
             SystemClock.sleep(250)
             instrumentation.waitForIdleSync()

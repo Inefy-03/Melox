@@ -753,6 +753,7 @@ internal fun FullPlayerScreen(
                                 pagerState = pagerState,
                                 lyricsPagingEnabled = lyricsPagingEnabled && item != null,
                                 immersiveMode = immersiveMode,
+                                chromeVerticalInset = playerSafeTop,
                                 artworkContent = { artworkSize ->
                                     PlayerArtwork(
                                         circularArtwork = circularArtwork, squareArtwork = squareArtwork,
@@ -900,13 +901,10 @@ internal fun FullPlayerScreen(
                                             ownSafeInset = playerSafeStart,
                                             oppositeSafeInset = playerSafeEnd,
                                         ),
-                                        top = playerSafeTop,
                                         end = compactLandscapeSidePadding(
                                             ownSafeInset = playerSafeEnd,
                                             oppositeSafeInset = playerSafeStart,
                                         ),
-                                        // Mirror the top safe space independently of navigation bars.
-                                        bottom = playerSafeTop,
                                     ),
                             )
                         } else {

@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.IntentCompat
+import androidx.core.view.WindowCompat
 import com.melox.player.ui.LocalAdaptiveWindowSize
 import com.melox.player.ui.MeloxApp
 import com.melox.player.ui.viewmodel.MeloxViewModel
@@ -22,6 +23,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         val appViewModel = viewModel
         setContent {
             BoxWithConstraints(Modifier.fillMaxSize()) {

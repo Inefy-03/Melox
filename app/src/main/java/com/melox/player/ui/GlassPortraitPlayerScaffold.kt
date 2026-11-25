@@ -2,15 +2,16 @@ package com.melox.player.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +45,7 @@ import top.yukonga.miuix.kmp.upstream.glass.GlassNavigationItem
 import top.yukonga.miuix.kmp.upstream.material.GlassShadows
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 internal fun GlassPortraitPlayerScaffold(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit,
@@ -67,15 +69,8 @@ internal fun GlassPortraitPlayerScaffold(
     val items = remember(navigationItems) {
         navigationItems.map { GlassNavigationItem(icon = it.icon, label = it.label) }
     }
-    val navigationPadding = WindowInsets.navigationBars.asPaddingValues()
-    val captionPadding = WindowInsets.captionBar.asPaddingValues()
-    val cutoutPadding = WindowInsets.displayCutout.asPaddingValues()
-    val bottomPadding = maxOf(
-        24.dp,
-        navigationPadding.calculateBottomPadding() + 8.dp,
-        captionPadding.calculateBottomPadding() + 8.dp,
-        cutoutPadding.calculateBottomPadding() + 8.dp,
-    )
+    val bottomInsets = WindowInsets.navigationBarsIgnoringVisibility
+        .union(WindowInsets.captionBar).union(WindowInsets.displayCutout)
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -89,7 +84,8 @@ internal fun GlassPortraitPlayerScaffold(
                     )
                     .padding(horizontal = 16.dp)
                     .layout { measurable, constraints ->
-                        val bottom = bottomPadding.roundToPx().coerceIn(0, constraints.maxHeight)
+                        val bottom = maxOf(24.dp.roundToPx(), bottomInsets.getBottom(this) + 8.dp.roundToPx())
+                            .coerceAtMost(constraints.maxHeight)
                         val placeable = measurable.measure(constraints.offset(vertical = -bottom))
                         layout(placeable.width, placeable.height + bottom) {
                             placeable.placeRelative(0, 0)

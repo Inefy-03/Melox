@@ -71,10 +71,8 @@ internal fun Context.loadPlaybackArtworkData(contentUri: String): ByteArray? {
             runCatching(retriever::release)
         }
     }
-    return runCatching {
-        bitmap?.toArtworkData()
-            ?: decodePlaceholderArtworkData()
-    }.getOrNull()
+    return bitmap?.let { runCatching { it.toArtworkData() }.getOrNull() }
+        ?: runCatching { decodePlaceholderArtworkData() }.getOrNull()
 }
 
 private fun Context.decodePlaceholderArtworkData(): ByteArray? {

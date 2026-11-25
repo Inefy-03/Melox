@@ -839,22 +839,36 @@ class PlaybackService : MediaSessionService() {
 
         requestedArtworkKey = artworkKey
         artworkLoadJob = serviceScope.launch {
-            val artworkData = withContext(Dispatchers.IO) {
-                loadPlaybackArtworkData(queueItem.contentUri)
-            } ?: return@launch
-            val activeIndex = player.currentMediaItemIndex
-            val activeItem = activeIndex
-                .takeIf { it in 0 until player.mediaItemCount }
-                ?.let(player::getMediaItemAt)
-                ?: return@launch
-            if (
-                activeItem.toPlaybackQueueItem().toPlaybackArtworkKey() != artworkKey ||
-                player.hasArtwork() ||
-                activeItem.mediaMetadata.hasArtwork()
-            ) {
-                return@launch
+            try {
+                var artworkData: ByteArray? = null
+                for (attempt in 0..2) {
+                    if (attempt > 0) delay(if (attempt == 1) 500L else 2_000L)
+                    artworkData = withContext(Dispatchers.IO) {
+                        runCatching { loadPlaybackArtworkData(queueItem.contentUri) }.getOrNull()
+                    }
+                    if (artworkData != null) break
+                }
+                val loadedArtwork = artworkData ?: return@launch
+                val activeIndex = player.currentMediaItemIndex
+                val activeItem = activeIndex
+                    .takeIf { it in 0 until player.mediaItemCount }
+                    ?.let(player::getMediaItemAt)
+                    ?: return@launch
+                if (
+                    activePlayer !== player ||
+                    activeItem.toPlaybackQueueItem().toPlaybackArtworkKey() != artworkKey ||
+                    player.hasArtwork() ||
+                    activeItem.mediaMetadata.hasArtwork()
+                ) {
+                    return@launch
+                }
+                player.replaceMediaItem(activeIndex, activeItem.withArtworkData(loadedArtwork))
+            } finally {
+                if (artworkLoadJob === kotlin.coroutines.coroutineContext[Job]) {
+                    requestedArtworkKey = null
+                    artworkLoadJob = null
+                }
             }
-            player.replaceMediaItem(activeIndex, activeItem.withArtworkData(artworkData))
         }
     }
 

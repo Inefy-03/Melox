@@ -3,12 +3,30 @@ package com.melox.player
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.IntOffset
 import com.melox.player.ui.component.library.collapseMusicLocationTopBar
+import com.melox.player.ui.component.library.syncAlphabetJumpTopBar
 import com.melox.player.ui.component.library.musicLocationOffset
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import top.yukonga.miuix.kmp.basic.TopAppBarState
 
 class MusicLocationLayoutTest {
+    @Test
+    fun alphabetJumpKeepsTheTopBarInSyncWithTheMeasuredDestination() {
+        val state = TopAppBarState(-100f, -20f, -20f)
+
+        syncAlphabetJumpTopBar(state, isPinned = false, canScrollBackward = true)
+        assertEquals(-100f, state.heightOffset, 0f)
+        assertEquals(-100f, state.contentOffset, 0f)
+
+        syncAlphabetJumpTopBar(state, isPinned = false, canScrollBackward = false)
+        assertEquals(0f, state.heightOffset, 0f)
+        assertEquals(0f, state.contentOffset, 0f)
+
+        syncAlphabetJumpTopBar(state, isPinned = true, canScrollBackward = true)
+        assertEquals(0f, state.heightOffset, 0f)
+        assertEquals(0f, state.contentOffset, 0f)
+    }
+
     @Test
     fun compactActionSharesSortIconAlignmentAcrossMiniPlayerStyles() {
         val viewport = Rect(80f, 20f, 480f, 820f)

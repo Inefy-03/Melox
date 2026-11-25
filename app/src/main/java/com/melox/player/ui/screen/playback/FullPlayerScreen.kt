@@ -131,7 +131,8 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.glass.GlassDialogButton
+import top.yukonga.miuix.kmp.glass.GlassDialogButtonRole
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Notes
 import top.yukonga.miuix.kmp.icon.extended.NotesFill
@@ -1371,14 +1372,16 @@ internal fun FullPlayerScreen(
                         onAcknowledgeSleepTimerInterruption()
                     },
                 ) {
-                    TextButton(
-                        text = stringResource(R.string.playback_timer_confirm),
+                    GlassDialogButton(
                         onClick = {
                             showTimerInterruption = false
                             onAcknowledgeSleepTimerInterruption()
                         },
                         modifier = Modifier.fillMaxWidth(),
-                    )
+                        role = GlassDialogButtonRole.Primary,
+                    ) {
+                        Text(stringResource(R.string.playback_timer_confirm), style = MiuixTheme.textStyles.button)
+                    }
                 }
             }
     }

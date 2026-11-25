@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalLayoutDirection
-import com.melox.player.ui.component.LocalGlassSearchResults
+import com.melox.player.ui.component.LocalGlassSearchQuery
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.SmallTopAppBar
 import com.melox.player.ui.component.TopAppBar
@@ -84,20 +84,24 @@ internal fun PlayerPage(
             }
         },
     ) { innerPadding ->
+        val showingSearch = LocalGlassSearchQuery.current != null
         // The page bar owns top/system insets; the outer scaffold owns bottom-bar clearance.
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .onGloballyPositioned { topBarCaptureCoordinates = it }
-                .refreshFixedWallpaperSample()
-                .then(topBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
+                .then(
+                    if (showingSearch) Modifier else Modifier
+                        .onGloballyPositioned { topBarCaptureCoordinates = it }
+                        .refreshFixedWallpaperSample()
+                        .then(topBarBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
+                ),
         ) {
             content(
                 PaddingValues(
                     start = innerPadding.calculateStartPadding(layoutDirection),
                     top = innerPadding.calculateTopPadding(),
                     end = innerPadding.calculateEndPadding(layoutDirection),
-                    bottom = if (LocalGlassSearchResults.current) {
+                    bottom = if (showingSearch) {
                         maxOf(innerPadding.calculateBottomPadding(), outerPadding.calculateBottomPadding())
                     } else {
                         outerPadding.calculateBottomPadding()

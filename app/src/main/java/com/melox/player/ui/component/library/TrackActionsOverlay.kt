@@ -10,8 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -22,7 +20,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -52,7 +49,6 @@ import com.melox.player.data.library.splitArtistNames
 import com.melox.player.model.MusicTrack
 import java.util.Locale
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.glass.GlassCard as Card
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -60,15 +56,16 @@ import com.melox.player.ui.component.Icon
 import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
 import com.melox.player.ui.icon.*
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import com.melox.player.ui.component.OverlayBottomSheet
 import com.melox.player.ui.component.BottomSheetHeaderButton
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import com.melox.player.ui.component.OverlayDropdownMenu
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
+import top.yukonga.miuix.kmp.glass.GlassDialogButtonRole
 
 private val TrackActionIconSize = 24.dp
 private val TrackActionSummaryArtworkSize = 56.dp
@@ -455,33 +452,19 @@ fun TrackActionsOverlay(
         onDismissRequest = { showMutationConfirm = false },
         onDismissFinished = { mutationTrack = null },
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_cancel),
-                onClick = { showMutationConfirm = false },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_confirm),
-                onClick = {
-                    mutationTrack?.let { selected ->
-                        if (deleteRequested) mutations?.onDelete?.invoke(selected)
-                        else mutations?.onHide?.invoke(selected)
-                    }
-                    showMutationConfirm = false
-                },
-                modifier = Modifier.weight(1f),
-                colors = if (deleteRequested) {
-                    ButtonDefaults.textButtonColorsPrimary(
-                        color = MiuixTheme.colorScheme.error,
-                        textColor = MiuixTheme.colorScheme.onError,
-                    )
-                } else {
-                    ButtonDefaults.textButtonColorsPrimary()
-                },
-            )
-        }
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+            confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+            onDismiss = { showMutationConfirm = false },
+            onConfirm = {
+                mutationTrack?.let { selected ->
+                    if (deleteRequested) mutations?.onDelete?.invoke(selected)
+                    else mutations?.onHide?.invoke(selected)
+                }
+                showMutationConfirm = false
+            },
+            confirmRole = if (deleteRequested) GlassDialogButtonRole.Destructive else GlassDialogButtonRole.Primary,
+        )
     }
 
     OverlayBottomSheet(

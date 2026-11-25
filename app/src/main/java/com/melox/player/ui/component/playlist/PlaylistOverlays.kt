@@ -5,8 +5,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,8 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,18 +35,17 @@ import com.melox.player.model.LocalPlaylist
 import com.melox.player.model.MusicTrack
 import com.melox.player.ui.component.library.PlaybackArtwork
 import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.glass.GlassCard as Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.glass.GlassTextField
 import com.melox.player.ui.icon.Add
 import com.melox.player.ui.icon.Close
 import com.melox.player.ui.icon.GlassIcons
 import com.melox.player.ui.component.OverlayBottomSheet
 import com.melox.player.ui.component.BottomSheetHeaderButton
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
@@ -204,10 +203,10 @@ fun PlaylistNameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var name by remember { mutableStateOf(initialName) }
+    val name = rememberTextFieldState(initialName)
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(show, initialName) {
-        if (show) name = initialName
+        if (show) name.setTextAndPlaceCursorAtEnd(initialName)
     }
     OverlayDialog(
         show = show,
@@ -218,34 +217,21 @@ fun PlaylistNameDialog(
         LaunchedEffect(show, requestFocusOnShow) {
             if (show && requestFocusOnShow) focusRequester.requestFocus()
         }
-        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            GlassTextField(
+                state = name,
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 label = stringResource(R.string.playlist_name_hint),
-                singleLine = true,
+                useLabelAsPlaceholder = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TextButton(
-                    text = stringResource(R.string.clear_queue_confirm_cancel),
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(modifier = Modifier.width(20.dp))
-                TextButton(
-                    text = stringResource(R.string.clear_queue_confirm_confirm),
-                    onClick = { onConfirm(name.trim()) },
-                    enabled = name.isNotBlank(),
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                )
-            }
+            OverlayDialogActions(
+                dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+                confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+                onDismiss = onDismiss,
+                onConfirm = { onConfirm(name.text.toString().trim()) },
+                confirmEnabled = name.text.isNotBlank(),
+            )
         }
     }
 }

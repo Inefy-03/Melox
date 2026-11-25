@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.constrainHeight
@@ -428,9 +429,19 @@ fun GlassTopAppBar(
         if (progressiveBackdrop != null && rawBackdrop != null) {
             val surfaceColor = MiuixTheme.colorScheme.surface
             val blendColors = remember(surfaceColor) {
-                listOf(BlendColorEntry(surfaceColor.copy(alpha = 0.3f)))
+                listOf(BlendColorEntry(surfaceColor.copy(alpha = 0.2f)))
             }
             val blurColors = BlurDefaults.blurColors(blendColors = blendColors)
+            val scrimBrush = remember(surfaceColor) {
+                Brush.verticalGradient(
+                    0f to surfaceColor.copy(alpha = 0.50f),
+                    0.25f to surfaceColor.copy(alpha = 0.44f),
+                    0.5f to surfaceColor.copy(alpha = 0.32f),
+                    0.75f to surfaceColor.copy(alpha = 0.16f),
+                    0.9f to surfaceColor.copy(alpha = 0.05f),
+                    1f to Color.Transparent,
+                )
+            }
             val currentBgAlpha by rememberUpdatedState(backgroundAlpha)
             val bandActive by remember(bandProgress) {
                 derivedStateOf { bandProgress() * currentBgAlpha().coerceIn(0f, 1f) > 0.001f }
@@ -455,7 +466,13 @@ fun GlassTopAppBar(
                         blurRadius = GlassTopAppBarDefaults.ProgressiveBlurRadius.value,
                         colors = blurColors,
                         enabled = bandActive,
-                    ),
+                    )
+                    .drawWithContent {
+                        drawContent()
+                        if (bandActive) {
+                            drawRect(brush = scrimBrush)
+                        }
+                    },
             )
         } else {
             val overhangPx = with(LocalDensity.current) { bandOverhang.roundToPx().coerceAtLeast(0).toFloat() }

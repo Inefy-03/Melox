@@ -2,10 +2,11 @@
 
 ## Main source synchronization (2026-11-25)
 
-The app uses the Glass and UI Android snapshot from `a09d4f32`.
+The app uses the Glass and UI Android snapshot from `542463a`.
 The relocated source manifest tracks the same commit, including the upstream
 GlassHeaderContext used by GlassIconButton. The Melox compact/detail top bar
-continues to provide the upstream header context to its stock buttons.
+supplies the upstream header context to its stock buttons and uses the same
+progressive scrim.
 
 ## Beta 04 synchronization (2026-11-24)
 

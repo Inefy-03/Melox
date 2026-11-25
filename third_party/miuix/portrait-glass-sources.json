@@ -1,5 +1,5 @@
 {
-  "commit": "a09d4f3268ece3fc262d0bba433a3941a312bb9a",
+  "commit": "542463a0863b393a3d6052237daae6c3da217e70",
   "files": [
     {
       "source": "miuix-blur/src/androidMain/kotlin/top/yukonga/miuix/kmp/blur/internal/RenderEffectCompat.android.kt",
@@ -326,7 +326,7 @@
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassTopAppBar.kt",
       "target": "glass/GlassTopAppBar.kt",
-      "source_sha256": "2f19a4b604f6568552ee6132babf3b3a3be23dce46266525023c4ae94bfbed75",
+      "source_sha256": "69a757a8894d82c8b8b4418a1d4f5bbf211e2853a30774cf9a462588e4cd38dc",
       "sha256": "04265e1cba1bdc7bab67786da32cd35387bc1bf0eac074f7fd7e0a8f5eeea1a0",
       "selection": "GlassTopAppBarDefaults button and search defaults"
     },
@@ -362,8 +362,8 @@
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/GlassSearchOverlay.kt",
       "target": "glass/GlassSearchOverlay.kt",
       "source_sha256": "f12813c816c701746d7a6db0692e8eec419763c1734ce06cadc46b585d1df4f1",
-      "sha256": "a2e2a2193d9402adb7b117669d80a43deaeaca85efa98c599d0b862e66ec8c48",
-      "selection": "Full source with one-way query, focus and visibility callbacks plus localized action descriptions"
+      "sha256": "9ef2700939550e00e8f84c6472e26686e7ec860989733a83fbf58c6723f8d43c",
+      "selection": "Full source with a shared editor state, focus and visibility callbacks, and localized action descriptions"
     },
     {
       "source": "miuix-glass/src/commonMain/kotlin/top/yukonga/miuix/kmp/glass/NavigationRailInteraction.kt",

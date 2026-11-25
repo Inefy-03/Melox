@@ -5,15 +5,11 @@ import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -45,11 +41,9 @@ import com.melox.player.ui.component.library.toggleTrackSelection
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.screen.library.MusicLibraryEmptyMessage
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import com.melox.player.ui.component.Icon
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import com.melox.player.ui.component.navigationBackIcon
@@ -57,6 +51,7 @@ import top.yukonga.miuix.kmp.icon.extended.Music
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import top.yukonga.miuix.kmp.icon.extended.SelectAll
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
@@ -240,23 +235,15 @@ internal fun HiddenSongsScreen(
         ),
         onDismissRequest = { restoreAll = false },
     ) {
-        Row(Modifier.fillMaxWidth()) {
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_cancel),
-                onClick = { restoreAll = false },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_confirm),
-                onClick = {
-                    onRestoreAll()
-                    restoreAll = false
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+            confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+            onDismiss = { restoreAll = false },
+            onConfirm = {
+                onRestoreAll()
+                restoreAll = false
+            },
+        )
     }
     TrackActionsOverlay(
         track = selectedTrack,

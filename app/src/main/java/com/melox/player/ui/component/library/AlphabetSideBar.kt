@@ -51,8 +51,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.melox.player.ui.component.Icon
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TopAppBarState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.ChevronBackward
 import top.yukonga.miuix.kmp.squircle.squircleBackground
@@ -74,11 +76,12 @@ fun AlphabetSideBar(
     itemCount: Int,
     scrollStateKey: Any,
     isAtTarget: (Int) -> Boolean,
+    canScrollBackward: () -> Boolean,
     scrollToItem: suspend (Int) -> Unit,
+    scrollBehavior: ScrollBehavior,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
     sections: List<String> = AlphabetSections,
-    onTargetIndexChanged: (targetIndex: Int, restoreLargeTitle: Boolean) -> Unit,
 ) {
     val view = LocalView.current
     val density = LocalDensity.current
@@ -97,12 +100,13 @@ fun AlphabetSideBar(
     val currentSectionIndexMap by rememberUpdatedState(sectionIndexMap)
     val currentSections by rememberUpdatedState(sections)
     val currentIsAtTarget by rememberUpdatedState(isAtTarget)
+    val currentCanScrollBackward by rememberUpdatedState(canScrollBackward)
     val scrollTopVisible by remember {
         derivedStateOf { currentItemCount > 0 && !currentIsAtTarget(0) }
     }
     val currentShowScrollTop by rememberUpdatedState(scrollTopVisible)
     val currentScrollToItem by rememberUpdatedState(scrollToItem)
-    val currentOnTargetIndexChanged by rememberUpdatedState(onTargetIndexChanged)
+    val currentScrollBehavior by rememberUpdatedState(scrollBehavior)
 
     LaunchedEffect(sectionIndexMap, itemCount, scrollStateKey) {
         scrollJob?.cancel()
@@ -136,25 +140,24 @@ fun AlphabetSideBar(
         val maxIndex = currentItemCount - 1
         if (maxIndex < 0) return
         val targetIndex = targetIndex(item).coerceIn(0, maxIndex)
-        currentOnTargetIndexChanged(
-            targetIndex,
-            item == AlphabetSideBarItem.ScrollTop,
-        )
         scrollJob?.cancel()
-        if (!currentIsAtTarget(targetIndex)) {
-            scrollJob = scope.launch {
-                try {
-                    val latestMaxIndex = currentItemCount - 1
-                    if (latestMaxIndex >= 0) {
-                        currentScrollToItem(targetIndex.coerceAtMost(latestMaxIndex))
-                    }
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: IndexOutOfBoundsException) {
-                    // A sort can replace the lazy layout between validation and scrolling.
-                } catch (_: IllegalArgumentException) {
-                    // Lazy layouts reject an index from a concurrently replaced item provider.
+        scrollJob = scope.launch {
+            try {
+                val latestMaxIndex = currentItemCount - 1
+                if (latestMaxIndex < 0) return@launch
+                val destination = targetIndex.coerceAtMost(latestMaxIndex)
+                val behavior = currentScrollBehavior
+                syncAlphabetJumpTopBar(behavior.state, behavior.isPinned, destination > 0)
+                if (!currentIsAtTarget(destination)) {
+                    currentScrollToItem(destination)
                 }
+                syncAlphabetJumpTopBar(behavior.state, behavior.isPinned, currentCanScrollBackward())
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: IndexOutOfBoundsException) {
+                // A sort can replace the lazy layout between validation and scrolling.
+            } catch (_: IllegalArgumentException) {
+                // Lazy layouts reject an index from a concurrently replaced item provider.
             }
         }
         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -263,6 +266,16 @@ fun AlphabetSideBar(
                 }
             }
         }
+    }
+}
+
+internal fun syncAlphabetJumpTopBar(state: TopAppBarState, isPinned: Boolean, canScrollBackward: Boolean) {
+    if (isPinned) return
+    if (canScrollBackward) {
+        collapseMusicLocationTopBar(state)
+    } else {
+        state.heightOffset = 0f
+        state.contentOffset = 0f
     }
 }
 

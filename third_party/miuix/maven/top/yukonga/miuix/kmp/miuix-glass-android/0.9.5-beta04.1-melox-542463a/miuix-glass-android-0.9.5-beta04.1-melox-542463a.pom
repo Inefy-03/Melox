@@ -8,7 +8,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>top.yukonga.miuix.kmp</groupId>
   <artifactId>miuix-glass-android</artifactId>
-  <version>0.9.5-beta04.1-melox-a09d4f32</version>
+  <version>0.9.5-beta04.1-melox-542463a</version>
   <packaging>aar</packaging>
   <name>miuix-glass</name>
   <description>Glass material library for Miuix</description>
@@ -44,13 +44,13 @@
     <dependency>
       <groupId>top.yukonga.miuix.kmp</groupId>
       <artifactId>miuix-material-android</artifactId>
-      <version>0.9.5-beta04</version>
+      <version>0.9.5-beta04.1-melox-542463a</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>top.yukonga.miuix.kmp</groupId>
       <artifactId>miuix-ui-android</artifactId>
-      <version>0.9.5-beta04.1-melox-a09d4f32</version>
+      <version>0.9.5-beta04.1-melox-542463a</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

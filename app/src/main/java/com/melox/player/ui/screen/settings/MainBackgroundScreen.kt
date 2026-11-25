@@ -8,10 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -57,9 +53,8 @@ import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
@@ -68,6 +63,7 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.glass.GlassDialogButtonRole
 
 @Composable
 internal fun MainBackgroundScreen(
@@ -249,35 +245,28 @@ internal fun MainBackgroundScreen(
             enableWindowDim = true,
             onDismissRequest = { if (!deletingImage) showDeleteDialog = false },
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(
-                    text = stringResource(R.string.clear_queue_confirm_cancel),
-                    onClick = { showDeleteDialog = false },
-                    enabled = !deletingImage,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(20.dp))
-                TextButton(
-                    text = stringResource(R.string.clear_queue_confirm_confirm),
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                    enabled = !deletingImage,
-                    onClick = {
-                        scope.launch {
-                            deletingImage = true
-                            try {
-                                if (onDeleteImage()) {
-                                    showDeleteDialog = false
-                                } else {
-                                    Toast.makeText(context, R.string.settings_background_delete_failed, Toast.LENGTH_SHORT).show()
-                                }
-                            } finally {
-                                deletingImage = false
+            OverlayDialogActions(
+                dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+                confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+                onDismiss = { showDeleteDialog = false },
+                onConfirm = {
+                    scope.launch {
+                        deletingImage = true
+                        try {
+                            if (onDeleteImage()) {
+                                showDeleteDialog = false
+                            } else {
+                                Toast.makeText(context, R.string.settings_background_delete_failed, Toast.LENGTH_SHORT).show()
                             }
+                        } finally {
+                            deletingImage = false
                         }
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
+                    }
+                },
+                confirmRole = GlassDialogButtonRole.Destructive,
+                dismissEnabled = !deletingImage,
+                confirmEnabled = !deletingImage,
+            )
         }
     }
 }

@@ -1,12 +1,12 @@
 # Miuix Android Integration
 
-Melox uses [Miuix main at `a09d4f32`](https://github.com/compose-miuix-ui/miuix/commit/a09d4f3268ece3fc262d0bba433a3941a312bb9a),
-seven commits after [`0.9.5-beta04`](https://github.com/compose-miuix-ui/miuix/tree/v0.9.5-beta04).
-Glass and UI resolve from the local repository as
-`0.9.5-beta04.1-melox-a09d4f32`. UI carries the NavigationRail top inset
-overload. Blur, Core, Icons, Material, Nav, Preference, and Squircle still
-resolve from Maven Central at Beta 04. The only upstream Blur change was
-whitespace; the relocated Blur sources are synchronized with the snapshot.
+Melox uses [Miuix main at `542463a`](https://github.com/compose-miuix-ui/miuix/commit/542463a0863b393a3d6052237daae6c3da217e70),
+twelve commits after [`0.9.5-beta04`](https://github.com/compose-miuix-ui/miuix/tree/v0.9.5-beta04).
+Glass, UI, Material, Nav, Preference, and Squircle resolve from the local
+repository as `0.9.5-beta04.1-melox-542463a`. UI carries the NavigationRail
+top inset overload. Blur, Core, and Icons resolve from Maven Central at Beta 04.
+The only upstream Blur change was whitespace. The relocated Blur sources are
+synchronized with the snapshot.
 
 The snapshot includes the menu anchor's closing rebound, dialog and sheet
 predictive-back reset, bottom-sheet overscroll and progressive header APIs,
@@ -23,6 +23,14 @@ Melox also follows the Demo's 12 dp vertical card spacing from `6bf1a4b0`.
 - License [Apache-2.0](LICENSE)
 - Source patch [navigation-rail-insets.patch](navigation-rail-insets.patch)
 - Vendored Glass source hashes [portrait-glass-sources.json](portrait-glass-sources.json)
+
+## Changes after `a09d4f32`
+
+- [`48bd11c`](https://github.com/compose-miuix-ui/miuix/commit/48bd11c789d6f8ca1265f0e2e25f38d2e1259795) ranks library search results by exact, prefix, word-start, and substring matches. Editing the query returns the results to the top. Alphabet jumps follow the example's rule: collapse away from the start and restore the large title when the list cannot scroll backward.
+- [`d2e5228`](https://github.com/compose-miuix-ui/miuix/commit/d2e52284cf3e52825d8421dd901277ace6ced473) supplies the Glass top-bar measurement fix directly in the Android AAR.
+- [`c217b44`](https://github.com/compose-miuix-ui/miuix/commit/c217b445a29de91645c89173f416cb78b6baff30) adds the progressive scrim to Glass top bars and sheets. The compact/detail top-bar adapter uses the same scrim stops and tint.
+- [`9c25692`](https://github.com/compose-miuix-ui/miuix/commit/9c256923501e1a311eb8049c99dd08c0c5183727) removes the Glass bottom-bar container's extra 20 dp top inset. Melox's page lists already use scroll-end haptics with Miuix overscroll and Compose overscroll disabled.
+- [`542463a`](https://github.com/compose-miuix-ui/miuix/commit/542463a0863b393a3d6052237daae6c3da217e70) supplies updated Android baseline profiles for the six snapshot libraries. Its generator and example startup rules target the upstream example application.
 
 ## NavigationRail top inset
 
@@ -55,10 +63,10 @@ Melox. Use an upstream clone containing the pinned commit:
 python3 third_party/miuix/rebuild.py /path/to/miuix
 ```
 
-The script also accepts the [pinned GitHub source archive](https://api.github.com/repos/compose-miuix-ui/miuix/tarball/a09d4f3268ece3fc262d0bba433a3941a312bb9a)
-and verifies its SHA-256. It applies the rail patch and builds the UI and Glass
-Android AARs. The corresponding official Beta 04 POMs supply dependency metadata,
-with the two locally rebuilt coordinates updated to the snapshot version.
+The script also accepts the [pinned GitHub source archive](https://codeload.github.com/compose-miuix-ui/miuix/legacy.tar.gz/542463a0863b393a3d6052237daae6c3da217e70)
+and verifies its SHA-256. It applies the rail patch and builds the six Android
+AARs. The corresponding official Beta 04 POMs supply dependency metadata, with
+locally rebuilt coordinates updated to the snapshot version.
 The build reads only `sdk.dir` from Melox's local configuration when present.
 It omits demo and baseline-profile generation projects. Use `--offline`
 when the required Gradle dependencies are already cached.
@@ -82,6 +90,8 @@ when measuring its progressive band. Melox's foreground content reserves the
 stable inset, so the background modes include the hidden status-bar region. Navigation icons render
 at 25 dp within the upstream 28 dp slots. App adapters preserve custom/no-feedback
 icon controls and use the upstream example's 8 dp spacing for grouped Glass controls.
+The progressive band bounds the scroll offset by the current measured collapse
+range before sizing the background.
 
 The app BackIcon adapter includes the pinned miuix-glass-icons Regular
 ChevronBackward path with its original license notice for the unified interface.
@@ -144,7 +154,7 @@ material algorithms are unchanged.
 Os4PortraitPlayerScaffold follows the example's GlassPage integration: native
 visibility animation, 54 dp height, 25 dp destination icons, 12 dp action spacing,
 and a 54 dp search button with its 28 dp Regular vector and Float shadow.
-The page uses 20 dp top spacing and safe-bottom spacing of at least 24 dp
+The bottom-bar container uses safe-bottom spacing of at least 24 dp
 (system bottom inset plus 8 dp when larger). The mini player and the bar share
 16 dp horizontal margins inside the horizontal safe area.
 The mini player, destination callbacks, search state and full-player translation

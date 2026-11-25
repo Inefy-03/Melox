@@ -10,18 +10,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -61,19 +57,20 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import com.melox.player.ui.component.PageScaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import com.melox.player.ui.component.navigationBackIcon
 import top.yukonga.miuix.kmp.icon.extended.More
 import com.melox.player.ui.component.OverlayIconDropdownMenu
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.glass.GlassDialogButtonRole
 
 private data class CustomFolderPresentation(
     val uri: String,
@@ -306,35 +303,24 @@ fun ScanMusicScreen(
         enableWindowDim = true,
         onDismissRequest = { pendingRemoval = null },
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_cancel),
-                onClick = { pendingRemoval = null },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_confirm),
-                onClick = {
-                    pendingRemoval?.uri?.let { uriString ->
-                        displayedCustomFolderUris = displayedCustomFolderUris - uriString
-                        runCatching {
-                            context.contentResolver.releasePersistableUriPermission(
-                                Uri.parse(uriString),
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                            )
-                        }
-                        onRemoveCustomFolder(uriString)
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+            confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+            onDismiss = { pendingRemoval = null },
+            onConfirm = {
+                pendingRemoval?.uri?.let { uriString ->
+                    displayedCustomFolderUris = displayedCustomFolderUris - uriString
+                    runCatching {
+                        context.contentResolver.releasePersistableUriPermission(
+                            Uri.parse(uriString),
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                        )
                     }
-                    pendingRemoval = null
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
+                    onRemoveCustomFolder(uriString)
+                }
+                pendingRemoval = null
+            },
+        )
     }
 
     OverlayDialog(
@@ -344,29 +330,16 @@ fun ScanMusicScreen(
         enableWindowDim = true,
         onDismissRequest = { showClearMusicLibraryConfirm = false },
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_cancel),
-                onClick = { showClearMusicLibraryConfirm = false },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_confirm),
-                onClick = {
-                    showClearMusicLibraryConfirm = false
-                    onClearMusicLibrary()
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.textButtonColorsPrimary(
-                    color = MiuixTheme.colorScheme.error,
-                    textColor = MiuixTheme.colorScheme.onError,
-                ),
-            )
-        }
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+            confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+            onDismiss = { showClearMusicLibraryConfirm = false },
+            onConfirm = {
+                showClearMusicLibraryConfirm = false
+                onClearMusicLibrary()
+            },
+            confirmRole = GlassDialogButtonRole.Destructive,
+        )
     }
 }
 

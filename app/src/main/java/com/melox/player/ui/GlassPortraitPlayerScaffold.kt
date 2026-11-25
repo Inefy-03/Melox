@@ -87,7 +87,7 @@ internal fun GlassPortraitPlayerScaffold(
                     .windowInsetsPadding(
                         WindowInsets.displayCutout.union(WindowInsets.navigationBars).only(WindowInsetsSides.Horizontal),
                     )
-                    .padding(start = 16.dp, end = 16.dp, top = 20.dp)
+                    .padding(horizontal = 16.dp)
                     .layout { measurable, constraints ->
                         val bottom = bottomPadding.roundToPx().coerceIn(0, constraints.maxHeight)
                         val placeable = measurable.measure(constraints.offset(vertical = -bottom))

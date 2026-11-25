@@ -10,11 +10,11 @@ import tempfile
 from pathlib import Path
 
 
-UPSTREAM_COMMIT = "a09d4f3268ece3fc262d0bba433a3941a312bb9a"
-UPSTREAM_ARCHIVE_SHA256 = "d544c4e7a84e019f6d62e166ef56efb0aba61e3f8aee1817cdbc08165b0e9b50"
+UPSTREAM_COMMIT = "542463a0863b393a3d6052237daae6c3da217e70"
+UPSTREAM_ARCHIVE_SHA256 = "6d767710f7835de97560d29ea64a8da958496a22aa1b45a5908d6be4d835051f"
 UPSTREAM_VERSION = "0.9.5-beta04"
-SNAPSHOT_VERSION = "0.9.5-beta04.1-melox-a09d4f32"
-SNAPSHOT_MODULES = ("miuix-ui", "miuix-glass")
+SNAPSHOT_VERSION = "0.9.5-beta04.1-melox-542463a"
+SNAPSHOT_MODULES = ("miuix-ui", "miuix-glass", "miuix-material", "miuix-nav", "miuix-preference", "miuix-squircle")
 MAVEN_GROUP = Path("maven/top/yukonga/miuix/kmp")
 RAIL_SOURCE = "miuix-ui/src/commonMain/kotlin/top/yukonga/miuix/kmp/basic/NavigationRail.kt"
 RAIL_SHA256 = "9c9b84f84548db581e418488a874cfbbfa8054afca5eae45dd083f23b1f99842"

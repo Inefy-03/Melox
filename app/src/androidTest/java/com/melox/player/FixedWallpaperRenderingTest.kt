@@ -1,5 +1,7 @@
 package com.melox.player
 
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import com.melox.player.ui.component.LocalGlassSearchQuery
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
@@ -220,9 +222,8 @@ class FixedWallpaperRenderingTest {
                                                         LibrarySearchBar(
                                                             visible = true,
                                                             focused = false,
-                                                            query = "",
+                                                            queryState = rememberTextFieldState(),
                                                             label = "",
-                                                            onQueryChange = {},
                                                             onFocusedChange = {},
                                                             onVisibleChange = {},
                                                         )
@@ -231,7 +232,7 @@ class FixedWallpaperRenderingTest {
                                             }
                                         },
                                     ) {
-                                        Box(Modifier.fillMaxSize().then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier))
+                                        Box(Modifier.fillMaxSize().then(backdrop?.takeIf { LocalGlassSearchQuery.current == null }?.let { Modifier.layerBackdrop(it) } ?: Modifier))
                                     }
                                 }
                             }

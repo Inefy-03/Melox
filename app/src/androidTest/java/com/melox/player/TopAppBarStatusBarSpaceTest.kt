@@ -4,13 +4,16 @@ import android.os.SystemClock
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -31,6 +34,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import com.melox.player.ui.component.SmallTopAppBar
 import com.melox.player.ui.component.TopAppBar
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
+import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
 
@@ -41,6 +49,38 @@ class TopAppBarStatusBarSpaceTest {
 
     @Test
     fun smallBarRetainsItsBackgroundAndBoundsWhenStatusBarHides() = checkBar(small = true)
+
+    @Test
+    fun progressiveGlassBarMeasuresWithStaleCollapseOffset() {
+        assumeTrue(isRuntimeShaderSupported())
+        val measured = CountDownLatch(1)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                activity.setContentView(ComposeView(activity).apply {
+                    setContent {
+                        MiuixTheme(colors = lightColorScheme()) {
+                            GlassTopAppBar(
+                                title = "Top app bar",
+                                modifier = Modifier
+                                    .requiredWidth(with(LocalDensity.current) { 1220.toDp() })
+                                    .onSizeChanged { if (it.width == 1220 && it.height > 0) measured.countDown() },
+                                backdrop = rememberLayerBackdrop(),
+                                progressiveBlur = true,
+                                scrollBehavior = MiuixScrollBehavior(
+                                    state = rememberTopAppBarState(
+                                        initialHeightOffsetLimit = -1f,
+                                        initialHeightOffset = -Float.MAX_VALUE,
+                                    ),
+                                ),
+                            )
+                        }
+                    }
+                })
+            }
+            assertTrue("The progressive Glass bar did not measure", measured.await(5, TimeUnit.SECONDS))
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        }
+    }
 
     private fun checkBar(small: Boolean) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

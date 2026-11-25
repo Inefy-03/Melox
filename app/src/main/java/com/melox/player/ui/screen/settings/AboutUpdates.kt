@@ -3,7 +3,6 @@ package com.melox.player.ui.screen.settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -30,14 +29,13 @@ import com.melox.player.data.update.UpdateAssetUnavailable
 import com.melox.player.data.update.installUpdate
 import com.melox.player.data.update.isNewerThan
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.glass.GlassDialogButton
-import top.yukonga.miuix.kmp.glass.GlassDialogButtonRole
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.io.File
 import java.time.LocalDate
@@ -110,7 +108,7 @@ internal fun AboutUpdates(
             onDismissRequest = { if (!busy) dialogOpen = false },
             onDismissFinished = { if (!dialogOpen) dialogRelease = null },
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (release.notes.isNotBlank()) {
                     Text(
                         text = release.notes,
@@ -118,57 +116,50 @@ internal fun AboutUpdates(
                         style = MiuixTheme.textStyles.body2,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    GlassDialogButton(
-                        modifier = Modifier.weight(1f),
-                        enabled = !busy,
-                        onClick = { dialogOpen = false },
-                    ) { Text(stringResource(R.string.about_update_later), style = MiuixTheme.textStyles.button) }
-                    GlassDialogButton(
-                        modifier = Modifier.weight(1f),
-                        enabled = !busy,
-                        role = GlassDialogButtonRole.Primary,
-                        onClick = {
-                            busy = true
-                            progress = null
-                            scope.launch {
-                                try {
-                                    if (ready == null) {
-                                        val file = updates.download(release) { fraction ->
-                                            withContext(Dispatchers.Main.immediate) { progress = fraction }
-                                        }
-                                        downloaded?.second?.delete()
-                                        downloaded = release.tag to file
-                                    } else {
-                                        when (installUpdate(context, ready)) {
-                                            InstallResult.PermissionRequired -> toast(R.string.about_update_install_permission)
-                                            InstallResult.Installed, InstallResult.InstallerOpened -> dialogOpen = false
-                                        }
-                                    }
-                                } catch (error: CancellationException) {
-                                    throw error
-                                } catch (_: UpdateAssetUnavailable) {
-                                    toast(R.string.about_update_apk_pending)
-                                } catch (_: InvalidUpdateApk) {
-                                    toast(R.string.about_update_invalid_apk)
-                                } catch (_: Exception) {
-                                    toast(if (ready == null) R.string.about_update_download_failed else R.string.about_update_install_failed)
-                                } finally {
-                                    busy = false
-                                }
-                            }
-                        },
-                    ) {
-                        val label = when {
-                            busy && ready != null -> stringResource(R.string.about_update_installing)
-                            busy -> progress?.let { "${(it * 100).toInt()}%" }
-                                ?: stringResource(R.string.about_update_downloading)
-                            ready != null -> stringResource(R.string.about_update_install)
-                            else -> stringResource(R.string.about_update_download)
-                        }
-                        Text(label, style = MiuixTheme.textStyles.button)
-                    }
+                val label = when {
+                    busy && ready != null -> stringResource(R.string.about_update_installing)
+                    busy -> progress?.let { "${(it * 100).toInt()}%" }
+                        ?: stringResource(R.string.about_update_downloading)
+                    ready != null -> stringResource(R.string.about_update_install)
+                    else -> stringResource(R.string.about_update_download)
                 }
+                OverlayDialogActions(
+                    dismissText = stringResource(R.string.about_update_later),
+                    confirmText = label,
+                    onDismiss = { dialogOpen = false },
+                    onConfirm = {
+                        busy = true
+                        progress = null
+                        scope.launch {
+                            try {
+                                if (ready == null) {
+                                    val file = updates.download(release) { fraction ->
+                                        withContext(Dispatchers.Main.immediate) { progress = fraction }
+                                    }
+                                    downloaded?.second?.delete()
+                                    downloaded = release.tag to file
+                                } else {
+                                    when (installUpdate(context, ready)) {
+                                        InstallResult.PermissionRequired -> toast(R.string.about_update_install_permission)
+                                        InstallResult.Installed, InstallResult.InstallerOpened -> dialogOpen = false
+                                    }
+                                }
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (_: UpdateAssetUnavailable) {
+                                toast(R.string.about_update_apk_pending)
+                            } catch (_: InvalidUpdateApk) {
+                                toast(R.string.about_update_invalid_apk)
+                            } catch (_: Exception) {
+                                toast(if (ready == null) R.string.about_update_download_failed else R.string.about_update_install_failed)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    dismissEnabled = !busy,
+                    confirmEnabled = !busy,
+                )
             }
         }
     }

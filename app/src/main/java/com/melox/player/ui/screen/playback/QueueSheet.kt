@@ -57,11 +57,9 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.glass.GlassBottomSheetDefaults
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import com.melox.player.ui.component.IconButton
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
 import com.melox.player.ui.icon.Close
 import com.melox.player.ui.icon.Delete
 import com.melox.player.ui.icon.GlassIcons
@@ -69,8 +67,10 @@ import com.melox.player.ui.icon.Remove
 import com.melox.player.ui.component.OverlayBottomSheet
 import com.melox.player.ui.component.BottomSheetHeaderButton
 import com.melox.player.ui.component.OverlayDialog
+import com.melox.player.ui.component.OverlayDialogActions
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.glass.GlassDialogButtonRole
 
 private val QueueArtworkSize = 48.dp
 private val QueueArtworkCornerRadius = 6.dp
@@ -598,26 +598,16 @@ fun QueueSheet(
         enableWindowDim = true,
         onDismissRequest = { showClearConfirm = false },
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_cancel),
-                onClick = { showClearConfirm = false },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(modifier = Modifier.width(20.dp))
-            TextButton(
-                text = stringResource(R.string.clear_queue_confirm_confirm),
-                onClick = {
-                    showClearConfirm = false
-                    onClear()
-                    onDismiss()
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
+        OverlayDialogActions(
+            dismissText = stringResource(R.string.clear_queue_confirm_cancel),
+            confirmText = stringResource(R.string.clear_queue_confirm_confirm),
+            onDismiss = { showClearConfirm = false },
+            onConfirm = {
+                showClearConfirm = false
+                onClear()
+                onDismiss()
+            },
+            confirmRole = GlassDialogButtonRole.Destructive,
+        )
     }
 }

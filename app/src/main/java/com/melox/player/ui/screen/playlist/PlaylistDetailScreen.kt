@@ -1,9 +1,14 @@
 package com.melox.player.ui.screen.playlist
 
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import com.melox.player.ui.component.OverlayIconDropdownMenu
@@ -30,11 +35,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -84,6 +91,7 @@ import com.melox.player.ui.component.playlist.PlaylistNameDialog
 import com.melox.player.ui.component.playlist.PlaylistSortButton
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.rememberGlassBlurBackdrop
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.upstream.blur.layerBackdrop as glassLayerBackdrop
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -127,6 +135,7 @@ fun PlaylistDetailScreen(
     showSaltAudioEditor: Boolean,
     showSaltAudioAnalyzer: Boolean,
     onRename: (String) -> Unit,
+    onSetCustomCover: suspend (Uri) -> Boolean,
     onDelete: () -> Unit,
     onRemoveEntries: (Set<String>) -> Unit,
     onMoveEntry: (List<String>) -> Boolean,
@@ -136,6 +145,20 @@ fun PlaylistDetailScreen(
     miniPlayerBounds: Rect = Rect.Zero,
     playerContentBounds: Rect = Rect.Zero,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val message = if (onSetCustomCover(uri)) {
+                    R.string.playlist_custom_cover_success
+                } else {
+                    R.string.playlist_custom_cover_failed
+                }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     val searchDraft = remember(playlist.id) { TextFieldState() }
     var searchVisible by rememberSaveable(playlist.id) { mutableStateOf(false) }
     var searchFocused by remember(playlist.id) { mutableStateOf(false) }
@@ -396,6 +419,9 @@ fun PlaylistDetailScreen(
                                 )
                                 PlaylistActionsButton(
                                     onRename = { showRename = true },
+                                    onCustomCover = {
+                                        coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    },
                                     onDelete = { showDelete = true },
                                 )
                             },
@@ -671,11 +697,13 @@ fun PlaylistDetailScreen(
 @Composable
 private fun RowScope.PlaylistActionsButton(
     onRename: () -> Unit,
+    onCustomCover: () -> Unit,
     onDelete: () -> Unit,
 ) {
     OverlayIconDropdownMenu(
         entry = DropdownEntry(listOf(
             DropdownItem(text = stringResource(R.string.playlist_rename), onClick = onRename),
+            DropdownItem(text = stringResource(R.string.playlist_custom_cover), onClick = onCustomCover),
             DropdownItem(text = stringResource(R.string.playlist_delete), onClick = onDelete),
         )),
     ) {

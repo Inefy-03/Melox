@@ -2689,6 +2689,9 @@ fun MeloxApp(
                                                                         name,
                                                                     )
                                                                 },
+                                                                onSetCustomCover = { uri ->
+                                                                    viewModel.setPlaylistCustomCover(it.id, uri)
+                                                                },
                                                                 onDelete = {
                                                                     currentRoute =
                                                                         playlistParentRoute

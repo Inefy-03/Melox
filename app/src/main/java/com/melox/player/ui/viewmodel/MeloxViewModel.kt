@@ -63,6 +63,7 @@ import com.melox.player.playback.PlaybackController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -192,9 +193,19 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
     private val playlistsLoaded = MutableStateFlow(false)
     private val mutablePlaylistSaveFailures = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val playlistSaveFailures = mutablePlaylistSaveFailures.asSharedFlow()
+    private val deletedPlaylistCoverIds = mutableSetOf<String>()
     private val playlistSaveQueue = PlaylistSaveQueue(
         scope = viewModelScope,
-        save = playlistRepository::save,
+        save = { snapshot ->
+            playlistRepository.save(snapshot)
+            if (deletedPlaylistCoverIds.isNotEmpty()) {
+                val savedIds = snapshot.mapTo(HashSet(), LocalPlaylist::id)
+                for (id in deletedPlaylistCoverIds.filterNot(savedIds::contains)) {
+                    playlistRepository.deleteCustomCover(id)
+                    deletedPlaylistCoverIds.remove(id)
+                }
+            }
+        },
         onFailure = { mutablePlaylistSaveFailures.tryEmit(Unit) },
     )
     private val lyricsRefreshRevision = MutableStateFlow(0L)
@@ -862,6 +873,19 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
+    suspend fun setPlaylistCustomCover(playlistId: String, uri: Uri): Boolean = viewModelScope.async {
+        if (playlists.value.none { it.id == playlistId }) return@async false
+        if (!playlistRepository.setCustomCover(playlistId, uri)) return@async false
+        playlists.value = playlists.value.map { playlist ->
+            if (playlist.id == playlistId) {
+                playlist.copy(customCoverRevision = playlist.customCoverRevision + 1)
+            } else {
+                playlist
+            }
+        }
+        true
+    }.await()
+
     fun setFolderTrackSortConfig(folderKey: String, config: MusicSortConfig) {
         viewModelScope.launch {
             settingsRepository.setFolderTrackSortConfig(folderKey, config)
@@ -880,6 +904,7 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         val updated = currentPlaylists.filterNot { it.id == playlistId }
         if (updated.size == currentPlaylists.size) return false
         playlists.value = updated
+        deletedPlaylistCoverIds.add(playlistId)
         persistPlaylists()
         setPlaylistSortConfig(playlistId, PlaylistSortConfig())
         return true

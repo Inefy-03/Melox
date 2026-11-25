@@ -43,6 +43,9 @@
     <string name="playlist_create_title">新建歌单</string>
     <string name="playlist_name_hint">歌单名称</string>
     <string name="playlist_rename">重命名</string>
+    <string name="playlist_custom_cover">自定义封面</string>
+    <string name="playlist_custom_cover_success">自定义封面成功</string>
+    <string name="playlist_custom_cover_failed">自定义封面失败</string>
     <string name="playlist_rename_title">重命名歌单</string>
     <string name="playlist_delete">删除歌单</string>
     <string name="playlist_delete_title">删除歌单</string>

@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.melox.player.R
 import com.melox.player.data.playlist.loadPlaylistArtwork
+import com.melox.player.data.repository.loadPlaylistCustomCover
 import com.melox.player.model.LocalPlaylist
 import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
 import com.melox.player.ui.component.library.loadArtworkBitmap
@@ -215,7 +216,9 @@ private fun PlaylistArtwork(
 @Composable
 private fun rememberPlaylistArtwork(playlist: LocalPlaylist, requestSizePx: Int): List<Bitmap> {
     val context = LocalContext.current.applicationContext
-    val result = rememberArtworkLoad<List<Bitmap>?>(Triple(playlist.id, playlist.entries, requestSizePx)) {
+    val result = rememberArtworkLoad<List<Bitmap>?>(
+        Triple(playlist.id, playlist.customCoverRevision to playlist.entries, requestSizePx),
+    ) {
         withContext(Dispatchers.IO) {
             loadPlaylistArtwork(
                 playlist = playlist,
@@ -229,6 +232,9 @@ private fun rememberPlaylistArtwork(playlist: LocalPlaylist, requestSizePx: Int)
                     )
                 },
                 sameArtwork = Bitmap::sameAs,
+                loadCustomArtwork = {
+                    loadPlaylistCustomCover(context, playlist.id, requestSizePx * 3 / 2)
+                },
             )
         }
     }

@@ -7,6 +7,8 @@ data class LocalPlaylist(
     val createdAtEpochMillis: Long,
     val updatedAtEpochMillis: Long,
     val entries: List<PlaylistTrackEntry> = emptyList(),
+    // The image is persisted separately. This revision invalidates active artwork requests.
+    internal val customCoverRevision: Long = 0,
 )
 /** One stable playlist slot with enough metadata to remain visible when its source disappears. */
 data class PlaylistTrackEntry(

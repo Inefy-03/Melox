@@ -43,6 +43,9 @@
     <string name="playlist_create_title">New playlist</string>
     <string name="playlist_name_hint">Playlist name</string>
     <string name="playlist_rename">Rename</string>
+    <string name="playlist_custom_cover">Custom cover</string>
+    <string name="playlist_custom_cover_success">Custom cover saved</string>
+    <string name="playlist_custom_cover_failed">Could not save the custom cover</string>
     <string name="playlist_rename_title">Rename playlist</string>
     <string name="playlist_delete">Delete playlist</string>
     <string name="playlist_delete_title">Delete playlist</string>

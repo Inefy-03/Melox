@@ -29,8 +29,13 @@ internal suspend fun <Artwork : Any> loadPlaylistArtwork(
     playlist: LocalPlaylist,
     loadArtwork: suspend (MusicTrack) -> Artwork?,
     sameArtwork: (Artwork, Artwork) -> Boolean,
+    loadCustomArtwork: suspend () -> Artwork? = { null },
 ): List<Artwork> {
     val tracks = playlist.entries.map(PlaylistTrackEntry::trackSnapshot)
+    loadCustomArtwork()?.let {
+        currentCoroutineContext().ensureActive()
+        return listOf(it)
+    }
     val selected = ArrayList<Artwork>(3)
     val representedAlbums = HashSet<String>()
     for (track in tracks) {

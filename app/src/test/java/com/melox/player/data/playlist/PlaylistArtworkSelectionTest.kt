@@ -16,6 +16,19 @@ import org.junit.Test
 
 class PlaylistArtworkSelectionTest {
     @Test
+    fun aCustomCoverReplacesTheEntireCollageAndWorksForAnEmptyPlaylist() = runBlocking {
+        for (tracks in listOf(emptyList(), (1L..4L).map { track(it) })) {
+            val result = loadPlaylistArtwork(
+                playlist = playlist(tracks),
+                loadArtwork = { error("A custom cover should skip track artwork loading") },
+                sameArtwork = String::equals,
+                loadCustomArtwork = { "custom" },
+            )
+            assertEquals(listOf("custom"), result)
+        }
+    }
+
+    @Test
     fun missingImagesAreReplacedByLaterImagesInCustomOrder() = runBlocking {
         val requested = mutableListOf<Long>()
         val result = select(

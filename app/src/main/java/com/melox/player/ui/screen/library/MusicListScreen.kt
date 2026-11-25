@@ -109,6 +109,7 @@ fun MusicListScreen(
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val selectionAllowed = !LocalGlassSearchResults.current
+    val showingSearchResults = LocalGlassSearchResults.current
     val selectingTracks = selectionAllowed && selectionMode
     val density = LocalDensity.current
     val locateActionSize = ButtonDefaults.MinHeight
@@ -194,7 +195,7 @@ fun MusicListScreen(
             overscrollEffect = null,
         ) {
             leadingContent()
-            if (displayedTracks.isEmpty() && leadingItemCount == 0) {
+            if (displayedTracks.isEmpty() && leadingItemCount == 0 && !showingSearchResults) {
                 item(key = "empty_music") {
                     val emptyModifier = Modifier.fillParentMaxSize()
                     if (emptyContent != null) {

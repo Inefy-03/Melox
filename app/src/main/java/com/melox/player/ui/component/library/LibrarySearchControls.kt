@@ -58,7 +58,6 @@ internal fun LibrarySearchBar(
     onVisibleChange: (Boolean) -> Unit,
     backEnabled: Boolean = true,
     onBackRequest: (() -> Unit)? = null,
-    resultsQuery: String = query,
 ) {
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val ordinaryBackOwner = LocalOrdinaryBackDispatcherOwner.current
@@ -75,7 +74,7 @@ internal fun LibrarySearchBar(
         }
     }
     registerGlassSearchSession(
-        visible && backEnabled, query, label, onQueryChange, onFocusedChange, resultsQuery,
+        visible, backEnabled, query, label, focused, onQueryChange, onFocusedChange,
     ) { onVisibleChange(false) }
 }
 

@@ -11,8 +11,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -233,9 +231,7 @@ internal fun PageScaffold(
     val searchExpanded = searchPage.isExpanded
     val searchAlpha = rememberGlassSearchBarAlpha(searchExpanded)
     val query = searchPage.session?.query?.value.orEmpty()
-    val renderedQuery = searchPage.session?.resultsQuery?.value.orEmpty()
-    val resultsVisible = searchExpanded && query.isNotBlank() && renderedQuery.isNotBlank()
-    val resultsReady = showGlassSearchResults(searchExpanded, query, renderedQuery)
+    val resultsVisible = searchExpanded && query.isNotBlank()
     val layoutDirection = LocalLayoutDirection.current
     val density = LocalDensity.current
     val image = LocalCustomPageBackground.current
@@ -339,6 +335,9 @@ internal fun PageScaffold(
                         blurEnabled = effectsActive,
                         searchIcon = glassSearchIcon,
                         closeIcon = glassCloseIcon,
+                        query = session.query.value,
+                        pageActive = session.pageActive.value,
+                        requestFocusOnExpand = session.focused.value,
                         onQueryChange = { text ->
                             if (text != session.query.value) session.onQueryChange.value(text)
                         },
@@ -351,13 +350,6 @@ internal fun PageScaffold(
                             Box(
                                 Modifier.fillMaxSize()
                                     .windowInsetsPadding(searchHorizontalInsets)
-                                    .then(if (resultsReady) Modifier else Modifier.clearAndSetSemantics { }.pointerInput(Unit) {
-                                        awaitPointerEventScope {
-                                            while (true) {
-                                                awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                                            }
-                                        }
-                                    })
                                     .onGloballyPositioned { searchScrollContent.bounds = it.boundsInRoot() },
                             ) {
                                 CompositionLocalProvider(

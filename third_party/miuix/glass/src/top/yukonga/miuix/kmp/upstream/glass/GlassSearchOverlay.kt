@@ -3,6 +3,7 @@
 
 package top.yukonga.miuix.kmp.upstream.glass
 
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
@@ -33,6 +34,7 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonRestartableComposable
@@ -219,6 +221,9 @@ fun GlassSearchOverlay(
     shadow: GlassShadow? = GlassSearchOverlayDefaults.shadow(),
     searchIcon: ImageVector = MiuixIcons.Basic.Search,
     closeIcon: ImageVector = MiuixIcons.Basic.Close,
+    query: String = "",
+    pageActive: Boolean = true,
+    requestFocusOnExpand: Boolean = true,
     onQueryChange: (String) -> Unit = {},
     onFocusedChange: (Boolean) -> Unit = {},
     onActiveChange: (Boolean) -> Unit = {},
@@ -226,7 +231,9 @@ fun GlassSearchOverlay(
     cancelContentDescription: String = "Cancel",
     content: @Composable ColumnScope.(String) -> Unit = {},
 ) {
-    val transition = updateTransition(expanded, label = "glassSearch")
+    val transitionState = remember { MutableTransitionState(expanded) }
+    transitionState.targetState = expanded
+    val transition = updateTransition(transitionState, label = "glassSearch")
     val progress = transition.animateFloat(
         transitionSpec = { tween(400, easing = SearchModeEasing) },
         label = "glassSearchGeometry",
@@ -235,7 +242,10 @@ fun GlassSearchOverlay(
         transitionSpec = { tween(150, delayMillis = if (targetState) 100 else 0, easing = LinearEasing) },
         label = "glassSearchCancelMaterial",
     ) { if (it) 1f else 0f }
-    val queryState = rememberTextFieldState()
+    val queryState = rememberTextFieldState(initialText = query)
+    LaunchedEffect(query) {
+        if (queryState.text.toString() != query) queryState.setTextAndPlaceCursorAtEnd(query)
+    }
     val currentOnQueryChange by rememberUpdatedState(onQueryChange)
     LaunchedEffect(queryState) {
         snapshotFlow { queryState.text.toString() }.collect { currentOnQueryChange(it) }
@@ -249,11 +259,12 @@ fun GlassSearchOverlay(
     }
     SideEffect { onActiveChange(active) }
     LaunchedEffect(expanded) {
-        queryState.clearText()
-        if (expanded) {
-            focusRequester.requestFocus()
-            keyboard?.show()
-        } else if (active) {
+        if (expanded && pageActive) {
+            if (requestFocusOnExpand) {
+                focusRequester.requestFocus()
+                keyboard?.show()
+            }
+        } else if (!expanded && active && pageActive) {
             focusManager.clearFocus()
             keyboard?.hide()
         }
@@ -261,7 +272,7 @@ fun GlassSearchOverlay(
     if (!active) return
     NavigationBackHandler(
         state = rememberNavigationEventState(currentInfo = NavigationEventInfo.None),
-        isBackEnabled = expanded,
+        isBackEnabled = expanded && pageActive,
         onBackCompleted = onDismissRequest,
     )
     val colors = MiuixTheme.colorScheme
@@ -270,7 +281,7 @@ fun GlassSearchOverlay(
         modifier = modifier
             .fillMaxSize()
             .onPreviewKeyEvent {
-                if (it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
+                if (pageActive && it.key == Key.Escape && it.type == KeyEventType.KeyUp) {
                     onDismissRequest()
                     true
                 } else {

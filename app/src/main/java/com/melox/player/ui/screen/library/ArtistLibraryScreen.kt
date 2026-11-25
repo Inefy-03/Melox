@@ -1,5 +1,7 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.LocalGlassSearchResults
+
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
@@ -70,6 +72,7 @@ fun ArtistLibraryScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
+        val showingSearchResults = LocalGlassSearchResults.current
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -85,7 +88,7 @@ fun ArtistLibraryScreen(
             ),
             overscrollEffect = null,
         ) {
-            if (displayedArtists.isEmpty()) {
+            if (displayedArtists.isEmpty() && !showingSearchResults) {
                 item(key = "empty_artist") {
                     Box(
                         modifier = Modifier.fillParentMaxSize(),

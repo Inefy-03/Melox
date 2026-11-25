@@ -31,6 +31,9 @@ class PlaybackOptionsTest {
         assertEquals(false, settings.autoPlayOnStart)
         assertEquals(false, settings.terminateOnTaskRemoved)
         assertEquals(0.95f, normalizePlaybackSpeed(0.95f))
+        assertEquals(0.30f, normalizePlaybackSpeed(0.30f))
+        assertEquals(2.95f, normalizePlaybackSpeed(2.95f))
+        assertEquals(3f, normalizePlaybackSpeed(3f))
         assertEquals(1f, normalizePlaybackSpeed(1.37f))
     }
 

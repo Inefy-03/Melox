@@ -148,10 +148,7 @@ fun resolveLyricAnimationMode(storedValue: String?, legacyForceWordByWord: Boole
         LyricAnimationMode.CURRENT_LINE
     }
 
-val PLAYBACK_SPEED_VALUES = listOf(
-    0.25f, 0.50f, 0.75f, 0.90f, 0.95f, 1.00f, 1.05f,
-    1.10f, 1.25f, 1.50f, 1.75f, 2.00f, 2.50f, 3.00f,
-)
+val PLAYBACK_SPEED_VALUES = (5..60).map { it * 5 / 100f }
 
 fun normalizePlaybackSpeed(speed: Float): Float =
     speed.takeIf(PLAYBACK_SPEED_VALUES::contains) ?: 1f

@@ -245,6 +245,8 @@
     <string name="settings_audio_focus_keep_volume">Keep volume</string>
     <string name="settings_audio_focus_duck">Lower volume, then restore</string>
     <string name="settings_audio_focus_pause">Pause, then resume</string>
+    <string name="playback_speed_value">×%1$.2f</string>
+    <string name="playback_speed_reset">Reset playback speed to 1×</string>
     <string name="playback_speed_title">Playback speed</string>
     <string name="settings_playback_behavior_title">Playback behavior</string>
     <string name="settings_auto_play_title">Auto-play</string>
@@ -374,12 +376,6 @@
     <string name="playback_misound">MiSound</string>
     <string name="playback_audio_effect_unavailable">Unable to open audio effect settings</string>
     <string name="playback_timer_confirm">Confirm</string>
-    <string-array name="playback_speed_options">
-        <item>×0.25</item><item>×0.50</item><item>×0.75</item><item>×0.90</item>
-        <item>×0.95</item><item>×1.00</item><item>×1.05</item><item>×1.10</item>
-        <item>×1.25</item><item>×1.5</item><item>×1.75</item><item>×2.00</item>
-        <item>×2.50</item><item>×3.00</item>
-    </string-array>
     <string name="player_title_left_aligned">Left-align title</string>
     <string name="lyrics_translation">Lyrics translation</string>
     <string name="lyrics_romanization">Show romanization</string>
@@ -477,7 +473,7 @@
     <string name="lyrics_translation_language_chinese">Chinese</string>
     <string name="lyrics_translation_language_english">English</string>
     <string name="lyrics_translation_language_all">All translations</string>
-    <string name="playback_audio_settings">Audio settings</string>
+    <string name="playback_audio_settings">Audio effects</string>
     <string name="lyrics_translation_open">Open lyrics translation</string>
     <string name="settings_bottom_bar_style_title">Bottom bar style</string>
     <string name="settings_bottom_bar_ios_like">iOS-like</string>

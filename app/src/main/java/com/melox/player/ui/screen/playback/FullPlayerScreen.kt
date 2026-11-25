@@ -1512,6 +1512,8 @@ internal fun TappableSliderPreference(
     magnetThreshold: Float = 0.02f,
     enabled: Boolean = true,
     summary: String? = null,
+    onTitleClick: (() -> Unit)? = null,
+    onTitleClickLabel: String? = null,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val currentOnValueChange by rememberUpdatedState(onValueChange)
@@ -1522,6 +1524,8 @@ internal fun TappableSliderPreference(
         title = title,
         summary = summary,
         enabled = enabled,
+        onClick = onTitleClick,
+        onClickLabel = onTitleClickLabel,
         endActions = {
             Row(
                 modifier = Modifier
@@ -1550,7 +1554,7 @@ internal fun TappableSliderPreference(
                             setProgress { false }
                         }
                     }
-                    .pointerInput(enabled, valueRange, steps, keyPoints, magnetThreshold, layoutDirection) {
+                    .pointerInput(enabled, valueRange, steps, keyPoints, magnetThreshold, layoutDirection, onTitleClick != null) {
                         if (!enabled) return@pointerInput
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
@@ -1577,6 +1581,7 @@ internal fun TappableSliderPreference(
                                             magnetThreshold = magnetThreshold,
                                             reverseDirection = layoutDirection == LayoutDirection.Rtl,
                                         )
+                                        if (onTitleClick != null) change.consume()
                                         currentOnValueChange(tappedValue)
                                         currentOnValueChangeFinished?.invoke()
                                     }

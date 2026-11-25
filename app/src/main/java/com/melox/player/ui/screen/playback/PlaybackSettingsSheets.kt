@@ -35,15 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.rememberTextMeasurer
-import com.melox.player.ui.glass.GlassSegmentedTabRowDefaults
-import com.melox.player.ui.glass.GlassStroke
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -52,23 +45,18 @@ import com.melox.player.R
 import com.melox.player.model.PLAYBACK_SPEED_VALUES
 import com.melox.player.model.SleepTimerState
 import com.melox.player.ui.component.playback.AudioEffectPreferences
-import com.melox.player.ui.component.bottomSheetCardColor
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.glass.GlassCard as Card
 import top.yukonga.miuix.kmp.glass.GlassCardDefaults
 import top.yukonga.miuix.kmp.basic.NumberPickerDefaults
-import com.melox.player.ui.glass.GlassSegmentedTabRow
-import top.yukonga.miuix.kmp.blur.Backdrop
-import top.yukonga.miuix.kmp.blur.layerBackdrop
-import com.melox.player.ui.component.LocalPageSurfaceBackdrop
-import com.melox.player.ui.component.rememberBlurBackdrop
 import top.yukonga.miuix.kmp.basic.Text
 import com.melox.player.ui.component.OverlayBottomSheet
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.melox.player.ui.component.overScrollVertical
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -395,11 +383,12 @@ internal fun AudioSettingsSheet(
                 .padding(bottom = bottomPadding + 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            PlaybackSpeedSelector(
-                playbackSpeed = playbackSpeed,
-                onPlaybackSpeedChange = onPlaybackSpeedChange,
-                trackColor = bottomSheetCardColor(),
-            )
+            Card(modifier = Modifier.fillMaxWidth()) {
+                PlaybackSpeedSelector(
+                    playbackSpeed = playbackSpeed,
+                    onPlaybackSpeedChange = onPlaybackSpeedChange,
+                )
+            }
             Card(
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -422,43 +411,21 @@ internal fun AudioSettingsSheet(
 internal fun PlaybackSpeedSelector(
     playbackSpeed: Float,
     onPlaybackSpeedChange: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-    backdrop: Backdrop? = null,
-    trackColor: Color = GlassSegmentedTabRowDefaults.restingTrackColor(),
-    stroke: GlassStroke? = GlassSegmentedTabRowDefaults.stroke(),
 ) {
-    val speedLabels = stringArrayResource(R.array.playback_speed_options).toList()
-    val speedDescription = stringResource(R.string.playback_speed_title)
-    val textMeasurer = rememberTextMeasurer()
-    val selectedTextStyle = MiuixTheme.textStyles.subtitle
-    val textStyle = MiuixTheme.textStyles.body2
-    val labelWidthPx = remember(speedLabels, textMeasurer, selectedTextStyle, textStyle) {
-        speedLabels.maxOf { label ->
-            maxOf(
-                textMeasurer.measure(label, selectedTextStyle, maxLines = 1).size.width,
-                textMeasurer.measure(label, textStyle, maxLines = 1).size.width,
-            )
-        }
-    }
-    val tabWidth = with(LocalDensity.current) { labelWidthPx.toDp() } +
-        GlassSegmentedTabRowDefaults.TabPaddingHorizontal * 2
-    val selectedIndex = PLAYBACK_SPEED_VALUES.indexOf(playbackSpeed)
-        .takeIf { it >= 0 } ?: PLAYBACK_SPEED_VALUES.indexOf(1f)
-    Box(
-        modifier = modifier.fillMaxWidth().semantics { contentDescription = speedDescription },
-    ) {
-        GlassSegmentedTabRow(
-            tabs = speedLabels,
-            modifier = Modifier.fillMaxWidth(),
-            tabWidth = tabWidth,
-            backdrop = backdrop,
-            shadow = null,
-            stroke = stroke,
-            trackColor = trackColor,
-            selectedIndex = selectedIndex,
-            onSelect = { index -> onPlaybackSpeedChange(PLAYBACK_SPEED_VALUES[index]) },
-        )
-    }
+    TappableSliderPreference(
+        value = playbackSpeed,
+        onValueChange = { speed ->
+            val index = ((speed - 0.25f) / 0.05f).roundToInt().coerceIn(0, PLAYBACK_SPEED_VALUES.lastIndex)
+            val selectedSpeed = PLAYBACK_SPEED_VALUES[index]
+            if (selectedSpeed != playbackSpeed) onPlaybackSpeedChange(selectedSpeed)
+        },
+        title = stringResource(R.string.playback_speed_title),
+        valueText = stringResource(R.string.playback_speed_value, playbackSpeed),
+        valueRange = 0.25f..3f,
+        steps = PLAYBACK_SPEED_VALUES.size - 2,
+        onTitleClick = { if (playbackSpeed != 1f) onPlaybackSpeedChange(1f) },
+        onTitleClickLabel = stringResource(R.string.playback_speed_reset),
+    )
 }
 
 @Composable
@@ -470,25 +437,11 @@ internal fun AudioPlaybackPreferences(
     onHighPrecisionOutputChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val wallpaperBackdrop = LocalPageSurfaceBackdrop.current
-    val baseBackdrop = if (wallpaperBackdrop == null) {
-        rememberBlurBackdrop(includeCustomBackground = false)
-    } else {
-        null
-    }
     Column(modifier) {
-        Box(Modifier.fillMaxWidth().padding(12.dp)) {
-            if (baseBackdrop != null) {
-                // Record only the theme base, outside the selector's draw subtree.
-                Box(Modifier.matchParentSize().layerBackdrop(baseBackdrop))
-            }
-            PlaybackSpeedSelector(
-                playbackSpeed = playbackSpeed,
-                onPlaybackSpeedChange = onPlaybackSpeedChange,
-                backdrop = wallpaperBackdrop ?: baseBackdrop,
-                stroke = null,
-            )
-        }
+        PlaybackSpeedSelector(
+            playbackSpeed = playbackSpeed,
+            onPlaybackSpeedChange = onPlaybackSpeedChange,
+        )
         AudioEffectPreferences(audioSessionId = audioSessionId)
         SwitchPreference(
             title = stringResource(R.string.playback_high_precision_output),

@@ -236,6 +236,8 @@
     <string name="settings_audio_focus_keep_volume">保持音量</string>
     <string name="settings_audio_focus_duck">降低音量后自动恢复</string>
     <string name="settings_audio_focus_pause">暂停后自动恢复</string>
+    <string name="playback_speed_value">×%1$.2f</string>
+    <string name="playback_speed_reset">恢复一倍速</string>
     <string name="playback_speed_title">播放速度</string>
     <string name="settings_playback_behavior_title">播放行为</string>
     <string name="settings_auto_play_title">自动播放</string>
@@ -361,12 +363,6 @@
     <string name="playback_misound">MiSound</string>
     <string name="playback_audio_effect_unavailable">无法打开该音效设置</string>
     <string name="playback_timer_confirm">确认</string>
-    <string-array name="playback_speed_options">
-        <item>×0.25</item><item>×0.50</item><item>×0.75</item><item>×0.90</item>
-        <item>×0.95</item><item>×1.00</item><item>×1.05</item><item>×1.10</item>
-        <item>×1.25</item><item>×1.5</item><item>×1.75</item><item>×2.00</item>
-        <item>×2.50</item><item>×3.00</item>
-    </string-array>
     <string name="player_title_left_aligned">标题左对齐</string>
     <string name="lyrics_translation">歌词翻译</string>
     <string name="lyrics_romanization">显示罗马音</string>
@@ -463,7 +459,7 @@
     <string name="lyrics_translation_language_chinese">中文</string>
     <string name="lyrics_translation_language_english">英文</string>
     <string name="lyrics_translation_language_all">全部译文</string>
-    <string name="playback_audio_settings">音频设置</string>
+    <string name="playback_audio_settings">音频效果</string>
     <string name="lyrics_translation_open">打开歌词翻译</string>
     <string name="settings_bottom_bar_style_title">底栏样式</string>
     <string name="settings_bottom_bar_ios_like">iOS-like</string>

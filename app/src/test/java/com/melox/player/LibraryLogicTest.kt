@@ -117,6 +117,25 @@ class LibraryLogicTest {
     }
 
     @Test
+    fun landscapeFolderPreviewLeavesOnlyTheLastOccupiedColumnShort() {
+        for ((count, sizes) in mapOf(
+            0 to emptyList(),
+            3 to listOf(3),
+            22 to listOf(5, 5, 5, 5, 2),
+            40 to listOf(5, 5, 5, 5, 5),
+        )) {
+            val columns = com.melox.player.ui.screen.library.libraryPreviewColumns(
+                count, true, 1000.dp, packColumns = true,
+            )
+            assertEquals(sizes, columns.map { it.size })
+            assertEquals(
+                (0 until minOf(count, 25)).toList(),
+                (0 until 5).flatMap { row -> columns.mapNotNull { it.getOrNull(row) } },
+            )
+        }
+    }
+
+    @Test
     fun durationFormattingSupportsHoursAndInvalidValues() {
         assertEquals("0:00", formatDuration(-1L))
         assertEquals("3:05", formatDuration(185_000L))

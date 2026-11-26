@@ -120,7 +120,9 @@ internal fun LibraryOverviewScreen(
                 HomeSectionTitle(R.string.navigation_folders, onClick = { onOpenSection(2) }, topPadding = HomeSectionSpacing - LibraryPreviewBottomPadding, endPadding = 28.dp)
             }
             item(key = "folders") {
-                if (folders.isEmpty()) LibraryPreviewEmptyCard(2) else LibraryPreviewCards(folders.size, landscape, viewportWidth, contentPadding = contentPadding) { index ->
+                if (folders.isEmpty()) LibraryPreviewEmptyCard(2) else LibraryPreviewCards(
+                    folders.size, landscape, viewportWidth, contentPadding = contentPadding, packColumns = landscape,
+                ) { index ->
                     val folder = folders[index]
                     LibraryPreviewRow(
                         folder.name ?: stringResource(R.string.folder_unknown), folder.tracks.size,
@@ -154,11 +156,12 @@ private fun LibraryPreviewCards(
     viewportWidth: Dp,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
+    packColumns: Boolean = false,
     content: @Composable (Int) -> Unit,
 ) {
     val direction = LocalLayoutDirection.current
     val availableWidth = contentPadding.gridViewportWidth(viewportWidth, direction)
-    val groups = libraryPreviewColumns(count, landscape, availableWidth)
+    val groups = libraryPreviewColumns(count, landscape, availableWidth, packColumns)
     val columns = libraryPreviewColumnCount(landscape, availableWidth)
     val endPadding = if (landscape) 16.dp else 20.dp
     val contentWidth = (availableWidth - 16.dp - endPadding).coerceAtLeast(0.dp)
@@ -243,10 +246,21 @@ internal fun libraryPreviewColumns(
     count: Int,
     landscape: Boolean,
     availableWidth: Dp,
+    packColumns: Boolean = false,
 ): List<List<Int>> {
     val columns = libraryPreviewColumnCount(landscape, availableWidth)
     val rows = if (landscape) 5 else 4
-    return (0 until minOf(count, rows * columns)).groupBy { it % columns }.values.toList()
+    val visibleCount = minOf(count, rows * columns)
+    if (!packColumns) return (0 until visibleCount).groupBy { it % columns }.values.toList()
+
+    val groups = List((visibleCount + rows - 1) / rows) { mutableListOf<Int>() }
+    var index = 0
+    repeat(rows) { row ->
+        groups.forEachIndexed { column, group ->
+            if (column * rows + row < visibleCount) group.add(index++)
+        }
+    }
+    return groups
 }
 
 private val LibraryPreviewBottomPadding = 12.dp

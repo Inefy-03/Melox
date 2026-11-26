@@ -18,7 +18,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -115,6 +114,7 @@ import com.melox.player.ui.component.animation.InteractiveHighlight
 import com.melox.player.ui.component.playback.playerSheetBarAlpha
 import com.melox.player.ui.component.GlassMenuLayer
 import com.melox.player.ui.component.LocalGlassMenus
+import com.melox.player.ui.component.GlassMenuEntry
 import com.melox.player.ui.component.LocalBottomSheetBlurBackdrop
 import com.melox.player.ui.component.LocalTopBarBlurSettings
 import com.melox.player.ui.component.LocalCustomPageBackground
@@ -631,13 +631,19 @@ fun MeloxApp(
     ) {
         detailSelectionActive = false
     }
+    val glassMenus = remember { mutableStateMapOf<Any, GlassMenuEntry>() }
+    val menuOwnsBack by remember {
+        derivedStateOf(structuralEqualityPolicy()) { glassMenus.values.any { it.ownsBack() } }
+    }
     BackHandler(
-        enabled = songsSelectionMode &&
+        enabled = !menuOwnsBack && songsSelectionMode &&
             pagerState.currentPage == SONGS_TAB_INDEX &&
             currentRoute == AppRoute.ROOT,
     ) {
-        selectedSongUris = emptySet()
-        songsSelectionMode = false
+        if (!menuOwnsBack) {
+            selectedSongUris = emptySet()
+            songsSelectionMode = false
+        }
     }
     LaunchedEffect(
         playerTransition.animationRequest,
@@ -1811,9 +1817,6 @@ fun MeloxApp(
             ) {
             val bottomSheetBackdrop = rememberBlurBackdrop()
             val useBottomSearch = requestedBottomBarStyle == BottomBarStyle.GLASS && !landscape
-            val glassMenus = remember {
-                mutableStateMapOf<Any, @Composable BoxScope.() -> Unit>()
-            }
             // Overlay content is composed by the root popup host.
             CompositionLocalProvider(
                 LocalGlassMenus provides glassMenus,
@@ -2017,6 +2020,7 @@ fun MeloxApp(
                                     predictiveBackEnabled =
                                         settings.predictiveBackEnabled && !showQueue,
                                     backEnabled = !playerTransition.isMounted,
+                                    menuOwnsBack = { menuOwnsBack },
                                     withinPageBackEnabled = currentSearchAction?.searchOpen?.value == true ||
                                         (currentRoute == AppRoute.INTERNAL_STORAGE &&
                                         internalStoragePath != INTERNAL_STORAGE_ROOT && !showQueue),
@@ -2034,9 +2038,12 @@ fun MeloxApp(
                                             landscape && shouldUseImmediateSidebarNavigation(windowWidth, windowHeight, requestedBottomBarStyle) &&
                                             sidebarEntryRoute != null
                                         ) ImmediateNavigationTransition else null,
-                                        swipeDismiss = if (currentRoute == AppRoute.INTERNAL_STORAGE &&
-                                            internalStoragePath != INTERNAL_STORAGE_ROOT
-                                        ) NavSwipeDirection.None else null,
+                                        swipeDismiss = when {
+                                            menuOwnsBack -> NavSwipeDirection.None
+                                            currentRoute == AppRoute.INTERNAL_STORAGE &&
+                                                internalStoragePath != INTERNAL_STORAGE_ROOT -> NavSwipeDirection.None
+                                            else -> null
+                                        },
                                     ) { route ->
                                         val transitionScope = LocalNavTransitionScope.current
                                         if (missingLibraryDetails > 0 && route == desiredNavBackStack.last()) {
@@ -2750,8 +2757,8 @@ fun MeloxApp(
                     }
                     val retainedScaffoldContent = com.melox.player.ui.navigation.rememberNavigationHostContent(pageScaffoldContent)
                     retainedScaffoldContent()
-                    BackHandler(enabled = playerTransition.isMounted) {
-                        closePlayer()
+                    BackHandler(enabled = playerTransition.isMounted && !menuOwnsBack) {
+                        if (!menuOwnsBack) closePlayer()
                     }
                     if (playerTransition.fullPlayerHostMounted) {
                         val fullPlayerRecordingActive =

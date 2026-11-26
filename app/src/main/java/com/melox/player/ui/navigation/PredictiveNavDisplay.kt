@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -70,6 +72,7 @@ fun PredictiveNavDisplay(
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
     withinPageBackEnabled: Boolean = false,
+    menuOwnsBack: () -> Boolean = { false },
     content: NavEntryBuilder.() -> Unit,
 ) {
     val hasPreviousEntries = backStack.size > 1
@@ -100,31 +103,48 @@ fun PredictiveNavDisplay(
         },
         backdropColor = MiuixTheme.colorScheme.surface,
     )
-    val disabledDispatcherOwner = remember {
+    val pageBackEnabled = backEnabled && !menuOwnsBack()
+    val pageDispatcherOwner = remember(dispatcherOwner) {
         object : NavigationEventDispatcherOwner {
-            override val navigationEventDispatcher =
-                NavigationEventDispatcher().also { it.isEnabled = false }
+            override val navigationEventDispatcher = (
+                dispatcherOwner?.let { NavigationEventDispatcher(it.navigationEventDispatcher) }
+                    ?: NavigationEventDispatcher()
+            ).also { it.isEnabled = false }
         }
     }
-    val activeDispatcherOwner = dispatcherOwner.takeIf {
-        backEnabled && predictiveBackEnabled && !withinPageBackEnabled
+    val pageDispatcher = pageDispatcherOwner.navigationEventDispatcher
+    SideEffect {
+        try {
+            pageDispatcher.isEnabled = pageBackEnabled && predictiveBackEnabled && !withinPageBackEnabled
+        } catch (_: IllegalStateException) {
+            // The parent may already have disposed this dispatcher during teardown.
+        }
     }
-        ?: disabledDispatcherOwner
+    DisposableEffect(pageDispatcher) {
+        onDispose {
+            try {
+                pageDispatcher.dispose()
+            } catch (_: IllegalStateException) {
+                // Parent disposal cascades to its children.
+            }
+        }
+    }
+    val onPageBack = { if (!menuOwnsBack()) onBack() }
     NavigationBackHandler(
         state = rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = backEnabled && predictiveBackEnabled && withinPageBackEnabled,
-        onBackCompleted = onBack,
+        isBackEnabled = pageBackEnabled && predictiveBackEnabled && withinPageBackEnabled,
+        onBackCompleted = onPageBack,
     )
     BackHandler(
         enabled = ordinaryBackHandlerEnabled(
             predictiveBackEnabled = predictiveBackEnabled,
             hasPreviousEntries = hasPreviousEntries,
-            backEnabled = backEnabled,
+            backEnabled = pageBackEnabled,
         ),
-        onBack = onBack,
+        onBack = onPageBack,
     )
     CompositionLocalProvider(
-        LocalNavigationEventDispatcherOwner provides activeDispatcherOwner,
+        LocalNavigationEventDispatcherOwner provides pageDispatcherOwner,
         LocalWindowBackDispatcherOwner provides dispatcherOwner.takeIf { backEnabled },
         LocalOrdinaryBackDispatcherOwner provides dispatcherOwner.takeIf {
             backEnabled && !predictiveBackEnabled
@@ -133,7 +153,7 @@ fun PredictiveNavDisplay(
         NavDisplay(
             backStack = backStack,
             modifier = modifier,
-            onBack = onBack,
+            onBack = onPageBack,
             transition = transition,
             effects = effects,
             content = content,

@@ -15,9 +15,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.glass.GlassIconButton
 import top.yukonga.miuix.kmp.glass.GlassIconDropdownMenu
@@ -29,15 +34,29 @@ import top.yukonga.miuix.kmp.glass.glassPopupAnchorContent
 import top.yukonga.miuix.kmp.glass.rememberGlassPopupAnchor
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 
-internal val LocalGlassMenus = staticCompositionLocalOf<SnapshotStateMap<Any, @Composable BoxScope.() -> Unit>> {
+internal class GlassMenuEntry(
+    val content: @Composable BoxScope.() -> Unit,
+    val ownsBack: () -> Boolean,
+    val dismiss: () -> Unit,
+)
+
+internal val LocalGlassMenus = staticCompositionLocalOf<SnapshotStateMap<Any, GlassMenuEntry>> {
     error("Glass menus require the root Scaffold host")
 }
 
 @Composable
-internal fun GlassMenuLayer(menus: Map<Any, @Composable BoxScope.() -> Unit>) {
+internal fun GlassMenuLayer(menus: Map<Any, GlassMenuEntry>) {
+    if (LocalNavigationEventDispatcherOwner.current != null) {
+        // The stock menu handlers register after this fallback and own normal progress.
+        NavigationBackHandler(
+            state = rememberNavigationEventState(NavigationEventInfo.None),
+            isBackEnabled = menus.values.any { it.ownsBack() },
+            onBackCompleted = { menus.values.lastOrNull { it.ownsBack() }?.dismiss() },
+        )
+    }
     if (menus.isEmpty()) return
     Box(Modifier.fillMaxSize()) {
-        menus.forEach { (id, menu) -> key(id) { menu() } }
+        menus.forEach { (id, menu) -> key(id) { menu.content(this) } }
     }
 }
 
@@ -52,15 +71,18 @@ internal fun GlassMenuHost(
     maxHeight: Dp? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var panelMounted by remember { mutableStateOf(false) }
     val anchor = rememberGlassPopupAnchor()
     val backdrop = LocalBottomSheetBlurBackdrop.current
     val menus = LocalGlassMenus.current
     val topBarIcon = LocalTopBarButtonHaptics.current
     val iconColor = LocalContentColor.current
     val haptics = LocalHapticFeedback.current
+    val latestOnExpandedChange by rememberUpdatedState(onExpandedChange)
     fun setExpanded(value: Boolean) {
+        if (expanded == value) return
         expanded = value
-        onExpandedChange?.invoke(value)
+        latestOnExpandedChange?.invoke(value)
     }
 
     val buttonSize = GlassTopAppBarDefaults.ButtonSize
@@ -86,6 +108,16 @@ internal fun GlassMenuHost(
         )
     }
 
+    // Miuix keeps the panel's modifier mounted through the exit animation.
+    val panelModifier = remember(anchor) {
+        Modifier.composed {
+            DisposableEffect(Unit) {
+                panelMounted = true
+                onDispose { panelMounted = false }
+            }
+            Modifier
+        }
+    }
     val latestMenu by rememberUpdatedState<@Composable BoxScope.() -> Unit> {
         GlassIconDropdownMenu(
             show = expanded,
@@ -100,12 +132,17 @@ internal fun GlassMenuHost(
             },
             entries = entries,
             backdrop = backdrop,
+            modifier = panelModifier,
             collapseOnSelection = collapseOnSelection,
             sizing = GlassPopupSizing(maxHeight = maxHeight ?: GlassPopupDefaults.MaxHeight),
         )
     }
     DisposableEffect(menus, anchor) {
-        menus[anchor] = { latestMenu() }
+        menus[anchor] = GlassMenuEntry(
+            content = { latestMenu() },
+            ownsBack = { expanded || panelMounted },
+            dismiss = { setExpanded(false) },
+        )
         onDispose { menus.remove(anchor) }
     }
 }

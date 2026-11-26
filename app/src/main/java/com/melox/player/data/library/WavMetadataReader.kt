@@ -46,15 +46,16 @@ internal fun readWavMetadata(stream: InputStream): WavMetadata? {
                 if (metadata != null) {
                     val properties = mutableMapOf<String, Array<String>>()
                     var artwork: ByteArray? = null
-                    var hasFrontCover = false
+                    var artworkPriority = Int.MAX_VALUE
                     for (index in 0 until metadata.length()) {
                         when (val frame = metadata[index]) {
                             is TextInformationFrame -> properties[frame.id] = frame.values.toTypedArray()
-                            is ApicFrame -> if (frame.pictureData.isNotEmpty() &&
-                                (artwork == null || (!hasFrontCover && frame.pictureType == 3))
-                            ) {
-                                artwork = frame.pictureData
-                                hasFrontCover = frame.pictureType == 3
+                            is ApicFrame -> {
+                                val priority = coverPicturePriority(frame.pictureType)
+                                if (priority != null && priority < artworkPriority && frame.pictureData.isNotEmpty()) {
+                                    artwork = frame.pictureData
+                                    artworkPriority = priority
+                                }
                             }
                         }
                     }
@@ -77,7 +78,7 @@ private fun ByteArray.uint32le(offset: Int): Long =
         value or ((this[offset + index].toLong() and 0xff) shl (index * 8))
     }
 
-private fun InputStream.skipFully(length: Long) {
+internal fun InputStream.skipFully(length: Long) {
     var remaining = length
     while (remaining > 0) {
         val skipped = skip(remaining)

@@ -865,7 +865,7 @@ class PlaybackService : MediaSessionService() {
             artworkLoadJob = null
             requestedArtworkKey = null
         }
-        if (player.hasArtwork() || currentItem.mediaMetadata.hasArtwork()) return
+        if (player.mediaMetadata.hasCoverArtwork() || currentItem.mediaMetadata.hasCoverArtwork()) return
         if (requestedArtworkKey == artworkKey) return
 
         requestedArtworkKey = artworkKey
@@ -888,8 +888,8 @@ class PlaybackService : MediaSessionService() {
                 if (
                     activePlayer !== player ||
                     activeItem.toPlaybackQueueItem().toPlaybackArtworkKey() != artworkKey ||
-                    player.hasArtwork() ||
-                    activeItem.mediaMetadata.hasArtwork()
+                    player.mediaMetadata.hasCoverArtwork() ||
+                    activeItem.mediaMetadata.hasCoverArtwork()
                 ) {
                     return@launch
                 }
@@ -902,11 +902,6 @@ class PlaybackService : MediaSessionService() {
             }
         }
     }
-
-    private fun Player.hasArtwork(): Boolean = mediaMetadata.hasArtwork()
-
-    private fun androidx.media3.common.MediaMetadata.hasArtwork(): Boolean =
-        artworkData != null || artworkUri != null
 
     private suspend fun persistSnapshot(
         snapshot: PlaybackSnapshot,

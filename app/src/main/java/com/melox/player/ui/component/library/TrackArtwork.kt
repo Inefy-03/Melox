@@ -4,12 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BlurMaskFilter
-import android.media.MediaMetadataRetriever
-import android.os.Build
 import android.os.SystemClock
 import android.util.AtomicFile
 import android.util.LruCache
-import android.util.Size
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Image
@@ -47,8 +44,7 @@ import com.melox.player.R
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
-import com.melox.player.data.library.readEmbeddedArtworkData
+import com.melox.player.data.library.readEmbeddedArtwork
 import com.melox.player.ui.component.playback.ArtworkFlipLayer
 import com.melox.player.ui.screen.playback.rememberArtworkBlend
 import com.melox.player.ui.screen.playback.ArtworkBlend
@@ -699,7 +695,7 @@ internal suspend fun loadFullPlayerArtworkBitmap(
         useDiskCache = false,
         foreground = true,
     ) {
-        loadEmbeddedArtworkThumbnail(
+        loadArtworkThumbnail(
             context = context.applicationContext,
             contentUri = contentUri,
             targetSizePx = normalizedTargetSizePx,
@@ -856,65 +852,15 @@ private fun loadArtworkThumbnail(
     contentUri: String,
     targetSizePx: Int,
 ): ArtworkExtractionResult {
-    val thumbnailSizePx = targetSizePx.coerceAtLeast(1)
-    val uri = contentUri.toUri()
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        runCatching {
-            context.contentResolver.loadThumbnail(
-                uri,
-                Size(thumbnailSizePx, thumbnailSizePx),
-                null,
-            )
-        }.getOrNull()?.let { bitmap ->
-            return ArtworkExtractionResult.Loaded(
-                bitmap.toBoundedThumbnail(thumbnailSizePx),
-            )
-        }
-    }
-
-    val retriever = MediaMetadataRetriever()
     return try {
-        val artworkData = runCatching {
-            retriever.setDataSource(context, uri)
-            retriever.embeddedPicture
-        }.getOrNull()
-            ?: readEmbeddedArtworkData(context, contentUri)
-            ?: return ArtworkExtractionResult.Missing
-        decodeSampledBitmap(artworkData, thumbnailSizePx)
-            ?.let(ArtworkExtractionResult::Loaded)
+        readEmbeddedArtwork(context, contentUri) { data ->
+            decodeSampledBitmap(data, targetSizePx.coerceAtLeast(1))
+        }?.let(ArtworkExtractionResult::Loaded)
             ?: ArtworkExtractionResult.Missing
     } catch (_: Exception) {
         ArtworkExtractionResult.Failed
     } catch (_: OutOfMemoryError) {
         ArtworkExtractionResult.Failed
-    } finally {
-        runCatching(retriever::release)
-    }
-}
-
-private fun loadEmbeddedArtworkThumbnail(
-    context: Context,
-    contentUri: String,
-    targetSizePx: Int,
-): ArtworkExtractionResult {
-    val uri = contentUri.toUri()
-    val retriever = MediaMetadataRetriever()
-    return try {
-        val artworkData = runCatching {
-            retriever.setDataSource(context, uri)
-            retriever.embeddedPicture
-        }.getOrNull()
-            ?: readEmbeddedArtworkData(context, contentUri)
-            ?: return ArtworkExtractionResult.Missing
-        decodeSampledBitmap(artworkData, targetSizePx)
-            ?.let(ArtworkExtractionResult::Loaded)
-            ?: ArtworkExtractionResult.Missing
-    } catch (_: Exception) {
-        ArtworkExtractionResult.Failed
-    } catch (_: OutOfMemoryError) {
-        ArtworkExtractionResult.Failed
-    } finally {
-        runCatching(retriever::release)
     }
 }
 
@@ -1276,7 +1222,7 @@ private object ArtworkDiskCache {
     }
 }
 
-private const val ARTWORK_CACHE_SCHEMA_VERSION = 4
+private const val ARTWORK_CACHE_SCHEMA_VERSION = 6
 private const val ARTWORK_DISK_CACHE_DIRECTORY = "artwork_thumbnails_v2"
 private const val MAX_MEMORY_MISSING_ENTRIES = 10_000
 private const val MAX_DISK_CACHE_ENTRIES = 20_000

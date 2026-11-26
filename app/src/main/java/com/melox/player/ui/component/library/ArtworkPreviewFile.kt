@@ -5,14 +5,12 @@ import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
-import android.media.MediaMetadataRetriever
 import android.media.MediaScannerConnection
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
-import androidx.core.net.toUri
-import com.melox.player.data.library.readEmbeddedArtworkData
+import com.melox.player.data.library.readEmbeddedArtwork
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,18 +31,11 @@ internal suspend fun readArtworkPreviewFile(
     title: String?,
 ): ArtworkPreviewFile? = withContext(Dispatchers.IO) {
     try {
-        val retriever = MediaMetadataRetriever()
-        val bytes = try {
-            runCatching {
-                retriever.setDataSource(context, contentUri.toUri())
-                retriever.embeddedPicture
-            }.getOrNull()
-        } finally {
-            runCatching { retriever.release() }
-        } ?: readEmbeddedArtworkData(context, contentUri) ?: return@withContext null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@withContext null
+        val (bytes, bounds) = readEmbeddedArtwork(context, contentUri) { data ->
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(data, 0, data.size, options)
+            (data to options).takeIf { options.outWidth > 0 && options.outHeight > 0 }
+        } ?: return@withContext null
         val mime = bounds.outMimeType ?: return@withContext null
         val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "img"
         val directory = File(context.cacheDir, "shared_artwork").apply { mkdirs() }

@@ -6,9 +6,25 @@ import com.melox.player.model.PlaybackMode
 import com.melox.player.model.PlaybackQueueItem
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlaybackArtworkMetadataTest {
+    @Test
+    fun artistPictureDoesNotSatisfyPlaybackCoverFallback() {
+        val metadata = MediaMetadata.Builder()
+            .setArtworkData(byteArrayOf(1), MediaMetadata.PICTURE_TYPE_ARTIST_PERFORMER)
+            .build()
+        assertFalse(metadata.hasCoverArtwork())
+        assertTrue(
+            metadata.buildUpon()
+                .setArtworkData(byteArrayOf(2), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                .build()
+                .hasCoverArtwork(),
+        )
+    }
+
     @Test
     fun withArtworkData_preservesTrackMetadataAndAddsFrontCover() {
         val original = MediaItem.Builder()

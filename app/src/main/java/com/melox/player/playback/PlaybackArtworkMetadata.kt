@@ -3,13 +3,10 @@ package com.melox.player.playback
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
-import android.os.Build
-import android.util.Size
-import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.melox.player.R
+import com.melox.player.data.library.coverPicturePriority
 import com.melox.player.data.library.readEmbeddedArtworkData
 import com.melox.player.model.PlaybackQueueItem
 import java.io.ByteArrayOutputStream
@@ -43,34 +40,15 @@ internal fun MediaItem.withArtworkData(artworkData: ByteArray): MediaItem =
         )
         .build()
 
+internal fun MediaMetadata.hasCoverArtwork(): Boolean =
+    artworkUri != null || (
+        artworkData != null && (artworkDataType?.let { coverPicturePriority(it) != null } ?: true)
+    )
+
 internal fun Context.loadPlaybackArtworkData(contentUri: String): ByteArray? {
-    val uri = contentUri.toUri()
-    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        runCatching {
-            contentResolver.loadThumbnail(
-                uri,
-                Size(LOCK_SCREEN_ARTWORK_SIZE_PX, LOCK_SCREEN_ARTWORK_SIZE_PX),
-                null,
-            )
-        }.getOrNull()
-    } else {
-        null
-    } ?: run {
-        val retriever = MediaMetadataRetriever()
-        try {
-            runCatching {
-                retriever.setDataSource(this, uri)
-                retriever.embeddedPicture
-            }.getOrNull()
-                ?.let(::decodePlaybackArtwork)
-                ?: readEmbeddedArtworkData(this, contentUri)
-                    ?.let(::decodePlaybackArtwork)
-        } catch (_: Exception) {
-            readEmbeddedArtworkData(this, contentUri)?.let(::decodePlaybackArtwork)
-        } finally {
-            runCatching(retriever::release)
-        }
-    }
+    val bitmap = runCatching {
+        readEmbeddedArtworkData(this, contentUri)?.let(::decodePlaybackArtwork)
+    }.getOrNull()
     return bitmap?.let { runCatching { it.toArtworkData() }.getOrNull() }
         ?: runCatching { decodePlaceholderArtworkData() }.getOrNull()
 }

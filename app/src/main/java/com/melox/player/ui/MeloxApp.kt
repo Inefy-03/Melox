@@ -45,6 +45,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +55,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -443,6 +445,12 @@ fun MeloxApp(
     var pendingAlbumGridReset by remember { mutableStateOf<AlbumGridStyle?>(null) }
     var showQueue by rememberSaveable { mutableStateOf(false) }
     val playerTransition = rememberPlayerSheetTransitionState()
+    val miniPlayerTop by remember(playerTransition) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            val bounds = playerTransition.miniPlayerBounds
+            bounds.top.takeUnless { bounds.isEmpty }
+        }
+    }
     var artworkDisplaySizePx by remember(density) {
         mutableIntStateOf(normalizeArtworkTargetSize(
             with(density) { PLAYER_FULL_ARTWORK_REQUEST_SIZE.roundToPx() },
@@ -1443,7 +1451,7 @@ fun MeloxApp(
                             showLocateAction = !showingSearch,
                             showIndex = !showingSearch,
                             currentTrackContentUri = compactPlayback.currentItem?.contentUri,
-                            miniPlayerBounds = playerTransition.miniPlayerBounds,
+                            miniPlayerTop = miniPlayerTop,
                             playerContentBounds = playerContentBounds,
                             onTrackClick = onSongListTrackClick,
                             displayedTracks = if (searchQuery == null) musicPresentation.queueItems else {
@@ -1994,17 +2002,13 @@ fun MeloxApp(
                                     playerContentBounds = it.boundsInRoot()
                                 },
                             ) {
-                                val miniPlayerBounds = playerTransition.miniPlayerBounds
-                                val indexBottomPadding = if (
-                                    hasCurrentItem && miniPlayerBounds.width > 0f && playerContentBounds.height > 0f
-                                ) {
+                                val indexBottomPadding = miniPlayerTop?.takeIf {
+                                    hasCurrentItem && playerContentBounds.height > 0f
+                                }?.let { top ->
                                     with(density) {
-                                        (playerContentBounds.bottom - miniPlayerBounds.top)
-                                            .coerceIn(0f, playerContentBounds.height).toDp()
+                                        (playerContentBounds.bottom - top).coerceIn(0f, playerContentBounds.height).toDp()
                                     }
-                                } else {
-                                    outerPadding.calculateBottomPadding()
-                                }
+                                } ?: outerPadding.calculateBottomPadding()
                                 CompositionLocalProvider(
                                     LocalAlphabetIndexBottomPadding provides indexBottomPadding,
                                 ) {
@@ -2478,7 +2482,7 @@ fun MeloxApp(
                                                         folder?.let {
                                                             FolderDetailScreen(
                                                                 currentTrackContentUri = compactPlayback.currentItem?.contentUri,
-                                                                miniPlayerBounds = playerTransition.miniPlayerBounds,
+                                                                miniPlayerTop = miniPlayerTop,
                                                                 playerContentBounds = playerContentBounds,
                                                                 onShufflePlay = viewModel::shuffleTracks,
                                                                 folder = it,
@@ -2558,7 +2562,7 @@ fun MeloxApp(
                                                         folder.let {
                                                             FolderDetailScreen(
                                                                 currentTrackContentUri = compactPlayback.currentItem?.contentUri,
-                                                                miniPlayerBounds = playerTransition.miniPlayerBounds,
+                                                                miniPlayerTop = miniPlayerTop,
                                                                 playerContentBounds = playerContentBounds,
                                                                 onShufflePlay = viewModel::shuffleTracks,
                                                                 folder = it,
@@ -2657,7 +2661,7 @@ fun MeloxApp(
                                                         playlist?.let {
                                                             PlaylistDetailScreen(
                                                                 currentTrackContentUri = compactPlayback.currentItem?.contentUri,
-                                                                miniPlayerBounds = playerTransition.miniPlayerBounds,
+                                                                miniPlayerTop = miniPlayerTop,
                                                                 playerContentBounds = playerContentBounds,
                                                                 onShufflePlay = viewModel::shuffleTracks,
                                                                 playlist = it,

@@ -4,7 +4,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -18,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.layout.ContentScale
 import com.melox.player.ui.LocalFloatingNavigationRailInset
+import com.melox.player.ui.LocalOriginalNavigationRailInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -239,7 +239,7 @@ internal fun PageScaffold(
     }
     val indexBottomPadding = LocalAlphabetIndexBottomPadding.current
     val floatingRailInset = LocalFloatingNavigationRailInset.current
-    val clippedRailInset = com.melox.player.ui.LocalClippedNavigationRailInset.current
+    val originalRailInsets = LocalOriginalNavigationRailInsets.current
     val landscapeNavigation = com.melox.player.ui.LocalLandscapeNavigation.current
     val pageBackdrop = rememberLayerBackdrop()
     val wallpaperBackdrop = rememberLayerBackdrop()
@@ -265,7 +265,10 @@ internal fun PageScaffold(
         left = if (layoutDirection == LayoutDirection.Ltr) floatingRailInset else 0.dp,
         right = if (layoutDirection == LayoutDirection.Rtl) floatingRailInset else 0.dp,
     )
-    val searchHorizontalInsets = safeInsets.only(WindowInsetsSides.Horizontal).add(searchStartInset)
+    val railOverlayInsets = landscapeNavigation?.overlayInsets ?: originalRailInsets
+    val originalRailPadding = originalRailInsets?.asPaddingValues()
+    val searchHorizontalInsets = safeInsets.only(WindowInsetsSides.Horizontal)
+        .add(railOverlayInsets ?: searchStartInset)
     Box(modifier = modifier.onGloballyPositioned { scrollContent.bounds = it.boundsInRoot() }) {
         CompositionLocalProvider(LocalPageSurfaceBackdrop provides surfaceBackdrop, LocalGlassSearchPage provides searchPage, LocalTopBarScrollContent provides scrollContent) {
             Scaffold(
@@ -281,19 +284,19 @@ internal fun PageScaffold(
                         LocalAlphabetIndexTopBarHeight provides indexTopBarHeight,
                     ) {
                         Box(
-                            Modifier.padding(start = clippedRailInset),
+                            if (originalRailPadding != null) Modifier.padding(originalRailPadding) else Modifier,
                         ) {
                             topBar()
                         }
                     }
                 },
             ) { padding ->
-                val pagePadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection) + floatingRailInset,
-                    top = padding.calculateTopPadding(),
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = padding.calculateBottomPadding(),
-                )
+                val railPadding = railOverlayInsets?.asPaddingValues()
+                val pagePadding = remember(padding, railPadding, floatingRailInset, layoutDirection) {
+                    padding.adjustPadding(start = {
+                        it + floatingRailInset + (railPadding?.calculateStartPadding(layoutDirection) ?: 0.dp)
+                    })
+                }
                 val indexPadding = remember(padding, density, indexTopBarHeight, indexBottomPadding) {
                     object : PaddingValues {
                         override fun calculateLeftPadding(layoutDirection: LayoutDirection): Dp =
@@ -320,6 +323,22 @@ internal fun PageScaffold(
             }
             searchPage.session?.let { session ->
                 val searchScrollContent = remember { TopBarScrollContent() }
+                val searchSafeTopPadding = searchTopInsets.asPaddingValues()
+                val searchSafePadding = safeInsets.asPaddingValues()
+                val searchResultPadding = remember(searchSafeTopPadding, searchSafePadding, searchTopPadding) {
+                    object : PaddingValues {
+                        override fun calculateLeftPadding(layoutDirection: LayoutDirection): Dp = 0.dp
+
+                        override fun calculateRightPadding(layoutDirection: LayoutDirection): Dp = 0.dp
+
+                        override fun calculateTopPadding(): Dp =
+                            searchSafeTopPadding.calculateTopPadding() + searchTopPadding() +
+                                GlassSearchOverlayDefaults.BarHeight +
+                                GlassSearchOverlayDefaults.VerticalPadding * 2
+
+                        override fun calculateBottomPadding(): Dp = searchSafePadding.calculateBottomPadding()
+                    }
+                }
                 val searchWallpaperBackdrop = if (image != null && effectsActive) rememberLayerBackdrop() else null
                 val searchWallpaper: (@Composable BoxScope.() -> Unit)? = if (image != null) {
                     {
@@ -377,14 +396,7 @@ internal fun PageScaffold(
                                 LocalGlassSearchPage provides null,
                                 LocalGlassSearchQuery provides draft,
                             ) {
-                                content(
-                                    PaddingValues(
-                                        top = with(density) { searchTopInsets.getTop(this).toDp() } +
-                                            searchTopPadding() + GlassSearchOverlayDefaults.BarHeight +
-                                            GlassSearchOverlayDefaults.VerticalPadding * 2,
-                                        bottom = safeInsets.asPaddingValues().calculateBottomPadding(),
-                                    ),
-                                )
+                                content(searchResultPadding)
                             }
                         }
                     }

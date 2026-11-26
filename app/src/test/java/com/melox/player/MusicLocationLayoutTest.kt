@@ -31,15 +31,15 @@ class MusicLocationLayoutTest {
     fun compactActionSharesSortIconAlignmentAcrossMiniPlayerStyles() {
         val viewport = Rect(80f, 20f, 480f, 820f)
         val miniPlayer = Rect(100f, 700f, 460f, 748f)
-        assertEquals(IntOffset(344, 628), musicLocationOffset(miniPlayer, viewport, 40f, 12f, 16f))
+        assertEquals(IntOffset(344, 628), musicLocationOffset(miniPlayer.top, viewport, 40f, 12f, 16f))
         val normalMiniPlayer = Rect(80f, 720f, 480f, 774f)
-        assertEquals(IntOffset(344, 648), musicLocationOffset(normalMiniPlayer, viewport, 40f, 12f, 16f))
+        assertEquals(IntOffset(344, 648), musicLocationOffset(normalMiniPlayer.top, viewport, 40f, 12f, 16f))
     }
 
     @Test
     fun windowOriginChangesDoNotChangeLocalActionPlacement() {
-        val original = musicLocationOffset(Rect(20f, 700f, 380f, 748f), Rect(0f, 0f, 400f, 800f), 40f, 12f, 16f)
-        val translated = musicLocationOffset(Rect(120f, 730f, 480f, 778f), Rect(100f, 30f, 500f, 830f), 40f, 12f, 16f)
+        val original = musicLocationOffset(700f, Rect(0f, 0f, 400f, 800f), 40f, 12f, 16f)
+        val translated = musicLocationOffset(730f, Rect(100f, 30f, 500f, 830f), 40f, 12f, 16f)
         assertEquals(original, translated)
     }
 
@@ -49,16 +49,16 @@ class MusicLocationLayoutTest {
         val insetPage = Rect(262f, 20f, 1000f, 620f)
         val smallPlayer = Rect(300f, 540f, 900f, 590f)
         val widePlayer = Rect(20f, 520f, 980f, 590f)
-        assertEquals(IntOffset(920, 468), musicLocationOffset(smallPlayer, fullPage, 40f, 12f, 40f))
-        assertEquals(IntOffset(658, 468), musicLocationOffset(smallPlayer, insetPage, 40f, 12f, 40f))
-        assertEquals(IntOffset(920, 448), musicLocationOffset(widePlayer, fullPage, 40f, 12f, 40f))
+        assertEquals(IntOffset(920, 468), musicLocationOffset(smallPlayer.top, fullPage, 40f, 12f, 40f))
+        assertEquals(IntOffset(658, 468), musicLocationOffset(smallPlayer.top, insetPage, 40f, 12f, 40f))
+        assertEquals(IntOffset(920, 448), musicLocationOffset(widePlayer.top, fullPage, 40f, 12f, 40f))
     }
 
     @Test
     fun actionRemainsInsideThePageWhenThePlayerMovesBelowItsViewport() {
         val page = Rect(262f, 20f, 1000f, 620f)
         val player = Rect(300f, 800f, 900f, 850f)
-        assertEquals(IntOffset(658, 560), musicLocationOffset(player, page, 40f, 12f, 40f))
+        assertEquals(IntOffset(658, 560), musicLocationOffset(player.top, page, 40f, 12f, 40f))
     }
 
     @Test

@@ -367,6 +367,8 @@ fun GlassTopAppBar(
     compact: Boolean = false,
     expandedContent: (@Composable () -> Unit)? = null,
     showTitleWhileExpanded: Boolean = false,
+    compactTitleStartProgress: () -> Float = { 0f },
+    compactTitleObstructionStart: (() -> Dp)? = null,
 ) {
     val floating by remember(isContentScrolled, scrollBehavior) {
         derivedStateOf { isContentScrolled || (scrollBehavior?.state?.overscrollOffset ?: 0f) < -1f }
@@ -553,14 +555,16 @@ fun GlassTopAppBar(
             if (compact) {
                 GlassCompactTopAppBar(
                     title = title, modifier = contentModifier,
-                    titleColor = MiuixTheme.colorScheme.onSurface.copy(alpha = titleAlpha()),
+                    titleColor = MiuixTheme.colorScheme.onSurface,
+                    titleAlpha = titleAlpha,
                     subtitle = subtitle, scrollBehavior = scrollBehavior,
                     defaultWindowInsetsPadding = defaultWindowInsetsPadding,
                     navigationIcon = navigationIcon, actions = actions, bottomContent = measuredBottomContent,
                     expandedContent = expandedContent,
                     showTitleWhileExpanded = showTitleWhileExpanded,
                     titleBlurRadius = titleBlurRadius,
-                    centerObstructionStart = centerObstructionStart,
+                    titleObstructionStart = compactTitleObstructionStart ?: { centerObstructionStart },
+                    titleStartProgress = compactTitleStartProgress,
                 )
             } else BlurTopAppBar(
                 title = title,

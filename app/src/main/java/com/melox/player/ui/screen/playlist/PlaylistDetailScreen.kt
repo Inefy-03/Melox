@@ -11,6 +11,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -18,8 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -46,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -142,7 +140,7 @@ fun PlaylistDetailScreen(
     sortConfig: PlaylistSortConfig,
     onSortConfigChange: (PlaylistSortConfig) -> Unit,
     currentTrackContentUri: String? = null,
-    miniPlayerBounds: Rect = Rect.Zero,
+    miniPlayerTop: Float? = null,
     playerContentBounds: Rect = Rect.Zero,
 ) {
     val context = LocalContext.current
@@ -169,7 +167,6 @@ fun PlaylistDetailScreen(
     val locationBackdrop = rememberGlassBlurBackdrop(captureCoordinates = { locationCaptureCoordinates })
     val listState = rememberLazyListState()
     val density = LocalDensity.current
-    val layoutDirection = LocalLayoutDirection.current
     val resolvedTracks = remember(playlist, libraryTracks, readableContentUris) {
         resolvePlaylistTracks(playlist, libraryTracks, readableContentUris)
     }
@@ -236,15 +233,15 @@ fun PlaylistDetailScreen(
     val showAlphabetIndex = displayedTracks.isNotEmpty() &&
         (sortConfig.field == PlaylistSortField.TITLE ||
             sortConfig.field == PlaylistSortField.FILE_NAME)
-    val locateActionVisible = currentIndex >= 0 && !selectionMode &&
-        miniPlayerBounds.width > 0f && playerContentBounds.width > 0f
-    val locateBottomPadding = if (locateActionVisible) {
-        with(density) {
-            (playerContentBounds.bottom - miniPlayerBounds.top).coerceAtLeast(0f).toDp()
-        } + 12.dp + ButtonDefaults.MinHeight
-    } else {
-        0.dp
+    val locateTop = miniPlayerTop?.takeIf {
+        currentIndex >= 0 && !selectionMode && playerContentBounds.width > 0f
     }
+    val locateActionVisible = locateTop != null
+    val locateBottomPadding = locateTop?.let {
+        with(density) {
+            (playerContentBounds.bottom - it).coerceAtLeast(0f).toDp()
+        } + 12.dp + ButtonDefaults.MinHeight
+    } ?: 0.dp
     val displayedEntryIds = displayedTracks.map { item -> item.entry.id }
     PreserveSortScrollPosition(sortConfig, "", displayedTracks.size, listState) {
         listState.requestScrollToItem(
@@ -493,15 +490,9 @@ fun PlaylistDetailScreen(
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = contentListState,
                 userScrollEnabled = !isDragging,
-                contentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    top = padding.calculateTopPadding() + 12.dp,
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = maxOf(
-                        padding.calculateBottomPadding(),
-                        bottomContentPadding,
-                        locateBottomPadding,
-                    ) + 12.dp,
+                contentPadding = padding.adjustPadding(
+                    top = { it + 12.dp },
+                    bottom = { maxOf(it, bottomContentPadding, locateBottomPadding) + 12.dp },
                 ),
                 overscrollEffect = null,
             ) {
@@ -613,7 +604,7 @@ fun PlaylistDetailScreen(
                 currentIndex = currentIndex,
                 listState = contentListState,
                 scrollBehavior = scrollBehavior,
-                miniPlayerBounds = miniPlayerBounds,
+                miniPlayerTop = miniPlayerTop,
                 contentPadding = padding,
                 backdrop = locationBackdrop,
                 alphabetIndexVisible = showAlphabetIndex,

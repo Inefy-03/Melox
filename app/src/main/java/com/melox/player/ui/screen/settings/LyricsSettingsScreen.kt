@@ -4,12 +4,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -23,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -381,7 +378,6 @@ private fun LyricsSettingsPage(
     onBack: () -> Unit,
     content: LazyListScope.() -> Unit,
 ) {
-    val layoutDirection = LocalLayoutDirection.current
     var topBarBackdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarBackdropCaptureCoordinates })
     PageScaffold(
@@ -413,11 +409,9 @@ private fun LyricsSettingsPage(
                     .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = listState,
-                contentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    top = padding.calculateTopPadding() + 12.dp,
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = maxOf(padding.calculateBottomPadding(), bottomContentPadding) + 16.dp,
+                contentPadding = padding.adjustPadding(
+                    top = { it + 12.dp },
+                    bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                 ),
                 overscrollEffect = null,
                 content = content,

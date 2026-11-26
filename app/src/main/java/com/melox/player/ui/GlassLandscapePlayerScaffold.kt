@@ -2,6 +2,7 @@ package com.melox.player.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -20,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.BottomBarStyle
@@ -39,13 +42,26 @@ import top.yukonga.miuix.kmp.upstream.material.isRuntimeShaderSupported
 
 internal class LandscapeNavigation(
     val labels: List<String>,
+    val overlayInsets: WindowInsets,
     val titleAlpha: () -> Float,
     val searchTopPadding: () -> Dp,
-    val centerObstructionStart: Dp,
+    val centerObstructionStart: () -> Dp,
 )
 
 internal val LocalLandscapeNavigation = staticCompositionLocalOf<LandscapeNavigation?> { null }
 internal val LocalSecondaryTopBar = staticCompositionLocalOf { false }
+
+internal fun landscapeRailInsets(start: () -> Dp): WindowInsets = object : WindowInsets {
+    override fun getLeft(density: Density, layoutDirection: LayoutDirection): Int =
+        if (layoutDirection == LayoutDirection.Ltr) with(density) { start().roundToPx() } else 0
+
+    override fun getRight(density: Density, layoutDirection: LayoutDirection): Int =
+        if (layoutDirection == LayoutDirection.Rtl) with(density) { start().roundToPx() } else 0
+
+    override fun getTop(density: Density): Int = 0
+
+    override fun getBottom(density: Density): Int = 0
+}
 
 @Composable
 internal fun GlassLandscapePlayerScaffold(
@@ -64,17 +80,41 @@ internal fun GlassLandscapePlayerScaffold(
 ) {
     val railState = rememberGlassNavigationRailState()
     val showRail = showNavigation
-    val railInset = if (showRail) {
-        (GlassNavigationRailDefaults.Margin + GlassNavigationRailDefaults.ExpandedWidth) * railState.progress
-    } else {
-        0.dp
+    val navigation = remember(navigationItems, showRail, railState) {
+        val railInset = {
+            if (showRail) {
+                (GlassNavigationRailDefaults.Margin + GlassNavigationRailDefaults.ExpandedWidth) * railState.progress
+            } else {
+                0.dp
+            }
+        }
+        LandscapeNavigation(
+            labels = navigationItems.map { it.label },
+            overlayInsets = landscapeRailInsets(railInset),
+            titleAlpha = { if (showRail) railState.progress else 1f },
+            centerObstructionStart = {
+                if (showRail && !railState.expanded && railState.collapsedWidth > 0.dp) {
+                    (railState.collapsedStart - railInset()).coerceAtLeast(0.dp)
+                } else {
+                    Dp.Unspecified
+                }
+            },
+            searchTopPadding = {
+                if (showRail) {
+                    (GlassNavigationRailDefaults.CollapsedTop +
+                        GlassNavigationRailDefaults.CollapsedHeight + 4.dp) * (1f - railState.progress)
+                } else {
+                    0.dp
+                }
+            },
+        )
     }
     val blurActive = blurEnabled && isRuntimeShaderSupported()
     val surfaceColor = MiuixTheme.colorScheme.surface
-    val glassBackdrop = rememberLayerBackdrop {
+    val glassBackdrop = if (blurActive) rememberLayerBackdrop {
         drawRect(surfaceColor)
         drawContent()
-    }
+    } else null
     val primaryItems = remember(navigationItems) {
         navigationItems.map { GlassNavigationItem(it.icon, it.label) }
     }
@@ -85,33 +125,14 @@ internal fun GlassLandscapePlayerScaffold(
     val railSelection = selectedShortcut?.let { secondaryOffset + it } ?: selectedTab
 
     FixedPageBackgroundHost(Modifier.fillMaxSize(), refreshSignal = refreshSignal) {
-        CompositionLocalProvider(
-            LocalFloatingNavigationRailInset provides railInset,
-            LocalLandscapeNavigation provides LandscapeNavigation(
-                navigationItems.map { it.label },
-                titleAlpha = { if (showRail) railState.progress else 1f },
-                centerObstructionStart = if (showRail && !railState.expanded && railState.collapsedWidth > 0.dp) {
-                    (railState.collapsedStart - railInset).coerceAtLeast(0.dp)
-                } else {
-                    Dp.Unspecified
-                },
-                searchTopPadding = {
-                    if (showRail) {
-                        (GlassNavigationRailDefaults.CollapsedTop +
-                            GlassNavigationRailDefaults.CollapsedHeight + 4.dp) * (1f - railState.progress)
-                    } else {
-                        0.dp
-                    }
-                },
-            ),
-        ) {
+        CompositionLocalProvider(LocalLandscapeNavigation provides navigation) {
             Scaffold(
                 containerColor = Color.Transparent,
                 bottomBar = {
                     Box(
                         Modifier.fillMaxWidth()
                             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                            .padding(start = railInset)
+                            .padding(navigation.overlayInsets.asPaddingValues())
                             .navigationBarsPadding()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center,
@@ -132,7 +153,9 @@ internal fun GlassLandscapePlayerScaffold(
                     }
                 },
             ) { padding ->
-                Box(Modifier.fillMaxSize().layerBackdrop(glassBackdrop)) { content(padding) }
+                Box(Modifier.fillMaxSize().then(
+                    glassBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier,
+                )) { content(padding) }
             }
             if (showRail) {
                 GlassNavigationRail(
@@ -147,7 +170,7 @@ internal fun GlassLandscapePlayerScaffold(
                             onShortcutSelected(index - secondaryOffset)
                         }
                     },
-                    backdrop = glassBackdrop.takeIf { blurActive },
+                    backdrop = glassBackdrop,
                     state = railState,
                     expandContentDescription = stringResource(R.string.navigation_expand),
                     collapseContentDescription = stringResource(R.string.navigation_collapse),

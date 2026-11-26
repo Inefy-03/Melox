@@ -45,9 +45,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.zIndex
 import androidx.compose.runtime.Composable
@@ -290,9 +288,12 @@ internal fun PlayerScaffold(
     }
 
     if (useNavigationRail && landscape) {
-        val miniPlayerBackdrop = rememberBlurBackdrop()
-        val railDensity = LocalDensity.current
-        var railWidth by remember { mutableStateOf(0.dp) }
+        val pageBackdrop = rememberBlurBackdrop()
+        val railWidth = remember { mutableIntStateOf(0) }
+        val railInsets = remember(density) {
+            landscapeRailInsets { with(density) { railWidth.intValue.toDp() } }
+        }
+        val railPadding = railInsets.asPaddingValues()
         val navigationRailVisible = showNavigation || showNavigationRailOnSecondary
         val navigationBarBottomInset = WindowInsets.navigationBars
             .only(WindowInsetsSides.Bottom)
@@ -308,11 +309,10 @@ internal fun PlayerScaffold(
             0.dp
         }
         FixedPageBackgroundHost(Modifier.fillMaxSize(), refreshSignal = backdropRefreshSignal) {
-            val navigationRailBackdrop = rememberPageSurfaceBackdrop()
-            val navigationRailModifier = navigationRailBackdrop?.let {
+            val navigationRailModifier = pageBackdrop?.let {
                 Modifier.pageTextureBlur(it)
             } ?: Modifier
-            val navigationRailColor = if (navigationRailBackdrop != null) {
+            val navigationRailColor = if (pageBackdrop != null) {
                 Color.Transparent
             } else {
                 MiuixTheme.colorScheme.surface
@@ -326,29 +326,32 @@ internal fun PlayerScaffold(
                         drawContent()
                     },
             ) {
-                AnimatedVisibility(
-                    modifier = Modifier.zIndex(1f).onSizeChanged { railWidth = with(railDensity) { it.width.toDp() } },
-                    visible = navigationRailVisible,
-                    enter = fadeIn(tween(NAVIGATION_FADE_IN_DURATION_MILLIS)) +
-                        expandHorizontally(tween(NAVIGATION_ENTER_DURATION_MILLIS)),
-                    exit = fadeOut(tween(NAVIGATION_FADE_OUT_DURATION_MILLIS)) +
-                        shrinkHorizontally(tween(NAVIGATION_EXIT_DURATION_MILLIS)),
+                Box(
+                    Modifier.zIndex(1f).onSizeChanged { railWidth.intValue = it.width },
                 ) {
-                    NavigationRail(
-                        state = navigationRailState,
-                        statusBarInsets = WindowInsets.statusBarsIgnoringVisibility,
-                        modifier = navigationRailModifier,
-                        color = navigationRailColor,
-                        expandContentDescription = stringResource(R.string.navigation_expand),
-                        collapseContentDescription = stringResource(R.string.navigation_collapse),
+                    AnimatedVisibility(
+                        visible = navigationRailVisible,
+                        enter = fadeIn(tween(NAVIGATION_FADE_IN_DURATION_MILLIS)) +
+                            expandHorizontally(tween(NAVIGATION_ENTER_DURATION_MILLIS)),
+                        exit = fadeOut(tween(NAVIGATION_FADE_OUT_DURATION_MILLIS)) +
+                            shrinkHorizontally(tween(NAVIGATION_EXIT_DURATION_MILLIS)),
                     ) {
-                        navigationItems.forEachIndexed { index, item ->
-                            NavigationRailItem(
-                                selected = selectedTab == index,
-                                onClick = { onTabSelected(index) },
-                                icon = item.icon,
-                                label = item.label,
-                            )
+                        NavigationRail(
+                            state = navigationRailState,
+                            statusBarInsets = WindowInsets.statusBarsIgnoringVisibility,
+                            modifier = navigationRailModifier,
+                            color = navigationRailColor,
+                            expandContentDescription = stringResource(R.string.navigation_expand),
+                            collapseContentDescription = stringResource(R.string.navigation_collapse),
+                        ) {
+                            navigationItems.forEachIndexed { index, item ->
+                                NavigationRailItem(
+                                    selected = selectedTab == index,
+                                    onClick = { onTabSelected(index) },
+                                    icon = item.icon,
+                                    label = item.label,
+                                )
+                            }
                         }
                     }
                 }
@@ -372,12 +375,9 @@ internal fun PlayerScaffold(
                             )
                         },
                     ) { innerPadding ->
-                        // Record only page content; the player consuming it must stay outside capture.
-                        Box(modifier = Modifier.fillMaxSize().then(miniPlayerBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)) {
-                            CompositionLocalProvider(
-                                LocalFloatingNavigationRailInset provides railWidth,
-                                LocalClippedNavigationRailInset provides railWidth,
-                            ) {
+                        // Both overlays sample the same page layer without recording each other.
+                        Box(modifier = Modifier.fillMaxSize().then(pageBackdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier)) {
+                            CompositionLocalProvider(LocalOriginalNavigationRailInsets provides railInsets) {
                                 stableContent(innerPadding, navigationRailVisible && navigationRailState.isExpanded)
                             }
                         }
@@ -386,7 +386,8 @@ internal fun PlayerScaffold(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(start = railWidth, bottom = miniPlayerBottomPadding)
+                            .padding(railPadding)
+                            .padding(bottom = miniPlayerBottomPadding)
                             .windowInsetsPadding(
                                 WindowInsets.navigationBars.union(WindowInsets.displayCutout)
                                     .only(WindowInsetsSides.Horizontal),
@@ -404,8 +405,8 @@ internal fun PlayerScaffold(
                                 MiniPlayerChrome(
                                     style = BottomBarStyle.NORMAL,
                                     smallPlayerBar = effectiveSmallPlayerBar,
-                                    backdrop = miniPlayerBackdrop,
-                                    blurActive = miniPlayerBackdrop != null,
+                                    backdrop = pageBackdrop,
+                                    blurActive = pageBackdrop != null,
                                     liquidGlassActive = false,
                                     isDark = isDark,
                                 ),

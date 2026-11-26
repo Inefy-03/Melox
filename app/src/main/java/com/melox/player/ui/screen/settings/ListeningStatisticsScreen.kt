@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -46,7 +44,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.stringResource
@@ -58,6 +55,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.MeloxApplication
 import com.melox.player.R
 import com.melox.player.data.playback.ListenedSong
@@ -204,7 +202,6 @@ internal fun ListeningStatisticsScreen(
     val contentUnderTopBar by remember(activeListState, scrollBehavior) {
         derivedStateOf { activeListState.canScrollBackward || scrollBehavior.state.overscrollOffset < -1f }
     }
-    val direction = LocalLayoutDirection.current
     var captureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val backdrop = rememberBlurBackdrop(captureCoordinates = { captureCoordinates })
     val fallbackBackdrop = rememberLayerBackdrop()
@@ -290,11 +287,8 @@ internal fun ListeningStatisticsScreen(
                         .scrollEndHaptic()
                         .overScrollVertical(scrollBehavior = activeScrollBehavior)
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    contentPadding = PaddingValues(
-                        start = padding.calculateStartPadding(direction),
-                        top = padding.calculateTopPadding(),
-                        end = padding.calculateEndPadding(direction),
-                        bottom = maxOf(padding.calculateBottomPadding(), bottomContentPadding) + 16.dp,
+                    contentPadding = padding.adjustPadding(
+                        bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                     ),
                     overscrollEffect = null,
                 ) {

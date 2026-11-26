@@ -1,9 +1,11 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LocalGlassSearchQuery
 
 import com.melox.player.ui.adaptiveWindowSize
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 
@@ -14,8 +16,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,7 +76,6 @@ fun AlbumLibraryScreen(
     contentPadding: PaddingValues = PaddingValues(),
     showIndex: Boolean = true,
 ) {
-    val layoutDirection = LocalLayoutDirection.current
     PreserveSortScrollPosition(
         sortKey = sortConfig.field to sortConfig.descending,
         query = query,
@@ -96,11 +95,11 @@ fun AlbumLibraryScreen(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val gridContentPadding = PaddingValues(
-            start = contentPadding.calculateStartPadding(layoutDirection) + AlbumGridHorizontalPadding,
-            top = contentPadding.calculateTopPadding() + 12.dp,
-            end = contentPadding.calculateEndPadding(layoutDirection) + AlbumGridHorizontalPadding,
-            bottom = contentPadding.calculateBottomPadding() + 12.dp,
+        val gridContentPadding = contentPadding.adjustPadding(
+            start = { it + AlbumGridHorizontalPadding },
+            top = { it + 12.dp },
+            end = { it + AlbumGridHorizontalPadding },
+            bottom = { it + 12.dp },
         )
         val showingSearchResults = LocalGlassSearchQuery.current != null
         LazyVerticalGrid(
@@ -191,15 +190,21 @@ internal fun albumGridColumns(
     val density = LocalDensity.current
     val width = with(density) { window.width.toDp() }
     val height = with(density) { window.height.toDp() }
-    return albumGridColumnCount(
-        gridStyle = gridStyle,
-        landscape = width > height || isMiuixWideLayout(width, height),
-        navigationRailExpanded = false,
-        availableWidth = contentPadding.gridViewportWidth(maxWidth, LocalLayoutDirection.current),
-        spaciousCells = width > height,
-        horizontalPadding = AlbumGridHorizontalPadding * 2,
-        compactLandscape = isCompactLandscapeGrid(width, height),
-    )
+    val direction = LocalLayoutDirection.current
+    val columns by remember(gridStyle, maxWidth, width, height, direction, contentPadding) {
+        derivedStateOf {
+            albumGridColumnCount(
+                gridStyle = gridStyle,
+                landscape = width > height || isMiuixWideLayout(width, height),
+                navigationRailExpanded = false,
+                availableWidth = contentPadding.gridViewportWidth(maxWidth, direction),
+                spaciousCells = width > height,
+                horizontalPadding = AlbumGridHorizontalPadding * 2,
+                compactLandscape = isCompactLandscapeGrid(width, height),
+            )
+        }
+    }
+    return columns
 }
 
 internal fun albumGridColumnCount(

@@ -28,8 +28,6 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-internal val LocalGlassCompactTitleStartProgress = staticCompositionLocalOf { 0f }
-
 /** Native small-bar geometry without clipping the Glass controls' shadow halo. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -37,6 +35,7 @@ internal fun GlassCompactTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
     titleColor: Color,
+    titleAlpha: () -> Float,
     subtitle: String,
     scrollBehavior: ScrollBehavior?,
     defaultWindowInsetsPadding: Boolean,
@@ -46,7 +45,8 @@ internal fun GlassCompactTopAppBar(
     expandedContent: (@Composable () -> Unit)? = null,
     showTitleWhileExpanded: Boolean = false,
     titleBlurRadius: Dp = GlassTopAppBarDefaults.TitleBlurRadius,
-    centerObstructionStart: Dp = Dp.Unspecified,
+    titleObstructionStart: () -> Dp,
+    titleStartProgress: () -> Float,
 ) {
     val collapsible = expandedContent != null
     val scrollState = scrollBehavior?.state
@@ -79,7 +79,6 @@ internal fun GlassCompactTopAppBar(
             launch { smallTitleTranslationY.animateTo(if (smallTitleVisible) 0f else 20f, spec) }
         }
     }
-    val titleStartProgress = LocalGlassCompactTitleStartProgress.current.coerceIn(0f, 1f)
     var canCenterTitle by remember { mutableStateOf<Boolean?>(null) }
     val centeredFraction by animateFloatAsState(
         targetValue = if (canCenterTitle == false) 0f else 1f,
@@ -97,13 +96,15 @@ internal fun GlassCompactTopAppBar(
             Row(Modifier.padding(end = GlassTopAppBarDefaults.HorizontalPadding), content = actions)
             Text(
                 title,
-                modifier = if (collapsible) Modifier.graphicsLayer {
-                    val currentAlpha = smallTitleAlpha.value
-                    alpha = currentAlpha
-                    translationY = smallTitleTranslationY.value
-                    val radius = titleBlurRadius.toPx() * 0.5f * (1f - currentAlpha).coerceIn(0f, 1f)
-                    renderEffect = if (radius > 0.1f) BlurEffect(radius, radius, TileMode.Decal) else null
-                } else Modifier,
+                modifier = Modifier.graphicsLayer {
+                    val currentAlpha = if (collapsible) smallTitleAlpha.value else 1f
+                    alpha = currentAlpha * titleAlpha().coerceIn(0f, 1f)
+                    if (collapsible) {
+                        translationY = smallTitleTranslationY.value
+                        val radius = titleBlurRadius.toPx() * 0.5f * (1f - currentAlpha).coerceIn(0f, 1f)
+                        renderEffect = if (radius > 0.1f) BlurEffect(radius, radius, TileMode.Decal) else null
+                    }
+                },
                 color = titleColor,
                 style = MiuixTheme.textStyles.title4,
                 maxLines = 1,
@@ -158,8 +159,9 @@ internal fun GlassCompactTopAppBar(
         val titlePadding = TopAppBarDefaults.TitlePadding.roundToPx()
         val start = leading.width + if (leading.width > 0) spacing else titlePadding
         val end = constraints.maxWidth - trailing.width - if (trailing.width > 0) spacing else titlePadding
-        val obstructed = centerObstructionStart.isSpecified
-        val titleEnd = if (obstructed) minOf(end, centerObstructionStart.roundToPx() - spacing) else end
+        val obstructionStart = titleObstructionStart()
+        val obstructed = obstructionStart.isSpecified
+        val titleEnd = if (obstructed) minOf(end, obstructionStart.roundToPx() - spacing) else end
         val available = (titleEnd - start).coerceAtLeast(0)
         val titleMaxWidth = if (obstructed && available < 48.dp.roundToPx()) 0 else available
         val titleConstraints = loose.copy(maxWidth = titleMaxWidth)
@@ -180,7 +182,7 @@ internal fun GlassCompactTopAppBar(
             leading.placeRelative(0, center - leading.height / 2)
             trailing.placeRelative(constraints.maxWidth - trailing.width, center - trailing.height / 2)
             if (titleMaxWidth > 0) {
-                val centerProgress = if (obstructed) 0f else centeredFraction * (1f - titleStartProgress)
+                val centerProgress = if (obstructed) 0f else centeredFraction * (1f - titleStartProgress().coerceIn(0f, 1f))
                 fun titleX(width: Int): Int {
                     val centered = (constraints.maxWidth - width) / 2
                     return (start + (centered - start) * centerProgress).toInt()

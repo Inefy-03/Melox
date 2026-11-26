@@ -2,6 +2,7 @@ package com.melox.player.ui.screen.library
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
 import com.melox.player.ui.component.library.PreserveSortScrollPosition
 import com.melox.player.ui.component.library.offsetSectionIndices
@@ -17,8 +18,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -107,11 +106,9 @@ fun FolderLibraryScreen(
                 .overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             state = listState,
-            contentPadding = PaddingValues(
-                start = contentPadding.calculateStartPadding(layoutDirection),
-                top = contentPadding.calculateTopPadding() + 12.dp,
-                end = contentPadding.calculateEndPadding(layoutDirection),
-                bottom = contentPadding.calculateBottomPadding() + 12.dp,
+            contentPadding = contentPadding.adjustPadding(
+                top = { it + 12.dp },
+                bottom = { it + 12.dp },
             ),
             overscrollEffect = null,
         ) {

@@ -1,9 +1,11 @@
 package com.melox.player.ui.screen.home
 
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.library.gridViewportWidth
 import com.melox.player.ui.component.library.playlistGridColumnCount
 import com.melox.player.ui.component.library.PlaylistGridHorizontalPadding
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
 import android.graphics.Bitmap
 import android.graphics.LinearGradient
@@ -25,8 +27,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -144,10 +144,12 @@ fun HomeScreen(
         onRecommendationGestureActiveChanged,
     )
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val playlistGridColumns = playlistGridColumnCount(
-            landscape = landscape,
-            availableWidth = contentPadding.gridViewportWidth(maxWidth, layoutDirection),
-        )
+        val viewportWidth = maxWidth
+        val playlistGridColumns by remember(landscape, viewportWidth, contentPadding, layoutDirection) {
+            derivedStateOf {
+                playlistGridColumnCount(landscape, contentPadding.gridViewportWidth(viewportWidth, layoutDirection))
+            }
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -155,11 +157,9 @@ fun HomeScreen(
                 .scrollEndHaptic()
                 .overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(
-                start = contentPadding.calculateStartPadding(layoutDirection),
-                top = contentPadding.calculateTopPadding() + 12.dp,
-                end = contentPadding.calculateEndPadding(layoutDirection),
-                bottom = contentPadding.calculateBottomPadding() + 12.dp,
+            contentPadding = contentPadding.adjustPadding(
+                top = { it + 12.dp },
+                bottom = { it + 12.dp },
             ),
             overscrollEffect = null,
         ) {
@@ -208,9 +208,11 @@ fun HomeScreen(
                         HorizontalPager(
                             state = pagerState,
                             pageSize = PageSize.Fixed(artworkSize),
-                            contentPadding = PaddingValues(
-                                start = contentPadding.calculateStartPadding(layoutDirection) + HomeRecommendationHorizontalContentPadding,
-                                end = contentPadding.calculateEndPadding(layoutDirection) + HomeRecommendationHorizontalContentPadding,
+                            contentPadding = contentPadding.adjustPadding(
+                                start = { it + HomeRecommendationHorizontalContentPadding },
+                                top = { 0.dp },
+                                end = { it + HomeRecommendationHorizontalContentPadding },
+                                bottom = { 0.dp },
                             ),
                             flingBehavior = edgeScroll.flingBehavior,
                             pageSpacing = HomeRecommendationPageSpacing,

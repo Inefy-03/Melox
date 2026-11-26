@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.rememberGlassBlurBackdrop
 import top.yukonga.miuix.kmp.upstream.blur.layerBackdrop
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -14,8 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,7 +35,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -100,14 +98,13 @@ fun MusicListScreen(
     onSelectionModeChange: ((Boolean) -> Unit)? = null,
     showLocateAction: Boolean = false,
     currentTrackContentUri: String? = null,
-    miniPlayerBounds: Rect = Rect.Zero,
+    miniPlayerTop: Float? = null,
     playerContentBounds: Rect = Rect.Zero,
     leadingItemCount: Int = 0,
     leadingContent: LazyListScope.() -> Unit = {},
     emptyContent: (@Composable (Modifier) -> Unit)? = null,
     onRefresh: (() -> Unit)? = null,
 ) {
-    val layoutDirection = LocalLayoutDirection.current
     val showingSearchResults = LocalGlassSearchQuery.current != null
     val selectionAllowed = !showingSearchResults
     val selectingTracks = selectionAllowed && selectionMode
@@ -126,15 +123,15 @@ fun MusicListScreen(
                 sortConfig.field == MusicSortField.FILE_NAME
         ) &&
         query.isBlank()
-    val locateActionVisible = showLocateAction && currentIndex >= 0 && !selectingTracks &&
-        miniPlayerBounds.width > 0f && playerContentBounds.width > 0f
-    val locateBottomPadding = if (locateActionVisible) {
-        with(density) {
-            (playerContentBounds.bottom - miniPlayerBounds.top).coerceAtLeast(0f).toDp()
-        } + 12.dp + locateActionSize
-    } else {
-        0.dp
+    val locateTop = miniPlayerTop?.takeIf {
+        showLocateAction && currentIndex >= 0 && !selectingTracks && playerContentBounds.width > 0f
     }
+    val locateActionVisible = locateTop != null
+    val locateBottomPadding = locateTop?.let {
+        with(density) {
+            (playerContentBounds.bottom - it).coerceAtLeast(0f).toDp()
+        } + 12.dp + locateActionSize
+    } ?: 0.dp
     PreserveSortScrollPosition(
         sortKey = sortConfig,
         query = query,
@@ -147,13 +144,11 @@ fun MusicListScreen(
         )
     }
     var selectedTrack by remember { mutableStateOf<MusicTrack?>(null) }
-    val startPadding = contentPadding.calculateStartPadding(layoutDirection)
-    val endPadding = contentPadding.calculateEndPadding(layoutDirection)
-    val listContentPadding = PaddingValues(
-        start = if (onRefresh == null) startPadding else 0.dp,
-        top = contentPadding.calculateTopPadding() + topContentSpacing,
-        end = if (onRefresh == null) endPadding else 0.dp,
-        bottom = maxOf(contentPadding.calculateBottomPadding(), locateBottomPadding) + 12.dp,
+    val listContentPadding = contentPadding.adjustPadding(
+        start = { if (onRefresh == null) it else 0.dp },
+        top = { it + topContentSpacing },
+        end = { if (onRefresh == null) it else 0.dp },
+        bottom = { maxOf(it, locateBottomPadding) + 12.dp },
     )
     val sections = remember(sortConfig.descending) {
         if (sortConfig.descending) AlphabetSections.asReversed() else AlphabetSections
@@ -256,7 +251,9 @@ fun MusicListScreen(
             PullToRefresh(
                 isRefreshing = shouldKeepMusicPullRefreshing(scanStatus, pullToRefreshState.refreshState),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize().padding(start = startPadding, end = endPadding),
+                modifier = Modifier.fillMaxSize().padding(
+                    contentPadding.adjustPadding(top = { 0.dp }, bottom = { 0.dp }),
+                ),
                 pullToRefreshState = pullToRefreshState,
                 contentPadding = listContentPadding,
                 topAppBarScrollBehavior = scrollBehavior,
@@ -296,7 +293,7 @@ fun MusicListScreen(
                 currentIndex = currentIndex,
                 listState = listState,
                 scrollBehavior = scrollBehavior,
-                miniPlayerBounds = miniPlayerBounds,
+                miniPlayerTop = miniPlayerTop,
                 contentPadding = contentPadding,
                 backdrop = locationBackdrop,
                 alphabetIndexVisible = showAlphabetIndex,

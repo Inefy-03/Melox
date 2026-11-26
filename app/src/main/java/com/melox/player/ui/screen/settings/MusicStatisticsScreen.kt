@@ -9,6 +9,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -17,8 +18,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -54,7 +53,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -128,7 +126,6 @@ fun MusicStatisticsScreen(
     onBack: () -> Unit,
 ) {
     val statistics = remember(tracks) { buildMusicLibraryStatistics(tracks) }
-    val layoutDirection = LocalLayoutDirection.current
     var group by remember { mutableStateOf(StatisticsGroup.QUALITY) }
     var metric by remember { mutableStateOf(StatisticsMetric.COUNT) }
     val scrollBehavior = MiuixScrollBehavior()
@@ -171,12 +168,9 @@ fun MusicStatisticsScreen(
                 statistics = statistics,
                 group = group,
                 metric = metric,
-                startPadding = padding.calculateStartPadding(layoutDirection),
-                topPadding = padding.calculateTopPadding(),
-                endPadding = padding.calculateEndPadding(layoutDirection),
-                bottomPadding = maxOf(
-                    padding.calculateBottomPadding(),
-                    bottomContentPadding,
+                contentPadding = padding.adjustPadding(
+                    top = { it + 32.dp },
+                    bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                 ),
                 scrollBehavior = scrollBehavior,
             )
@@ -224,10 +218,7 @@ private fun StatisticsPage(
     statistics: MusicLibraryStatistics,
     group: StatisticsGroup,
     metric: StatisticsMetric,
-    startPadding: Dp,
-    topPadding: Dp,
-    endPadding: Dp,
-    bottomPadding: Dp,
+    contentPadding: PaddingValues,
     scrollBehavior: ScrollBehavior,
 ) {
     val darkSurface = MiuixTheme.colorScheme.surface.luminance() < 0.5f
@@ -296,12 +287,7 @@ private fun StatisticsPage(
                 .scrollEndHaptic()
                 .overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(
-                start = startPadding,
-                top = topPadding + 32.dp,
-                end = endPadding,
-                bottom = bottomPadding + 16.dp,
-            ),
+            contentPadding = contentPadding,
             overscrollEffect = null,
         ) {
             item(key = "${group.name}_${metric.name}") {

@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.adaptiveWindowSize
 import com.melox.player.ui.icon.*
 import androidx.compose.foundation.Image
@@ -71,16 +72,14 @@ internal fun LibraryOverviewScreen(
     val landscape = window.width > window.height
     val direction = LocalLayoutDirection.current
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val availableWidth = contentPadding.gridViewportWidth(maxWidth, direction)
+        val viewportWidth = maxWidth
         val columns = albumGridColumns(gridStyle, maxWidth, contentPadding)
         val albumRows = if (gridStyle == AlbumGridStyle.TWO_SMALL) 3 else 2
         LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(
-                start = contentPadding.calculateStartPadding(direction),
-                end = contentPadding.calculateEndPadding(direction),
-                top = contentPadding.calculateTopPadding() + 12.dp,
-                bottom = contentPadding.calculateBottomPadding() + 12.dp,
+            contentPadding = contentPadding.adjustPadding(
+                top = { it + 12.dp },
+                bottom = { it + 12.dp },
             ),
             modifier = Modifier.fillMaxSize().scrollEndHaptic().overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -105,7 +104,7 @@ internal fun LibraryOverviewScreen(
                 HomeSectionTitle(R.string.navigation_artists, onClick = { onOpenSection(1) }, topPadding = HomeSectionSpacing - LibraryPreviewBottomPadding, endPadding = 28.dp)
             }
             item(key = "artists") {
-                if (artists.isEmpty()) LibraryPreviewEmptyCard(1) else LibraryPreviewCards(artists.size, landscape, availableWidth, contentPadding = contentPadding) { index ->
+                if (artists.isEmpty()) LibraryPreviewEmptyCard(1) else LibraryPreviewCards(artists.size, landscape, viewportWidth, contentPadding = contentPadding) { index ->
                     val artist = artists[index]
                     LibraryPreviewRow(
                         artist.name ?: stringResource(R.string.artist_unknown), artist.tracks.size,
@@ -121,7 +120,7 @@ internal fun LibraryOverviewScreen(
                 HomeSectionTitle(R.string.navigation_folders, onClick = { onOpenSection(2) }, topPadding = HomeSectionSpacing - LibraryPreviewBottomPadding, endPadding = 28.dp)
             }
             item(key = "folders") {
-                if (folders.isEmpty()) LibraryPreviewEmptyCard(2) else LibraryPreviewCards(folders.size, landscape, availableWidth, contentPadding = contentPadding) { index ->
+                if (folders.isEmpty()) LibraryPreviewEmptyCard(2) else LibraryPreviewCards(folders.size, landscape, viewportWidth, contentPadding = contentPadding) { index ->
                     val folder = folders[index]
                     LibraryPreviewRow(
                         folder.name ?: stringResource(R.string.folder_unknown), folder.tracks.size,
@@ -152,12 +151,13 @@ private fun LibraryPreviewEmptyCard(section: Int, modifier: Modifier = Modifier)
 private fun LibraryPreviewCards(
     count: Int,
     landscape: Boolean,
-    availableWidth: Dp,
+    viewportWidth: Dp,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     content: @Composable (Int) -> Unit,
 ) {
     val direction = LocalLayoutDirection.current
+    val availableWidth = contentPadding.gridViewportWidth(viewportWidth, direction)
     val groups = libraryPreviewColumns(count, landscape, availableWidth)
     val columns = libraryPreviewColumnCount(landscape, availableWidth)
     val endPadding = if (landscape) 16.dp else 20.dp
@@ -175,9 +175,11 @@ private fun LibraryPreviewCards(
         state = state,
         modifier = modifier.expandHorizontalScrollViewport(contentPadding).fillMaxWidth().padding(bottom = LibraryPreviewBottomPadding).then(edgeScroll.modifier),
         overscrollEffect = null,
-        contentPadding = PaddingValues(
-            start = contentPadding.calculateStartPadding(direction) + 16.dp,
-            end = contentPadding.calculateEndPadding(direction) + endPadding,
+        contentPadding = contentPadding.adjustPadding(
+            start = { it + 16.dp },
+            top = { 0.dp },
+            end = { it + endPadding },
+            bottom = { 0.dp },
         ),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         flingBehavior = edgeScroll.flingBehavior,

@@ -6,14 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import com.melox.player.ui.component.LazyVerticalGrid
@@ -277,14 +275,9 @@ fun AlbumDetailScreen(
                             .scrollEndHaptic()
                             .overScrollVertical(scrollBehavior = activeScrollBehavior)
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        contentPadding = PaddingValues(
-                            start = padding.calculateStartPadding(layoutDirection),
-                            top = padding.calculateTopPadding() + 6.dp,
-                            end = padding.calculateEndPadding(layoutDirection),
-                            bottom = maxOf(
-                                padding.calculateBottomPadding(),
-                                bottomContentPadding,
-                            ) + 16.dp,
+                        contentPadding = padding.adjustPadding(
+                            top = { it + 6.dp },
+                            bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                         ),
                         overscrollEffect = null,
                     ) {
@@ -348,14 +341,9 @@ fun AlbumDetailScreen(
                             .scrollEndHaptic()
                             .overScrollVertical(scrollBehavior = activeScrollBehavior)
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        contentPadding = PaddingValues(
-                            start = padding.calculateStartPadding(layoutDirection),
-                            top = padding.calculateTopPadding() + 6.dp,
-                            end = padding.calculateEndPadding(layoutDirection),
-                            bottom = maxOf(
-                                padding.calculateBottomPadding(),
-                                bottomContentPadding,
-                            ) + 16.dp,
+                        contentPadding = padding.adjustPadding(
+                            top = { it + 6.dp },
+                            bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                         ),
                         overscrollEffect = null,
                     ) {
@@ -591,14 +579,9 @@ fun ArtistDetailScreen(
                             .scrollEndHaptic()
                             .overScrollVertical(scrollBehavior = activeScrollBehavior)
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        contentPadding = PaddingValues(
-                            start = padding.calculateStartPadding(layoutDirection),
-                            top = padding.calculateTopPadding() + 6.dp,
-                            end = padding.calculateEndPadding(layoutDirection),
-                            bottom = maxOf(
-                                padding.calculateBottomPadding(),
-                                bottomContentPadding,
-                            ) + 16.dp,
+                        contentPadding = padding.adjustPadding(
+                            top = { it + 6.dp },
+                            bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                         ),
                         overscrollEffect = null,
                     ) {
@@ -640,14 +623,11 @@ fun ArtistDetailScreen(
                                 .scrollEndHaptic()
                                 .overScrollVertical(scrollBehavior = activeScrollBehavior)
                                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-                            contentPadding = PaddingValues(
-                                start = padding.calculateStartPadding(layoutDirection) + AlbumGridHorizontalPadding,
-                                top = padding.calculateTopPadding() + 6.dp,
-                                end = padding.calculateEndPadding(layoutDirection) + AlbumGridHorizontalPadding,
-                                bottom = maxOf(
-                                    padding.calculateBottomPadding(),
-                                    bottomContentPadding,
-                                ) + 16.dp,
+                            contentPadding = padding.adjustPadding(
+                                start = { it + AlbumGridHorizontalPadding },
+                                top = { it + 6.dp },
+                                end = { it + AlbumGridHorizontalPadding },
+                                bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                             ),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),

@@ -4,6 +4,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.icon.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -12,8 +13,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -31,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -99,7 +97,7 @@ fun FolderDetailScreen(
     sortConfig: MusicSortConfig,
     onSortConfigChange: (MusicSortConfig) -> Unit,
     currentTrackContentUri: String? = null,
-    miniPlayerBounds: Rect = Rect.Zero,
+    miniPlayerTop: Float? = null,
     playerContentBounds: Rect = Rect.Zero,
     childFolders: List<FolderGroup> = emptyList(),
     childSongCounts: Map<String, Int> = emptyMap(),
@@ -145,7 +143,6 @@ fun FolderDetailScreen(
     val showSongActions = breadcrumbItems.isEmpty() || folder.tracks.isNotEmpty()
     var backdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
-    val layoutDirection = LocalLayoutDirection.current
     val sortedTracks = remember(folder.tracks, sortConfig) { sortMusicTracks(folder.tracks, sortConfig) }
     val sectionIndexMap = remember(sortedTracks, sortConfig.field) {
         buildMap {
@@ -334,7 +331,7 @@ fun FolderDetailScreen(
                     showLocateAction = !showingResults,
                     showIndex = !showingResults,
                     currentTrackContentUri = currentTrackContentUri,
-                    miniPlayerBounds = miniPlayerBounds,
+                    miniPlayerTop = miniPlayerTop,
                     playerContentBounds = playerContentBounds,
                     onTrackClick = onTrackClick,
                     displayedTracks = displayedTracks,
@@ -359,14 +356,8 @@ fun FolderDetailScreen(
                     scrollBehavior = scrollBehavior,
                     listState = listState,
                     topContentSpacing = if (breadcrumbItems.isNotEmpty()) 4.dp else 12.dp,
-                    contentPadding = PaddingValues(
-                        start = padding.calculateStartPadding(layoutDirection),
-                        top = padding.calculateTopPadding(),
-                        end = padding.calculateEndPadding(layoutDirection),
-                        bottom = maxOf(
-                            padding.calculateBottomPadding(),
-                            bottomContentPadding,
-                        ),
+                    contentPadding = padding.adjustPadding(
+                        bottom = { maxOf(it, bottomContentPadding) },
                     ),
                     selectionMode = selectionMode,
                     selectedTrackUris = selectedTrackUris,

@@ -3,14 +3,19 @@ package com.melox.player
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.TargetBasedAnimation
 import androidx.compose.animation.core.VectorConverter
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.melox.player.data.library.AlbumGroup
 import com.melox.player.data.library.ArtistGroup
 import com.melox.player.ui.AppNavDestination
 import com.melox.player.ui.AppRoute
+import com.melox.player.ui.component.adjustPadding
+import com.melox.player.ui.landscapeRailInsets
 import com.melox.player.ui.missingLibraryDetailCount
 import com.melox.player.ui.rememberLibraryDetailForExit
 import com.melox.player.model.NavigationTransitionStyle
@@ -25,6 +30,44 @@ import top.yukonga.miuix.kmp.nav.transition.NavSettleSpec
 import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 
 class NavigationChromeMotionTest {
+    @Test
+    fun landscapeOverlayReadsTheLatestInsetAtTheLogicalStartEdge() {
+        var start = 0.dp
+        val density = Density(2f)
+        val insets = landscapeRailInsets { start }
+        assertEquals(0, insets.getLeft(density, LayoutDirection.Ltr))
+
+        start = 32.dp
+        assertEquals(64, insets.getLeft(density, LayoutDirection.Ltr))
+        assertEquals(0, insets.getRight(density, LayoutDirection.Ltr))
+        assertEquals(0, insets.getLeft(density, LayoutDirection.Rtl))
+        assertEquals(64, insets.getRight(density, LayoutDirection.Rtl))
+        assertEquals(0, insets.getTop(density))
+        assertEquals(0, insets.getBottom(density))
+    }
+
+    @Test
+    fun nestedContentPaddingReadsRailClearanceLazilyAndPreservesOtherEdges() {
+        var railClearance = 0.dp
+        var reads = 0
+        val page = PaddingValues(start = 8.dp, end = 12.dp, top = 24.dp, bottom = 40.dp)
+            .adjustPadding(start = {
+                reads++
+                it + railClearance
+            })
+        val list = page.adjustPadding(bottom = { it + 16.dp })
+        assertEquals(24.dp, list.calculateTopPadding())
+        assertEquals(56.dp, list.calculateBottomPadding())
+        assertEquals(0, reads)
+        assertEquals(8.dp, list.calculateLeftPadding(LayoutDirection.Ltr))
+
+        railClearance = 28.dp
+        assertEquals(36.dp, list.calculateLeftPadding(LayoutDirection.Ltr))
+        assertEquals(12.dp, list.calculateRightPadding(LayoutDirection.Ltr))
+        assertEquals(12.dp, list.calculateLeftPadding(LayoutDirection.Rtl))
+        assertEquals(36.dp, list.calculateRightPadding(LayoutDirection.Rtl))
+    }
+
     @Test
     fun upstreamBottomNavigationDragKeepsTheTrailAndSqueezesAtBothEnds() {
         val forward = top.yukonga.miuix.kmp.upstream.glass.navigationDragTarget(100f, 80f, 0f, 320f, 5f, false)

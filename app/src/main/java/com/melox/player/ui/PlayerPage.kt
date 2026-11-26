@@ -3,8 +3,6 @@ package com.melox.player.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,7 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalLayoutDirection
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LocalGlassSearchQuery
 import com.melox.player.ui.component.PageScaffold
 import com.melox.player.ui.component.SmallTopAppBar
@@ -41,7 +39,6 @@ internal fun PlayerPage(
 ) {
     val landscapeNavigation = LocalLandscapeNavigation.current.takeIf { isRootPage }
     val replaceTitle = landscapeNavigation?.labels?.contains(title) == true
-    val layoutDirection = LocalLayoutDirection.current
     var topBarCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val topBarBackdrop = rememberBlurBackdrop(captureCoordinates = { topBarCaptureCoordinates })
 
@@ -97,14 +94,10 @@ internal fun PlayerPage(
                 ),
         ) {
             content(
-                PaddingValues(
-                    start = innerPadding.calculateStartPadding(layoutDirection),
-                    top = innerPadding.calculateTopPadding(),
-                    end = innerPadding.calculateEndPadding(layoutDirection),
-                    bottom = if (showingSearch) {
-                        maxOf(innerPadding.calculateBottomPadding(), outerPadding.calculateBottomPadding())
-                    } else {
-                        outerPadding.calculateBottomPadding()
+                innerPadding.adjustPadding(
+                    bottom = {
+                        val outerBottom = outerPadding.calculateBottomPadding()
+                        if (showingSearch) maxOf(it, outerBottom) else outerBottom
                     },
                 ),
                 scrollBehavior,

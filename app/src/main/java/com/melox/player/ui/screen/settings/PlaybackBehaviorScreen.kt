@@ -3,12 +3,10 @@ package com.melox.player.ui.screen.settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
@@ -18,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -52,7 +49,6 @@ internal fun PlaybackBehaviorScreen(
     onShowNotificationCloseButtonChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val layoutDirection = LocalLayoutDirection.current
     var autoPlay by remember(settings.autoPlayOnStart) { mutableStateOf(settings.autoPlayOnStart) }
     var terminate by remember(settings.terminateOnTaskRemoved) {
         mutableStateOf(settings.terminateOnTaskRemoved)
@@ -100,11 +96,9 @@ internal fun PlaybackBehaviorScreen(
                     .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = listState,
-                contentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    top = padding.calculateTopPadding() + 12.dp,
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = maxOf(padding.calculateBottomPadding(), bottomContentPadding) + 16.dp,
+                contentPadding = padding.adjustPadding(
+                    top = { it + 12.dp },
+                    bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                 ),
                 overscrollEffect = null,
             ) {

@@ -59,7 +59,7 @@ internal fun MusicLocationAction(
     currentIndex: Int,
     listState: LazyListState,
     scrollBehavior: ScrollBehavior,
-    miniPlayerBounds: Rect,
+    miniPlayerTop: Float?,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(),
     backdrop: Backdrop? = null,
@@ -76,7 +76,7 @@ internal fun MusicLocationAction(
     )
     var actionAreaBounds by remember { mutableStateOf(Rect.Zero) }
     // The page reports its origin after layout, even when the player is already measured.
-    val actionVisible = visible && !actionAreaBounds.isEmpty && !miniPlayerBounds.isEmpty
+    val actionVisible = visible && !actionAreaBounds.isEmpty && miniPlayerTop != null
     Box(modifier.fillMaxSize().zIndex(1f).onGloballyPositioned { actionAreaBounds = Rect(it.positionInRoot(), it.size.toSize()) }) {
         AnimatedVisibility(
             visible = actionVisible,
@@ -86,7 +86,7 @@ internal fun MusicLocationAction(
                 .offset {
                     with(density) {
                         musicLocationOffset(
-                            miniPlayerBounds,
+                            miniPlayerTop ?: 0f,
                             actionAreaBounds,
                             locateActionSize.toPx(),
                             12.dp.toPx(),
@@ -153,7 +153,7 @@ internal fun collapseMusicLocationTopBar(state: TopAppBarState): Float {
 }
 
 internal fun musicLocationOffset(
-    miniPlayerBounds: Rect,
+    miniPlayerTop: Float,
     pageBounds: Rect,
     actionSizePx: Float,
     gapPx: Float,
@@ -161,7 +161,7 @@ internal fun musicLocationOffset(
 ): IntOffset = IntOffset(
     (pageBounds.width - trailingPaddingPx - actionSizePx)
         .roundToInt().coerceAtLeast(0),
-    (miniPlayerBounds.top - pageBounds.top - gapPx - actionSizePx)
+    (miniPlayerTop - pageBounds.top - gapPx - actionSizePx)
         .roundToInt().coerceIn(0, (pageBounds.height - actionSizePx).roundToInt().coerceAtLeast(0)),
 )
 

@@ -8,12 +8,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
@@ -26,7 +24,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -80,7 +77,6 @@ internal fun MainBackgroundScreen(
     onCardBlurPercentChange: (Int) -> Unit,
     onCardOpacityPercentChange: (Int) -> Unit,
 ) {
-    val layoutDirection = LocalLayoutDirection.current
     val context = LocalContext.current
     val cardBlurEnabled = settings.blurEnabled && isRuntimeShaderSupported()
     val scope = rememberCoroutineScope()
@@ -133,11 +129,9 @@ internal fun MainBackgroundScreen(
                     .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 state = listState,
-                contentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    top = padding.calculateTopPadding() + 12.dp,
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = maxOf(padding.calculateBottomPadding(), bottomContentPadding) + 16.dp,
+                contentPadding = padding.adjustPadding(
+                    top = { it + 12.dp },
+                    bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                 ),
                 overscrollEffect = null,
             ) {

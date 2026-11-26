@@ -1,19 +1,18 @@
 package com.melox.player.ui.screen.playlist
 
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.library.gridViewportWidth
 import com.melox.player.ui.component.library.playlistGridColumnCount
 import com.melox.player.ui.component.library.PlaylistGridHorizontalPadding
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
 import com.melox.player.ui.icon.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -144,14 +143,17 @@ fun PlaylistLibraryScreen(
                 .then(backdrop?.let { Modifier.onGloballyPositioned { coordinates -> backdropCaptureCoordinates = coordinates }.layerBackdrop(it) } ?: Modifier),
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val gridContentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection) + PlaylistGridHorizontalPadding,
-                    top = padding.calculateTopPadding() + 12.dp,
-                    end = padding.calculateEndPadding(layoutDirection) + PlaylistGridHorizontalPadding,
-                    bottom = maxOf(
-                        padding.calculateBottomPadding(),
-                        bottomContentPadding,
-                    ) + 12.dp,
+                val viewportWidth = maxWidth
+                val columns by remember(landscape, viewportWidth, padding, layoutDirection) {
+                    derivedStateOf {
+                        playlistGridColumnCount(landscape, padding.gridViewportWidth(viewportWidth, layoutDirection))
+                    }
+                }
+                val gridContentPadding = padding.adjustPadding(
+                    start = { it + PlaylistGridHorizontalPadding },
+                    top = { it + 12.dp },
+                    end = { it + PlaylistGridHorizontalPadding },
+                    bottom = { maxOf(it, bottomContentPadding) + 12.dp },
                 )
                 val reorderState = rememberReorderableLazyGridState(
                     lazyGridState = gridState,
@@ -169,12 +171,7 @@ fun PlaylistLibraryScreen(
                 LazyVerticalGrid(
                     state = gridState,
                     userScrollEnabled = !reorderState.isAnyItemDragging,
-                    columns = GridCells.Fixed(
-                        playlistGridColumnCount(
-                            landscape = landscape,
-                            availableWidth = padding.gridViewportWidth(maxWidth, layoutDirection),
-                        ),
-                    ),
+                    columns = GridCells.Fixed(columns),
                     modifier = Modifier
                         .fillMaxSize()
                         .scrollEndHaptic()

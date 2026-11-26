@@ -6,14 +6,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -24,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -68,7 +65,6 @@ fun BlockedFoldersScreen(
     val scrollBehavior = MiuixScrollBehavior()
     var backdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val backdrop = rememberBlurBackdrop(captureCoordinates = { backdropCaptureCoordinates })
-    val layoutDirection = LocalLayoutDirection.current
     var pendingPath by remember { mutableStateOf<String?>(null) }
     val sortedPaths = remember(paths) {
         paths.sortedWith(compareBy(String::lowercase).thenBy { it })
@@ -103,11 +99,9 @@ fun BlockedFoldersScreen(
                     .scrollEndHaptic()
                     .overScrollVertical(scrollBehavior = scrollBehavior)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
-                contentPadding = PaddingValues(
-                    start = padding.calculateStartPadding(layoutDirection),
-                    top = padding.calculateTopPadding() + 12.dp,
-                    end = padding.calculateEndPadding(layoutDirection),
-                    bottom = maxOf(padding.calculateBottomPadding(), bottomContentPadding) + 16.dp,
+                contentPadding = padding.adjustPadding(
+                    top = { it + 12.dp },
+                    bottom = { maxOf(it, bottomContentPadding) + 16.dp },
                 ),
                 overscrollEffect = null,
             ) {

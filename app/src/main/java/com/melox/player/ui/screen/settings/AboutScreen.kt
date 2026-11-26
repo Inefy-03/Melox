@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -160,7 +161,6 @@ private fun AboutContent(
 ) {
     val uriHandler = LocalUriHandler.current
     val density = LocalDensity.current
-    val layoutDirection = LocalLayoutDirection.current
     val versionName = BuildConfig.VERSION_NAME.ifBlank { "1.0.0" }
     var headerHeight by remember { mutableStateOf(190.dp) }
     var contentBackdropCaptureCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -222,12 +222,9 @@ private fun AboutContent(
                 .scrollEndHaptic()
                 .overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(
-                start = padding.calculateStartPadding(layoutDirection),
-                top = padding.calculateTopPadding() +
-                    if (customBackgroundSelected || customBackgroundVisible) 12.dp else 0.dp,
-                end = padding.calculateEndPadding(layoutDirection),
-                bottom = maxOf(padding.calculateBottomPadding(), bottomContentPadding),
+            contentPadding = padding.adjustPadding(
+                top = { it + if (customBackgroundSelected || customBackgroundVisible) 12.dp else 0.dp },
+                bottom = { maxOf(it, bottomContentPadding) },
             ),
             overscrollEffect = null,
         ) {

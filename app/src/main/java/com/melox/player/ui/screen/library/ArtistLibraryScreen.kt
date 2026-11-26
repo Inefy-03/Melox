@@ -1,5 +1,6 @@
 package com.melox.player.ui.screen.library
 
+import com.melox.player.ui.component.adjustPadding
 import com.melox.player.ui.component.LocalGlassSearchQuery
 
 import com.melox.player.ui.component.LocalPageAlphabetIndexPadding
@@ -8,8 +9,6 @@ import com.melox.player.ui.component.library.PreserveSortScrollPosition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import com.melox.player.ui.component.LazyColumn
@@ -21,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -55,7 +53,6 @@ fun ArtistLibraryScreen(
     contentPadding: PaddingValues = PaddingValues(),
     showIndex: Boolean = true,
 ) {
-    val layoutDirection = LocalLayoutDirection.current
     PreserveSortScrollPosition(
         sortKey = sortConfig,
         query = query,
@@ -80,11 +77,9 @@ fun ArtistLibraryScreen(
                 .overScrollVertical(scrollBehavior = scrollBehavior)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             state = listState,
-            contentPadding = PaddingValues(
-                start = contentPadding.calculateStartPadding(layoutDirection),
-                top = contentPadding.calculateTopPadding() + 12.dp,
-                end = contentPadding.calculateEndPadding(layoutDirection),
-                bottom = contentPadding.calculateBottomPadding() + 12.dp,
+            contentPadding = contentPadding.adjustPadding(
+                top = { it + 12.dp },
+                bottom = { it + 12.dp },
             ),
             overscrollEffect = null,
         ) {

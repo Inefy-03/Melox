@@ -179,11 +179,9 @@ internal fun rememberHorizontalEdgeScroll(
 @Composable
 internal fun Modifier.expandHorizontalScrollViewport(padding: PaddingValues): Modifier {
     val direction = LocalLayoutDirection.current
-    val start = padding.calculateStartPadding(direction)
-    val end = padding.calculateEndPadding(direction)
     return layout { measurable, constraints ->
-        val startPx = start.roundToPx()
-        val extraWidth = startPx + end.roundToPx()
+        val startPx = padding.calculateStartPadding(direction).roundToPx()
+        val extraWidth = startPx + padding.calculateEndPadding(direction).roundToPx()
         val placeable = measurable.measure(constraints.offset(horizontal = extraWidth))
         layout(placeable.width - extraWidth, placeable.height) {
             placeable.placeRelative(-startPx, 0)

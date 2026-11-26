@@ -25,7 +25,7 @@ import androidx.compose.ui.graphics.Color
 internal val FloatingNavigationRailInset = 76.dp
 
 internal val LocalFloatingNavigationRailInset = staticCompositionLocalOf { 0.dp }
-internal val LocalClippedNavigationRailInset = staticCompositionLocalOf { 0.dp }
+internal val LocalOriginalNavigationRailInsets = staticCompositionLocalOf<WindowInsets?> { null }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

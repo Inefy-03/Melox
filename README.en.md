@@ -54,8 +54,8 @@ Melox is an Android local music player built with Jetpack Compose, Miuix, and An
     <td><img src="./screenshot/15.png" width="200" alt="03"></td>
   </tr>
   <tr>
-    <td><img src="./screenshot/17.png" width="200" alt="05"></td>
-    <td><img src="./screenshot/16.png" width="200" alt="04"></td>
+    <td><img src="./screenshot/16.png" width="200" alt="05"></td>
+    <td><img src="./screenshot/17png" width="200" alt="04"></td>
     <td><img src="./screenshot/18.png" width="200" alt="06"></td>
   </tr>
 </table>

@@ -55,8 +55,8 @@ Melox 是一款基于 Jetpack Compose、Miuix 和 AndroidX Media3 构建的 Andr
     <td><img src="./screenshot/15.png" width="200" alt="03"></td>
   </tr>
   <tr>
-    <td><img src="./screenshot/17.png" width="200" alt="05"></td>
-    <td><img src="./screenshot/16.png" width="200" alt="04"></td>
+    <td><img src="./screenshot/16.png" width="200" alt="05"></td>
+    <td><img src="./screenshot/17.png" width="200" alt="04"></td>
     <td><img src="./screenshot/18.png" width="200" alt="06"></td>
   </tr>
 </table>

@@ -63,7 +63,6 @@ import com.melox.player.data.playback.ListeningAmount
 import com.melox.player.data.playback.ListeningPeriod
 import com.melox.player.data.playback.ListeningRange
 import com.melox.player.data.playback.ListeningStatistics
-import com.melox.player.data.playback.ListeningStatisticsStore
 import com.melox.player.model.MusicTrack
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -189,13 +188,21 @@ internal fun ListeningStatisticsScreen(
     val scope = rememberCoroutineScope()
     val scrollBehavior = MiuixScrollBehavior()
     val listStates = ranges.map { rememberLazyListState() }
-    val recordedSongStates = ranges.map { range ->
-        val songPeriod = range.period(today, offset = 0)
+    val periodOffsets = ranges.map { range ->
+        key(range) { rememberSaveable { mutableIntStateOf(0) } }
+    }
+    val loadedPeriods = ranges.mapIndexed { page, range ->
+        val offset = periodOffsets[page].intValue
+        val period = range.period(today, offset)
+        val previousPeriod = range.previousComparisonPeriod(period, offset)
+            .takeIf { historyStart != null && it.endExclusive > historyStart }
         key(store, range, zone, hiddenUris) {
-            val updates = remember(songPeriod) {
-                store.observe(range, songPeriod, null, zone, hiddenUris).map { it.songs }
+            val updates = remember(period, offset, previousPeriod) {
+                store.observe(range, period, previousPeriod, zone, hiddenUris).map {
+                    LoadedListeningPeriod(period, offset, it)
+                }
             }
-            updates.collectAsStateWithLifecycle(initialValue = emptyList())
+            updates.collectAsStateWithLifecycle(initialValue = null)
         }
     }
     val activeListState = listStates[pagerState.currentPage]
@@ -268,7 +275,9 @@ internal fun ListeningStatisticsScreen(
             ) { page ->
                 val range = ranges[page]
                 val activeScrollBehavior = scrollBehavior.takeIf { page == pagerState.currentPage }
-                val recordedSongs = recordedSongStates[page].value
+                val periodOffset = periodOffsets[page]
+                val loadedPeriod = loadedPeriods[page].value
+                val recordedSongs = loadedPeriod?.statistics?.songs.orEmpty()
                 val songs = remember(recordedSongs, metric) {
                     recordedSongs
                         .filter { metric.value(it.amount) > 0 }
@@ -294,12 +303,12 @@ internal fun ListeningStatisticsScreen(
                 ) {
                     item(key = "chart") {
                         ListeningStatisticsCard(
-                            store = store,
                             range = range,
                             today = today,
-                            zone = zone,
-                            hiddenUris = hiddenUris,
                             historyStart = historyStart,
+                            periodOffset = periodOffset.intValue,
+                            loadedPeriod = loadedPeriod,
+                            onPeriodOffsetChange = { periodOffset.intValue = it },
                             metric = metric,
                             locale = locale,
                         )
@@ -369,61 +378,49 @@ private data class LoadedListeningPeriod(
 
 @Composable
 private fun ListeningStatisticsCard(
-    store: ListeningStatisticsStore,
     range: ListeningRange,
     today: LocalDate,
-    zone: ZoneId,
-    hiddenUris: Set<String>,
     historyStart: LocalDate?,
+    periodOffset: Int,
+    loadedPeriod: LoadedListeningPeriod?,
+    onPeriodOffsetChange: (Int) -> Unit,
     metric: ListeningMetric,
     locale: Locale,
 ) {
-    var periodOffset by rememberSaveable { mutableIntStateOf(0) }
-    val period = range.period(today, periodOffset)
-    val previousPeriod = range.previousComparisonPeriod(period, periodOffset)
-        .takeIf { historyStart != null && it.endExclusive > historyStart }
-    val headline = key(store, range, zone, hiddenUris) {
-        val updates = remember(period, periodOffset, previousPeriod) {
-            store.observe(range, period, previousPeriod, zone, hiddenUris).map {
-                LoadedListeningPeriod(period, periodOffset, it)
-            }
-        }
-        updates.collectAsStateWithLifecycle(initialValue = null).value
-    }
-    val displayedPeriod = headline?.period ?: period
-    val displayedOffset = headline?.offset ?: periodOffset
+    val displayedPeriod = loadedPeriod?.period ?: range.period(today, periodOffset)
+    val displayedOffset = loadedPeriod?.offset ?: periodOffset
     val context = LocalContext.current
     val dateFormat = remember(locale) { DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMMMd"), locale) }
     val monthFormat = remember(locale) { DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "MMM"), locale) }
     val periodLabel = when (range) {
-        ListeningRange.DAY -> when (periodOffset) {
+        ListeningRange.DAY -> when (displayedOffset) {
             0 -> stringResource(R.string.listening_statistics_today)
             -1 -> stringResource(R.string.listening_statistics_yesterday)
-            else -> dateFormat.format(period.start)
+            else -> dateFormat.format(displayedPeriod.start)
         }
-        ListeningRange.WEEK -> when (periodOffset) {
+        ListeningRange.WEEK -> when (displayedOffset) {
             1 -> stringResource(R.string.listening_statistics_this_week)
             0 -> stringResource(R.string.listening_statistics_recent_days, range.rollingDays)
             -1 -> stringResource(R.string.listening_statistics_last_week)
             else -> stringResource(
                 R.string.listening_statistics_period,
-                dateFormat.format(period.start),
-                dateFormat.format(period.endExclusive.minusDays(1)),
+                dateFormat.format(displayedPeriod.start),
+                dateFormat.format(displayedPeriod.endExclusive.minusDays(1)),
             )
         }
-        ListeningRange.MONTH -> if (periodOffset == 0) {
+        ListeningRange.MONTH -> if (displayedOffset == 0) {
             stringResource(R.string.listening_statistics_recent_days, range.rollingDays)
-        } else monthFormat.format(period.start)
+        } else monthFormat.format(displayedPeriod.start)
     }
     val metricLabel = stringResource(
         if (metric == ListeningMetric.COUNT) R.string.listening_statistics_period_count
         else R.string.listening_statistics_period_duration,
     )
-    val values = remember(headline, metric, range, displayedPeriod) {
-        headline?.statistics?.buckets?.map(metric::value) ?: List(range.size(displayedPeriod)) { 0L }
+    val values = remember(loadedPeriod, metric, range, displayedPeriod) {
+        loadedPeriod?.statistics?.buckets?.map(metric::value) ?: List(range.size(displayedPeriod)) { 0L }
     }
-    val headlineValue = remember(headline, range, metric) {
-        headline?.let { range.headlineValue(values) }
+    val headlineValue = remember(loadedPeriod, range, metric) {
+        loadedPeriod?.let { range.headlineValue(values) }
     }
     val summary = if (headlineValue == null) {
         ""
@@ -435,17 +432,17 @@ private fun ListeningStatisticsCard(
             metric.formatDailyAverage(context, headlineValue, locale),
         )
     }
-    val comparisonText = if (headline != null && headlineValue != null) {
-        headline.statistics.previousBuckets?.let { previous ->
+    val comparisonText = if (loadedPeriod != null && headlineValue != null) {
+        loadedPeriod.statistics.previousBuckets?.let { previous ->
             val comparisonRange = when {
-                range == ListeningRange.DAY && headline.offset == 0 -> stringResource(R.string.listening_statistics_yesterday)
+                range == ListeningRange.DAY && displayedOffset == 0 -> stringResource(R.string.listening_statistics_yesterday)
                 range == ListeningRange.DAY -> {
                     val shortDate = remember(locale) {
                         DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, "Md"), locale)
                     }
-                    shortDate.format(headline.period.start.minusDays(1))
+                    shortDate.format(displayedPeriod.start.minusDays(1))
                 }
-                headline.offset == 0 -> stringResource(R.string.listening_statistics_previous_cycle_label)
+                displayedOffset == 0 -> stringResource(R.string.listening_statistics_previous_cycle_label)
                 range == ListeningRange.WEEK -> stringResource(R.string.listening_statistics_last_week)
                 else -> stringResource(R.string.listening_statistics_previous_month_label)
             }
@@ -529,7 +526,7 @@ private fun ListeningStatisticsCard(
                     ListeningPeriodButton(
                         label = stringResource(R.string.listening_statistics_previous),
                         enabled = range.canGoPrevious(today, periodOffset, historyStart) && !showPrompt,
-                        onClick = { periodOffset-- },
+                        onClick = { onPeriodOffsetChange(periodOffset - 1) },
                     )
                     Text(
                         text = stringResource(R.string.listening_statistics_period_metric, periodLabel, metricLabel),
@@ -541,7 +538,7 @@ private fun ListeningStatisticsCard(
                     ListeningPeriodButton(
                         label = stringResource(R.string.listening_statistics_next),
                         enabled = !showPrompt && periodOffset < if (range == ListeningRange.DAY) 0 else 1,
-                        onClick = { periodOffset++ },
+                        onClick = { onPeriodOffsetChange(periodOffset + 1) },
                         forward = true,
                     )
                 }

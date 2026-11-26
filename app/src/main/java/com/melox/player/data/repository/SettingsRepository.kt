@@ -131,6 +131,7 @@ class SettingsRepository(context: Context) {
                 artworkFlipAnimation = preferences[Keys.ArtworkFlipAnimation] ?: false,
                 showSongListFileName = preferences[Keys.ShowSongListFileName] ?: false,
                 showSongListDuration = preferences[Keys.ShowSongListDuration] ?: true,
+                showListeningDuration = preferences[Keys.ShowListeningDuration] ?: false,
                 playbackSpeed = preferences[Keys.PlaybackSpeed]
                     ?.let(::normalizePlaybackSpeed) ?: 1f,
                 highPrecisionOutput = preferences[Keys.HighPrecisionOutput] ?: false,
@@ -372,6 +373,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setShowSongListDuration(enabled: Boolean) {
         dataStore.edit { it[Keys.ShowSongListDuration] = enabled }
+    }
+
+    suspend fun setShowListeningDuration(enabled: Boolean) {
+        dataStore.edit { it[Keys.ShowListeningDuration] = enabled }
     }
 
     suspend fun setPlaybackSpeed(speed: Float) {
@@ -696,6 +701,7 @@ class SettingsRepository(context: Context) {
         val ArtworkFlipAnimation = booleanPreferencesKey("artwork_flip_animation")
         val ShowSongListFileName = booleanPreferencesKey("show_song_list_file_name")
         val ShowSongListDuration = booleanPreferencesKey("show_song_list_duration")
+        val ShowListeningDuration = booleanPreferencesKey("show_listening_duration")
         val PlaybackSpeed = floatPreferencesKey("playback_speed")
         val HighPrecisionOutput = booleanPreferencesKey("high_precision_output")
         val SleepTimerSeconds = intPreferencesKey("sleep_timer_seconds")

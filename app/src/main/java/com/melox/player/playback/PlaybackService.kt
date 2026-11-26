@@ -9,6 +9,7 @@ import android.media.AudioAttributes as PlatformAudioAttributes
 import android.os.Handler
 import android.os.Bundle
 import android.os.Process
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -28,6 +29,7 @@ import androidx.media3.session.SessionResult
 import com.melox.player.MainActivity
 import com.melox.player.MeloxApplication
 import com.melox.player.R
+import com.melox.player.data.playback.ListeningRecorder
 import com.melox.player.data.playback.PlaybackSnapshotStore
 import com.melox.player.data.playback.MiniPlaybackSnapshotStore
 import com.melox.player.data.repository.SettingsRepository
@@ -91,6 +93,10 @@ internal const val EXTRA_EXTENSION_EXPECTED_INDEX = "extension_expected_index"
 @OptIn(UnstableApi::class)
 class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
+    private val listeningStore get() = (application as MeloxApplication).listeningStatistics
+    private val listeningRecorder by lazy { ListeningRecorder(listeningStore::record) }
+    private var listeningTransition = false
+    private var listeningCheckpoint: Job? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var snapshotStore: PlaybackSnapshotStore
     private lateinit var miniSnapshotStore: MiniPlaybackSnapshotStore
@@ -176,6 +182,24 @@ class PlaybackService : MediaSessionService() {
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             if (player !== activePlayer) return
+            if (events.contains(Player.EVENT_IS_PLAYING_CHANGED) ||
+                events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) ||
+                events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED)
+            ) {
+                updateListening(player, newPlay = listeningTransition)
+                listeningTransition = false
+            }
+            if (player.isPlaying && listeningCheckpoint == null) {
+                listeningCheckpoint = serviceScope.launch {
+                    while (isActive) {
+                        delay(5_000L)
+                        activePlayer?.let { updateListening(it) }
+                    }
+                }
+            } else if (!player.isPlaying) {
+                listeningCheckpoint?.cancel()
+                listeningCheckpoint = null
+            }
             if (events.contains(Player.EVENT_AUDIO_SESSION_ID)) {
                 updateAudioEffectSession(player.audioSessionId)
             }
@@ -513,6 +537,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        flushListening()
         updateAudioEffectSession(C.AUDIO_SESSION_ID_UNSET)
         playbackAudioFocus.release()
         playbackVolumeFade?.release()
@@ -592,7 +617,11 @@ class PlaybackService : MediaSessionService() {
                         mediaItem: androidx.media3.common.MediaItem?,
                         reason: Int,
                     ) {
-                        if (owner === activePlayer) sleepTimer.onMediaItemTransition(reason)
+                        if (owner === activePlayer) {
+                            listeningTransition = !snapshotRestorePending &&
+                                reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+                            sleepTimer.onMediaItemTransition(reason)
+                        }
                     }
                 })
             }
@@ -618,6 +647,8 @@ class PlaybackService : MediaSessionService() {
         val shouldPrepare = oldPlayer.playbackState != Player.STATE_IDLE && items.isNotEmpty()
         nextPlayer.playWhenReady = keepPlaying
         updateAudioEffectSession(C.AUDIO_SESSION_ID_UNSET)
+        updateListening(oldPlayer, playing = false)
+        listeningTransition = false
         session.setPlayer(nextPlayer)
         activePlayer = nextPlayer
         highPrecisionOutput = enabled
@@ -953,9 +984,24 @@ class PlaybackService : MediaSessionService() {
         refreshMediaButtonPreferences(targetMode)
     }
 
+    private fun updateListening(player: Player, playing: Boolean = player.isPlaying, newPlay: Boolean = false) {
+        val item = player.currentMediaItem
+            ?.takeUnless { player.playbackState == Player.STATE_ENDED }
+            ?.toPlaybackQueueItem()
+            ?.takeIf { it.contentUri.isNotEmpty() }
+            ?.let { if (it.durationMs <= 0L && player.duration > 0L) it.copy(durationMs = player.duration) else it }
+        listeningRecorder.update(item, playing, SystemClock.elapsedRealtime(), System.currentTimeMillis(), newPlay)
+    }
+
+    private fun flushListening() {
+        activePlayer?.let { updateListening(it, playing = false) }
+        runBlocking { listeningStore.flush() }
+    }
+
     private fun closeApplication() {
         if (isClosing) return
         isClosing = true
+        flushListening()
         Process.killProcess(Process.myPid())
     }
 
@@ -976,6 +1022,7 @@ class PlaybackService : MediaSessionService() {
             }
             if (player.shouldPersistCurrentSnapshot()) persistSnapshotBlocking(player)
         }
+        flushListening()
         Process.killProcess(Process.myPid())
     }
 

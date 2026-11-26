@@ -196,6 +196,7 @@ import com.melox.player.ui.screen.playlist.PlaylistDetailScreen
 import com.melox.player.ui.screen.playlist.PlaylistLibraryScreen
 import com.melox.player.ui.screen.settings.SettingsScreen
 import com.melox.player.ui.screen.settings.ScanMusicScreen
+import com.melox.player.ui.screen.settings.ListeningStatisticsScreen
 import com.melox.player.ui.screen.settings.MusicStatisticsScreen
 import com.melox.player.ui.screen.settings.AboutScreen
 import com.melox.player.ui.screen.settings.PlaybackBehaviorScreen
@@ -1514,6 +1515,9 @@ fun MeloxApp(
                             onOpenStatistics = {
                                 currentRoute = AppRoute.MUSIC_STATISTICS
                             },
+                            onOpenListeningStatistics = {
+                                currentRoute = AppRoute.LISTENING_STATISTICS
+                            },
                             scrollBehavior = scrollBehavior,
                             contentPadding = contentPadding,
                         )
@@ -2275,6 +2279,21 @@ fun MeloxApp(
                                                             onGoToArtist = openTrackArtist,
                                                             onExternalEditReturned = viewModel::refreshTrackAfterExternalEdit,
                                                         )
+
+                                                    AppRoute.LISTENING_STATISTICS -> {
+                                                        val currentUri = viewModel.playbackState
+                                                            .collectAsStateWithLifecycle().value.currentItem?.contentUri
+                                                        ListeningStatisticsScreen(
+                                                            tracks = uiState.tracks,
+                                                            currentUri = currentUri,
+                                                            hiddenUris = hiddenTrackUris,
+                                                            showDuration = settings.showListeningDuration,
+                                                            onShowDurationChange = viewModel::setShowListeningDuration,
+                                                            bottomContentPadding = routeBottomPadding,
+                                                            onBack = navigateBack,
+                                                            onPlay = onSongListTrackClick,
+                                                        )
+                                                    }
 
                                                     AppRoute.MUSIC_STATISTICS ->
                                                         MusicStatisticsScreen(

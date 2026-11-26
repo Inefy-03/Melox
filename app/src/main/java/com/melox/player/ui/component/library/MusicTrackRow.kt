@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
@@ -97,6 +98,13 @@ fun MusicTrackRow(
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    trailingText: String? = null,
+    contentPadding: PaddingValues = PaddingValues(
+        start = 16.dp,
+        top = 8.dp,
+        end = if (!selectionMode && onMoreClick != null) 14.dp else TopAppBarDefaults.ActionIconPadding,
+        bottom = 8.dp,
+    ),
 ) {
     val title = track.songListTitle(LocalSongListFileNameVisible.current)
         ?: stringResource(R.string.music_unknown_title)
@@ -121,12 +129,7 @@ fun MusicTrackRow(
         modifier = modifier
             .fillMaxWidth()
             .then(rowGestureModifier)
-            .padding(
-                start = 16.dp,
-                top = 8.dp,
-                end = if (!selectionMode && onMoreClick != null) 14.dp else TopAppBarDefaults.ActionIconPadding,
-                bottom = 8.dp,
-            ),
+            .padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -151,7 +154,15 @@ fun MusicTrackRow(
             horizontalArrangement = Arrangement.spacedBy(0.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (LocalSongListDurationVisible.current) {
+            if (trailingText != null) {
+                Text(
+                    text = trailingText,
+                    style = MiuixTheme.textStyles.footnote2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                    textAlign = TextAlign.End,
+                    maxLines = 1,
+                )
+            } else if (LocalSongListDurationVisible.current) {
                 Text(
                     text = formatDuration(track.durationMs),
                     modifier = Modifier.width(IconButtonDefaults.MinWidth),

@@ -443,6 +443,12 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setShowListeningDuration(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setShowListeningDuration(enabled)
+        }
+    }
+
     fun setShowSongListArtwork(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepository.setShowSongListArtwork(enabled)

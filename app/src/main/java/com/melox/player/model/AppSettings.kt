@@ -201,6 +201,7 @@ data class AppSettings(
     val artworkFlipAnimation: Boolean = false,
     val showSongListFileName: Boolean = false,
     val showSongListDuration: Boolean = true,
+    val showListeningDuration: Boolean = false,
     val playbackSpeed: Float = 1f,
     val highPrecisionOutput: Boolean = false,
     val sleepTimerSeconds: Int = 600,

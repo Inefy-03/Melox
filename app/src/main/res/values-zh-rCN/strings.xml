@@ -304,6 +304,47 @@
         <item quantity="other">%1$d首歌曲</item>
     </plurals>
     <string name="scan_music_page_title">扫描音乐</string>
+    <string name="listening_statistics_title">听歌统计</string>
+    <string name="listening_statistics_tune">统计指标</string>
+    <string name="listening_statistics_day">日</string>
+    <string name="listening_statistics_week">周</string>
+    <string name="listening_statistics_month">月</string>
+    <string name="listening_statistics_count">次数</string>
+    <string name="listening_statistics_duration">时长</string>
+    <string name="listening_statistics_less_than_minute">小于1分钟</string>
+    <plurals name="listening_statistics_minutes">
+        <item quantity="other">%1$s分钟</item>
+    </plurals>
+    <plurals name="listening_statistics_hours">
+        <item quantity="other">%1$s小时</item>
+    </plurals>
+    <string name="listening_statistics_hours_minutes">%1$s%2$s</string>
+    <string name="listening_statistics_daily_average">日均%1$s</string>
+    <string name="listening_statistics_previous">上一周期</string>
+    <string name="listening_statistics_next">下一周期</string>
+    <string name="listening_statistics_plays">%1$s 次</string>
+    <string name="listening_statistics_play">%1$s 次</string>
+    <string name="listening_statistics_period">%1$s - %2$s</string>
+    <string name="listening_statistics_period_metric">%1$s%2$s</string>
+    <string name="listening_statistics_period_count">听歌次数</string>
+    <string name="listening_statistics_period_duration">听歌时长</string>
+    <string name="listening_statistics_today">今日</string>
+    <string name="listening_statistics_yesterday">昨日</string>
+    <string name="listening_statistics_this_week">本周</string>
+    <string name="listening_statistics_last_week">上周</string>
+    <string name="listening_statistics_recent_days">近%1$d天</string>
+    <string name="listening_statistics_average">平均</string>
+    <string name="listening_statistics_previous_month_label">上月</string>
+    <string name="listening_statistics_previous_cycle_label">上周期</string>
+    <string name="listening_statistics_comparison_more">较%1$s增加%2$s</string>
+    <string name="listening_statistics_comparison_less">较%1$s减少%2$s</string>
+    <string name="listening_statistics_comparison_average_more">较%1$s平均增加%2$s</string>
+    <string name="listening_statistics_comparison_average_less">较%1$s平均减少%2$s</string>
+    <string name="listening_statistics_comparison_equal">与%1$s持平</string>
+    <string name="listening_statistics_no_comparison">暂无可比较数据</string>
+    <string name="listening_statistics_chart">听歌统计柱状图</string>
+    <string name="listening_statistics_previous_bar">上一根柱</string>
+    <string name="listening_statistics_next_bar">下一根柱</string>
     <string name="music_statistics_page_title">统计</string>
     <string name="music_statistics_tune_action">统计选项</string>
     <string name="music_statistics_group_quality">歌曲音质</string>

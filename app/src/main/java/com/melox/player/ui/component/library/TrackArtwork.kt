@@ -39,12 +39,12 @@ import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import com.melox.player.R
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import com.melox.player.data.library.PlaceholderArtworkPalette
 import com.melox.player.data.library.readEmbeddedArtwork
+import com.melox.player.data.library.renderPlaceholderArtwork
 import com.melox.player.ui.component.playback.ArtworkFlipLayer
 import com.melox.player.ui.screen.playback.rememberArtworkBlend
 import com.melox.player.ui.screen.playback.ArtworkBlend
@@ -84,7 +84,6 @@ fun TrackArtwork(
     cornerRadius: Dp = ArtworkCornerRadius,
     showLoadingBackground: Boolean = false,
 ) {
-    val placeholderArtworkResId = PLACEHOLDER_ARTWORK_RES_ID
     val artwork = rememberArtworkBitmapLoadState(
         contentUri = contentUri,
         dateModifiedEpochSeconds = dateModifiedEpochSeconds,
@@ -110,14 +109,11 @@ fun TrackArtwork(
                 .squircleBackground(MiuixTheme.colorScheme.secondaryContainer, cornerRadius),
         )
     } else {
-        Image(
-            painter = painterResource(placeholderArtworkResId),
-            contentDescription = null,
-            alpha = 0.3f,
+        PlaceholderArtwork(
             modifier = modifier
                 .size(size)
-                .squircleClip(cornerRadius),
-            contentScale = ContentScale.Crop,
+                .squircleClip(cornerRadius)
+                .graphicsLayer { alpha = 0.3f },
         )
     }
 }
@@ -347,7 +343,6 @@ internal fun PlaybackArtworkFrame(
             )
         }
     } else {
-        val placeholderArtworkResId = PLACEHOLDER_ARTWORK_RES_ID
         val placeholderModifier = if (drawArtworkShadow) {
             modifier.size(size)
                 .playbackArtworkShadow(
@@ -365,16 +360,9 @@ internal fun PlaybackArtworkFrame(
         } else {
             placeholderModifier
         }
-        Image(
-            painter = painterResource(placeholderArtworkResId),
-            contentDescription = null,
-            modifier = fadedPlaceholderModifier.playbackArtworkClip(cornerRadius, circular),
-            contentScale = ContentScale.Crop,
-        )
+        PlaceholderArtwork(fadedPlaceholderModifier.playbackArtworkClip(cornerRadius, circular))
     }
 }
-
-internal val PLACEHOLDER_ARTWORK_RES_ID = R.drawable.ic_album_placeholder
 
 @Composable
 internal fun Modifier.playbackArtworkClip(cornerRadius: Dp, circular: Boolean): Modifier =
@@ -729,13 +717,13 @@ internal fun rememberPlaceholderArtworkBitmap(size: Dp): Bitmap? =
 @Composable
 internal fun rememberPlaceholderArtworkBitmapLoadState(
     size: Dp,
-    drawableResId: Int = PLACEHOLDER_ARTWORK_RES_ID,
+    palette: PlaceholderArtworkPalette = currentPlaceholderArtworkPalette(),
 ): ArtworkBitmapLoadState {
     val context = LocalContext.current.applicationContext
     val targetSizePx = normalizeArtworkTargetSize(
         with(LocalDensity.current) { size.roundToPx() },
     )
-    val cacheKey = placeholderArtworkCacheKey(drawableResId, targetSizePx)
+    val cacheKey = "${palette.cacheKey}:$targetSizePx"
     val initialResult = remember(cacheKey) {
         ArtworkCache.getCached(
             context = context,
@@ -746,7 +734,7 @@ internal fun rememberPlaceholderArtworkBitmapLoadState(
     val result = rememberArtworkLoad(cacheKey, initialResult) {
         loadPlaceholderArtworkBitmap(
             context = context,
-            drawableResId = drawableResId,
+            palette = palette,
             targetSizePx = targetSizePx,
         )
             ?.let { ArtworkResult.Loaded(it) } ?: ArtworkResult.Missing
@@ -759,74 +747,16 @@ internal fun rememberPlaceholderArtworkBitmapLoadState(
 
 internal suspend fun loadPlaceholderArtworkBitmap(
     context: Context,
-    drawableResId: Int,
-    targetSizePx: Int,
-): Bitmap? = loadCachedArtworkDerivative(
-    context = context,
-    cacheKey = placeholderArtworkCacheKey(
-        drawableResId = drawableResId,
-        targetSizePx = normalizeArtworkTargetSize(targetSizePx),
-    ),
-) {
-    decodePlaceholderArtwork(
-        context = context,
-        drawableResId = drawableResId,
-        targetSizePx = normalizeArtworkTargetSize(targetSizePx),
-    )
-}
-
-private fun placeholderArtworkCacheKey(
-    drawableResId: Int,
-    targetSizePx: Int,
-): String = "album-placeholder-v5-$drawableResId-$targetSizePx"
-
-private fun decodePlaceholderArtwork(
-    context: Context,
-    drawableResId: Int,
+    palette: PlaceholderArtworkPalette,
     targetSizePx: Int,
 ): Bitmap? {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeResource(context.resources, drawableResId, bounds)
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-
-    val decoded = BitmapFactory.decodeResource(
-        context.resources,
-        drawableResId,
-        BitmapFactory.Options().apply {
-            inSampleSize = placeholderArtworkSampleSize(
-                width = bounds.outWidth,
-                height = bounds.outHeight,
-                targetSizePx = targetSizePx,
-            )
-            inPreferredConfig = Bitmap.Config.ARGB_8888
-        },
-    ) ?: return null
-    val longestEdge = maxOf(decoded.width, decoded.height)
-    if (longestEdge <= targetSizePx) return decoded
-    val scale = targetSizePx.toFloat() / longestEdge
-    val resized = Bitmap.createScaledBitmap(
-        decoded,
-        (decoded.width * scale).toInt().coerceAtLeast(1),
-        (decoded.height * scale).toInt().coerceAtLeast(1),
-        true,
-    )
-    decoded.recycle()
-    return resized
-}
-
-private fun placeholderArtworkSampleSize(
-    width: Int,
-    height: Int,
-    targetSizePx: Int,
-): Int {
-    var sampleSize = 1
-    while (
-        width / (sampleSize * 2) >= targetSizePx &&
-            height / (sampleSize * 2) >= targetSizePx
+    val normalizedSize = normalizeArtworkTargetSize(targetSizePx)
+    return loadCachedArtworkDerivative(
+        context = context,
+        cacheKey = "${palette.cacheKey}:$normalizedSize",
     ) {
-        sampleSize *= 2
+        renderPlaceholderArtwork(context, normalizedSize, palette)
     }
-    return sampleSize
 }
 
 internal fun normalizeArtworkTargetSize(targetSizePx: Int): Int {

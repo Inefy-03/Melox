@@ -2,8 +2,9 @@ package com.melox.player.ui.component.playback
 
 import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
+import com.melox.player.R
 import com.melox.player.model.PlaybackQueueItem
-import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
+import com.melox.player.ui.component.library.currentPlaceholderArtworkPalette
 import com.melox.player.ui.component.library.rememberArtworkBitmapLoadState
 import com.melox.player.ui.component.library.rememberFullPlayerArtworkBitmapPixels
 import com.melox.player.ui.component.library.rememberPlaceholderArtworkBitmapLoadState
@@ -47,10 +48,11 @@ internal fun rememberPlaybackArtworkTransition(
         targetSizePx = fullPlayerTargetSizePx,
         enabled = item != null && fullPlayerMounted && fullPlayerTargetSizePx > 0,
     )
+    val placeholderPalette = currentPlaceholderArtworkPalette()
     val placeholder = if (item == null || artwork.bitmap == null) {
         rememberPlaceholderArtworkBitmapLoadState(
             PLAYER_FULL_ARTWORK_REQUEST_SIZE,
-            drawableResId = PLACEHOLDER_ARTWORK_RES_ID,
+            palette = placeholderPalette,
         )
     } else null
     val usesPlaceholderArtwork = item == null ||
@@ -65,7 +67,7 @@ internal fun rememberPlaybackArtworkTransition(
         contentUri = item?.contentUri,
         artwork = fullPlayerArtwork ?: artwork.bitmap,
         placeholder = placeholder?.bitmap,
-        placeholderArtworkResId = PLACEHOLDER_ARTWORK_RES_ID,
+        placeholderArtworkResId = R.drawable.ic_album_placeholder,
     )
     return rememberArtworkTransitionState(
         target = rememberReadyArtworkTarget(target.value, target.contentKey, ready),

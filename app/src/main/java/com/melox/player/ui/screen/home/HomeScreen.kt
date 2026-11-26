@@ -1,9 +1,9 @@
 package com.melox.player.ui.screen.home
 
-import com.melox.player.ui.component.adjustPadding
-import com.melox.player.ui.component.library.gridViewportWidth
-import com.melox.player.ui.component.library.playlistGridColumnCount
-import com.melox.player.ui.component.library.PlaylistGridHorizontalPadding
+import com.melox.player.R
+import com.melox.player.model.LocalPlaylist
+import com.melox.player.model.MusicTrack
+import com.melox.player.model.ScanStatus
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
@@ -14,7 +14,7 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.graphics.Shader
-import com.melox.player.ui.icon.*
+import com.melox.player.ui.component.Icon
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -33,8 +33,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import com.melox.player.ui.component.rememberHorizontalEdgeScroll
 import com.melox.player.ui.component.LazyColumn
+import com.melox.player.ui.component.PageCard
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -67,25 +67,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.melox.player.R
-import com.melox.player.model.LocalPlaylist
-import com.melox.player.model.MusicTrack
-import com.melox.player.model.ScanStatus
+import com.melox.player.ui.component.adjustPadding
+import com.melox.player.ui.component.expandHorizontalScrollViewport
 import com.melox.player.ui.component.home.HOME_RECOMMENDATION_ARTWORK_SIZE_PX
-import com.melox.player.ui.component.home.rememberHomeRecommendationReflection
 import com.melox.player.ui.component.home.loadHomeRecommendationReflection
+import com.melox.player.ui.component.home.rememberHomeRecommendationReflection
 import com.melox.player.ui.component.library.PlaybackArtworkFrame
-import com.melox.player.ui.component.library.extractArtworkColor
+import com.melox.player.ui.component.library.PlaylistGridHorizontalPadding
 import com.melox.player.ui.component.library.createArtworkCacheKey
+import com.melox.player.ui.component.library.currentPlaceholderArtworkPalette
+import com.melox.player.ui.component.library.extractArtworkColor
 import com.melox.player.ui.component.library.getArtworkLoadResultFromMemoryCache
+import com.melox.player.ui.component.library.gridViewportWidth
 import com.melox.player.ui.component.library.loadArtworkBitmap
 import com.melox.player.ui.component.library.loadPlaceholderArtworkBitmap
+import com.melox.player.ui.component.library.playlistGridColumnCount
 import com.melox.player.ui.component.library.rememberArtworkBitmapPixels
 import com.melox.player.ui.component.library.rememberPlaceholderArtworkBitmap
-import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
+import com.melox.player.ui.component.overScrollVertical
 import com.melox.player.ui.component.playlist.PlaylistGridItem
-import com.melox.player.ui.screen.library.MusicLibraryPlaceholder
-import com.melox.player.ui.screen.library.toMusicLibraryPlaceholder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -95,18 +95,18 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
-import com.melox.player.ui.component.PageCard
+import com.melox.player.ui.component.rememberHorizontalEdgeScroll
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
-import com.melox.player.ui.component.Icon
+import com.melox.player.ui.icon.*
 import com.melox.player.ui.icon.ChevronForwardDemibold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
-import com.melox.player.ui.component.expandHorizontalScrollViewport
-import com.melox.player.ui.component.overScrollVertical
+import com.melox.player.ui.screen.library.MusicLibraryPlaceholder
+import com.melox.player.ui.screen.library.toMusicLibraryPlaceholder
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import kotlin.math.ceil
 import kotlin.math.max
@@ -495,13 +495,13 @@ internal fun rememberHomeRecommendations(
     blurEnabled: Boolean,
 ): HomeRecommendations? {
     val context = LocalContext.current.applicationContext
-    val placeholderArtworkResId = PLACEHOLDER_ARTWORK_RES_ID
+    val placeholderPalette = currentPlaceholderArtworkPalette()
     val placeholderSizePx = with(LocalDensity.current) { HomeRecommendationArtworkSize.roundToPx() }
     return rememberHomeRecommendationSelection(
         tracks = tracks,
         active = active,
         initialRecommendationCount = initialRecommendationCount,
-        preparationKey = Triple(blurEnabled, placeholderArtworkResId, placeholderSizePx),
+        preparationKey = Triple(blurEnabled, placeholderPalette, placeholderSizePx),
         probeArtwork = { track ->
             val bitmap = loadArtworkBitmap(
                 context = context,
@@ -531,7 +531,7 @@ internal fun rememberHomeRecommendations(
             } else {
                 loadPlaceholderArtworkBitmap(
                     context = context,
-                    drawableResId = placeholderArtworkResId,
+                    palette = placeholderPalette,
                     targetSizePx = placeholderSizePx,
                 )
             }
@@ -541,7 +541,7 @@ internal fun rememberHomeRecommendations(
                     contentUri = if (hasArtwork) {
                         track.contentUri
                     } else {
-                        "placeholder-artwork-v5:$placeholderArtworkResId"
+                        placeholderPalette.cacheKey
                     },
                     dateModifiedEpochSeconds = if (hasArtwork) track.dateModifiedEpochSeconds else 0L,
                     fileSizeBytes = if (hasArtwork) track.fileSizeBytes else 0L,
@@ -672,9 +672,9 @@ private fun HomeRecommendationCard(
         fileSizeBytes = track.fileSizeBytes,
         targetSizePx = HOME_RECOMMENDATION_ARTWORK_SIZE_PX,
     ) else rememberPlaceholderArtworkBitmap(artworkSize)
-    val placeholderArtworkResId = if (hasArtwork) null else PLACEHOLDER_ARTWORK_RES_ID
+    val placeholderPalette = currentPlaceholderArtworkPalette()
     val reflection = rememberHomeRecommendationReflection(
-        contentUri = placeholderArtworkResId?.let { "placeholder-artwork-v5:$it" } ?: track.contentUri,
+        contentUri = if (hasArtwork) track.contentUri else placeholderPalette.cacheKey,
         dateModifiedEpochSeconds = if (hasArtwork) track.dateModifiedEpochSeconds else 0L,
         fileSizeBytes = if (hasArtwork) track.fileSizeBytes else 0L,
         sourceBitmap = artwork,

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Music1 Regular path: Copyright 2026, compose-miuix-ui contributors.
+     SPDX-License-Identifier: Apache-2.0 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/artwork_placeholder_background"
+        android:drawable="@color/artwork_placeholder_background" />
+    <item android:id="@+id/artwork_placeholder_icon">
+        <vector
+            android:width="48dp"
+            android:height="48dp"
+            android:viewportWidth="1333.3333"
+            android:viewportHeight="1333.3333"
+            android:tint="@color/artwork_placeholder_icon">
+            <group
+                android:pivotX="666.66665"
+                android:pivotY="666.66665"
+                android:scaleX="0.5833333"
+                android:scaleY="0.5833333">
+                <group
+                    android:scaleY="-1"
+                    android:translateX="5.859"
+                    android:translateY="1082.8095">
+                    <path
+                        android:fillColor="#FFFFFFFF"
+                        android:pathData="M483,842 Q466,843,457,827.5 Q448,812,456,797
+                            L703,341 Q706,336,702.5,331.5 Q699,327,694,328
+                            Q681,331,668,332.5 Q655,334,641,334 Q574,334,516.5,303
+                            Q459,272,425.5,219.5 Q392,167,392,105 Q392,43,425.5,-9.5
+                            Q459,-62,516.5,-93 Q574,-124,641,-124 Q719,-124,782,-84
+                            Q845,-44,873,20 Q892,61,892,105 Q892,137,883,164
+                            Q874,191,856,221 L640,622 Q673,638,708,661.5
+                            Q743,685,779,716 Q824,756,863.5,820.5 Q903,885,929,945
+                            Q931,950,926.5,954 Q922,958,917,955 Q885,935,839.5,912
+                            Q794,889,748,872 Q702,855,627,847.5 Q552,840,483,842
+                            Z" />
+                </group>
+            </group>
+        </vector>
+    </item>
+</layer-list>

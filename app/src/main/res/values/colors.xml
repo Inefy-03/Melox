@@ -3,4 +3,6 @@
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="app_surface">#FFF7F7F7</color>
+    <color name="artwork_placeholder_background">#FFFFFFFF</color>
+    <color name="artwork_placeholder_icon">#99000000</color>
 </resources>

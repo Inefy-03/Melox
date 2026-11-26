@@ -27,7 +27,7 @@ import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.PlaybackUiState
 import com.melox.player.ui.MiniPlayerChrome
 import com.melox.player.ui.component.animation.InteractiveHighlight
-import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
+import com.melox.player.ui.component.library.currentPlaceholderArtworkPalette
 import com.melox.player.ui.component.playback.ArtworkTransitionState
 import com.melox.player.ui.component.playback.DynamicFlowBackgroundState
 import com.melox.player.ui.component.playback.MiniPlayer
@@ -337,12 +337,12 @@ internal fun PlaybackArtworkPrefetchEffect(
     val artworkPrefetchSizePx = with(LocalDensity.current) {
         PLAYER_FULL_ARTWORK_REQUEST_SIZE.roundToPx()
     }
-    val placeholderArtworkResId = PLACEHOLDER_ARTWORK_RES_ID
+    val placeholderPalette = currentPlaceholderArtworkPalette()
     LaunchedEffect(
         playback.currentIndex,
         playback.queue,
         artworkPrefetchSizePx,
-        placeholderArtworkResId,
+        placeholderPalette,
         playbackBackgroundStyle,
     ) {
         playbackArtworkPrefetchItems(playback).forEachIndexed { index, item ->
@@ -354,7 +354,7 @@ internal fun PlaybackArtworkPrefetchEffect(
                     contentUri = item.contentUri,
                     dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
                     fileSizeBytes = item.fileSizeBytes,
-                    placeholderArtworkResId = placeholderArtworkResId,
+                    placeholderPalette = placeholderPalette,
                 )
             }
             prefetchPlaybackArtworkResource(
@@ -363,7 +363,7 @@ internal fun PlaybackArtworkPrefetchEffect(
                 dateModifiedEpochSeconds = item.dateModifiedEpochSeconds,
                 fileSizeBytes = item.fileSizeBytes,
                 targetSizePx = artworkPrefetchSizePx,
-                placeholderArtworkResId = placeholderArtworkResId,
+                placeholderPalette = placeholderPalette,
                 includeBlurredArtwork =
                     playbackBackgroundStyle == PlaybackBackgroundStyle.BLURRED_ARTWORK,
                 foreground = index == 0,

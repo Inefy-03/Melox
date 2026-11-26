@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,7 +35,7 @@ import com.melox.player.R
 import com.melox.player.data.playlist.loadPlaylistArtwork
 import com.melox.player.data.repository.loadPlaylistCustomCover
 import com.melox.player.model.LocalPlaylist
-import com.melox.player.ui.component.library.PLACEHOLDER_ARTWORK_RES_ID
+import com.melox.player.ui.component.library.PlaceholderArtwork
 import com.melox.player.ui.component.library.loadArtworkBitmap
 import com.melox.player.ui.component.library.normalizeArtworkTargetSize
 import com.melox.player.ui.component.library.rememberArtworkLoad
@@ -264,12 +263,7 @@ private fun PlaylistArtworkTile(
                 filterQuality = FilterQuality.High,
             )
         } else if (showDefaultArtwork) {
-            Image(
-                painter = painterResource(PLACEHOLDER_ARTWORK_RES_ID),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
+            PlaceholderArtwork(Modifier.fillMaxSize())
         } else if (showPlaceholderIcon) {
             Icon(
                 imageVector = MiuixIcons.Music,

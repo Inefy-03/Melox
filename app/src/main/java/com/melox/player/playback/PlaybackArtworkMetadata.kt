@@ -5,9 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.melox.player.R
 import com.melox.player.data.library.coverPicturePriority
 import com.melox.player.data.library.readEmbeddedArtworkData
+import com.melox.player.data.library.renderPlaceholderArtwork
 import com.melox.player.model.PlaybackQueueItem
 import java.io.ByteArrayOutputStream
 import kotlin.math.roundToInt
@@ -50,12 +50,7 @@ internal fun Context.loadPlaybackArtworkData(contentUri: String): ByteArray? {
         readEmbeddedArtworkData(this, contentUri)?.let(::decodePlaybackArtwork)
     }.getOrNull()
     return bitmap?.let { runCatching { it.toArtworkData() }.getOrNull() }
-        ?: runCatching { decodePlaceholderArtworkData() }.getOrNull()
-}
-
-private fun Context.decodePlaceholderArtworkData(): ByteArray? {
-    return BitmapFactory.decodeResource(resources, R.drawable.ic_album_placeholder)
-        ?.toArtworkData()
+        ?: runCatching { renderPlaceholderArtwork(this, LOCK_SCREEN_ARTWORK_SIZE_PX)?.toArtworkData() }.getOrNull()
 }
 
 private fun decodePlaybackArtwork(data: ByteArray): Bitmap? {

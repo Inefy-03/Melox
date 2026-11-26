@@ -359,10 +359,6 @@ fun MeloxApp(
         hasItem = compactPlayback.currentItem != null,
     )
     val dynamicFlowBackgroundState = rememberDynamicFlowBackgroundState()
-    PlaybackArtworkPrefetchEffect(
-        viewModel = viewModel,
-        playbackBackgroundStyle = settings.playbackBackgroundStyle,
-    )
     // API level alone is insufficient: liquid glass also needs RuntimeShader support at runtime.
     val liquidGlassSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         isRuntimeShaderSupported()
@@ -461,13 +457,6 @@ fun MeloxApp(
             uiState.tracks.firstOrNull { it.id == item.trackId }?.let(item::withTrackMetadata) ?: item
         }
     }
-    val artworkState = rememberPlaybackArtworkTransition(
-        item = artworkItem,
-        direction = compactPlayback.trackChangeDirection,
-        flipAnimationEnabled = settings.artworkFlipAnimation,
-        fullPlayerTargetSizePx = artworkDisplaySizePx,
-        fullPlayerMounted = playerTransition.fullPlayerHostMounted,
-    )
     var playerContentBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     val sharedPlayerArtworkEnabled = compactPlayback.currentItem != null &&
         playerTransition.fullPlayerArtworkPageSelected
@@ -732,6 +721,18 @@ fun MeloxApp(
         settings = settings,
         playbackArtworkColor = playbackArtworkColor,
     ) {
+        val artworkState = rememberPlaybackArtworkTransition(
+            item = artworkItem,
+            direction = compactPlayback.trackChangeDirection,
+            flipAnimationEnabled = settings.artworkFlipAnimation,
+            fullPlayerTargetSizePx = artworkDisplaySizePx,
+            fullPlayerMounted = playerTransition.fullPlayerHostMounted,
+        )
+        PlaybackArtworkPrefetchEffect(
+            viewModel = viewModel,
+            playbackBackgroundStyle = settings.playbackBackgroundStyle,
+        )
+
         DisposableEffect(activity, navigationBarUsesDarkMode, statusBarUsesDarkMode) {
             val componentActivity = activity as? ComponentActivity
             val statusBarStyle = SystemBarStyle.auto(

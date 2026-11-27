@@ -1,7 +1,11 @@
 package com.melox.player.data.library
 
+import android.content.ContentResolver
+import android.content.res.AssetFileDescriptor
+import android.net.Uri
 import java.io.DataInputStream
 import java.io.EOFException
+import java.io.IOException
 import java.io.InputStream
 
 internal data class FlacPictureMetadata(
@@ -10,6 +14,21 @@ internal data class FlacPictureMetadata(
 )
 
 internal data class FlacPictureLocation(val offset: Long, val length: Int) {
+    fun openStream(resolver: ContentResolver, uri: Uri): InputStream {
+        val audio = resolver.openAssetFileDescriptor(uri, "r") ?: throw IOException("Unable to open audio")
+        try {
+            if (audio.declaredLength >= 0 && audio.declaredLength - offset < length) {
+                throw EOFException("FLAC artwork exceeds the audio asset")
+            }
+            // The returned stream owns the descriptor and is limited to the selected picture.
+            return AssetFileDescriptor(audio.parcelFileDescriptor, audio.startOffset + offset, length.toLong())
+                .createInputStream()
+        } catch (exception: Exception) {
+            audio.close()
+            throw exception
+        }
+    }
+
     fun readFrom(input: InputStream): ByteArray {
         input.skipFully(offset)
         return ByteArray(length).also { DataInputStream(input).readFully(it) }
@@ -17,7 +36,7 @@ internal data class FlacPictureLocation(val offset: Long, val length: Int) {
 }
 
 /** Scans FLAC metadata and records only the selected picture's byte range. */
-internal fun readFlacPictureMetadata(stream: InputStream): FlacPictureMetadata? {
+internal fun readFlacPictureMetadata(stream: InputStream, artistImage: Boolean = false): FlacPictureMetadata? {
     val input = DataInputStream(stream)
     try {
         if (input.readInt() != 0x664C6143) return null // fLaC
@@ -43,7 +62,7 @@ internal fun readFlacPictureMetadata(stream: InputStream): FlacPictureMetadata? 
             }
 
             var remaining = blockLength - 4
-            val priority = coverPicturePriority(input.readInt())
+            val priority = embeddedPicturePriority(input.readInt(), artistImage)
             if (priority != null && priority < bestPriority) {
                 val mimeLength = input.readInt()
                 remaining -= 4
@@ -65,8 +84,8 @@ internal fun readFlacPictureMetadata(stream: InputStream): FlacPictureMetadata? 
             }
             input.skipFully(remaining.toLong())
         } while (header >= 0)
-    } catch (_: EOFException) {
-        // Keep a valid cover already found before a truncated block.
+    } catch (exception: EOFException) {
+        if (cover == null) throw exception
     }
     return FlacPictureMetadata(cover, hasPictureBlocks)
 }

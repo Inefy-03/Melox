@@ -12,6 +12,7 @@ import com.melox.player.data.library.readEmbeddedArtwork
 import com.melox.player.data.library.renderPlaceholderArtwork
 import com.melox.player.model.PlaybackQueueItem
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import kotlin.math.roundToInt
 
 private const val LOCK_SCREEN_ARTWORK_SIZE_PX = 512
@@ -62,7 +63,7 @@ internal fun needsPlaybackArtwork(
 ): Boolean = placeholderDark?.let { it != currentDark } ?: !hasCoverArtwork
 
 internal fun Context.loadPlaybackArtworkData(contentUri: String): ByteArray? =
-    readEmbeddedArtwork(this, contentUri, ::decodePlaybackArtwork)?.toArtworkData()
+    readEmbeddedArtwork(this, contentUri, decode = ::decodePlaybackArtwork)?.toArtworkData()
 
 internal fun Context.loadPlaybackPlaceholderData(dark: Boolean): ByteArray? {
     val configuration = Configuration(resources.configuration)
@@ -72,9 +73,9 @@ internal fun Context.loadPlaybackPlaceholderData(dark: Boolean): ByteArray? {
         ?.toArtworkData()
 }
 
-private fun decodePlaybackArtwork(data: ByteArray): Bitmap? {
+private fun decodePlaybackArtwork(open: () -> InputStream): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
+    open().use { BitmapFactory.decodeStream(it, null, bounds) }
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
     var sampleSize = 1
@@ -84,12 +85,8 @@ private fun decodePlaybackArtwork(data: ByteArray): Bitmap? {
     ) {
         sampleSize *= 2
     }
-    return BitmapFactory.decodeByteArray(
-        data,
-        0,
-        data.size,
-        BitmapFactory.Options().apply { inSampleSize = sampleSize },
-    )
+    val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    return open().use { BitmapFactory.decodeStream(it, null, options) }
 }
 
 private fun Bitmap.toArtworkData(): ByteArray? {

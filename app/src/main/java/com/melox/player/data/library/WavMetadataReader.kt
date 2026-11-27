@@ -13,15 +13,16 @@ import java.io.InputStream
 internal data class WavMetadata(
     val tags: LocalAudioTags,
     val artwork: ByteArray?,
+    val hasPictures: Boolean,
 )
 
 internal fun ContentResolver.readWavMetadata(contentUri: String): WavMetadata? = runCatching {
-    openInputStream(contentUri.toUri())?.use(::readWavMetadata)
+    openInputStream(contentUri.toUri())?.use { readWavMetadata(it) }
 }.getOrNull()
 
 /** RIFF chunk sizes let us skip PCM without buffering or scanning audio bytes. */
 @androidx.annotation.OptIn(UnstableApi::class)
-internal fun readWavMetadata(stream: InputStream): WavMetadata? {
+internal fun readWavMetadata(stream: InputStream, artistImage: Boolean = false): WavMetadata? {
     val input = DataInputStream(stream)
     val header = ByteArray(12)
     try {
@@ -47,6 +48,7 @@ internal fun readWavMetadata(stream: InputStream): WavMetadata? {
                     val properties = mutableMapOf<String, Array<String>>()
                     var artwork: ByteArray? = null
                     var artworkPriority = Int.MAX_VALUE
+                    var hasPictures = false
                     for (index in 0 until metadata.length()) {
                         when (val frame = metadata[index]) {
                             is TextInformationFrame -> {
@@ -56,7 +58,8 @@ internal fun readWavMetadata(stream: InputStream): WavMetadata? {
                                 properties[key] = frame.values.toTypedArray()
                             }
                             is ApicFrame -> {
-                                val priority = coverPicturePriority(frame.pictureType)
+                                hasPictures = true
+                                val priority = embeddedPicturePriority(frame.pictureType, artistImage)
                                 if (priority != null && priority < artworkPriority && frame.pictureData.isNotEmpty()) {
                                     artwork = frame.pictureData
                                     artworkPriority = priority
@@ -64,7 +67,7 @@ internal fun readWavMetadata(stream: InputStream): WavMetadata? {
                             }
                         }
                     }
-                    return WavMetadata(parseAudioTagProperties(properties), artwork)
+                    return WavMetadata(parseAudioTagProperties(properties), artwork, hasPictures)
                 }
                 input.skipFully(size and 1)
             } else {

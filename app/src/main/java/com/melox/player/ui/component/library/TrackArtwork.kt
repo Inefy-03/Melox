@@ -50,6 +50,7 @@ import com.melox.player.ui.screen.playback.rememberArtworkBlend
 import com.melox.player.ui.screen.playback.ArtworkBlend
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -616,10 +617,11 @@ internal suspend fun loadArtworkBitmap(
     fileSizeBytes: Long,
     targetSizePx: Int,
     foreground: Boolean = false,
+    artistImage: Boolean = false,
 ): Bitmap? {
     if (contentUri.isBlank()) return null
     val normalizedTargetSizePx = normalizeArtworkTargetSize(targetSizePx)
-    val cacheKey = createArtworkCacheKey(
+    val cacheKey = (if (artistImage) "artist|" else "") + createArtworkCacheKey(
         contentUri = contentUri,
         dateModifiedEpochSeconds = dateModifiedEpochSeconds,
         fileSizeBytes = fileSizeBytes,
@@ -634,6 +636,7 @@ internal suspend fun loadArtworkBitmap(
             context = context.applicationContext,
             contentUri = contentUri,
             targetSizePx = normalizedTargetSizePx,
+            artistImage = artistImage,
         )
     }) {
         is ArtworkResult.Loaded -> result.bitmap
@@ -781,10 +784,11 @@ private fun loadArtworkThumbnail(
     context: Context,
     contentUri: String,
     targetSizePx: Int,
+    artistImage: Boolean = false,
 ): ArtworkExtractionResult {
     return try {
-        readEmbeddedArtwork(context, contentUri) { data ->
-            decodeSampledBitmap(data, targetSizePx.coerceAtLeast(1))
+        readEmbeddedArtwork(context, contentUri, artistImage) { open ->
+            decodeSampledBitmap(open, targetSizePx.coerceAtLeast(1))
         }?.let(ArtworkExtractionResult::Loaded)
             ?: ArtworkExtractionResult.Missing
     } catch (_: Exception) {
@@ -826,10 +830,11 @@ internal fun fitArtworkDimensions(
         (height * scale).roundToInt().coerceAtLeast(1)
 }
 
-private fun decodeSampledBitmap(data: ByteArray, targetSizePx: Int): Bitmap? {
+private fun decodeSampledBitmap(open: () -> InputStream, targetSizePx: Int): Bitmap? {
     val thumbnailSizePx = targetSizePx.coerceAtLeast(1)
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
+    open().use { BitmapFactory.decodeStream(it, null, bounds) }
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
     var sampleSize = 1
     while (
@@ -839,15 +844,11 @@ private fun decodeSampledBitmap(data: ByteArray, targetSizePx: Int): Bitmap? {
         sampleSize *= 2
     }
 
-    val decoded = BitmapFactory.decodeByteArray(
-        data,
-        0,
-        data.size,
-        BitmapFactory.Options().apply {
-            inSampleSize = sampleSize
-            inScaled = false
-        },
-    ) ?: return null
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = sampleSize
+        inScaled = false
+    }
+    val decoded = open().use { BitmapFactory.decodeStream(it, null, options) } ?: return null
 
     return decoded.toBoundedThumbnail(thumbnailSizePx)
 }
@@ -1152,7 +1153,7 @@ private object ArtworkDiskCache {
     }
 }
 
-private const val ARTWORK_CACHE_SCHEMA_VERSION = 6
+private const val ARTWORK_CACHE_SCHEMA_VERSION = 7
 private const val ARTWORK_DISK_CACHE_DIRECTORY = "artwork_thumbnails_v2"
 private const val MAX_MEMORY_MISSING_ENTRIES = 10_000
 private const val MAX_DISK_CACHE_ENTRIES = 20_000

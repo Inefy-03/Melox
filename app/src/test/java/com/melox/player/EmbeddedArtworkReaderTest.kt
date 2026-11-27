@@ -1,7 +1,11 @@
 package com.melox.player
 
+import androidx.media3.common.util.ParsableByteArray
+import androidx.media3.common.util.UnstableApi
 import com.kyant.taglib.Picture
+import com.melox.player.data.library.coverPicturePriority
 import com.melox.player.data.library.readFlacPictureMetadata
+import com.melox.player.data.library.readId3Pictures
 import com.melox.player.data.library.selectEmbeddedCover
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -14,6 +18,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeNotNull
 import org.junit.Test
 
+@UnstableApi
 class EmbeddedArtworkReaderTest {
     @Test
     fun flacPictureBlocksPreferFrontCoverRegardlessOfOrder() {
@@ -40,6 +45,26 @@ class EmbeddedArtworkReaderTest {
         assertNotNull(metadata)
         assertNull(metadata?.cover)
         assertTrue(metadata?.hasPictureBlocks == true)
+
+        val withCover = flac(listOf(3 to front, 8 to artist))
+        val artistPicture = readFlacPictureMetadata(withCover.inputStream(), artistImage = true)?.cover
+        assertArrayEquals(artist, artistPicture?.readFrom(withCover.inputStream()))
+        assertArrayEquals(artist, selectEmbeddedCover(arrayOf(frontCover, portrait), artistImage = true) { it })
+        assertNull(selectEmbeddedCover(arrayOf(frontCover), artistImage = true) { it })
+    }
+
+    @Test
+    fun flacUnspecifiedPictureIsUsableAndRanksBelowFrontCover() {
+        val unspecified = byteArrayOf(1, 2)
+        val front = byteArrayOf(3, 4)
+        for ((pictures, expected) in listOf(
+            listOf(-1 to unspecified, 8 to byteArrayOf(8)) to unspecified,
+            listOf(-1 to unspecified, 3 to front) to front,
+        )) {
+            val file = flac(pictures)
+            val cover = readFlacPictureMetadata(file.inputStream())?.cover
+            assertArrayEquals(expected, cover?.readFrom(file.inputStream()))
+        }
     }
 
     @Test
@@ -64,6 +89,31 @@ class EmbeddedArtworkReaderTest {
     @Test
     fun matryoshkaFlacResolvesToItsSquareFrontCover() =
         assertSuppliedFlacCover("MELOX_MATRYOSHKA_ARTWORK_REGRESSION_FILE", size = 1500)
+
+    @Test
+    fun nineM88FlacResolvesToItsLargeFrontCover() =
+        assertSuppliedFlacCover("MELOX_9M88_ARTWORK_REGRESSION_FILE", size = 3000)
+
+    @Test
+    fun cutleryFlacResolvesToItsUnspecifiedCover() =
+        assertSuppliedFlacCover("MELOX_CUTLERY_ARTWORK_REGRESSION_FILE", size = 1400)
+
+    @Test
+    fun iNandesuMp3ResolvesToItsUnspecifiedId3Cover() {
+        val path = System.getenv("MELOX_I_NANDESU_ARTWORK_REGRESSION_FILE")
+        assumeNotNull(path)
+        ParsableByteArray.setShouldEnforceLimitOnLegacyMethods(false)
+        try {
+            val picture = File(checkNotNull(path)).inputStream().use(::readId3Pictures).single()
+            assertEquals(0xff, picture.pictureType)
+            assertNotNull(coverPicturePriority(picture.pictureType))
+            val image = javax.imageio.ImageIO.read(picture.pictureData.inputStream())
+            assertEquals(1280, image.width)
+            assertEquals(720, image.height)
+        } finally {
+            ParsableByteArray.setShouldEnforceLimitOnLegacyMethods(null)
+        }
+    }
 
     private fun assertSuppliedFlacCover(environmentVariable: String, size: Int) {
         val path = System.getenv(environmentVariable)

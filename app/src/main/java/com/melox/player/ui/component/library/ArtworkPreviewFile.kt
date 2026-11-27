@@ -31,7 +31,8 @@ internal suspend fun readArtworkPreviewFile(
     title: String?,
 ): ArtworkPreviewFile? = withContext(Dispatchers.IO) {
     try {
-        val (bytes, bounds) = readEmbeddedArtwork(context, contentUri) { data ->
+        val (bytes, bounds) = readEmbeddedArtwork(context, contentUri) { open ->
+            val data = open().use { it.readBytes() }
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(data, 0, data.size, options)
             (data to options).takeIf { options.outWidth > 0 && options.outHeight > 0 }

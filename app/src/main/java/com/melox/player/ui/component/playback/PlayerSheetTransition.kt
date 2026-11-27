@@ -66,6 +66,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sign
 import androidx.compose.runtime.saveable.Saver
+import top.yukonga.miuix.kmp.anim.folmeSpring
 import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.squircle.squircleBorder
 import top.yukonga.miuix.kmp.basic.DividerDefaults
@@ -115,6 +116,7 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
     private var dragStartedFromMiniPlayer = false
     private var miniPlayerExpansionStarted by mutableStateOf(false)
     private var requestedInitialVelocity = 0f
+    private var settleAfterDrag = false
     private var hasBeenShown by mutableStateOf(restoredProgress > 0f)
 
     companion object {
@@ -232,6 +234,7 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         if (isTransitionActive) {
             isDragging = false
             requestedInitialVelocity = 0f
+            settleAfterDrag = false
             animationRequest += 1
         }
         layoutWindowSize = size
@@ -500,6 +503,7 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         requestSettle(
             open = open,
             initialVelocity = -velocityY / verticalTravel,
+            fromDrag = true,
         )
     }
 
@@ -572,11 +576,15 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         val visibilityThreshold = 0.5f / fullPlayerBounds.height.coerceAtLeast(1f)
         progressAnimation.animateTo(
             targetValue = if (targetOpen) 1f else 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = 360f,
-                visibilityThreshold = visibilityThreshold,
-            ),
+            animationSpec = if (settleAfterDrag) {
+                folmeSpring(damping = 1f, response = 0.2f, visibilityThreshold = visibilityThreshold)
+            } else {
+                spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = 360f,
+                    visibilityThreshold = visibilityThreshold,
+                )
+            },
             initialVelocity = requestedInitialVelocity,
         ) {
             if (!isDragging) renderedProgress = value
@@ -605,7 +613,7 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         miniPlayerExpansionStarted = false
     }
 
-    private fun requestSettle(open: Boolean, initialVelocity: Float = 0f) {
+    private fun requestSettle(open: Boolean, initialVelocity: Float = 0f, fromDrag: Boolean = false) {
         if (!isTransitionActive && progress >= 1f) {
             openingMiniPlayerScale = 1f
             openingMiniPlayerOffsetX = 0f
@@ -619,6 +627,7 @@ internal class PlayerSheetTransitionState(initialProgress: Float = 0f) {
         freezeArtworkBounds()
         targetOpen = open
         requestedInitialVelocity = initialVelocity
+        settleAfterDrag = fromDrag
         animationRequest += 1
     }
 

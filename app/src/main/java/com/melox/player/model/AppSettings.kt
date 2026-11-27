@@ -19,6 +19,13 @@ enum class ThemeMode {
     DARK,
 }
 
+internal fun effectiveThemeMode(themeMode: ThemeMode, systemDark: Boolean): ThemeMode =
+    if (themeMode == ThemeMode.SYSTEM) {
+        if (systemDark) ThemeMode.DARK else ThemeMode.LIGHT
+    } else {
+        themeMode
+    }
+
 /** Selects the seed used when dynamic colors are enabled. */
 enum class DynamicColorSource {
     DESKTOP,

@@ -1,7 +1,7 @@
 package com.melox.player
 
 import com.melox.player.model.ThemeMode
-import com.melox.player.ui.theme.effectiveThemeMode
+import com.melox.player.model.effectiveThemeMode
 import com.melox.player.ui.screen.settings.themeModeFollowingSystem
 import org.junit.Assert.assertEquals
 import org.junit.Test

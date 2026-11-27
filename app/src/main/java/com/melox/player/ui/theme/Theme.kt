@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.lerp
 import com.melox.player.model.AppSettings
 import com.melox.player.model.DynamicColorSource
 import com.melox.player.model.ThemeMode
+import com.melox.player.model.effectiveThemeMode
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.Colors
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -161,13 +162,6 @@ internal fun rememberAnimatedThemeColors(
 @Composable
 internal fun isInDarkTheme(themeMode: ThemeMode): Boolean =
     effectiveThemeMode(themeMode, isSystemInDarkTheme()) == ThemeMode.DARK
-
-internal fun effectiveThemeMode(themeMode: ThemeMode, systemDark: Boolean): ThemeMode =
-    if (themeMode == ThemeMode.SYSTEM) {
-        if (systemDark) ThemeMode.DARK else ThemeMode.LIGHT
-    } else {
-        themeMode
-    }
 
 private fun ThemePaletteTarget.shouldAnimateFrom(previous: ThemePaletteTarget): Boolean =
     animateArtworkChanges &&

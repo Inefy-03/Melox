@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.model.ThemeMode
-import com.melox.player.ui.theme.effectiveThemeMode
+import com.melox.player.model.effectiveThemeMode
 import com.melox.player.ui.usesMiuixSmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults

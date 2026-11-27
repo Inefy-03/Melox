@@ -2,6 +2,7 @@
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.res.Configuration
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.AudioEffect
@@ -39,6 +40,8 @@ import com.melox.player.model.PlaybackQueueItem
 import com.melox.player.model.AppSettings
 import com.melox.player.model.PlaybackSnapshot
 import com.melox.player.model.SleepTimerState
+import com.melox.player.model.ThemeMode
+import com.melox.player.model.effectiveThemeMode
 import com.melox.player.model.PLAYBACK_SPEED_VALUES
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.SettableFuture
@@ -114,7 +117,9 @@ class PlaybackService : MediaSessionService() {
     private var hiddenQueueContentUris: Set<String> = emptySet()
     private val deferredRemovedContentUris = mutableSetOf<String>()
     private var artworkLoadJob: Job? = null
-    private var requestedArtworkKey: PlaybackArtworkKey? = null
+    private var requestedArtwork: Pair<PlaybackArtworkKey, Boolean>? = null
+    private var notificationThemeMode = ThemeMode.SYSTEM
+    private var notificationArtworkDark = false
     private var isClosing = false
     private var startupPlaybackApplied = false
     private var autoPlayOnStart = false
@@ -436,6 +441,8 @@ class PlaybackService : MediaSessionService() {
         miniSnapshotStore = MiniPlaybackSnapshotStore(this)
         settingsRepository = SettingsRepository(this)
         val startupSettings = runBlocking(Dispatchers.IO) { settingsRepository.loadSettings() }
+        notificationThemeMode = startupSettings.themeMode
+        updateNotificationArtworkTheme(resources.configuration)
         highPrecisionOutput = startupSettings.highPrecisionOutput
         pauseFadeEnabled = startupSettings.playbackPauseFade
         autoPlayOnStart = startupSettings.autoPlayOnStart
@@ -508,6 +515,15 @@ class PlaybackService : MediaSessionService() {
                     mediaSession?.player?.let { currentPlayer ->
                         refreshMediaButtonPreferences(currentPlayer.currentPlaybackMode())
                     }
+                }
+        }
+        serviceScope.launch {
+            settingsRepository.settings
+                .map { it.themeMode }
+                .distinctUntilChanged()
+                .collect { mode ->
+                    notificationThemeMode = mode
+                    updateNotificationArtworkTheme(resources.configuration)
                 }
         }
         scheduleArtworkUpdate(player)
@@ -663,7 +679,7 @@ class PlaybackService : MediaSessionService() {
         oldPlayer.release()
         artworkLoadJob?.cancel()
         artworkLoadJob = null
-        requestedArtworkKey = null
+        requestedArtwork = null
         if (shouldPrepare) {
             nextPlayer.prepare()
         }
@@ -846,57 +862,81 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        updateNotificationArtworkTheme(newConfig)
+    }
+
+    private fun updateNotificationArtworkTheme(configuration: Configuration) {
+        val systemDark = configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
+        val dark = effectiveThemeMode(notificationThemeMode, systemDark) == ThemeMode.DARK
+        if (notificationArtworkDark == dark) return
+        notificationArtworkDark = dark
+        activePlayer?.let(::scheduleArtworkUpdate)
+    }
+
     private fun scheduleArtworkUpdate(player: Player) {
         if (isClosing) return
         val currentIndex = player.currentMediaItemIndex
         val currentItem = currentIndex
             .takeIf { it in 0 until player.mediaItemCount }
             ?.let(player::getMediaItemAt)
-        if (currentItem == null) {
+        val request = currentItem?.toPlaybackQueueItem()?.toPlaybackArtworkKey()
+            ?.let { it to notificationArtworkDark }
+        if (requestedArtwork != request) {
             artworkLoadJob?.cancel()
             artworkLoadJob = null
-            requestedArtworkKey = null
-            return
+            requestedArtwork = null
         }
-        val queueItem = currentItem.toPlaybackQueueItem()
-        val artworkKey = queueItem.toPlaybackArtworkKey()
-        if (requestedArtworkKey != artworkKey) {
-            artworkLoadJob?.cancel()
-            artworkLoadJob = null
-            requestedArtworkKey = null
-        }
-        if (player.mediaMetadata.hasCoverArtwork() || currentItem.mediaMetadata.hasCoverArtwork()) return
-        if (requestedArtworkKey == artworkKey) return
+        if (currentItem == null || request == null || requestedArtwork == request) return
+        val (artworkKey, dark) = request
+        val metadata = currentItem.mediaMetadata
+        val placeholderDark = metadata.playbackPlaceholderDark
+        if (!needsPlaybackArtwork(
+                placeholderDark,
+                dark,
+                metadata.hasCoverArtwork() || player.mediaMetadata.hasCoverArtwork(),
+            )
+        ) return
 
-        requestedArtworkKey = artworkKey
+        requestedArtwork = request
         artworkLoadJob = serviceScope.launch {
             try {
-                var artworkData: ByteArray? = null
                 for (attempt in 0..2) {
                     if (attempt > 0) delay(if (attempt == 1) 500L else 2_000L)
-                    artworkData = withContext(Dispatchers.IO) {
-                        runCatching { loadPlaybackArtworkData(queueItem.contentUri) }.getOrNull()
-                    }
-                    if (artworkData != null) break
+                    val (data, loadedPlaceholderDark) = withContext(Dispatchers.IO) {
+                        val cover = if (placeholderDark == null) {
+                            runCatching { loadPlaybackArtworkData(artworkKey.contentUri) }.getOrNull()
+                        } else null
+                        if (cover != null) return@withContext cover to null
+                        runCatching { loadPlaybackPlaceholderData(dark) }.getOrNull()?.let { it to dark }
+                    } ?: continue
+                    val activeIndex = player.currentMediaItemIndex
+                    val activeItem = activeIndex
+                        .takeIf { it in 0 until player.mediaItemCount }
+                        ?.let(player::getMediaItemAt)
+                        ?: return@launch
+                    if (
+                        activePlayer !== player ||
+                        requestedArtwork != request ||
+                        activeItem.toPlaybackQueueItem().toPlaybackArtworkKey() != artworkKey ||
+                        !needsPlaybackArtwork(
+                            activeItem.mediaMetadata.playbackPlaceholderDark,
+                            dark,
+                            activeItem.mediaMetadata.hasCoverArtwork() || player.mediaMetadata.hasCoverArtwork(),
+                        )
+                    ) return@launch
+
+                    player.replaceMediaItem(
+                        activeIndex,
+                        activeItem.withArtworkData(data, placeholderDark = loadedPlaceholderDark),
+                    )
+                    break
                 }
-                val loadedArtwork = artworkData ?: return@launch
-                val activeIndex = player.currentMediaItemIndex
-                val activeItem = activeIndex
-                    .takeIf { it in 0 until player.mediaItemCount }
-                    ?.let(player::getMediaItemAt)
-                    ?: return@launch
-                if (
-                    activePlayer !== player ||
-                    activeItem.toPlaybackQueueItem().toPlaybackArtworkKey() != artworkKey ||
-                    player.mediaMetadata.hasCoverArtwork() ||
-                    activeItem.mediaMetadata.hasCoverArtwork()
-                ) {
-                    return@launch
-                }
-                player.replaceMediaItem(activeIndex, activeItem.withArtworkData(loadedArtwork))
             } finally {
                 if (artworkLoadJob === kotlin.coroutines.coroutineContext[Job]) {
-                    requestedArtworkKey = null
+                    requestedArtwork = null
                     artworkLoadJob = null
                 }
             }

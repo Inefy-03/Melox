@@ -51,6 +51,16 @@ class PlaybackArtworkMetadataTest {
     }
 
     @Test
+    fun onlyMissingArtworkOrAPlaceholderFromAnotherThemeNeedsAnUpdate() {
+        for (dark in listOf(false, true)) {
+            assertTrue(needsPlaybackArtwork(!dark, dark, hasCoverArtwork = true))
+            assertFalse(needsPlaybackArtwork(dark, dark, hasCoverArtwork = true))
+            assertTrue(needsPlaybackArtwork(null, dark, hasCoverArtwork = false))
+            assertFalse(needsPlaybackArtwork(null, dark, hasCoverArtwork = true))
+        }
+    }
+
+    @Test
     fun playbackArtworkKey_changesWhenArtworkSourceChanges() {
         val item = PlaybackQueueItem(
             mediaId = "track-1",

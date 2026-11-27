@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +30,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.melox.player.R
 import com.melox.player.data.library.ArtistGroup
-import com.melox.player.model.MusicTrack
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import androidx.compose.ui.platform.LocalLayoutDirection
 import top.yukonga.miuix.kmp.basic.Text
@@ -55,7 +56,7 @@ internal fun ArtistListItem(
         modifier = modifier.fillMaxWidth(),
         startAction = {
             Row {
-                ArtistArtwork(artist.coverTrack)
+                ArtistArtwork(artist)
                 Spacer(modifier = Modifier.width((artworkTextSpacing - 8.dp).coerceAtLeast(0.dp)))
             }
         },
@@ -111,16 +112,35 @@ internal fun ArtistListItem(
 
 @Composable
 internal fun ArtistArtwork(
-    track: MusicTrack?,
+    artist: ArtistGroup,
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
 ) {
-    val bitmap = rememberArtworkBitmap(
-        contentUri = track?.contentUri.orEmpty(),
-        dateModifiedEpochSeconds = track?.dateModifiedEpochSeconds ?: 0L,
-        fileSizeBytes = track?.fileSizeBytes ?: 0L,
-        size = size,
-    )
+    val context = LocalContext.current.applicationContext
+    val targetSizePx = with(LocalDensity.current) { ArtistDetailArtworkSize.roundToPx() }
+    val bitmap = rememberArtworkLoad(artist to targetSizePx) {
+        val portrait = if (artist.name != null) {
+            artist.tracks.firstNotNullOfOrNull { track ->
+                loadArtworkBitmap(
+                    context = context,
+                    contentUri = track.contentUri,
+                    dateModifiedEpochSeconds = track.dateModifiedEpochSeconds,
+                    fileSizeBytes = track.fileSizeBytes,
+                    targetSizePx = targetSizePx,
+                    artistImage = true,
+                )
+            }
+        } else null
+        portrait ?: artist.coverTrack?.let { track ->
+            loadArtworkBitmap(
+                context = context,
+                contentUri = track.contentUri,
+                dateModifiedEpochSeconds = track.dateModifiedEpochSeconds,
+                fileSizeBytes = track.fileSizeBytes,
+                targetSizePx = targetSizePx,
+            )
+        }
+    }?.value
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
@@ -138,3 +158,5 @@ internal fun ArtistArtwork(
         )
     }
 }
+
+internal val ArtistDetailArtworkSize = 72.dp

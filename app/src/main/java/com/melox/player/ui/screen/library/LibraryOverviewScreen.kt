@@ -111,7 +111,7 @@ internal fun LibraryOverviewScreen(
                         { onArtistClick(artist) },
                     ) {
                         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            ArtistArtwork(artist.coverTrack, Modifier.requiredSize(28.dp), size = 28.dp)
+                            ArtistArtwork(artist, Modifier.requiredSize(28.dp), size = 28.dp)
                         }
                     }
                 }

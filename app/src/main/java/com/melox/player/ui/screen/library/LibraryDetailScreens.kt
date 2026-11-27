@@ -55,6 +55,7 @@ import com.melox.player.ui.component.TopBarBackdrop
 import com.melox.player.ui.component.miuixBarColor
 import com.melox.player.ui.component.rememberBlurBackdrop
 import com.melox.player.ui.component.library.ArtistArtwork
+import com.melox.player.ui.component.library.ArtistDetailArtworkSize
 import com.melox.player.ui.component.library.ArtistListItem
 import com.melox.player.ui.component.library.MusicTrackDescriptionMode
 import com.melox.player.ui.component.library.MusicTrackRow
@@ -745,8 +746,8 @@ private fun ArtistDetailHeader(artist: ArtistGroup) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ArtistArtwork(
-            track = artist.coverTrack,
-            size = 72.dp,
+            artist = artist,
+            size = ArtistDetailArtworkSize,
         )
         Column(
             modifier = Modifier.weight(1f),

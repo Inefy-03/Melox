@@ -54,6 +54,7 @@ internal fun AudioOutputScreen(
     playbackPauseFade: Boolean,
     onAudioFocusEnabledChange: (Boolean) -> Unit,
     onTransientAudioFocusBehaviorChange: (TransientAudioFocusBehavior) -> Unit,
+    onReplayGainEnabledChange: (Boolean) -> Unit,
     onPlaybackSpeedChange: (Float) -> Unit,
     onHighPrecisionOutputChange: (Boolean) -> Unit,
     onPlaybackPauseFadeChange: (Boolean) -> Unit,
@@ -126,6 +127,7 @@ internal fun AudioOutputScreen(
                         )
                         OverlayDropdownPreference(
                             title = stringResource(R.string.settings_audio_focus_transient_title),
+                            summary = stringResource(R.string.settings_audio_focus_transient_summary),
                             items = labels,
                             selectedIndex = behaviors.indexOf(behavior),
                             enabled = audioFocus,
@@ -135,6 +137,12 @@ internal fun AudioOutputScreen(
                                     onTransientAudioFocusBehaviorChange(it)
                                 }
                             },
+                        )
+                        SwitchPreference(
+                            title = stringResource(R.string.settings_replay_gain_title),
+                            summary = stringResource(R.string.settings_replay_gain_summary),
+                            checked = settings.replayGainEnabled,
+                            onCheckedChange = onReplayGainEnabledChange,
                         )
                         SwitchPreference(
                             title = stringResource(R.string.playback_pause_fade),

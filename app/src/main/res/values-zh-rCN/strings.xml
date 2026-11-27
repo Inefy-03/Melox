@@ -234,11 +234,14 @@
     <string name="settings_section_playback">播放</string>
     <string name="settings_audio_output_title">音频输出</string>
     <string name="settings_audio_focus_title">音频焦点</string>
-    <string name="settings_audio_focus_summary">其他应用获取音频焦点时暂停播放，系统的多声音设置可能影响此功能。</string>
-    <string name="settings_audio_focus_transient_title">短暂失去音频焦点</string>
+    <string name="settings_audio_focus_summary">其他应用获取音频焦点时暂停播放，系统的多声音设置可能影响此功能</string>
+    <string name="settings_audio_focus_transient_title">发现临时焦点</string>
+    <string name="settings_audio_focus_transient_summary">例如地图语音播报</string>
     <string name="settings_audio_focus_keep_volume">保持音量</string>
     <string name="settings_audio_focus_duck">降低音量后自动恢复</string>
     <string name="settings_audio_focus_pause">暂停后自动恢复</string>
+    <string name="settings_replay_gain_title">音量平衡</string>
+    <string name="settings_replay_gain_summary">回放增益，切换歌曲或重新播放后生效</string>
     <string name="playback_speed_value">×%1$.2f</string>
     <string name="playback_speed_reset">恢复一倍速</string>
     <string name="playback_speed_title">播放速度</string>
@@ -246,7 +249,7 @@
     <string name="settings_auto_play_title">自动播放</string>
     <string name="settings_auto_play_summary">启动应用时自动继续播放上次的歌曲</string>
     <string name="settings_terminate_on_task_removed_title">从最近任务移除时终止应用</string>
-    <string name="settings_terminate_on_task_removed_summary">移除最近任务时结束应用进程并停止播放。关闭后，系统仍可能结束应用。</string>
+    <string name="settings_terminate_on_task_removed_summary">关闭后，系统仍可能结束应用</string>
     <string name="settings_notification_playback_mode_button_title">显示播放顺序切换按钮</string>
     <string name="settings_notification_playback_mode_button_summary">在系统媒体通知栏或控制中心显示播放顺序切换按钮</string>
     <string name="settings_notification_close_button_title">显示关闭按钮</string>
@@ -268,9 +271,9 @@
     <string name="settings_section_playback_interface">播放界面</string>
     <string name="settings_circular_artwork_title">圆形封面</string>
     <string name="settings_cover_shape_title">封面形状</string>
-    <string name="settings_cover_shape_default">默认</string>
-    <string name="settings_cover_shape_rounded">圆角矩形</string>
-    <string name="settings_cover_shape_circle">圆形封面</string>
+    <string name="settings_cover_shape_default">自适应</string>
+    <string name="settings_cover_shape_rounded">方形</string>
+    <string name="settings_cover_shape_circle">圆形</string>
     <string name="settings_artwork_flip_animation_title">封面翻转动画</string>
     <string name="settings_section_song_list">歌曲列表</string>
     <string name="settings_song_list_artwork_title">列表显示歌曲封面</string>
@@ -298,7 +301,7 @@
 
     <string name="settings_section_music_library">音乐库</string>
     <string name="settings_scan_local_music_title">扫描音乐</string>
-    <string name="settings_music_statistics_title">统计</string>
+    <string name="settings_music_statistics_title">音乐库</string>
     <string name="settings_scan_music_empty_summary">暂无歌曲</string>
     <plurals name="settings_scan_music_song_count">
         <item quantity="other">%1$d首歌曲</item>
@@ -345,7 +348,7 @@
     <string name="listening_statistics_chart">听歌统计柱状图</string>
     <string name="listening_statistics_previous_bar">上一根柱</string>
     <string name="listening_statistics_next_bar">下一根柱</string>
-    <string name="music_statistics_page_title">统计</string>
+    <string name="music_statistics_page_title">音乐库</string>
     <string name="music_statistics_tune_action">统计选项</string>
     <string name="music_statistics_group_quality">歌曲音质</string>
     <string name="music_statistics_group_format">音乐格式</string>

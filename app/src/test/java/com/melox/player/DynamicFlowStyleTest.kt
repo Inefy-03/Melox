@@ -16,10 +16,10 @@ import org.junit.Test
 
 class DynamicFlowStyleTest {
     @Test
-    fun defaultFlowTracksSystemAppearance() {
+    fun defaultFlowUsesDarkAppearance() {
         val style = AppSettings().dynamicFlowStyle
-        assertEquals(DynamicFlowStyle.SYSTEM, style)
-        assertFalse(style.isDark(systemDark = false))
+        assertEquals(DynamicFlowStyle.DARK, style)
+        assertTrue(style.isDark(systemDark = false))
         assertTrue(style.isDark(systemDark = true))
     }
 

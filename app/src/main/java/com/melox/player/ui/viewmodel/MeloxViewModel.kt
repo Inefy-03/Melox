@@ -1103,6 +1103,10 @@ class MeloxViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { settingsRepository.setPlaybackPauseFade(enabled) }
     }
 
+    fun setReplayGainEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setReplayGainEnabled(enabled) }
+    }
+
     fun setAudioFocusEnabled(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setAudioFocusEnabled(enabled) }
     }

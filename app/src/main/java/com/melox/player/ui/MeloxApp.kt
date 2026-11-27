@@ -2331,6 +2331,7 @@ fun MeloxApp(
                                                             playbackPauseFade = pauseFade,
                                                             onAudioFocusEnabledChange = viewModel::setAudioFocusEnabled,
                                                             onTransientAudioFocusBehaviorChange = viewModel::setTransientAudioFocusBehavior,
+                                                            onReplayGainEnabledChange = viewModel::setReplayGainEnabled,
                                                             onPlaybackSpeedChange = viewModel::setPlaybackSpeed,
                                                             onHighPrecisionOutputChange = viewModel::setHighPrecisionOutput,
                                                             onPlaybackPauseFadeChange = viewModel::setPlaybackPauseFade,

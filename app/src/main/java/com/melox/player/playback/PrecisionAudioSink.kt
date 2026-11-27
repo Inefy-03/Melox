@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.video.VideoRendererEventListener
 internal class PrecisionRenderersFactory(
     context: Context,
     private val highPrecisionEnabled: Boolean,
+    private val replayGainMultiplier: () -> Float,
     private val onFloatOutputChanged: (Boolean) -> Unit,
 ) : DefaultRenderersFactory(context) {
     override fun buildVideoRenderers(
@@ -64,7 +65,7 @@ internal class PrecisionRenderersFactory(
         enableAudioOutputPlaybackParams: Boolean,
     ): AudioSink = object : ForwardingAudioSink(
         DefaultAudioSink.Builder(context)
-            .setAudioProcessorChain(PcmPlaybackProcessorChain())
+            .setAudioProcessorChain(PcmPlaybackProcessorChain(replayGainMultiplier))
             .setEnableFloatOutput(highPrecisionEnabled)
             .setEnableAudioOutputPlaybackParameters(false)
             .build(),

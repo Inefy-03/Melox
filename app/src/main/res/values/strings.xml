@@ -243,11 +243,14 @@
     <string name="settings_section_playback">Playback</string>
     <string name="settings_audio_output_title">Audio output</string>
     <string name="settings_audio_focus_title">Audio focus</string>
-    <string name="settings_audio_focus_summary">Pause for other apps that take audio focus. System multi-audio settings may override this behavior.</string>
-    <string name="settings_audio_focus_transient_title">Transient audio focus loss</string>
+    <string name="settings_audio_focus_summary">Pause for other apps that take audio focus. System multi-audio settings may override this behavior</string>
+    <string name="settings_audio_focus_transient_title">Temporary audio focus</string>
+    <string name="settings_audio_focus_transient_summary">For example, navigation voice guidance</string>
     <string name="settings_audio_focus_keep_volume">Keep volume</string>
     <string name="settings_audio_focus_duck">Lower volume, then restore</string>
     <string name="settings_audio_focus_pause">Pause, then resume</string>
+    <string name="settings_replay_gain_title">Volume leveling</string>
+    <string name="settings_replay_gain_summary">Replay Gain takes effect when you switch or restart a song</string>
     <string name="playback_speed_value">×%1$.2f</string>
     <string name="playback_speed_reset">Reset playback speed to 1×</string>
     <string name="playback_speed_title">Playback speed</string>
@@ -255,7 +258,7 @@
     <string name="settings_auto_play_title">Auto-play</string>
     <string name="settings_auto_play_summary">Automatically resume the last song when the app starts</string>
     <string name="settings_terminate_on_task_removed_title">Terminate app when removed from recents</string>
-    <string name="settings_terminate_on_task_removed_summary">End the app process and stop playback when removed from recent apps. When off, the system may still end the app.</string>
+    <string name="settings_terminate_on_task_removed_summary">The system may still end the app when this is off</string>
     <string name="settings_notification_playback_mode_button_title">Show playback mode button</string>
     <string name="settings_notification_playback_mode_button_summary">Show a button that switches the playback mode in the system media notification and control center</string>
     <string name="settings_notification_close_button_title">Show close button</string>
@@ -277,8 +280,8 @@
     <string name="settings_section_playback_interface">Playback interface</string>
     <string name="settings_circular_artwork_title">Circular artwork</string>
     <string name="settings_cover_shape_title">Cover shape</string>
-    <string name="settings_cover_shape_default">Default</string>
-    <string name="settings_cover_shape_rounded">Rounded rectangle</string>
+    <string name="settings_cover_shape_default">Adaptive</string>
+    <string name="settings_cover_shape_rounded">Square</string>
     <string name="settings_cover_shape_circle">Circle</string>
     <string name="settings_artwork_flip_animation_title">Artwork flip animation</string>
     <string name="settings_section_song_list">Song list</string>
@@ -307,7 +310,7 @@
 
     <string name="settings_section_music_library">Library</string>
     <string name="settings_scan_local_music_title">Scan music</string>
-    <string name="settings_music_statistics_title">Statistics</string>
+    <string name="settings_music_statistics_title">Music library</string>
     <string name="settings_scan_music_empty_summary">No songs</string>
     <plurals name="settings_scan_music_song_count">
         <item quantity="one">%1$d song</item>
@@ -357,7 +360,7 @@
     <string name="listening_statistics_chart">Listening chart</string>
     <string name="listening_statistics_previous_bar">Previous bar</string>
     <string name="listening_statistics_next_bar">Next bar</string>
-    <string name="music_statistics_page_title">Statistics</string>
+    <string name="music_statistics_page_title">Music library</string>
     <string name="music_statistics_tune_action">Statistics options</string>
     <string name="music_statistics_group_quality">Song quality</string>
     <string name="music_statistics_group_format">Music format</string>

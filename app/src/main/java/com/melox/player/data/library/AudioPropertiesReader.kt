@@ -53,6 +53,7 @@ internal class AudioPropertiesReader(
             year = wav.year ?: tags?.year,
             trackNumber = wav.trackNumber ?: tags?.trackNumber,
             discNumber = wav.discNumber ?: tags?.discNumber,
+            replayGainDb = wav.replayGainDb ?: tags?.replayGainDb,
         )
     }
 
@@ -141,6 +142,7 @@ internal data class LocalAudioTags(
     val year: Int? = null,
     val trackNumber: Int? = null,
     val discNumber: Int? = null,
+    val replayGainDb: Double? = null,
 )
 
 internal fun parseAudioTagProperties(
@@ -195,6 +197,11 @@ internal fun parseAudioTagProperties(
         year = year,
         trackNumber = indexedValue("TRACKNUMBER", "TRACK", "TRCK", "ITRK"),
         discNumber = indexedValue("DISCNUMBER", "DISC", "TPOS", "DISKNUMBER"),
+        replayGainDb = sequenceOf("REPLAYGAIN_TRACK_GAIN", "REPLAYGAIN_ALBUM_GAIN")
+            .flatMap { normalizedProperties[it].orEmpty().asSequence() }
+            .mapNotNull { value ->
+                value.trim().replace(REPLAY_GAIN_UNIT, "").toDoubleOrNull()?.takeIf(Double::isFinite)
+            }.firstOrNull(),
     )
 }
 
@@ -247,3 +254,5 @@ internal fun MusicTrack.hasReusableAudioProperties(
 
 private const val BITS_PER_KILOBIT = 1_000L
 private val YEAR_PATTERN = Regex("""\b(?:1\d{3}|2\d{3})\b""")
+
+private val REPLAY_GAIN_UNIT = Regex("""\s*dB$""", RegexOption.IGNORE_CASE)

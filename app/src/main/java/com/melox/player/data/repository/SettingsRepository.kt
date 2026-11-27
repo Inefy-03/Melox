@@ -48,6 +48,7 @@ import com.melox.player.model.LyricsSourcePriority
 import com.melox.player.model.NavigationTransitionStyle
 import com.melox.player.model.PlaybackBackgroundStyle
 import com.melox.player.model.normalizePlaybackSpeed
+import com.melox.player.model.DEFAULT_REPLAY_GAIN_ENABLED
 import com.melox.player.model.ThemeMode
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
@@ -113,13 +114,13 @@ class SettingsRepository(context: Context) {
                     ?.let { storedValue ->
                         enumValueOrDefault(
                             storedValue,
-                            PlaybackBackgroundStyle.BLURRED_ARTWORK,
+                            PlaybackBackgroundStyle.DYNAMIC_FLOW,
                         )
                     }
-                    ?: PlaybackBackgroundStyle.BLURRED_ARTWORK,
+                    ?: PlaybackBackgroundStyle.DYNAMIC_FLOW,
                 dynamicFlowStyle = preferences[Keys.DynamicFlowStyle]
-                    ?.let { enumValueOrDefault(it, DynamicFlowStyle.SYSTEM) }
-                    ?: DynamicFlowStyle.SYSTEM,
+                    ?.let { enumValueOrDefault(it, DynamicFlowStyle.DARK) }
+                    ?: DynamicFlowStyle.DARK,
                 showSongListArtwork = preferences[Keys.ShowSongListArtwork] ?: true,
                 coverShape = preferences[Keys.CoverShape]
                     ?.let { enumValueOrDefault(it, CoverShape.DEFAULT) }
@@ -128,21 +129,22 @@ class SettingsRepository(context: Context) {
                     } else {
                         CoverShape.DEFAULT
                     },
-                artworkFlipAnimation = preferences[Keys.ArtworkFlipAnimation] ?: false,
+                artworkFlipAnimation = preferences[Keys.ArtworkFlipAnimation] ?: true,
                 showSongListFileName = preferences[Keys.ShowSongListFileName] ?: false,
                 showSongListDuration = preferences[Keys.ShowSongListDuration] ?: true,
                 showListeningDuration = preferences[Keys.ShowListeningDuration] ?: false,
                 playbackSpeed = preferences[Keys.PlaybackSpeed]
                     ?.let(::normalizePlaybackSpeed) ?: 1f,
-                highPrecisionOutput = preferences[Keys.HighPrecisionOutput] ?: false,
+                highPrecisionOutput = preferences[Keys.HighPrecisionOutput] ?: true,
                 sleepTimerSeconds = preferences[Keys.SleepTimerSeconds]
                     ?.coerceIn(0, 86_399) ?: 600,
                 autoExtendSleepTimer = preferences[Keys.AutoExtendSleepTimer] ?: false,
-                playbackPauseFade = preferences[Keys.PlaybackPauseFade] ?: false,
+                playbackPauseFade = preferences[Keys.PlaybackPauseFade] ?: true,
                 audioFocusEnabled = preferences[Keys.AudioFocusEnabled] ?: true,
                 transientAudioFocusBehavior = preferences[Keys.TransientAudioFocusBehavior]
                     ?.let { enumValueOrDefault(it, TransientAudioFocusBehavior.DUCK) }
                     ?: TransientAudioFocusBehavior.DUCK,
+                replayGainEnabled = preferences[Keys.ReplayGainEnabled] ?: DEFAULT_REPLAY_GAIN_ENABLED,
                 autoPlayOnStart = preferences[Keys.AutoPlayOnStart] ?: false,
                 terminateOnTaskRemoved = preferences[Keys.TerminateOnTaskRemoved] ?: false,
                 showNotificationPlaybackModeButton =
@@ -409,6 +411,10 @@ class SettingsRepository(context: Context) {
 
     suspend fun setTransientAudioFocusBehavior(behavior: TransientAudioFocusBehavior) {
         dataStore.edit { it[Keys.TransientAudioFocusBehavior] = behavior.name }
+    }
+
+    suspend fun setReplayGainEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.ReplayGainEnabled] = enabled }
     }
 
     suspend fun setTerminateOnTaskRemoved(enabled: Boolean) {
@@ -709,6 +715,7 @@ class SettingsRepository(context: Context) {
         val PlaybackPauseFade = booleanPreferencesKey("playback_pause_fade")
         val AudioFocusEnabled = booleanPreferencesKey("audio_focus_enabled")
         val TransientAudioFocusBehavior = stringPreferencesKey("transient_audio_focus_behavior")
+        val ReplayGainEnabled = booleanPreferencesKey("replay_gain_enabled")
         val AutoPlayOnStart = booleanPreferencesKey("auto_play_on_start")
         val TerminateOnTaskRemoved = booleanPreferencesKey("terminate_on_task_removed")
         val ShowNotificationPlaybackModeButton =

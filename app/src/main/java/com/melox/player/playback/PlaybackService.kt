@@ -30,6 +30,7 @@ import androidx.media3.session.SessionResult
 import com.melox.player.MainActivity
 import com.melox.player.MeloxApplication
 import com.melox.player.R
+import com.melox.player.data.library.AudioPropertiesReader
 import com.melox.player.data.playback.ListeningRecorder
 import com.melox.player.data.playback.PlaybackSnapshotStore
 import com.melox.player.data.playback.MiniPlaybackSnapshotStore
@@ -101,6 +102,10 @@ class PlaybackService : MediaSessionService() {
     private var listeningTransition = false
     private var listeningCheckpoint: Job? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val replayGain by lazy {
+        val reader = AudioPropertiesReader(contentResolver)
+        PlaybackReplayGain(serviceScope) { uri -> reader.readTags(uri)?.replayGainDb }
+    }
     private lateinit var snapshotStore: PlaybackSnapshotStore
     private lateinit var miniSnapshotStore: MiniPlaybackSnapshotStore
     private lateinit var settingsRepository: SettingsRepository
@@ -221,6 +226,13 @@ class PlaybackService : MediaSessionService() {
                 if (player.mediaItemCount == 0) setFloatOutputActive(false)
                 scheduleArtworkUpdate(player)
             }
+            if (events.containsAny(
+                    Player.EVENT_TIMELINE_CHANGED,
+                    Player.EVENT_MEDIA_ITEM_TRANSITION,
+                    Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
+                    Player.EVENT_REPEAT_MODE_CHANGED,
+                )
+            ) prefetchReplayGain(player)
             scheduleSnapshotWrite(
                 player = player,
                 immediate = events.contains(Player.EVENT_TIMELINE_CHANGED) ||
@@ -249,6 +261,7 @@ class PlaybackService : MediaSessionService() {
         ) {
             if (!isClosing && session.player === activePlayer) {
                 if (playerCommands.contains(Player.COMMAND_PLAY_PAUSE) && session.player.playWhenReady) {
+                    replayGain.select(session.player.currentMediaItem?.toPlaybackQueueItem(), restart = true)
                     playbackAudioFocus.onPlaybackIntentChanged(true)
                 }
                 if (snapshotRestorePending && (
@@ -380,8 +393,13 @@ class PlaybackService : MediaSessionService() {
             }
 
             ACTION_SET_PLAYBACK_INTENT -> {
-                if (!args.getBoolean(EXTRA_PLAYBACK_INTENT)) playbackAudioFocus.onUserPause()
-                playbackVolumeFade?.requestPlaybackIntent(args.getBoolean(EXTRA_PLAYBACK_INTENT))
+                val play = args.getBoolean(EXTRA_PLAYBACK_INTENT)
+                if (play && (!session.player.playWhenReady || playbackVolumeFade?.hasPendingPause == true)) {
+                    replayGain.select(session.player.currentMediaItem?.toPlaybackQueueItem(), restart = true)
+                } else if (!play) {
+                    playbackAudioFocus.onUserPause()
+                }
+                playbackVolumeFade?.requestPlaybackIntent(play)
                 Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
             }
 
@@ -441,6 +459,7 @@ class PlaybackService : MediaSessionService() {
         miniSnapshotStore = MiniPlaybackSnapshotStore(this)
         settingsRepository = SettingsRepository(this)
         val startupSettings = runBlocking(Dispatchers.IO) { settingsRepository.loadSettings() }
+        replayGain.enabled = startupSettings.replayGainEnabled
         notificationThemeMode = startupSettings.themeMode
         updateNotificationArtworkTheme(resources.configuration)
         highPrecisionOutput = startupSettings.highPrecisionOutput
@@ -526,6 +545,17 @@ class PlaybackService : MediaSessionService() {
                     updateNotificationArtworkTheme(resources.configuration)
                 }
         }
+        serviceScope.launch {
+            settingsRepository.settings
+                .map { it.replayGainEnabled }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    replayGain.enabled = enabled
+                    activePlayer?.let(::prefetchReplayGain)
+                }
+        }
+        replayGain.select(player.currentMediaItem?.toPlaybackQueueItem())
+        prefetchReplayGain(player)
         scheduleArtworkUpdate(player)
         (application as MeloxApplication).fairMemoryManager.savePlayback = ::saveMemoryCheckpoint
         serviceScope.launch {
@@ -598,7 +628,7 @@ class PlaybackService : MediaSessionService() {
 
     private fun createPlayer(highPrecision: Boolean): ExoPlayer {
         val generation = ++outputGeneration
-        val renderersFactory = PrecisionRenderersFactory(this, highPrecision) { active ->
+        val renderersFactory = PrecisionRenderersFactory(this, highPrecision, { replayGain.multiplier }) { active ->
             serviceScope.launch {
                 if (generation == outputGeneration) setFloatOutputActive(active)
             }
@@ -634,13 +664,33 @@ class PlaybackService : MediaSessionService() {
                         reason: Int,
                     ) {
                         if (owner === activePlayer) {
-                            listeningTransition = !snapshotRestorePending &&
-                                reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+                            val restart = reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED
+                            listeningTransition = !snapshotRestorePending && restart
+                            replayGain.select(mediaItem?.toPlaybackQueueItem(), restart = restart)
                             sleepTimer.onMediaItemTransition(reason)
+                        }
+                    }
+
+                    override fun onPositionDiscontinuity(
+                        oldPosition: Player.PositionInfo,
+                        newPosition: Player.PositionInfo,
+                        reason: Int,
+                    ) {
+                        if (owner === activePlayer && reason == Player.DISCONTINUITY_REASON_SEEK &&
+                            oldPosition.mediaItemIndex == newPosition.mediaItemIndex &&
+                            newPosition.positionMs == 0L
+                        ) {
+                            replayGain.select(newPosition.mediaItem?.toPlaybackQueueItem(), restart = true)
                         }
                     }
                 })
             }
+    }
+
+    private fun prefetchReplayGain(player: Player) {
+        val next = player.nextMediaItemIndex
+        replayGain.prefetch(next.takeIf { it in 0 until player.mediaItemCount }
+            ?.let(player::getMediaItemAt)?.toPlaybackQueueItem())
     }
 
     private fun setHighPrecisionOutput(enabled: Boolean) {

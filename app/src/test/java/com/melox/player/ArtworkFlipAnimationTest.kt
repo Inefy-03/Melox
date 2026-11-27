@@ -49,8 +49,8 @@ class ArtworkFlipAnimationTest {
     }
 
     @Test
-    fun settingDefaultsToDisabled() {
-        assertFalse(AppSettings().artworkFlipAnimation)
+    fun settingDefaultsToEnabled() {
+        assertTrue(AppSettings().artworkFlipAnimation)
     }
 
     @Test

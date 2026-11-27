@@ -49,7 +49,12 @@ internal fun readWavMetadata(stream: InputStream): WavMetadata? {
                     var artworkPriority = Int.MAX_VALUE
                     for (index in 0 until metadata.length()) {
                         when (val frame = metadata[index]) {
-                            is TextInformationFrame -> properties[frame.id] = frame.values.toTypedArray()
+                            is TextInformationFrame -> {
+                                val key = frame.description?.takeIf {
+                                    frame.id == "TXXX" && it.startsWith("REPLAYGAIN_", ignoreCase = true)
+                                } ?: frame.id
+                                properties[key] = frame.values.toTypedArray()
+                            }
                             is ApicFrame -> {
                                 val priority = coverPicturePriority(frame.pictureType)
                                 if (priority != null && priority < artworkPriority && frame.pictureData.isNotEmpty()) {

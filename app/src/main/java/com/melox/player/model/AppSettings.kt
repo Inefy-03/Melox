@@ -189,6 +189,8 @@ enum class TransientAudioFocusBehavior {
     PAUSE,
 }
 
+internal const val DEFAULT_REPLAY_GAIN_ENABLED = true
+
 /** User-controlled preferences stored by the settings repository. */
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -201,21 +203,22 @@ data class AppSettings(
     val customBackgroundCardBlurPercent: Int = DEFAULT_CUSTOM_BACKGROUND_CARD_BLUR_PERCENT,
     val customBackgroundCardOpacityPercent: Int = DEFAULT_CUSTOM_BACKGROUND_CARD_OPACITY_PERCENT,
     val playbackBackgroundStyle: PlaybackBackgroundStyle =
-        PlaybackBackgroundStyle.BLURRED_ARTWORK,
-    val dynamicFlowStyle: DynamicFlowStyle = DynamicFlowStyle.SYSTEM,
+        PlaybackBackgroundStyle.DYNAMIC_FLOW,
+    val dynamicFlowStyle: DynamicFlowStyle = DynamicFlowStyle.DARK,
     val showSongListArtwork: Boolean = true,
     val coverShape: CoverShape = CoverShape.DEFAULT,
-    val artworkFlipAnimation: Boolean = false,
+    val artworkFlipAnimation: Boolean = true,
     val showSongListFileName: Boolean = false,
     val showSongListDuration: Boolean = true,
     val showListeningDuration: Boolean = false,
     val playbackSpeed: Float = 1f,
-    val highPrecisionOutput: Boolean = false,
+    val highPrecisionOutput: Boolean = true,
     val sleepTimerSeconds: Int = 600,
     val autoExtendSleepTimer: Boolean = false,
-    val playbackPauseFade: Boolean = false,
+    val playbackPauseFade: Boolean = true,
     val audioFocusEnabled: Boolean = true,
     val transientAudioFocusBehavior: TransientAudioFocusBehavior = TransientAudioFocusBehavior.DUCK,
+    val replayGainEnabled: Boolean = DEFAULT_REPLAY_GAIN_ENABLED,
     val autoPlayOnStart: Boolean = false,
     val terminateOnTaskRemoved: Boolean = false,
     val showNotificationPlaybackModeButton: Boolean = true,

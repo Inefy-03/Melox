@@ -3,8 +3,10 @@ package com.melox.player.optimization
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.audio.AudioProcessor
+import com.melox.player.data.library.parseAudioTagProperties
 import com.melox.player.model.PLAYBACK_SPEED_VALUES
 import com.melox.player.playback.PcmPlaybackProcessorChain
+import com.melox.player.playback.replayGainMultiplier
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -76,6 +78,47 @@ class PcmPlaybackProcessorChainTest {
         assertTrue(afterSeek.all { it == 0f })
         chain.audioProcessors.single().reset()
         assertFalse(chain.audioProcessors.single().isActive)
+    }
+
+    @Test
+    fun replayGainPrefersAValidTrackTagAndFallsBackToAlbumOrUnity() {
+        val album = "REPLAYGAIN_ALBUM_GAIN" to arrayOf("-6.0206 dB")
+        val both = parseAudioTagProperties(mapOf(album, "replaygain_track_gain" to arrayOf("+6.0206 dB")))
+        assertEquals(2f, replayGainMultiplier(both.replayGainDb), 0.0001f)
+        val fallback = parseAudioTagProperties(mapOf(album, "REPLAYGAIN_TRACK_GAIN" to arrayOf("NaN", "")))
+        assertEquals(0.5f, replayGainMultiplier(fallback.replayGainDb), 0.0001f)
+        assertEquals(1f, replayGainMultiplier(parseAudioTagProperties(emptyMap()).replayGainDb), 0f)
+    }
+
+    @Test
+    fun replayGainAppliesToFloatAndIntegerPcmWithoutWrappingClippedSamples() {
+        var multiplier = 2f
+        val chain = PcmPlaybackProcessorChain { multiplier }
+        val processor = chain.audioProcessors.first()
+        val input = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder())
+
+        processor.configure(AudioProcessor.AudioFormat(48_000, 1, C.ENCODING_PCM_FLOAT))
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        input.putFloat(0.25f).putFloat(-0.75f).flip()
+        processor.queueInput(input)
+        val floats = processor.output
+        assertEquals(0.5f, floats.float, 0f)
+        assertEquals(-1f, floats.float, 0f)
+
+        processor.configure(AudioProcessor.AudioFormat(48_000, 1, C.ENCODING_PCM_16BIT))
+        processor.flush(AudioProcessor.StreamMetadata.DEFAULT)
+        input.clear()
+        input.putShort(8_000).putShort(24_000).flip()
+        processor.queueInput(input)
+        val amplified = processor.output
+        assertEquals(16_000, amplified.short.toInt())
+        assertEquals(32_767, amplified.short.toInt())
+
+        multiplier = 1f
+        input.clear()
+        input.putShort(-27_000).flip()
+        processor.queueInput(input)
+        assertEquals(-27_000, processor.output.short.toInt())
     }
 
     private fun process(

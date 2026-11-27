@@ -22,10 +22,10 @@ class PlaybackOptionsTest {
     fun savedPlaybackOptionsUseRequestedDefaultsAndValidSpeeds() {
         val settings = AppSettings()
         assertEquals(1f, settings.playbackSpeed)
-        assertEquals(false, settings.highPrecisionOutput)
+        assertEquals(true, settings.highPrecisionOutput)
         assertEquals(600, settings.sleepTimerSeconds)
         assertEquals(false, settings.autoExtendSleepTimer)
-        assertEquals(false, settings.playbackPauseFade)
+        assertEquals(true, settings.playbackPauseFade)
         assertEquals(true, settings.audioFocusEnabled)
         assertEquals(com.melox.player.model.TransientAudioFocusBehavior.DUCK, settings.transientAudioFocusBehavior)
         assertEquals(false, settings.autoPlayOnStart)

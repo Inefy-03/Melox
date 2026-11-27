@@ -325,7 +325,7 @@ class NavigationAndThemeTest {
         assertFalse(settings.showSongListFileName)
         assertEquals(DynamicColorSource.PLAYBACK_ARTWORK, settings.dynamicColorSource)
         assertEquals(
-            PlaybackBackgroundStyle.BLURRED_ARTWORK,
+            PlaybackBackgroundStyle.DYNAMIC_FLOW,
             settings.playbackBackgroundStyle,
         )
         assertEquals(400, settings.lyricFontWeight)
